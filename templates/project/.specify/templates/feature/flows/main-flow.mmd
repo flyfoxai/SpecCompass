@@ -1,0 +1,9 @@
+flowchart TD
+    A["STEP-010 Open Primary Screen"] --> B{"DEC-020 Input And Rule Validation"}
+    B -- "valid" --> C["STEP-040 Submit Primary Request"]
+    B -- "invalid" --> A
+    C --> D["STEP-080 Enter Review Decision"]
+    D --> E{"DEC-090 Approve Or Reject"}
+    E -- "approve" --> F["STEP-110 Emit Side Effects"]
+    E -- "reject" --> G["STATE-REJECTED"]
+    F --> H["STATE-CLOSED"]

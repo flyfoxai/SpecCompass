@@ -1,0 +1,17 @@
+{
+  "type": "VerticalLayout",
+  "elements": [
+    {
+      "type": "Control",
+      "scope": "#/properties/title"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/requestedAt"
+    },
+    {
+      "type": "Control",
+      "scope": "#/properties/notes"
+    }
+  ]
+}

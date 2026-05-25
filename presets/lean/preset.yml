@@ -1,0 +1,50 @@
+schema_version: "1.0"
+
+preset:
+  id: "lean"
+  name: "Lean Workflow"
+  version: "1.0.0"
+  description: "Minimal core workflow commands - just the prompt, just the artifact"
+  author: "github"
+  repository: "https://github.com/flyfoxai/openSpecs"
+  license: "MIT"
+
+requires:
+  speckit_version: ">=0.6.0"
+
+provides:
+  templates:
+    - type: "command"
+      name: "sp.specify"
+      file: "commands/sp.specify.md"
+      description: "Lean specify - create spec.md from a feature description"
+      replaces: "sp.specify"
+
+    - type: "command"
+      name: "sp.plan"
+      file: "commands/sp.plan.md"
+      description: "Lean plan - create plan.md from the spec"
+      replaces: "sp.plan"
+
+    - type: "command"
+      name: "sp.tasks"
+      file: "commands/sp.tasks.md"
+      description: "Lean tasks - create tasks.md from plan and spec"
+      replaces: "sp.tasks"
+
+    - type: "command"
+      name: "sp.implement"
+      file: "commands/sp.implement.md"
+      description: "Lean implement - execute tasks from tasks.md"
+      replaces: "sp.implement"
+
+    - type: "command"
+      name: "sp.constitution"
+      file: "commands/sp.constitution.md"
+      description: "Lean constitution - create or update project constitution"
+      replaces: "sp.constitution"
+
+tags:
+  - "lean"
+  - "minimal"
+  - "workflow"

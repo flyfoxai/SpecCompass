@@ -1,0 +1,13 @@
+sequenceDiagram
+    actor User as ROLE-PRIMARY-USER
+    participant UI as SCREEN-PRIMARY
+    participant API as API-CREATE
+    participant Reviewer as ROLE-REVIEWER
+    participant System as ROLE-SYSTEM
+
+    User->>UI: submit primary request
+    UI->>API: validate and create
+    API-->>Reviewer: pending review available
+    Reviewer->>API: approve or reject
+    API-->>System: emit side effects when approved
+    System-->>User: final status visible

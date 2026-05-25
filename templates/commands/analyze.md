@@ -1,0 +1,200 @@
+---
+description: Verify whether the full document system is strong enough for later automation.
+scripts:
+  sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
+  ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
+---
+
+## User Input
+
+```text
+$ARGUMENTS
+```
+
+You **MUST** consider the user input before proceeding (if not empty).
+
+## Pre-Execution Checks
+
+**Check for extension hooks (before analysis)**:
+- Check if `.specify/extensions.yml` exists in the project root.
+- If it exists, read it and look for entries under the `hooks.before_analyze` key.
+- If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally.
+- Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
+- For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
+  - If the hook has no `condition` field, or it is null or empty, treat the hook as executable.
+  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the host hook executor.
+- For each executable hook, output the following based on its `optional` flag:
+  - **Optional hook** (`optional: true`):
+    ```text
+    ## Extension Hooks
+
+    **Optional Pre-Hook**: {extension}
+    Command: `/{command}`
+    Description: {description}
+
+    Prompt: {prompt}
+    To execute: `/{command}`
+    ```
+  - **Mandatory hook** (`optional: false`):
+    ```text
+    ## Extension Hooks
+
+    **Automatic Pre-Hook**: {extension}
+    Executing: `/{command}`
+    EXECUTE_COMMAND: {command}
+
+    Wait for the result of the hook command before proceeding to the Outline.
+    ```
+- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+
+# sp.analyze
+
+## Outline
+
+Goal: Verify whether the active document system is actually strong enough for later automation, not merely complete on paper.
+
+Global rules:
+- Stay within documentation work only.
+- Reuse existing project context and active feature state.
+- Do not write production code.
+- If `.specify/memory/project-index.md` exists, read it first and use it as the project routing entry.
+- If `.specify/memory/active-context.md` exists, use it to pick the current smallest useful read set.
+- If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
+- Treat project-level `.specify/memory/*` files as routing hints, not unquestionable truth, until they match feature-level memory and current source documents.
+- If project-level routing says no active feature but exactly one `specs/*/memory/index.md` exists, use that feature as the active analysis target.
+- If project-level routing conflicts with feature-level memory, `feature-map.md`, or current source docs, mark the project-level routing as stale and continue from the freshest feature-level entry.
+- If multiple feature candidates exist, resolve them with `feature-map.md`, explicit user target, branch or environment feature selection, and current stage evidence before asking for clarification.
+- Do not report missing feature context until this routing reconciliation step has failed.
+- Expand to source documents only for the current target area.
+- If required inputs are missing or unstable, stop and report the gap explicitly.
+- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` only as an internal skill directory detail.
+- Manage context as an engineering budget: start from routing and memory, expand one layer at a time, and read only the source documents needed to prove or disprove the current finding.
+
+Execution flow:
+
+1. Run `{SCRIPT}` from repo root once and parse the active feature routing and document availability.
+2. Initialize analysis context.
+   - Read project-level `.specify/memory/*` routing files first.
+   - Reconcile project-level routing against `feature-map.md`, `specs/*/memory/index.md`, and the current workspace before deciding that no active feature exists.
+   - Read feature-level `memory/*` routing files next.
+   - Read the first-layer and second-layer core outputs needed to prove the current analysis question; expand further only when a gap, stale route, or contradiction requires evidence.
+   - Keep a short internal read-set note for each finding: routing file, memory file, or source document that supports it. Output the read set only when it explains a failure, stale route, or requested audit detail.
+3. Run the lightweight memory check when available.
+   - Prefer the script matching the installed script family:
+     - Bash: `.specify/scripts/bash/check-sp-memory.sh --json`
+     - PowerShell: `.specify/scripts/powershell/check-sp-memory.ps1 -Json`
+   - In command frontmatter, keep `scripts/...` because Specify CLI maps template script references into the installed project. In command body or manual model execution, `.specify/scripts/...` is the expected installed-project location. In a source checkout of this repository, `scripts/...` may be used only as a development fallback when `.specify/scripts/...` is absent.
+   - Treat this as mechanical evidence only. It checks open-item fields, open blocker/risk visibility, trace links, and obvious `@t0` / `@r0` drift; it does not replace document analysis.
+   - `ERROR` findings block PASS until fixed or routed upward with a clear next `/sp.*` step.
+   - `WARN` findings do not automatically block PASS; confirm them against the current read set and record the decision when relevant.
+4. Perform the analysis pass.
+   - Detect whether project-level routing is stale, contradictory, or incomplete before using it as the active-feature decision.
+   - When routing is stale but a single feature-level route is clear, continue the analysis on that feature and record the stale project-level memory as a finding to refresh.
+   - Build a lightweight error-signal panel before the final PASS/FAIL decision:
+     - open `Blocker`
+     - high-impact open `Risk`
+     - non-trivial `@t0`
+     - `@r0`
+     - unresolved references
+     - stale memory
+     - trace or acceptance breaks
+     - blocking placeholders
+     - failed checks
+   - The panel is a routing and stability aid, not a heavy scoring system. State whether critical signals are reducing, unchanged, or increasing when prior evidence exists.
+   - Use incremental review order before expanding to a full audit:
+     - recently changed tasks, anchors, source docs, trace rows, and open-items
+     - open `Todo`, `Risk`, `Blocker`, `Decision`, `@t0`, `@r0`, stale, or unchecked items
+     - direct dependencies, direct acceptance paths, direct tests, and directly related source docs for those changed or open items
+   - Do not deep recheck a completed category or workset when current evidence exists, no direct upstream contract dependency changed, no open item reopened, and no mechanical check failed. Perform a light consistency check and cite the existing evidence instead.
+   - Deep recheck completed areas only when directly related source docs, public API contracts, data structures, permissions, acceptance paths, critical test evidence, routing, direct upstream contract dependencies, or related risks changed, or when the user requests a full audit.
+   - Treat incremental review as a document-read optimization, not a verification downgrade. If the current task directly changed or affected dependencies, public contracts, data, permissions, acceptance paths, or critical tests, require local affected test/check/manual verification evidence when feasible. Route only broader regression or locally infeasible checks to CI/full verification.
+   - Check consistency across `spec.md`, `clarifications.md`, `flows/*`, `ui/*`, `gate.md`, `bundle.md`, `plan.md`, `delivery/*`, and `tasks.md`.
+   - Verify coverage of IDs, owners, states, screens, APIs, tables, permissions, and acceptance paths.
+   - Check feature memory link integrity:
+     - Treat an empty `specs/<feature>/memory/open-items.md` table as valid when no real unresolved feature issue is present.
+     - Before accepting an empty open-items table, scan the current read set for unresolved scope, acceptance, permissions, data, API, UI, event/side-effect, rollback, release, security/compliance, migration, external dependency, and test-evidence gaps.
+     - If `specs/<feature>/memory/open-items.md` exists, every open item must have an `Anchor`, `Affected Docs`, `Close Condition`, `Last Refresh`, and `Status`.
+     - An open-item link is valid when its `Anchor` appears in `specs/<feature>/memory/trace-index.md` or one of its `Affected Docs` appears in a related trace row's `Expand Docs`.
+     - If `@r0` appears in the current read set, confirm `specs/<feature>/memory/open-items.md` has a matching open `Risk` or `Blocker`. Otherwise report a blocking memory gap.
+     - If non-trivial `@t0` appears in the current read set, confirm `specs/<feature>/memory/open-items.md` has a matching `Question`, `Todo`, or `Risk`. Treat `@t0` as non-trivial when it affects scope, acceptance, release, rollback, human decision, or follow-up work.
+     - If `Blocker`, high-impact `Risk`, or `@r0` was closed, deleted, or downgraded in the current read set or diff evidence, confirm the close evidence is present: current verification, traceable code/doc change, rollback/degrade path, or explicit human acceptance.
+     - If an open item cannot be traced through `Anchor` or `Affected Docs`, report it as a memory/trace break rather than guessing the missing link.
+   - Report feature-memory fact gaps directly. Do not invent abstract quality levels; list the missing files, anchors, close conditions, stale entries, or unresolved items that block later automation.
+   - Check whether recent failures are being handled at the wrong layer. Use observable signals: repeated failure on the same task/acceptance/file area, implementation touching spec boundaries, unresolved task dependencies, missing acceptance, or contradictions across spec/plan/tasks/source docs.
+   - Check whether any workset is too large for stable automation. Flag areas only when evidence is strong:
+     - any hard signal: distinct external system, release cadence, permission/data model, independent migration, irreversible data/security/compliance/rollback risk, or 2+ blocking open items affecting acceptance/release/rollback/security
+     - or at least three warning signals: 3+ roles, 4+ user paths, 5+ artifact categories across UI/API/data/permissions/events/migration/external systems, 12+ trace anchors, 8+ core docs needed for one workset, or implementation expected across 8+ major files or 4+ module boundaries
+   - Report conflicts, stale memory, missing links, and weak spots explicitly.
+   - Apply the soft issue boundary before PASS: only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as warnings. Test/build/check failure, route error, acceptance break, critical trace break, open `Blocker`, or high-impact `Risk` without required fields blocks PASS.
+   - Apply oscillation protection: if the same failure signature has already appeared twice at the same layer, or the same workset is bouncing between two layers without new evidence, return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
+   - If the evidence shows the current layer is the wrong place to continue, do not keep auditing lower-level files. Record the source layer, target layer, reason, and exact next `/sp.*` step.
+5. Record the result.
+   - Create or update `specs/<feature>/analysis.md`.
+   - Refresh related feature memory entries under `specs/<feature>/memory/*` when findings change routing, stable context, open-item status, or trace links.
+   - When an area is accepted as already completed and evidence remains current, record only the light-check result or cite the existing evidence. Do not rewrite broad memory just to repeat unchanged facts.
+6. Validate before finishing.
+   - Confirm findings are evidence-based and traceable to current documents.
+   - Confirm PASS or FAIL is justified explicitly for analysis readiness only. This PASS/FAIL does not replace `/sp.gate` stage-entry judgment.
+   - Confirm the next blocking actions are clear.
+
+## Output
+
+- Create or update `specs/<feature>/analysis.md`
+- Refresh related feature memory entries under `specs/<feature>/memory/*` when findings change routing or stable context
+
+## Key Rules
+
+- Do not invent missing facts.
+- PASS/FAIL here is diagnostic: it means the document, memory, trace, and automation-readiness analysis passed or failed. It is not the final stage gate.
+- Do not mark PASS when major gaps, stale memory, or missing smoke checks remain.
+- Do not mark PASS when open `Blocker` items remain.
+- Do not mark PASS when open `Risk` items affect acceptance, release, data, security, rollback, or implementation confidence unless the analysis records owner, explicit human acceptance/defer decision, revisit anchor or exact next `sp.*` step, trace registration, impact scope, rollback/degrade path, and close condition.
+- Low/Medium risks that do not block the next stage may receive diagnostic PASS with warning only when they are tracked in `specs/<feature>/memory/open-items.md` or the report, have owner, close condition, and revisit anchor, and do not require rewriting `spec.md`, `plan.md`, or `tasks.md` before safe continuation.
+- Soft issues may be warnings only when they do not affect routing, contracts, tests, acceptance, trace, open `Blocker`, or high-impact `Risk`. Failed tests/build/checks, route errors, acceptance breaks, critical trace breaks, and high-risk items missing required fields are blockers, not warnings.
+- Do not mark PASS when the next safe action requires upward fallback but the target layer, reason, and next `sp.*` step are not recorded.
+- Do not mark PASS when an oversized workset must be promoted or split before reliable automation can continue.
+- Do not mark PASS by prose alone when critical error signals are increasing. Record why they increased, whether they are acceptable warnings or blockers, and the next safe `/sp.*` route.
+- Use mechanical evidence when available: active feature path exists, required source docs have no blocking placeholders, critical trace/source links resolve, relevant checks have current results, and open blockers/high risks are not explained away by prose.
+- In headless or non-interactive runs, return `NEEDS_DECISION` or `BLOCKED` instead of faking approval when the result depends on human risk acceptance, disputed split, compliance/data decision, irreversible action, or hard-gate override. End the output with `SP_EXIT_CODE: 1` as a machine-readable blocker marker; if the host supports process exit control, also terminate with a non-zero exit status so automated runners cannot treat the diagnostic as a successful PASS.
+- Before returning `BLOCKED` in headless automation, include a failure-site report with changed files, failed command/check result, current judgment, why automatic recovery is unsafe, and next `/sp.*` route.
+- When human input is needed, explain the background, impact, 2-4 viable options, tradeoffs, recommendation, and next `/sp.*` route in plain language.
+- Do not treat reminder dimensions as open items by themselves. Create or require `OPEN-*` / `RISK-*` entries only when current feature evidence shows a real unresolved issue.
+- Expand to source documents only for the current target area.
+- Keep findings evidence-based and routing-aware.
+
+## Post-Execution Checks
+
+**Check for extension hooks (after analysis)**:
+- Check if `.specify/extensions.yml` exists in the project root.
+- If it exists, read it and look for entries under the `hooks.after_analyze` key.
+- If the YAML cannot be parsed or is invalid, skip hook checking silently and continue normally.
+- Filter out hooks where `enabled` is explicitly `false`. Treat hooks without an `enabled` field as enabled by default.
+- For each remaining hook, do **not** attempt to interpret or evaluate hook `condition` expressions:
+  - If the hook has no `condition` field, or it is null or empty, treat the hook as executable.
+  - If the hook defines a non-empty `condition`, skip the hook and leave condition evaluation to the host hook executor.
+- For each executable hook, output the following based on its `optional` flag:
+  - **Optional hook** (`optional: true`):
+    ```text
+    ## Extension Hooks
+
+    **Optional Hook**: {extension}
+    Command: `/{command}`
+    Description: {description}
+
+    Prompt: {prompt}
+    To execute: `/{command}`
+    ```
+  - **Mandatory hook** (`optional: false`):
+    ```text
+    ## Extension Hooks
+
+    **Automatic Hook**: {extension}
+    Executing: `/{command}`
+    EXECUTE_COMMAND: {command}
+    ```
+- If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+
+## Next
+
+- If PASS, the document set is diagnostically ready for later implementation work outside this workflow; use `/sp.gate` when a stage-entry decision is required.
+- If FAIL, point to the exact `sp.*` step that must be revisited.

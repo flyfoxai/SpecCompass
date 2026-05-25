@@ -1,0 +1,7 @@
+stateDiagram-v2
+    [*] --> STATE-DRAFT
+    STATE-DRAFT --> STATE-PENDING: submit
+    STATE-PENDING --> STATE-APPROVED: approve
+    STATE-PENDING --> STATE-REJECTED: reject
+    STATE-APPROVED --> STATE-CLOSED: finalize
+    STATE-REJECTED --> STATE-CLOSED: visible outcome

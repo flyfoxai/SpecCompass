@@ -1,0 +1,22 @@
+{
+  "type": "object",
+  "required": [
+    "title",
+    "requestedAt"
+  ],
+  "properties": {
+    "title": {
+      "type": "string",
+      "title": "Primary Title"
+    },
+    "requestedAt": {
+      "type": "string",
+      "format": "date-time",
+      "title": "Requested At"
+    },
+    "notes": {
+      "type": "string",
+      "title": "Notes"
+    }
+  }
+}
