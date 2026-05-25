@@ -1,38 +1,50 @@
-# Spec Kit SP
+<div align="center">
+    <img src="./media/logo_large.webp" alt="Spec Kit Logo" width="200" height="200"/>
+    <h1>Spec Kit SP</h1>
+    <h3><em>保留原版机制，增强分层规划、记忆和验证。</em></h3>
+</div>
 
-Spec Kit SP 是基于 [github/spec-kit](https://github.com/github/spec-kit) 的增强版本。
+Spec Kit SP 是基于 [github/spec-kit](https://github.com/github/spec-kit) 的增强版。
 
-本项目的原则是：尽量保留原版 Spec Kit 已经验证稳定的“瓶子”，也就是目录骨架、模板外壳、CLI 安装流程、integration 框架和脚本入口；只把里面的“水”换成更适合复杂项目和大模型协作的 SP 内容。
+我们的原则很简单：尽量保留原版 Spec Kit 已经验证稳定的“瓶子”，包括目录骨架、模板外壳、CLI 安装流程、integration 框架和脚本入口；只替换里面的“水”，让它更适合复杂项目和大模型协作。
+
+英文版说明见 [README.md](./README.md)。
 
 ## 为什么要改
 
-原版 Spec Kit 的安装和运行机制很稳定，但复杂项目里只靠 spec、plan、tasks 往往不够。大模型容易出现几个问题：
+原版 Spec Kit 的安装和运行机制很稳定，但在复杂项目里，单靠 spec、plan、tasks 往往不够。
 
-- 上下文窗口不够，读太多文件会浪费 token，读太少又会漏事实。
-- 需求、界面、流程、接口、表、权限、验收之间的关系容易断。
-- 风险、待办、阻塞项没有稳定位置，下一轮模型可能忘记。
-- 文档过期后，模型可能继续往下做，导致连续出错。
+SP 主要想解决这些问题：
 
-SP 的目标不是推翻原版，而是在原版机制上加强文档深度、上下文路由、记忆管理和验证纪律。
+- 上下文太大，模型容易读漏、读重。
+- 需求、界面、流程、接口、表、权限、验收容易脱节。
+- 风险、待办、阻塞项没有固定位置，下一轮容易忘。
+- 文档过期后，模型还可能继续沿着旧路线执行。
+
+SP 是可以单独安装和使用的增强版。用户不需要再手动下载原版，也不需要自己做“对齐原版”的操作。
 
 ## 修改后的优势
 
 - 仍然使用 upstream 风格的 `specify init`、模板、脚本和 agent integration。
-- 核心命令统一使用 `/sp.*`，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。
-- Codex、Claude 等 skills 宿主内部可能安装为 `sp-<command>/SKILL.md`，但用户使用时仍按 `/sp.*` 理解和调用。
+- 用户可见命令统一使用 `/sp.*`，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。
+- Codex、Claude 等 skills 宿主内部可能使用 `sp-<command>/SKILL.md`，但对用户来说还是同一套 `/sp.*` 命令。
 - 新增 flow、ui、delivery、memory、trace、open-items 等分层文档，帮助模型按最小上下文工作。
-- `sp.analyze`、`sp.gate`、`sp.implement` 加强了证据检查、风险闭环、向上兜底和实现后回写。
-- 对大型项目可以提前拆分复杂子域，避免单次任务过大导致模型注意力失焦。
+- 增加稳定编码和锚点规则，用来标记 feature、workset、UI、API、风险、测试和 trace 关系，方便模型快速搜索和定位关联内容。
+- 增加项目级 memory，包括 active context、feature map、hotspots、open items、trace index，减少重复读取和重复判断。
+- 明确什么时候必须回写状态，什么时候不要重复检查，降低 token 浪费。
+- `/sp.analyze`、`/sp.gate`、`/sp.implement` 加强了证据检查、风险闭环、向上兜底、headless 失败报告和实现后回写。
+- 对需求不清、需求冲突、阶段走错的情况，要求模型回到合适的 `/sp.*` 阶段，必要时给用户可选方案，而不是继续猜。
+- 对大型项目可以提前拆分复杂子域，避免一次任务过大导致注意力失焦。
 
 ## 安装
 
-推荐安装到本机工具链：
+安装到本机工具链：
 
 ```bash
 uv tool install specify-cli --from git+https://github.com/flyfoxai/openSpecs.git
 ```
 
-如果已经安装过旧版本：
+升级已有安装：
 
 ```bash
 uv tool install specify-cli --force --from git+https://github.com/flyfoxai/openSpecs.git
@@ -47,7 +59,7 @@ specify check
 
 ## 在 Codex 项目中使用
 
-新项目：
+新建项目：
 
 ```bash
 specify init my-project --integration codex
@@ -61,7 +73,7 @@ cd /path/to/your/project
 specify init . --integration codex
 ```
 
-如果当前环境没有安装对应 agent CLI，或者只想先安装模板，可以跳过工具检查：
+如果当前环境没有目标 agent CLI，或者只想先装模板：
 
 ```bash
 specify init . --integration codex --ignore-agent-tools
@@ -86,5 +98,8 @@ specify init . --integration codex --ignore-agent-tools
 
 ## 和原版的关系
 
-原版 Spec Kit 是基线，SP 是增强 fork。未来升级时，应先对齐原版的机制框架，再迁移 SP 的内容增强，避免安装路径、宿主命令、脚本入口和模板结构再次漂移。
+SP 来源于 [github/spec-kit](https://github.com/github/spec-kit)，并尽量保留原版稳定的安装和工作流风格。对用户来说，这个仓库就是安装目标：安装 SP，初始化项目，然后直接使用 `/sp.*` 命令即可。
 
+## 许可证
+
+本项目遵循原版 Spec Kit 的许可证。见 [LICENSE](./LICENSE)。

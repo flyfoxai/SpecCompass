@@ -21,7 +21,7 @@ Common problems SP tries to reduce:
 - Risks, blockers, and pending decisions do not have a stable place to live.
 - Stale documents can mislead the model into continuing down the wrong path.
 
-SP does not try to replace upstream Spec Kit. It keeps the upstream mechanism and strengthens the content, memory routing, and verification discipline.
+SP is packaged as a standalone enhanced edition. Users install and use this fork directly; no separate upstream alignment step is required.
 
 ## What SP Adds
 
@@ -29,7 +29,10 @@ SP does not try to replace upstream Spec Kit. It keeps the upstream mechanism an
 - User-facing core commands use `/sp.*`, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
 - Skills-based agents such as Codex and Claude may store command files internally as `sp-<command>/SKILL.md`, but users should invoke the workflow as `/sp.*`.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
-- Stronger `/sp.analyze`, `/sp.gate`, and `/sp.implement` rules for evidence checks, risk closure, fallback routing, and memory updates.
+- Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
+- Project memory for active context, feature map, hotspots, open items, and trace index, with rules for when to write back and when to avoid repeated checks.
+- Stronger `/sp.analyze`, `/sp.gate`, and `/sp.implement` rules for evidence checks, risk closure, fallback routing, headless failure reports, and memory updates.
+- Guardrails for unclear or conflicting requirements: ask for a decision, route back to the right `/sp.*` phase, and avoid guessing through business contradictions.
 - Better support for splitting complex domains before the model context becomes too large.
 
 ## Install
@@ -94,7 +97,7 @@ specify init . --integration codex --ignore-agent-tools
 
 ## Relationship With Upstream
 
-Upstream [github/spec-kit](https://github.com/github/spec-kit) remains the baseline. Future upgrades should first align the upstream mechanism, then migrate SP's content improvements on top. This reduces drift in installation paths, host command behavior, script entry points, and template structure.
+SP comes from [github/spec-kit](https://github.com/github/spec-kit) and keeps its proven installation and workflow style where practical. For users, this repository is the install target: install SP, initialize a project, and run `/sp.*` commands directly.
 
 ## License
 
