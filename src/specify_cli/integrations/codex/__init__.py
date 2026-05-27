@@ -1,11 +1,14 @@
 """Codex CLI integration — skills-based agent.
 
-Codex installs core SP commands as ``.agents/skills/sp-<name>/SKILL.md``.
+Codex installs core SP commands as ``.agents/skills/sp.<name>/SKILL.md`` and
+mirrors them into ``.codex/skills/sp.<name>/SKILL.md`` for Codex Desktop.
 Extension and preset commands keep the upstream ``speckit-.../SKILL.md``
 namespace. Commands are deprecated; ``--skills`` defaults to ``True``.
 """
 
 from __future__ import annotations
+
+from pathlib import Path
 
 from ..base import IntegrationOption, SkillsIntegration
 
@@ -28,6 +31,17 @@ class CodexIntegration(SkillsIntegration):
         "extension": "/SKILL.md",
     }
     context_file = "AGENTS.md"
+
+    def companion_skill_dirs(self, project_root: Path) -> tuple[Path, ...]:
+        """Mirror skills into Codex Desktop's project-local discovery path."""
+        return (project_root / ".codex" / "skills",)
+
+    def companion_command_dirs(self, project_root: Path) -> tuple[Path, ...]:
+        """Install user-visible dotted slash commands for Codex."""
+        return (
+            project_root / ".codex" / "commands",
+            project_root / ".codex" / "prompts",
+        )
 
     def build_exec_args(
         self,

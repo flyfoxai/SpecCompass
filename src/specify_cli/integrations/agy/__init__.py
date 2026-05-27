@@ -1,6 +1,6 @@
 """Antigravity (agy) integration — skills-based agent.
 
-Antigravity installs core SP commands as ``.agent/skills/sp-<name>/SKILL.md``.
+Antigravity installs core SP commands as ``.agent/skills/sp.<name>/SKILL.md``.
 Extension and preset commands keep the upstream ``speckit-.../SKILL.md``
 namespace. Explicit command support was deprecated in version 1.20.5;
 ``--skills`` defaults to ``True``.

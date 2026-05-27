@@ -363,6 +363,36 @@ class TomlIntegrationTests:
         assert modified_file.exists()
         assert modified_file in skipped
 
+    def test_legacy_core_toml_commands_are_removed(self, tmp_path):
+        """Legacy core command files should not survive reinstall."""
+        i = get_integration(self.KEY)
+        command_dir = i.commands_dest(tmp_path)
+        command_dir.mkdir(parents=True, exist_ok=True)
+        (command_dir / "speckit.plan.toml").write_text(
+            "description = \"legacy dotted\"\nprompt = \"old\"\n",
+            encoding="utf-8",
+        )
+        (command_dir / "speckit-plan.toml").write_text(
+            "description = \"legacy hyphen\"\nprompt = \"old\"\n",
+            encoding="utf-8",
+        )
+        (command_dir / "sp-plan.toml").write_text(
+            "description = \"obsolete user-facing hyphen\"\nprompt = \"old\"\n",
+            encoding="utf-8",
+        )
+        (command_dir / "custom.toml").write_text(
+            "description = \"custom\"\nprompt = \"keep\"\n",
+            encoding="utf-8",
+        )
+
+        i.setup(tmp_path, IntegrationManifest(self.KEY, tmp_path))
+
+        assert (command_dir / "sp.plan.toml").exists()
+        assert not (command_dir / "speckit.plan.toml").exists()
+        assert not (command_dir / "speckit-plan.toml").exists()
+        assert not (command_dir / "sp-plan.toml").exists()
+        assert (command_dir / "custom.toml").exists()
+
     # -- Context section ---------------------------------------------------
 
     def test_setup_upserts_context_section(self, tmp_path):

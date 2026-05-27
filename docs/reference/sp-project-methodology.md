@@ -1198,7 +1198,7 @@ SP 的命令只是方法论的载体，不是方法论本身。
 - 直接用户调用、下一步建议、README 使用说明：使用 `/sp.<command>`。
 - 命令模板 frontmatter 的 `agent:`、内部阶段名、职责描述：可以使用 `sp.<command>`，因为这里是内部标识或阶段名称，不是让用户直接输入。
 - extension hook 这类机器字段可以保留无斜杠命令值，例如 `EXECUTE_COMMAND: {command}`；展示给用户的 `Command:` 或 `To execute:` 再使用 `/{command}`。
-- 内部目录或 skill 包如果使用 `sp-*`，只能视为安装实现细节，不应被写成用户调用方式。
+- 核心 skill 目录也应使用 `sp.*`，例如 `sp.analyze/SKILL.md`，避免宿主把旧 `sp-*` 目录暴露成第二套用户命令。
 
 ## 与原版 Spec Kit 的关系
 

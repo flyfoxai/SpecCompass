@@ -12,7 +12,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from specify_cli.command_names import skill_directory_name
+from specify_cli.command_names import core_command_stem
 
 from ..base import MarkdownIntegration
 from ..manifest import IntegrationManifest
@@ -46,7 +46,21 @@ def format_forge_command_name(cmd_name: str) -> str:
     Returns:
         Hyphenated command name using the generated runtime skill format
     """
-    return skill_directory_name(cmd_name)
+    value = cmd_name.strip()
+    if value.startswith("/") or value.startswith("$"):
+        value = value[1:]
+
+    stem = core_command_stem(value)
+    if stem is not None:
+        return f"sp-{stem}"
+
+    if value.startswith("speckit-"):
+        return value
+
+    if value.startswith("speckit."):
+        return f"speckit-{value[len('speckit.'):].replace('.', '-')}"
+
+    return f"speckit-{value.replace('.', '-')}"
 
 
 class ForgeIntegration(MarkdownIntegration):

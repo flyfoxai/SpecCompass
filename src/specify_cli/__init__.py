@@ -35,6 +35,7 @@ import json5
 import stat
 import shlex
 import yaml
+import re
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -716,12 +717,15 @@ def _install_shared_infra(
     project_path: Path,
     script_type: str,
     tracker: StepTracker | None = None,
+    overwrite_existing: bool = False,
 ) -> bool:
     """Install shared infrastructure files into *project_path*.
 
     Copies ``.specify/scripts/`` and ``.specify/templates/`` from the
-    bundled core_pack or source checkout.  Tracks all installed files
-    in ``speckit.manifest.json``.
+    bundled core_pack or source checkout. Tracks all installed files
+    in ``speckit.manifest.json``. Existing files are preserved by default;
+    callers pass ``overwrite_existing=True`` only for explicit force/upgrade
+    paths that are expected to refresh the framework scaffold.
     Returns ``True`` on success.
     """
     from .integrations.manifest import IntegrationManifest
@@ -732,6 +736,20 @@ def _install_shared_infra(
         manifest.version = get_speckit_version()
     except (FileNotFoundError, ValueError):
         manifest = IntegrationManifest("speckit", project_path, version=get_speckit_version())
+
+    def should_overwrite(dst_path: Path) -> bool:
+        if not overwrite_existing:
+            return False
+        try:
+            rel = dst_path.relative_to(project_path)
+        except ValueError:
+            return False
+        parts = rel.parts
+        if len(parts) >= 3 and parts[0] == ".specify" and parts[1] in {"scripts", "templates"}:
+            return True
+        if len(parts) >= 2 and parts[0] == "scripts" and parts[1] in {"bash", "powershell"}:
+            return True
+        return False
 
     def merge_tree(
         src_root: Path,
@@ -748,12 +766,66 @@ def _install_shared_infra(
             if should_copy and not should_copy(rel_path):
                 continue
             dst_path = dst_root / rel_path
-            if dst_path.exists():
+            if dst_path.exists() and not should_overwrite(dst_path):
                 skipped_files.append(str(dst_path.relative_to(project_path)))
                 continue
             dst_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src_path, dst_path)
             manifest.record_existing(dst_path.relative_to(project_path).as_posix())
+
+    def migrate_legacy_core_command_refs() -> None:
+        """Rewrite old user-visible core command names in installed SP memory."""
+        replacements = {
+            "/sp-analyze": "/sp.analyze",
+            "/sp-bundle": "/sp.bundle",
+            "/sp-checklist": "/sp.checklist",
+            "/sp-clarify": "/sp.clarify",
+            "/sp-constitution": "/sp.constitution",
+            "/sp-flow": "/sp.flow",
+            "/sp-gate": "/sp.gate",
+            "/sp-implement": "/sp.implement",
+            "/sp-plan": "/sp.plan",
+            "/sp-specify": "/sp.specify",
+            "/sp-tasks": "/sp.tasks",
+            "/sp-taskstoissues": "/sp.taskstoissues",
+            "/sp-ui": "/sp.ui",
+        }
+        candidates = list((project_path / ".specify" / "memory").glob("*.md"))
+        for path in candidates:
+            if not path.is_file():
+                continue
+            content = path.read_text(encoding="utf-8")
+            updated = content
+            for old, new in replacements.items():
+                updated = updated.replace(old, new)
+            updated = re.sub(
+                r"/speckit\.(analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|specify|tasks|taskstoissues|ui)\b",
+                r"/sp.\1",
+                updated,
+            )
+            updated = re.sub(
+                r"\bprompts:speckit\.(analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|specify|tasks|taskstoissues|ui)\b",
+                r"/sp.\1",
+                updated,
+            )
+            legacy_hyphen_example = "/sp" + "-<command>"
+            updated = updated.replace(
+                "The placeholder is rendered as `/sp.<command>` on dot hosts and `"
+                + legacy_hyphen_example
+                + "` on skills "
+                + "hosts, which would pollute concept text with slash-call syntax.",
+                "User-facing invocation and core skill directories both use `/sp.<command>` / `sp.<command>` on supported hosts. `sp-<command>` is legacy residue, not user instruction text.",
+            )
+            updated = updated.replace(
+                "User-facing invocation remains `/sp.<command>` on all supported hosts. `"
+                + legacy_hyphen_example
+                + "` is only an internal skill "
+                + "directory/package name, not user instruction text.",
+                "User-facing invocation and core skill directories both use `/sp.<command>` / `sp.<command>` on supported hosts. `sp-<command>` is legacy residue, not user instruction text.",
+            )
+            if updated != content:
+                path.write_text(updated, encoding="utf-8")
+                manifest.record_existing(path.relative_to(project_path).as_posix())
 
     # Scripts
     if core and (core / "scripts").is_dir():
@@ -767,10 +839,13 @@ def _install_shared_infra(
     if scripts_src.is_dir():
         dest_scripts = project_path / ".specify" / "scripts"
         dest_scripts.mkdir(parents=True, exist_ok=True)
-        variant_dir = "bash" if script_type == "sh" else "powershell"
-        variant_src = scripts_src / variant_dir
-        if variant_src.is_dir():
-            merge_tree(variant_src, dest_scripts / variant_dir)
+        variant_dirs = ("bash", "powershell") if overwrite_existing else (
+            "bash" if script_type == "sh" else "powershell",
+        )
+        for variant_dir in variant_dirs:
+            variant_src = scripts_src / variant_dir
+            if variant_src.is_dir():
+                merge_tree(variant_src, dest_scripts / variant_dir)
 
     if core and (core / "templates" / "project").is_dir():
         project_templates_src = core / "templates" / "project"
@@ -806,6 +881,9 @@ def _install_shared_infra(
     if project_templates_src.is_dir():
         merge_tree(project_templates_src, project_path)
 
+    if overwrite_existing:
+        migrate_legacy_core_command_refs()
+
     if skipped_files:
         import logging
         logging.getLogger(__name__).warning(
@@ -815,6 +893,77 @@ def _install_shared_infra(
 
     manifest.save()
     return True
+
+
+def _cleanup_legacy_core_command_surfaces(project_path: Path) -> None:
+    """Remove obsolete core command surfaces from installed host dirs.
+
+    This is a framework cleanup for re-initializing existing projects. It is
+    intentionally limited to known integration command/skill directories, so
+    business content such as ``prd/``, ``specs/``, ``SDDspecs/``, docs, and
+    task archives are never scanned or modified.
+    """
+    from .command_names import CORE_COMMAND_STEMS
+    from .integrations import INTEGRATION_REGISTRY
+    from .integrations.base import SkillsIntegration
+
+    # Removed shared scripts from older SP builds. Keep this list narrow:
+    # these are framework files only, not user-authored project content.
+    for obsolete in (
+        project_path / ".specify" / "scripts" / "bash" / "setup-tasks.sh",
+        project_path / ".specify" / "scripts" / "powershell" / "setup-tasks.ps1",
+    ):
+        if obsolete.is_file():
+            obsolete.unlink()
+
+    for integration in INTEGRATION_REGISTRY.values():
+        if not integration.config or not integration.registrar_config:
+            continue
+
+        extension = integration.registrar_config.get("extension", ".md")
+        if isinstance(integration, SkillsIntegration):
+            skills_dirs = (integration.skills_dest(project_path),) + tuple(
+                integration.companion_skill_dirs(project_path)
+            )
+            for skills_dir in skills_dirs:
+                if not skills_dir.is_dir():
+                    continue
+                for stem in sorted(CORE_COMMAND_STEMS):
+                    integration.remove_legacy_core_skill_dirs(skills_dir, stem)
+
+            companion_dirs = tuple(integration.companion_command_dirs(project_path))
+            if companion_dirs:
+                integration.remove_legacy_core_command_files(
+                    companion_dirs,
+                    suffixes=(".md",),
+                )
+            continue
+
+        suffixes: tuple[str, ...]
+        if extension == ".agent.md":
+            suffixes = (".agent.md",)
+            prompt_suffixes = (".prompt.md",)
+        elif extension in {".yaml", ".yml"}:
+            suffixes = (".yaml", ".yml")
+            prompt_suffixes = ()
+        else:
+            suffixes = (extension,) if isinstance(extension, str) else (".md",)
+            prompt_suffixes = ()
+
+        try:
+            primary_command_dir = integration.commands_dest(project_path)
+        except ValueError:
+            continue
+
+        integration.remove_legacy_core_command_files(
+            (primary_command_dir,),
+            suffixes=suffixes,
+        )
+        if prompt_suffixes:
+            integration.remove_legacy_core_command_files(
+                (project_path / ".github" / "prompts",),
+                suffixes=prompt_suffixes,
+            )
 
 
 def ensure_executable_scripts(project_path: Path, tracker: StepTracker | None = None) -> None:
@@ -1256,7 +1405,7 @@ def init(
     for key, label in [
         ("chmod", "Ensure scripts executable"),
         ("constitution", "Constitution setup"),
-        ("git", "Install git extension"),
+        ("git", "Initialize git repository"),
         ("workflow", "Install bundled workflow"),
         ("final", "Finalize"),
     ]:
@@ -1301,7 +1450,13 @@ def init(
 
             # Install shared infrastructure (scripts, templates)
             tracker.start("shared-infra")
-            _install_shared_infra(project_path, selected_script, tracker=tracker)
+            _install_shared_infra(
+                project_path,
+                selected_script,
+                tracker=tracker,
+                overwrite_existing=force,
+            )
+            _cleanup_legacy_core_command_surfaces(project_path)
             tracker.complete("shared-infra", f"scripts ({selected_script}) + templates")
 
             ensure_constitution_from_template(project_path, tracker=tracker)
@@ -1310,7 +1465,6 @@ def init(
                 tracker.start("git")
                 git_messages = []
                 git_has_error = False
-                # Step 1: Initialize git repo if needed
                 if is_git_repo(project_path):
                     git_messages.append("existing repo detected")
                 elif should_init_git:
@@ -1327,28 +1481,6 @@ def init(
                             git_messages.append("init failed")
                 else:
                     git_messages.append("git not available")
-                # Step 2: Install bundled git extension
-                try:
-                    from .extensions import ExtensionManager
-                    bundled_path = _locate_bundled_extension("git")
-                    if bundled_path:
-                        manager = ExtensionManager(project_path)
-                        if manager.registry.is_installed("git"):
-                            git_messages.append("extension already installed")
-                        else:
-                            manager.install_from_directory(
-                                bundled_path, get_speckit_version()
-                            )
-                            git_messages.append("extension installed")
-                    else:
-                        git_has_error = True
-                        git_messages.append("bundled extension not found")
-                except Exception as ext_err:
-                    git_has_error = True
-                    sanitized_ext = str(ext_err).replace('\n', ' ').strip()
-                    git_messages.append(
-                        f"extension install failed: {sanitized_ext[:120]}"
-                    )
                 summary = "; ".join(git_messages)
                 if git_has_error:
                     tracker.error("git", summary)
@@ -1531,13 +1663,13 @@ def init(
 
     if codex_skill_mode and not ai_skills:
         # Integration path installed skills; show the helpful notice
-        steps_lines.append(f"{step_num}. Start Codex in this project directory; spec-kit skills were installed to [cyan].agents/skills[/cyan]")
+        steps_lines.append(f"{step_num}. Start Codex in this project directory; SP skills were installed to [cyan].agents/skills[/cyan] and mirrored to [cyan].codex/skills[/cyan]")
         step_num += 1
     if claude_skill_mode and not ai_skills:
-        steps_lines.append(f"{step_num}. Start Claude in this project directory; spec-kit skills were installed to [cyan].claude/skills[/cyan]")
+        steps_lines.append(f"{step_num}. Start Claude in this project directory; SP slash commands were installed to [cyan].claude/commands[/cyan] and skills to [cyan].claude/skills[/cyan]")
         step_num += 1
     if cursor_agent_skill_mode and not ai_skills:
-        steps_lines.append(f"{step_num}. Start Cursor Agent in this project directory; spec-kit skills were installed to [cyan].cursor/skills[/cyan]")
+        steps_lines.append(f"{step_num}. Start Cursor Agent in this project directory; SP skills were installed to [cyan].cursor/skills[/cyan]")
         step_num += 1
     usage_label = "commands"
 
@@ -1925,6 +2057,7 @@ def integration_install(
     # Ensure shared infrastructure is present (safe to run unconditionally;
     # _install_shared_infra merges missing files without overwriting).
     _install_shared_infra(project_root, selected_script)
+    _cleanup_legacy_core_command_surfaces(project_root)
     if os.name != "nt":
         ensure_executable_scripts(project_root)
 
@@ -2209,6 +2342,7 @@ def integration_switch(
     # Ensure shared infrastructure is present (safe to run unconditionally;
     # _install_shared_infra merges missing files without overwriting).
     _install_shared_infra(project_root, selected_script)
+    _cleanup_legacy_core_command_surfaces(project_root)
     if os.name != "nt":
         ensure_executable_scripts(project_root)
 
@@ -2317,7 +2451,8 @@ def integration_upgrade(
 
     # Ensure shared infrastructure is present (safe to run unconditionally;
     # _install_shared_infra merges missing files without overwriting).
-    _install_shared_infra(project_root, selected_script)
+    _install_shared_infra(project_root, selected_script, overwrite_existing=force)
+    _cleanup_legacy_core_command_surfaces(project_root)
     if os.name != "nt":
         ensure_executable_scripts(project_root)
 

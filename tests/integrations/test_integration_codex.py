@@ -12,6 +12,23 @@ class TestCodexIntegration(SkillsIntegrationTests):
     REGISTRAR_DIR = ".agents/skills"
     CONTEXT_FILE = "AGENTS.md"
 
+    def test_codex_installs_user_visible_sp_dot_commands(self, tmp_path):
+        from specify_cli.integrations import get_integration
+        from specify_cli.integrations.manifest import IntegrationManifest
+
+        integration = get_integration("codex")
+        manifest = IntegrationManifest("codex", tmp_path)
+        integration.setup(tmp_path, manifest, script_type="sh")
+
+        assert (tmp_path / ".agents" / "skills" / "sp.analyze" / "SKILL.md").exists()
+        assert (tmp_path / ".codex" / "skills" / "sp.analyze" / "SKILL.md").exists()
+        assert (tmp_path / ".codex" / "commands" / "sp.analyze.md").exists()
+        assert (tmp_path / ".codex" / "prompts" / "sp.analyze.md").exists()
+        assert not (tmp_path / ".codex" / "skills" / "sp-analyze").exists()
+        assert not (tmp_path / ".codex" / "skills" / "speckit-analyze").exists()
+        assert not (tmp_path / ".codex" / "commands" / "speckit.analyze.md").exists()
+        assert not (tmp_path / ".codex" / "prompts" / "speckit.analyze.md").exists()
+
 
 class TestCodexAutoPromote:
     """--ai codex auto-promotes to integration path."""
@@ -27,3 +44,4 @@ class TestCodexAutoPromote:
 
         assert result.exit_code == 0, f"init --ai codex failed: {result.output}"
         assert (target / ".agents" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert (target / ".codex" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()

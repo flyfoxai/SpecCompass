@@ -179,6 +179,12 @@ class CopilotIntegration(IntegrationBase):
         script_type = opts.get("script_type", "sh")
         arg_placeholder = self.registrar_config.get("args", "$ARGUMENTS")
 
+        self.remove_legacy_core_command_files((dest,), suffixes=(".agent.md",))
+        self.remove_legacy_core_command_files(
+            (project_root / ".github" / "prompts",),
+            suffixes=(".prompt.md",),
+        )
+
         # 1. Process and write command files as .agent.md
         for src_file in templates:
             raw = src_file.read_text(encoding="utf-8")

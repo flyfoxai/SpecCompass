@@ -28,9 +28,9 @@ class TestKimiOptions:
 
 
 class TestKimiLegacyMigration:
-    """Test Kimi dotted → hyphenated skill directory migration."""
+    """Test Kimi legacy core names → canonical dotted skill directory migration."""
 
-    def test_migrate_dotted_to_hyphenated(self, tmp_path):
+    def test_migrate_legacy_core_dotted_to_sp_dot(self, tmp_path):
         skills_dir = tmp_path / ".kimi" / "skills"
         legacy = skills_dir / "speckit.plan"
         legacy.mkdir(parents=True)
@@ -41,7 +41,7 @@ class TestKimiLegacyMigration:
         assert migrated == 1
         assert removed == 0
         assert not legacy.exists()
-        assert (skills_dir / "sp-plan" / "SKILL.md").exists()
+        assert (skills_dir / "sp.plan" / "SKILL.md").exists()
 
     def test_skip_when_target_exists_different_content(self, tmp_path):
         skills_dir = tmp_path / ".kimi" / "skills"
@@ -49,7 +49,7 @@ class TestKimiLegacyMigration:
         legacy.mkdir(parents=True)
         (legacy / "SKILL.md").write_text("# Old\n")
 
-        target = skills_dir / "sp-plan"
+        target = skills_dir / "sp.plan"
         target.mkdir(parents=True)
         (target / "SKILL.md").write_text("# New (different)\n")
 
@@ -67,7 +67,7 @@ class TestKimiLegacyMigration:
         legacy.mkdir(parents=True)
         (legacy / "SKILL.md").write_text(content)
 
-        target = skills_dir / "sp-plan"
+        target = skills_dir / "sp.plan"
         target.mkdir(parents=True)
         (target / "SKILL.md").write_text(content)
 
@@ -86,7 +86,7 @@ class TestKimiLegacyMigration:
         (legacy / "SKILL.md").write_text(content)
         (legacy / "extra.md").write_text("user file")
 
-        target = skills_dir / "sp-plan"
+        target = skills_dir / "sp.plan"
         target.mkdir(parents=True)
         (target / "SKILL.md").write_text(content)
 
@@ -118,7 +118,7 @@ class TestKimiLegacyMigration:
         assert not legacy.exists()
         assert (skills_dir / "speckit-oldcmd" / "SKILL.md").exists()
         # New skills from templates should also exist
-        assert (skills_dir / "sp-specify" / "SKILL.md").exists()
+        assert (skills_dir / "sp.specify" / "SKILL.md").exists()
 
 
 class TestKimiNextSteps:

@@ -168,6 +168,41 @@ class TestIntegrationInstall:
         assert (project / ".specify" / "scripts").is_dir()
         assert (project / ".specify" / "templates").is_dir()
 
+    def test_install_cleans_legacy_core_command_surfaces(self, tmp_path):
+        """Installing into a bare project removes old core command entry points."""
+        project = tmp_path / "bare-legacy"
+        project.mkdir()
+        (project / ".specify").mkdir()
+
+        stale_command = project / ".claude" / "commands" / "speckit.plan.md"
+        stale_command.parent.mkdir(parents=True, exist_ok=True)
+        stale_command.write_text("legacy command\n", encoding="utf-8")
+
+        stale_skill = project / ".claude" / "skills" / "sp-plan" / "SKILL.md"
+        stale_skill.parent.mkdir(parents=True, exist_ok=True)
+        stale_skill.write_text("legacy skill\n", encoding="utf-8")
+
+        business_file = project / "prd" / "speckit.plan.md"
+        business_file.parent.mkdir(parents=True, exist_ok=True)
+        business_file.write_text("business content\n", encoding="utf-8")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(project)
+            result = runner.invoke(app, [
+                "integration", "install", "claude",
+                "--script", "sh",
+            ], catch_exceptions=False)
+        finally:
+            os.chdir(old_cwd)
+
+        assert result.exit_code == 0, result.output
+        assert not stale_command.exists()
+        assert not stale_skill.parent.exists()
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
+        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert business_file.read_text(encoding="utf-8") == "business content\n"
+
 
 # ── uninstall ────────────────────────────────────────────────────────
 
@@ -376,6 +411,66 @@ class TestIntegrationSwitch:
 
         data = json.loads((project / ".specify" / "integration.json").read_text(encoding="utf-8"))
         assert data["integration"] == "claude"
+
+    def test_switch_cleans_legacy_core_command_surfaces(self, tmp_path):
+        project = _init_project(tmp_path, "codex")
+        stale_command = project / ".claude" / "commands" / "speckit.plan.md"
+        stale_command.parent.mkdir(parents=True, exist_ok=True)
+        stale_command.write_text("legacy command\n", encoding="utf-8")
+        stale_skill = project / ".claude" / "skills" / "sp-plan" / "SKILL.md"
+        stale_skill.parent.mkdir(parents=True, exist_ok=True)
+        stale_skill.write_text("legacy skill\n", encoding="utf-8")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(project)
+            result = runner.invoke(app, [
+                "integration", "switch", "claude",
+                "--script", "sh",
+            ], catch_exceptions=False)
+        finally:
+            os.chdir(old_cwd)
+
+        assert result.exit_code == 0, result.output
+        assert not stale_command.exists()
+        assert not stale_skill.parent.exists()
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
+        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+
+
+# ── upgrade ───────────────────────────────────────────────────────────
+
+
+class TestIntegrationUpgrade:
+    def test_upgrade_cleans_legacy_core_command_surfaces(self, tmp_path):
+        project = _init_project(tmp_path, "claude")
+        stale_command = project / ".claude" / "commands" / "speckit.plan.md"
+        stale_command.parent.mkdir(parents=True, exist_ok=True)
+        stale_command.write_text("legacy command\n", encoding="utf-8")
+        stale_skill = project / ".claude" / "skills" / "sp-plan" / "SKILL.md"
+        stale_skill.parent.mkdir(parents=True, exist_ok=True)
+        stale_skill.write_text("legacy skill\n", encoding="utf-8")
+
+        business_file = project / "specs" / "sp-plan.md"
+        business_file.parent.mkdir(parents=True, exist_ok=True)
+        business_file.write_text("business content\n", encoding="utf-8")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(project)
+            result = runner.invoke(app, [
+                "integration", "upgrade", "claude",
+                "--script", "sh",
+            ], catch_exceptions=False)
+        finally:
+            os.chdir(old_cwd)
+
+        assert result.exit_code == 0, result.output
+        assert not stale_command.exists()
+        assert not stale_skill.parent.exists()
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
+        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert business_file.read_text(encoding="utf-8") == "business content\n"
 
 
 # ── Full lifecycle ───────────────────────────────────────────────────

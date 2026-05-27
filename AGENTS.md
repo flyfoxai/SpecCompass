@@ -49,7 +49,7 @@ The registry is the **single source of truth for Python integration metadata**. 
 | Standard markdown commands (`.md`) | `MarkdownIntegration` |
 | TOML-format commands (`.toml`) | `TomlIntegration` |
 | YAML recipe files (`.yaml`) | `YamlIntegration` |
-| Skill directories (core built-ins use `sp-<name>/SKILL.md`; extensions/presets use `speckit-.../SKILL.md`) | `SkillsIntegration` |
+| Skill directories (core built-ins use `sp.<name>/SKILL.md`; extensions/presets use `speckit-.../SKILL.md`) | `SkillsIntegration` |
 | Fully custom output (companion files, settings merge, etc.) | `IntegrationBase` directly |
 
 Most agents only need `MarkdownIntegration` — a minimal subclass with zero method overrides.

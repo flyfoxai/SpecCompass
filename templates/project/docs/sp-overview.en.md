@@ -31,7 +31,7 @@ The current phase covers documentation only. The workflow ends at `sp.analyze` a
 ## Trigger Forms
 
 - User-facing commands use the unified `/sp.*` form, such as `/sp.specify`
-- Hosts such as Codex and Claude may install internal `sp-*` skill directories, but that is not the user input form
+- Hosts such as Codex and Claude install core skill directories with dotted names such as `sp.analyze`, matching the user input form
 - The active installer writes host integration files into the target project, not into archived global prompt directories
 
 ## Read Next

@@ -1,6 +1,6 @@
 """Tests for ForgeIntegration."""
 
-from specify_cli.command_names import command_filename_base, skill_directory_name
+from specify_cli.command_names import command_filename_base
 from specify_cli.integrations import get_integration
 from specify_cli.integrations.manifest import IntegrationManifest
 from specify_cli.integrations.forge import format_forge_command_name
@@ -11,14 +11,14 @@ class TestForgeCommandNameFormatter:
 
     def test_simple_name_without_prefix(self):
         """Test formatting a simple name without 'speckit.' prefix."""
-        assert format_forge_command_name("plan") == skill_directory_name("plan")
-        assert format_forge_command_name("tasks") == skill_directory_name("tasks")
-        assert format_forge_command_name("specify") == skill_directory_name("specify")
+        assert format_forge_command_name("plan") == "sp-plan"
+        assert format_forge_command_name("tasks") == "sp-tasks"
+        assert format_forge_command_name("specify") == "sp-specify"
 
     def test_name_with_speckit_prefix(self):
         """Test formatting a name that already has 'speckit.' prefix."""
-        assert format_forge_command_name("speckit.plan") == skill_directory_name("plan")
-        assert format_forge_command_name("speckit.tasks") == skill_directory_name("tasks")
+        assert format_forge_command_name("speckit.plan") == "sp-plan"
+        assert format_forge_command_name("speckit.tasks") == "sp-tasks"
 
     def test_extension_command_name(self):
         """Test formatting extension command names with dots."""
@@ -41,7 +41,7 @@ class TestForgeCommandNameFormatter:
 
     def test_idempotent_already_hyphenated(self):
         """Test that already-hyphenated names are returned unchanged (idempotent)."""
-        assert format_forge_command_name("speckit-plan") == skill_directory_name("plan")
+        assert format_forge_command_name("speckit-plan") == "sp-plan"
         assert format_forge_command_name("speckit-my-extension-example") == "speckit-my-extension-example"
         assert format_forge_command_name("speckit-jira-sync-status") == "speckit-jira-sync-status"
 

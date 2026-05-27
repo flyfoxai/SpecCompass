@@ -13,7 +13,7 @@ $ARGUMENTS
 
 You MUST consider the user input before proceeding.
 
-# sp.flow
+# /sp.flow
 
 Use this command when the user wants to define or refresh the business flow documents for the active feature.
 
@@ -26,7 +26,7 @@ Global rules:
 - If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` only as an internal skill directory detail.
+- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
 - Keep trace coordinates stable and searchable. Put unresolved flow risks or blockers in `memory/open-items.md`.
 - Manage context as an engineering budget: start from routing, spec, clarifications, and open items; expand only to the flow source documents needed for the current branch or state decision.
 

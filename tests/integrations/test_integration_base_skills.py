@@ -5,12 +5,13 @@ Each per-agent test file sets ``KEY``, ``FOLDER``, ``COMMANDS_SUBDIR``,
 logic from ``SkillsIntegrationTests``.
 
 Mirrors ``MarkdownIntegrationTests`` / ``TomlIntegrationTests`` closely,
-adapted for the skills layout. Core commands use ``sp-<name>/SKILL.md``;
+adapted for the skills layout. Core commands use ``sp.<name>/SKILL.md``;
 extension and preset skills keep the upstream ``speckit-.../SKILL.md``
 namespace.
 """
 
 import os
+from pathlib import Path
 
 import yaml
 
@@ -81,7 +82,7 @@ class SkillsIntegrationTests:
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
         assert len(created) > 0
-        skill_files = [f for f in created if "scripts" not in f.parts]
+        skill_files = [f for f in created if f.name == "SKILL.md"]
         for f in skill_files:
             assert f.exists()
             assert f.name == "SKILL.md"
@@ -91,14 +92,18 @@ class SkillsIntegrationTests:
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
+        expected_dirs = {
+            i.skills_dest(tmp_path).resolve(),
+            *(dest.resolve() for dest in i.companion_skill_dirs(tmp_path)),
+        }
         expected_dir = i.skills_dest(tmp_path)
         assert expected_dir.exists(), f"Expected directory {expected_dir} was not created"
-        skill_files = [f for f in created if "scripts" not in f.parts]
+        skill_files = [f for f in created if f.name == "SKILL.md"]
         assert len(skill_files) > 0, "No skill files were created"
         for f in skill_files:
-            # Each SKILL.md is in a generated skill directory under the skills root.
-            assert f.resolve().parent.parent == expected_dir.resolve(), (
-                f"{f} is not under {expected_dir}"
+            # Each SKILL.md is in a generated skill directory under an allowed skills root.
+            assert f.resolve().parent.parent in expected_dirs, (
+                f"{f} is not under an allowed skills directory: {sorted(str(d) for d in expected_dirs)}"
             )
 
     def test_skill_directory_structure(self, tmp_path):
@@ -106,7 +111,7 @@ class SkillsIntegrationTests:
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
-        skill_files = [f for f in created if "scripts" not in f.parts]
+        skill_files = [f for f in created if f.name == "SKILL.md"]
 
         expected_commands = set(command_stems())
 
@@ -123,7 +128,7 @@ class SkillsIntegrationTests:
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
-        skill_files = [f for f in created if "scripts" not in f.parts]
+        skill_files = [f for f in created if f.name == "SKILL.md"]
 
         for f in skill_files:
             content = f.read_text(encoding="utf-8")
@@ -142,7 +147,7 @@ class SkillsIntegrationTests:
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
-        skill_files = [f for f in created if "scripts" not in f.parts]
+        skill_files = [f for f in created if f.name == "SKILL.md"]
 
         for f in skill_files:
             content = f.read_text(encoding="utf-8")
@@ -157,7 +162,7 @@ class SkillsIntegrationTests:
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
-        skill_files = [f for f in created if "scripts" not in f.parts]
+        skill_files = [f for f in created if f.name == "SKILL.md"]
         assert len(skill_files) > 0
         for f in skill_files:
             content = f.read_text(encoding="utf-8")
@@ -170,7 +175,7 @@ class SkillsIntegrationTests:
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
-        skill_files = [f for f in created if "scripts" not in f.parts]
+        skill_files = [f for f in created if f.name == "SKILL.md"]
         for f in skill_files:
             content = f.read_text(encoding="utf-8")
             # Body is everything after the second ---
@@ -219,6 +224,58 @@ class SkillsIntegrationTests:
         assert ".specify/memory/stable-context.md" not in implement_content
         assert ".specify/memory/worksets/" not in implement_content
 
+    def test_companion_commands_use_user_facing_sp_dot_names(self, tmp_path):
+        """Configured companion command dirs expose /sp.* files, not legacy names."""
+        i = get_integration(self.KEY)
+        companion_dirs = tuple(i.companion_command_dirs(tmp_path))
+        if not companion_dirs:
+            return
+
+        m = IntegrationManifest(self.KEY, tmp_path)
+        i.setup(tmp_path, m)
+
+        for companion_dir in companion_dirs:
+            assert (companion_dir / "sp.analyze.md").exists()
+            assert (companion_dir / "sp.plan.md").exists()
+            assert not (companion_dir / "speckit.analyze.md").exists()
+            assert not (companion_dir / "speckit.plan.md").exists()
+
+            content = (companion_dir / "sp.analyze.md").read_text(encoding="utf-8")
+            assert "# /sp.analyze" in content
+            assert "# sp.analyze" not in content
+            assert "{SCRIPT}" not in content
+            assert "{ARGS}" not in content
+            assert "__AGENT__" not in content
+
+    def test_legacy_core_companion_commands_are_removed(self, tmp_path):
+        """Top-level generated legacy command files are removed on setup."""
+        i = get_integration(self.KEY)
+        companion_dirs = tuple(i.companion_command_dirs(tmp_path))
+        if not companion_dirs:
+            return
+
+        for companion_dir in companion_dirs:
+            companion_dir.mkdir(parents=True, exist_ok=True)
+            (companion_dir / "speckit.analyze.md").write_text(
+                "legacy generated command\n",
+                encoding="utf-8",
+            )
+            (companion_dir / "sp-analyze.md").write_text(
+                "obsolete user-facing hyphen command\n",
+                encoding="utf-8",
+            )
+            (companion_dir / "do.today.md").write_text(
+                "user command\n",
+                encoding="utf-8",
+            )
+
+        i.setup(tmp_path, IntegrationManifest(self.KEY, tmp_path))
+
+        for companion_dir in companion_dirs:
+            assert not (companion_dir / "speckit.analyze.md").exists()
+            assert not (companion_dir / "sp-analyze.md").exists()
+            assert (companion_dir / "do.today.md").exists()
+
     def test_all_files_tracked_in_manifest(self, tmp_path):
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
@@ -263,8 +320,8 @@ class SkillsIntegrationTests:
 
         assert (foreign_dir / "SKILL.md").exists(), "Foreign skill was removed"
 
-    def test_matching_legacy_core_skill_dirs_are_removed(self, tmp_path):
-        """Legacy core skill dirs should be cleaned when clearly generated."""
+    def test_legacy_core_skill_dirs_are_removed(self, tmp_path):
+        """Legacy core skill dirs should be cleaned even when customized."""
         i = get_integration(self.KEY)
         skills_dir = i.skills_dest(tmp_path)
         legacy_dir = skills_dir / "speckit-plan"
@@ -276,16 +333,17 @@ class SkillsIntegrationTests:
         ).read_text(encoding="utf-8")
         legacy_dir.mkdir(parents=True)
         (legacy_dir / "SKILL.md").write_text(
-            modern_content.replace("sp-plan", "speckit-plan"),
+            modern_content.replace("sp.plan", "speckit-plan"),
             encoding="utf-8",
         )
 
         i.setup(tmp_path, IntegrationManifest(self.KEY, tmp_path))
 
-        assert not legacy_dir.exists(), "Matching legacy generated skill was not removed"
+        assert not legacy_dir.exists(), "Legacy core skill was not removed"
+        assert (skills_dir / skill_directory_name("plan") / "SKILL.md").exists()
 
-    def test_legacy_core_skill_with_extra_files_is_preserved(self, tmp_path):
-        """Legacy dirs with user-added files must not be removed."""
+    def test_legacy_core_skill_with_extra_files_is_removed(self, tmp_path):
+        """Legacy core dirs are removed because they pollute visible menus."""
         i = get_integration(self.KEY)
         skills_dir = i.skills_dest(tmp_path)
         legacy_dir = skills_dir / "speckit-plan"
@@ -297,18 +355,17 @@ class SkillsIntegrationTests:
         ).read_text(encoding="utf-8")
         legacy_dir.mkdir(parents=True)
         (legacy_dir / "SKILL.md").write_text(
-            modern_content.replace("sp-plan", "speckit-plan"),
+            modern_content.replace("sp.plan", "speckit-plan"),
             encoding="utf-8",
         )
         (legacy_dir / "notes.md").write_text("user notes\n", encoding="utf-8")
 
         i.setup(tmp_path, IntegrationManifest(self.KEY, tmp_path))
 
-        assert (legacy_dir / "SKILL.md").exists()
-        assert (legacy_dir / "notes.md").exists()
+        assert not legacy_dir.exists()
 
-    def test_legacy_core_skill_with_different_content_is_preserved(self, tmp_path):
-        """Legacy dirs with customized SKILL.md must not be removed."""
+    def test_legacy_core_skill_with_different_content_is_removed(self, tmp_path):
+        """Customized old core skills are still removed to avoid dual commands."""
         i = get_integration(self.KEY)
         skills_dir = i.skills_dest(tmp_path)
         legacy_dir = skills_dir / "speckit-plan"
@@ -317,8 +374,19 @@ class SkillsIntegrationTests:
 
         i.setup(tmp_path, IntegrationManifest(self.KEY, tmp_path))
 
-        assert (legacy_dir / "SKILL.md").exists()
-        assert (legacy_dir / "SKILL.md").read_text(encoding="utf-8") == "user customized skill\n"
+        assert not legacy_dir.exists()
+
+    def test_extension_skill_dirs_are_not_removed_by_legacy_cleanup(self, tmp_path):
+        """Extension skill dirs using speckit-* must not be treated as core residue."""
+        i = get_integration(self.KEY)
+        skills_dir = i.skills_dest(tmp_path)
+        extension_dir = skills_dir / "speckit-git-commit"
+        extension_dir.mkdir(parents=True)
+        (extension_dir / "SKILL.md").write_text("extension skill\n", encoding="utf-8")
+
+        i.setup(tmp_path, IntegrationManifest(self.KEY, tmp_path))
+
+        assert (extension_dir / "SKILL.md").exists()
 
     # -- Context section ---------------------------------------------------
 
@@ -439,6 +507,21 @@ class SkillsIntegrationTests:
         # Skill files
         for cmd in self._SKILL_COMMANDS:
             files.append(f"{skills_prefix}/{skill_directory_name(cmd)}/SKILL.md")
+
+        for companion_dir in i.companion_skill_dirs(Path(".")):
+            companion_prefix = companion_dir.as_posix()
+            if companion_prefix.startswith("./"):
+                companion_prefix = companion_prefix[2:]
+            for cmd in self._SKILL_COMMANDS:
+                files.append(f"{companion_prefix}/{skill_directory_name(cmd)}/SKILL.md")
+
+        for companion_dir in i.companion_command_dirs(Path(".")):
+            companion_prefix = companion_dir.as_posix()
+            if companion_prefix.startswith("./"):
+                companion_prefix = companion_prefix[2:]
+            for cmd in self._SKILL_COMMANDS:
+                files.append(f"{companion_prefix}/sp.{cmd}.md")
+
         files += shared_init_files(
             integration_key=self.KEY,
             script_variant=script_variant,

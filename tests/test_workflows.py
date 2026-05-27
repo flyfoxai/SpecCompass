@@ -499,9 +499,9 @@ class TestCommandStep:
         from specify_cli.workflows.steps.command import CommandStep
         from specify_cli.workflows.base import StepContext, StepStatus
 
-        (tmp_path / ".claude" / "skills" / "sp-specify").mkdir(parents=True, exist_ok=True)
-        (tmp_path / ".claude" / "skills" / "sp-specify" / "SKILL.md").write_text(
-            "---\nname: sp-specify\n---\n"
+        (tmp_path / ".claude" / "skills" / "sp.specify").mkdir(parents=True, exist_ok=True)
+        (tmp_path / ".claude" / "skills" / "sp.specify" / "SKILL.md").write_text(
+            "---\nname: sp.specify\n---\n"
         )
 
         step = CommandStep()
@@ -541,9 +541,9 @@ class TestCommandStep:
         from specify_cli.workflows.steps.command import CommandStep
         from specify_cli.workflows.base import StepContext, StepStatus
 
-        (tmp_path / ".claude" / "skills" / "sp-specify").mkdir(parents=True, exist_ok=True)
-        (tmp_path / ".claude" / "skills" / "sp-specify" / "SKILL.md").write_text(
-            "---\nname: sp-specify\n---\n"
+        (tmp_path / ".claude" / "skills" / "sp.specify").mkdir(parents=True, exist_ok=True)
+        (tmp_path / ".claude" / "skills" / "sp.specify" / "SKILL.md").write_text(
+            "---\nname: sp.specify\n---\n"
         )
 
         step = CommandStep()

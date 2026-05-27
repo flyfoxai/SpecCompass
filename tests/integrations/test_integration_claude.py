@@ -60,7 +60,7 @@ class TestClaudeIntegration:
         parts = content.split("---", 2)
         parsed = yaml.safe_load(parts[1])
         assert parsed["name"] == skill_directory_name("plan")
-        assert parsed["user-invocable"] is True
+        assert "user-invocable" not in parsed
         assert parsed["disable-model-invocation"] is False
         assert parsed["metadata"]["source"] == "templates/commands/plan.md"
 
@@ -70,8 +70,8 @@ class TestClaudeIntegration:
         integration.setup(tmp_path, manifest, script_type="sh")
 
         skills_dir = tmp_path / ".claude" / "skills"
-        assert (skills_dir / "sp-plan" / "SKILL.md").exists()
-        assert (skills_dir / "sp-analyze" / "SKILL.md").exists()
+        assert (skills_dir / "sp.plan" / "SKILL.md").exists()
+        assert (skills_dir / "sp.analyze" / "SKILL.md").exists()
         assert not (skills_dir / "speckit-plan" / "SKILL.md").exists()
         assert not (skills_dir / "speckit-analyze" / "SKILL.md").exists()
 
@@ -116,7 +116,8 @@ class TestClaudeIntegration:
 
         assert result.exit_code == 0, result.output
         assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
-        assert not (project / ".claude" / "commands").exists()
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
+        assert not (project / ".claude" / "commands" / "speckit.plan.md").exists()
 
         init_options = json.loads(
             (project / ".specify" / "init-options.json").read_text(encoding="utf-8")
@@ -154,6 +155,7 @@ class TestClaudeIntegration:
 
         assert result.exit_code == 0, result.output
         assert (project / ".claude" / "skills" / skill_directory_name("specify") / "SKILL.md").exists()
+        assert (project / ".claude" / "commands" / "sp.specify.md").exists()
         assert (project / ".specify" / "integrations" / "claude.manifest.json").exists()
 
     def test_interactive_claude_selection_uses_integration_path(self, tmp_path):
@@ -189,7 +191,7 @@ class TestClaudeIntegration:
         skill_file = project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md"
         assert skill_file.exists()
         skill_content = skill_file.read_text(encoding="utf-8")
-        assert "user-invocable: true" in skill_content
+        assert "user-invocable:" not in skill_content
         assert "disable-model-invocation: false" in skill_content
 
         init_options = json.loads(
@@ -494,6 +496,7 @@ class TestClaudeHookCommandNote:
             assert "extension hook skill lookup" in content, (
                 f"{skill_directory_name(stem)} should have extension hook skill lookup note"
             )
+            assert "/speckit-git-commit" not in content
 
     def test_hook_note_not_in_skills_without_hooks(self, tmp_path):
         """Skills without hook sections should not get the note."""
@@ -528,8 +531,8 @@ class TestClaudeHookCommandNote:
         note_line = [l for l in lines if "extension hook skill lookup" in l][0]
         assert note_line.startswith("   "), "Note should preserve indentation"
 
-    def test_post_process_injects_all_claude_flags(self):
-        """post_process_skill_content should inject all Claude-specific fields."""
+    def test_post_process_injects_invocable_claude_flags_by_default(self):
+        """post_process_skill_content keeps extension/preset skills user-invocable."""
         i = get_integration("claude")
         content = (
             "---\nname: test\ndescription: test\n---\n\n"
@@ -540,3 +543,16 @@ class TestClaudeHookCommandNote:
         assert "disable-model-invocation: false" in result
         assert "extension hook skill lookup" in result
         assert "use `/sp.*` for core SP commands" in result
+        assert "/speckit-git-commit" not in result
+
+    def test_post_process_can_hide_core_skills_from_claude_slash_menu(self):
+        """Core SP skills should be hidden when companion sp.* commands exist."""
+        i = get_integration("claude")
+        content = (
+            "---\nname: sp.plan\ndescription: test\nuser-invocable: true\n---\n\n"
+            "Body\n"
+        )
+        result = i.post_process_skill_content(content, user_invocable=False)
+        parsed = yaml.safe_load(result.split("---", 2)[1])
+        assert "user-invocable" not in parsed
+        assert parsed["disable-model-invocation"] is False

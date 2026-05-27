@@ -62,6 +62,6 @@ Less useful for very small tools with only a few pages and simple rules.
 ## Codex Notes
 
 - User-facing commands use the unified `/sp.*` form, such as `/sp.specify`
-- Hosts such as Codex and Claude may back commands with internal `sp-*` skill directories, but `sp-*` is not the user input form
-- The current installer writes Codex skills to `.agents/skills/sp-*/SKILL.md`
-- The current installer writes Claude skills to `.claude/skills/sp-*/SKILL.md`
+- Hosts such as Codex and Claude back core commands with dotted skill directories such as `sp.analyze`
+- The current installer writes Codex skills to `.agents/skills/sp.*/SKILL.md` and mirrors them to `.codex/skills/sp.*/SKILL.md`
+- The current installer writes Claude skills to `.claude/skills/sp.*/SKILL.md`

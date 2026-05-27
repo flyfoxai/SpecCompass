@@ -213,8 +213,8 @@ class TestInitIntegrationFlag:
         assert skill_directory_name("specify") in command_file.read_text(encoding="utf-8")
         assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
 
-    def test_shared_infra_skips_existing_files(self, tmp_path):
-        """Pre-existing shared files are not overwritten by _install_shared_infra."""
+    def test_shared_infra_force_refreshes_existing_framework_files(self, tmp_path):
+        """--force refreshes pre-existing SP framework files."""
         from typer.testing import CliRunner
         from specify_cli import app
 
@@ -224,14 +224,33 @@ class TestInitIntegrationFlag:
         # Pre-create a shared script with custom content
         scripts_dir = project / ".specify" / "scripts" / "bash"
         scripts_dir.mkdir(parents=True)
-        custom_content = "# user-modified common.sh\n"
+        custom_content = "# stale common.sh\n"
         (scripts_dir / "common.sh").write_text(custom_content, encoding="utf-8")
+        powershell_dir = project / ".specify" / "scripts" / "powershell"
+        powershell_dir.mkdir(parents=True)
+        stale_powershell = (
+            'Write-Output "Run /speckit.specify first"\n'
+            'Write-Output "Run /speckit.plan first"\n'
+            'Write-Output "Run /speckit.tasks first"\n'
+        )
+        (powershell_dir / "check-prerequisites.ps1").write_text(
+            stale_powershell,
+            encoding="utf-8",
+        )
 
         # Pre-create a shared template with custom content
         templates_dir = project / ".specify" / "templates"
         templates_dir.mkdir(parents=True)
-        custom_template = "# user-modified spec-template\n"
+        custom_template = "# stale spec-template\n/sp-tasks\n/speckit.plan\n"
         (templates_dir / "spec-template.md").write_text(custom_template, encoding="utf-8")
+
+        memory_dir = project / ".specify" / "memory"
+        memory_dir.mkdir(parents=True)
+        memory_file = memory_dir / "project-index.md"
+        memory_file.write_text(
+            "# Project Memory\n\nBusiness-specific content stays.\nUse /sp-specify, /sp-plan, and /speckit.analyze.\n",
+            encoding="utf-8",
+        )
 
         old_cwd = os.getcwd()
         try:
@@ -248,13 +267,136 @@ class TestInitIntegrationFlag:
 
         assert result.exit_code == 0
 
-        # User's files should be preserved
-        assert (scripts_dir / "common.sh").read_text(encoding="utf-8") == custom_content
-        assert (templates_dir / "spec-template.md").read_text(encoding="utf-8") == custom_template
+        # Framework files should be refreshed by explicit --force.
+        common = (scripts_dir / "common.sh").read_text(encoding="utf-8")
+        spec_template = (templates_dir / "spec-template.md").read_text(encoding="utf-8")
+        powershell_prereqs = (powershell_dir / "check-prerequisites.ps1").read_text(
+            encoding="utf-8"
+        )
+        assert common != custom_content
+        assert spec_template != custom_template
+        assert powershell_prereqs != stale_powershell
+        assert "/sp-tasks" not in spec_template
+        assert "/speckit.plan" not in spec_template
+        assert "/speckit.specify" not in powershell_prereqs
+        assert "/speckit.plan" not in powershell_prereqs
+        assert "/speckit.tasks" not in powershell_prereqs
+        memory_content = memory_file.read_text(encoding="utf-8")
+        assert "Business-specific content stays." in memory_content
+        assert "/sp.specify" in memory_content
+        assert "/sp.plan" in memory_content
+        assert "/sp.analyze" in memory_content
+        assert "/sp-specify" not in memory_content
+        assert "/speckit.analyze" not in memory_content
 
         # Other shared files should still be installed
         assert (scripts_dir / "setup-plan.sh").exists()
         assert (templates_dir / "plan-template.md").exists()
+
+    def test_normal_init_cleans_legacy_core_commands_across_existing_hosts(self, tmp_path):
+        """Normal init removes obsolete command surfaces without touching project content."""
+        from typer.testing import CliRunner
+        from specify_cli import app
+
+        project = tmp_path / "multi-host-cleanup"
+        project.mkdir()
+
+        stale_files = [
+            project / ".claude" / "commands" / "speckit.plan.md",
+            project / ".claude" / "commands" / "sp-plan.md",
+            project / ".codex" / "commands" / "sp-plan.md",
+            project / ".codex" / "prompts" / "sp-plan.md",
+            project / ".gemini" / "commands" / "sp-plan.toml",
+            project / ".github" / "agents" / "sp-plan.agent.md",
+            project / ".github" / "prompts" / "sp-plan.prompt.md",
+        ]
+        for path in stale_files:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("legacy command surface\n", encoding="utf-8")
+
+        legacy_skill_files = [
+            project / ".agents" / "skills" / "sp-plan" / "SKILL.md",
+            project / ".agents" / "skills" / "speckit-plan" / "SKILL.md",
+            project / ".agents" / "skills" / "speckit.plan" / "SKILL.md",
+            project / ".codex" / "skills" / "sp-plan" / "SKILL.md",
+            project / ".codex" / "skills" / "speckit-plan" / "SKILL.md",
+            project / ".codex" / "skills" / "speckit.plan" / "SKILL.md",
+        ]
+        for legacy_skill in legacy_skill_files:
+            legacy_skill.parent.mkdir(parents=True, exist_ok=True)
+            legacy_skill.write_text("legacy skill\n", encoding="utf-8")
+        extension_skill = project / ".agents" / "skills" / "speckit-git-commit" / "SKILL.md"
+        extension_skill.parent.mkdir(parents=True, exist_ok=True)
+        extension_skill.write_text("extension skill\n", encoding="utf-8")
+
+        for business_path in [
+            project / "prd" / "sp-plan.md",
+            project / "specs" / "speckit.plan.md",
+            project / "SDDspecs" / "sp-plan.toml",
+        ]:
+            business_path.parent.mkdir(parents=True, exist_ok=True)
+            business_path.write_text("business content\n", encoding="utf-8")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(project)
+            runner = CliRunner()
+            result = runner.invoke(app, [
+                "init",
+                "--here",
+                "--integration",
+                "codex",
+                "--script",
+                "sh",
+                "--no-git",
+                "--ignore-agent-tools",
+            ], input="y\n", catch_exceptions=False)
+        finally:
+            os.chdir(old_cwd)
+
+        assert result.exit_code == 0, result.output
+
+        for path in stale_files:
+            assert not path.exists(), f"stale command survived: {path}"
+        for legacy_skill in legacy_skill_files:
+            assert not legacy_skill.parent.exists()
+        assert extension_skill.exists()
+        assert (project / ".agents" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert (project / ".codex" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert (project / ".codex" / "commands" / "sp.plan.md").exists()
+
+        assert (project / "prd" / "sp-plan.md").read_text(encoding="utf-8") == "business content\n"
+        assert (project / "specs" / "speckit.plan.md").read_text(encoding="utf-8") == "business content\n"
+        assert (project / "SDDspecs" / "sp-plan.toml").read_text(encoding="utf-8") == "business content\n"
+
+    def test_shared_infra_preserves_existing_files_without_force(self, tmp_path):
+        """A normal install still preserves pre-existing shared files."""
+        from typer.testing import CliRunner
+        from specify_cli import app
+
+        project = tmp_path / "preserve-test"
+        project.mkdir()
+
+        scripts_dir = project / ".specify" / "scripts" / "bash"
+        scripts_dir.mkdir(parents=True)
+        custom_content = "# user-modified common.sh\n"
+        (scripts_dir / "common.sh").write_text(custom_content, encoding="utf-8")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(project)
+            runner = CliRunner()
+            result = runner.invoke(app, [
+                "init", "--here",
+                "--integration", "copilot",
+                "--script", "sh",
+                "--no-git",
+            ], input="y\n", catch_exceptions=False)
+        finally:
+            os.chdir(old_cwd)
+
+        assert result.exit_code == 0
+        assert (scripts_dir / "common.sh").read_text(encoding="utf-8") == custom_content
 
 
 class TestForceExistingDirectory:
@@ -304,11 +446,11 @@ class TestForceExistingDirectory:
         assert "already exists" in result.output
 
 
-class TestGitExtensionAutoInstall:
-    """Tests for auto-installation of the git extension during specify init."""
+class TestGitInitializationDoesNotAutoInstallExtension:
+    """Tests for git initialization without default extension command pollution."""
 
-    def test_git_extension_auto_installed(self, tmp_path):
-        """Without --no-git, the git extension is installed during init."""
+    def test_git_init_does_not_auto_install_extension(self, tmp_path):
+        """Without --no-git, init may create a repo but does not install git extension."""
         from typer.testing import CliRunner
         from specify_cli import app
 
@@ -327,26 +469,16 @@ class TestGitExtensionAutoInstall:
 
         assert result.exit_code == 0, f"init failed: {result.output}"
 
-        # Check that the tracker didn't report a git error
-        assert "install failed" not in result.output, f"git extension install failed: {result.output}"
-
-        # Git extension files should be installed
+        # Bundled git extension is available for manual install, but should not
+        # be registered by default because it exposes speckit-git-* menu items.
         ext_dir = project / ".specify" / "extensions" / "git"
-        assert ext_dir.exists(), "git extension directory not installed"
-        assert (ext_dir / "extension.yml").exists()
-        assert (ext_dir / "scripts" / "bash" / "create-new-feature.sh").exists()
-        assert (ext_dir / "scripts" / "bash" / "initialize-repo.sh").exists()
+        assert not ext_dir.exists(), "git extension should not be installed by default"
 
-        # Hooks should be registered
         extensions_yml = project / ".specify" / "extensions.yml"
-        assert extensions_yml.exists(), "extensions.yml not created"
-        hooks_data = yaml.safe_load(extensions_yml.read_text(encoding="utf-8"))
-        assert "hooks" in hooks_data
-        assert "before_specify" in hooks_data["hooks"]
-        assert "before_constitution" in hooks_data["hooks"]
+        assert not extensions_yml.exists(), "extensions.yml should not be created by default"
 
     def test_no_git_skips_extension(self, tmp_path):
-        """With --no-git, the git extension is NOT installed."""
+        """With --no-git, git repo init and git extension install are skipped."""
         from typer.testing import CliRunner
         from specify_cli import app
 
@@ -369,8 +501,8 @@ class TestGitExtensionAutoInstall:
         ext_dir = project / ".specify" / "extensions" / "git"
         assert not ext_dir.exists(), "git extension should not be installed with --no-git"
 
-    def test_git_extension_commands_registered(self, tmp_path):
-        """Git extension commands are registered with the agent during init."""
+    def test_git_extension_commands_not_registered_by_default(self, tmp_path):
+        """Default init should not register speckit-git-* slash-menu commands."""
         from typer.testing import CliRunner
         from specify_cli import app
 
@@ -389,8 +521,9 @@ class TestGitExtensionAutoInstall:
 
         assert result.exit_code == 0, f"init failed: {result.output}"
 
-        # Git extension commands should be registered with the agent
+        # Core SP commands are installed, extension commands are not.
         claude_skills = project / ".claude" / "skills"
         assert claude_skills.exists(), "Claude skills directory was not created"
+        assert (claude_skills / "sp.plan" / "SKILL.md").exists()
         git_skills = [f for f in claude_skills.iterdir() if f.name.startswith("speckit-git-")]
-        assert len(git_skills) > 0, "no git extension commands registered"
+        assert len(git_skills) == 0, "git extension commands should not be registered by default"

@@ -1,12 +1,13 @@
 """Kimi Code integration — skills-based agent (Moonshot AI).
 
-Kimi installs core SP commands as ``.kimi/skills/sp-<name>/SKILL.md``.
+Kimi installs core SP commands as ``.kimi/skills/sp.<name>/SKILL.md``.
 Extension and preset commands keep the upstream ``speckit-.../SKILL.md``
 namespace.
 
 Includes legacy migration logic for projects initialised before Kimi
-moved from dotted skill directories (``speckit.xxx``) to hyphenated
-(``speckit-xxx``), and before SP core commands moved to the ``sp-`` prefix.
+moved extension skills from dotted directories (``speckit.xxx``) to
+hyphenated (``speckit-xxx``), and before SP core commands moved to the
+``sp.`` namespace.
 """
 
 from __future__ import annotations
@@ -53,7 +54,7 @@ class KimiIntegration(SkillsIntegration):
                 "--migrate-legacy",
                 is_flag=True,
                 default=False,
-                help="Migrate legacy dotted skill dirs (speckit.xxx → speckit-xxx)",
+                help="Migrate legacy dotted skill dirs (core speckit.xxx → sp.xxx; extensions speckit.xxx → speckit-xxx)",
             ),
         ]
 
@@ -67,7 +68,7 @@ class KimiIntegration(SkillsIntegration):
         """Install skills with optional legacy dotted-name migration."""
         parsed_options = parsed_options or {}
 
-        # Run base setup first so hyphenated targets (speckit-*) exist,
+        # Run base setup first so canonical targets exist,
         # then migrate/clean legacy dotted dirs without risking user content loss.
         created = super().setup(
             project_root, manifest, parsed_options=parsed_options, **opts

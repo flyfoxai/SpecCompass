@@ -884,7 +884,7 @@ class ExtensionManager:
                 continue
 
             # Derive the skill name via the shared naming helper so core
-            # commands follow the canonical sp-* scheme while extension
+            # commands follow the canonical sp.* scheme while extension
             # commands keep the speckit-<ext>-<cmd> namespace.
             skill_name = skill_directory_name(cmd_name)
 

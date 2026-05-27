@@ -8,7 +8,7 @@ Provides:
 - ``TomlIntegration`` — concrete base for TOML-format integrations
   (Gemini, Tabnine — subclass, set three class attrs, done).
 - ``SkillsIntegration`` — concrete base for integrations that install
-  commands as agent skills. Core built-ins use ``sp-<name>/SKILL.md``;
+  commands as agent skills. Core built-ins use ``sp.<name>/SKILL.md``;
   extension and preset commands keep the upstream ``speckit-.../SKILL.md``
   namespace.
 """
@@ -23,6 +23,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from specify_cli.command_names import (
+    CORE_COMMAND_STEMS,
     command_filename_base,
     core_command_stem,
     skill_directory_variants,
@@ -274,6 +275,43 @@ class IntegrationBase(ABC):
         to change the extension or naming convention.
         """
         return f"{command_filename_base(template_name)}.md"
+
+    @staticmethod
+    def _legacy_core_command_filenames(command_name: str) -> tuple[str, ...]:
+        """Return obsolete top-level command filenames for a core command.
+
+        ``sp-<name>`` is obsolete as a user-visible command file name. Skills
+        integrations also treat it as a legacy package directory for core
+        commands because several hosts expose skill names in command menus.
+        """
+        stem = core_command_stem(command_name)
+        if stem is None:
+            return ()
+        return (f"speckit.{stem}.md", f"speckit-{stem}.md", f"sp-{stem}.md")
+
+    @classmethod
+    def remove_legacy_core_command_files(
+        cls,
+        command_dirs: tuple[Path, ...],
+        *,
+        suffixes: tuple[str, ...] = (".md",),
+    ) -> None:
+        """Remove legacy core slash-command files from known command dirs.
+
+        The cleanup is intentionally narrow: only the integration's explicit
+        top-level command directories are touched, and only legacy core command
+        filenames are removed. Business documents, specs, archived issue packs,
+        and unrelated user commands are outside this scope.
+        """
+        for command_dir in command_dirs:
+            if not command_dir.is_dir():
+                continue
+            for stem in sorted(CORE_COMMAND_STEMS):
+                for suffix in suffixes:
+                    for legacy_base in cls._legacy_core_command_filenames(stem):
+                        legacy_file = command_dir / f"{Path(legacy_base).stem}{suffix}"
+                        if legacy_file.is_file():
+                            legacy_file.unlink()
 
     def commands_dest(self, project_root: Path) -> Path:
         """Return the absolute path to the commands output directory.
@@ -748,6 +786,8 @@ class IntegrationBase(ABC):
                 f"Integration destination {dest} escapes "
                 f"project root {project_root_resolved}"
             ) from exc
+        dest.mkdir(parents=True, exist_ok=True)
+        self.remove_legacy_core_command_files((dest,), suffixes=(".md",))
 
         created: list[Path] = []
 
@@ -862,6 +902,7 @@ class MarkdownIntegration(IntegrationBase):
                 f"project root {project_root_resolved}"
             ) from exc
         dest.mkdir(parents=True, exist_ok=True)
+        self.remove_legacy_core_command_files((dest,), suffixes=(".md",))
 
         script_type = opts.get("script_type", "sh")
         arg_placeholder = (
@@ -1067,6 +1108,7 @@ class TomlIntegration(IntegrationBase):
                 f"project root {project_root_resolved}"
             ) from exc
         dest.mkdir(parents=True, exist_ok=True)
+        self.remove_legacy_core_command_files((dest,), suffixes=(".toml",))
 
         script_type = opts.get("script_type", "sh")
         arg_placeholder = (
@@ -1241,6 +1283,7 @@ class YamlIntegration(IntegrationBase):
                 f"project root {project_root_resolved}"
             ) from exc
         dest.mkdir(parents=True, exist_ok=True)
+        self.remove_legacy_core_command_files((dest,), suffixes=(".yaml", ".yml"))
 
         script_type = opts.get("script_type", "sh")
         arg_placeholder = (
@@ -1290,7 +1333,7 @@ class YamlIntegration(IntegrationBase):
 class SkillsIntegration(IntegrationBase):
     """Concrete base for integrations that install commands as agent skills.
 
-    Skills use the ``sp-<name>/SKILL.md`` layout for core commands and
+    Skills use the ``sp.<name>/SKILL.md`` layout for core commands and
     ``speckit-<ext>-<name>/SKILL.md`` for extension commands, following
     the `agentskills.io <https://agentskills.io/specification>`_ spec.
 
@@ -1300,7 +1343,7 @@ class SkillsIntegration(IntegrationBase):
     ``--skills``, ``--migrate-legacy``).
 
     ``setup()`` processes each shared command template into a
-    ``sp-<name>/SKILL.md`` file with skills-oriented frontmatter for core commands.
+    ``sp.<name>/SKILL.md`` file with skills-oriented frontmatter for core commands.
     """
 
     def build_exec_args(
@@ -1337,6 +1380,16 @@ class SkillsIntegration(IntegrationBase):
         subdir = self.config.get("commands_subdir", "skills")
         return project_root / folder / subdir
 
+    def companion_skill_dirs(self, project_root: Path) -> tuple[Path, ...]:
+        """Return additional skills directories that should mirror core skills.
+
+        Some hosts have multiple discovery paths across CLI and desktop
+        variants. The primary ``skills_dest()`` remains the canonical install
+        location; companion skill dirs are compatibility mirrors and are
+        manifest-tracked like any other generated file.
+        """
+        return ()
+
     def post_process_skill_content(self, content: str) -> str:
         """Post-process a SKILL.md file's content after generation.
 
@@ -1346,6 +1399,69 @@ class SkillsIntegration(IntegrationBase):
         unchanged.  Subclasses may override — see ``ClaudeIntegration``.
         """
         return content
+
+    def companion_command_dirs(self, project_root: Path) -> tuple[Path, ...]:
+        """Return additional slash-command directories for skills integrations.
+
+        Some hosts discover user-visible slash commands from a commands
+        directory while also reading skills from a package directory.
+        Subclasses can return those command directories here. Generated
+        companion commands always use the canonical dotted ``sp.<name>.md``
+        filename so the user-facing invocation remains ``/sp.<name>``.
+        """
+        return ()
+
+    def install_companion_markdown_commands(
+        self,
+        project_root: Path,
+        manifest: IntegrationManifest,
+        *,
+        script_type: str,
+        arg_placeholder: str,
+    ) -> list[Path]:
+        """Install dotted ``sp.*.md`` slash-command companions if configured."""
+        command_dirs = tuple(dest.resolve() for dest in self.companion_command_dirs(project_root))
+        if not command_dirs:
+            return []
+
+        templates = self.list_command_templates()
+        if not templates:
+            return []
+
+        project_root_resolved = project_root.resolve()
+        for dest in command_dirs:
+            try:
+                dest.relative_to(project_root_resolved)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Companion command destination {dest} escapes "
+                    f"project root {project_root_resolved}"
+                ) from exc
+            dest.mkdir(parents=True, exist_ok=True)
+
+        self.remove_legacy_core_command_files(command_dirs, suffixes=(".md",))
+
+        created: list[Path] = []
+        for src_file in templates:
+            raw = src_file.read_text(encoding="utf-8")
+            processed = self.process_template(
+                raw,
+                self.key,
+                script_type,
+                arg_placeholder,
+                context_file=self.context_file or "",
+            )
+            dst_name = self.command_filename(src_file.stem)
+            for dest in command_dirs:
+                dst_file = self.write_file_and_record(
+                    processed,
+                    dest / dst_name,
+                    project_root,
+                    manifest,
+                )
+                created.append(dst_file)
+
+        return created
 
     @staticmethod
     def _legacy_core_skill_dirs(command_name: str) -> tuple[str, ...]:
@@ -1359,34 +1475,24 @@ class SkillsIntegration(IntegrationBase):
             if variant != modern
         )
 
-    @staticmethod
-    def _remove_legacy_core_skill_dir_if_safe(
-        legacy_dir: Path,
-        modern_content: str,
-    ) -> bool:
-        """Remove a legacy core skill directory only when it is clearly generated.
+    def remove_legacy_core_skill_dirs(
+        self,
+        skills_dir: Path,
+        command_name: str,
+    ) -> None:
+        """Remove legacy core skill dirs from the active skills directory.
 
-        A directory is safe to remove when it contains only ``SKILL.md`` and that
-        file is byte-for-byte equivalent to the newly generated modern skill after
-        replacing the old skill name with the modern one. Extra files or different
-        content mean the user may have customized it, so it is preserved.
+        This is intentionally stronger than manifest/hash based uninstall.
+        Legacy core names such as ``speckit-plan`` or ``speckit.plan`` are
+        user-visible in skills hosts, so preserving customized copies keeps
+        broken old slash-menu entries alive. The scope remains narrow: only
+        known core command variants are removed, while extension directories
+        such as ``speckit-git-commit`` are not matched.
         """
-        if not legacy_dir.is_dir():
-            return False
-
-        entries = list(legacy_dir.iterdir())
-        if len(entries) != 1 or entries[0].name != "SKILL.md" or not entries[0].is_file():
-            return False
-
-        legacy_content = entries[0].read_text(encoding="utf-8")
-        legacy_name = legacy_dir.name
-        modern_name = skill_directory_name(legacy_name)
-        normalized_legacy = legacy_content.replace(legacy_name, modern_name)
-        if normalized_legacy != modern_content:
-            return False
-
-        shutil.rmtree(legacy_dir)
-        return True
+        for legacy_name in self._legacy_core_skill_dirs(command_name):
+            legacy_dir = skills_dir / legacy_name
+            if legacy_dir.is_dir():
+                shutil.rmtree(legacy_dir)
 
     def setup(
         self,
@@ -1397,7 +1503,7 @@ class SkillsIntegration(IntegrationBase):
     ) -> list[Path]:
         """Install command templates as agent skills.
 
-        Creates ``sp-<name>/SKILL.md`` for each shared core command
+        Creates ``sp.<name>/SKILL.md`` for each shared core command
         template.  Each SKILL.md has normalised frontmatter containing
         ``name``, ``description``, ``compatibility``, and ``metadata``.
         """
@@ -1412,14 +1518,17 @@ class SkillsIntegration(IntegrationBase):
                 f"project_root ({project_root_resolved})"
             )
 
-        skills_dir = self.skills_dest(project_root).resolve()
-        try:
-            skills_dir.relative_to(project_root_resolved)
-        except ValueError as exc:
-            raise ValueError(
-                f"Skills destination {skills_dir} escapes "
-                f"project root {project_root_resolved}"
-            ) from exc
+        skill_dirs = (self.skills_dest(project_root).resolve(),) + tuple(
+            dest.resolve() for dest in self.companion_skill_dirs(project_root)
+        )
+        for skills_dir in skill_dirs:
+            try:
+                skills_dir.relative_to(project_root_resolved)
+            except ValueError as exc:
+                raise ValueError(
+                    f"Skills destination {skills_dir} escapes "
+                    f"project root {project_root_resolved}"
+                ) from exc
 
         script_type = opts.get("script_type", "sh")
         arg_placeholder = (
@@ -1458,18 +1567,24 @@ class SkillsIntegration(IntegrationBase):
                 registrar.render_frontmatter(skill_frontmatter) + "\n" + processed_body
             )
 
-            skill_dir = skills_dir / skill_name
-            skill_file = skill_dir / "SKILL.md"
-            dst = self.write_file_and_record(
-                skill_content, skill_file, project_root, manifest
-            )
-            created.append(dst)
-
-            for legacy_name in self._legacy_core_skill_dirs(command_name):
-                self._remove_legacy_core_skill_dir_if_safe(
-                    skills_dir / legacy_name,
-                    skill_content,
+            for skills_dir in skill_dirs:
+                skill_dir = skills_dir / skill_name
+                skill_file = skill_dir / "SKILL.md"
+                dst = self.write_file_and_record(
+                    skill_content, skill_file, project_root, manifest
                 )
+                created.append(dst)
+
+                self.remove_legacy_core_skill_dirs(skills_dir, command_name)
+
+        created.extend(
+            self.install_companion_markdown_commands(
+                project_root,
+                manifest,
+                script_type=script_type,
+                arg_placeholder=arg_placeholder,
+            )
+        )
 
         created.extend(self.install_scripts(project_root, manifest))
 

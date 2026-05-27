@@ -63,10 +63,11 @@ Use the canonical `/sp.*` form in user instructions and model-facing next steps:
 
 Some hosts install local skill-like directories such as:
 
-- `.agents/skills/sp-specify/SKILL.md`
-- `.claude/skills/sp-specify/SKILL.md`
+- `.agents/skills/sp.specify/SKILL.md`
+- `.codex/skills/sp.specify/SKILL.md`
+- `.claude/skills/sp.specify/SKILL.md`
 
-Those `sp-*` names are internal installation details. Do not document them as the user invocation form unless a specific host requires that exact low-level execution path.
+Those dotted skill names intentionally match the user-facing `/sp.*` command form. Treat legacy `sp-*` core skill names as stale installation residue.
 
 ## 5. Project-Local Integration Files
 

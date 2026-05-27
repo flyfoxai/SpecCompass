@@ -27,7 +27,7 @@ SP is packaged as a standalone enhanced edition. Users install and use this fork
 
 - Upstream-style `specify init`, templates, scripts, and agent integrations.
 - User-facing core commands use `/sp.*`, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
-- Skills-based agents such as Codex and Claude may store command files internally as `sp-<command>/SKILL.md`, but users should invoke the workflow as `/sp.*`.
+- Skills-based agents such as Codex and Claude store core command skills with the same dotted name, for example `sp.analyze/SKILL.md`, so the visible command stays `/sp.analyze`. Codex installs both `.agents/skills/sp.*` and `.codex/skills/sp.*` for CLI and desktop discovery.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
 - Project memory for active context, feature map, hotspots, open items, and trace index, with rules for when to write back and when to avoid repeated checks.

@@ -47,7 +47,7 @@ You MUST consider the user input before proceeding.
     ```
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
-# sp.gate
+# /sp.gate
 
 Use this command when the user wants to decide whether the first-layer business clarification set is stable enough to move forward.
 
@@ -60,7 +60,7 @@ Global rules:
 - If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` only as an internal skill directory detail.
+- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
 - Manage context as an engineering budget: start from routing, gate inputs, and open items; expand only to the source documents needed to decide PASS, FAIL, or conditional status.
 
 ## Purpose

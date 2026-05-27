@@ -17,10 +17,10 @@ from ..manifest import IntegrationManifest
 # Note injected into hook sections so Claude keeps SP user-facing commands
 # dotted while still resolving extension hooks through skill directory names.
 _HOOK_COMMAND_NOTE = (
-    "- When constructing slash commands from hook command names, "
+    "- When constructing user-facing slash commands from hook command names, "
     "use `/sp.*` for core SP commands. For extension hook skill lookup only, "
-    "map namespaced `speckit.<extension>.<command>` to the hyphenated skill "
-    "directory form, for example `speckit.git.commit` → `/speckit-git-commit`.\n"
+    "resolve the hook through the integration naming helper. Do not present "
+    "internal skill directory names as user-facing slash commands.\n"
 )
 
 # Mapping of command template stem → argument-hint text shown inline
@@ -60,6 +60,10 @@ class ClaudeIntegration(SkillsIntegration):
         "extension": "/SKILL.md",
     }
     context_file = "CLAUDE.md"
+
+    def companion_command_dirs(self, project_root: Path) -> tuple[Path, ...]:
+        """Install user-visible dotted slash commands for Claude Code."""
+        return (project_root / ".claude" / "commands",)
 
     @staticmethod
     def inject_argument_hint(content: str, hint: str) -> str:
@@ -145,6 +149,28 @@ class ClaudeIntegration(SkillsIntegration):
         return "".join(out)
 
     @staticmethod
+    def _remove_frontmatter_key(content: str, key: str) -> str:
+        """Remove a top-level YAML frontmatter key if present."""
+        lines = content.splitlines(keepends=True)
+        delimiter_indexes = [
+            idx for idx, line in enumerate(lines) if line.rstrip("\n\r") == "---"
+        ]
+        if len(delimiter_indexes) < 2 or delimiter_indexes[0] != 0:
+            return content
+
+        start, end = delimiter_indexes[0], delimiter_indexes[1]
+        updated = (
+            lines[: start + 1]
+            + [
+                line
+                for line in lines[start + 1 : end]
+                if not line.lstrip().startswith(f"{key}:")
+            ]
+            + lines[end:]
+        )
+        return "".join(updated)
+
+    @staticmethod
     def _inject_hook_command_note(content: str) -> str:
         """Insert a dot-to-hyphen note before each hook output instruction.
 
@@ -174,9 +200,17 @@ class ClaudeIntegration(SkillsIntegration):
             content,
         )
 
-    def post_process_skill_content(self, content: str) -> str:
+    def post_process_skill_content(
+        self,
+        content: str,
+        *,
+        user_invocable: bool = True,
+    ) -> str:
         """Inject Claude-specific frontmatter flags and hook notes."""
-        updated = self._inject_frontmatter_flag(content, "user-invocable")
+        if user_invocable:
+            updated = self._inject_frontmatter_flag(content, "user-invocable")
+        else:
+            updated = self._remove_frontmatter_key(content, "user-invocable")
         updated = self._inject_frontmatter_flag(updated, "disable-model-invocation", "false")
         updated = self._inject_hook_command_note(updated)
         return updated
@@ -206,7 +240,9 @@ class ClaudeIntegration(SkillsIntegration):
             content_bytes = path.read_bytes()
             content = content_bytes.decode("utf-8")
 
-            updated = self.post_process_skill_content(content)
+            # Core SP skills use dotted names so Claude's skill discovery
+            # does not expose a second hyphenated command surface.
+            updated = self.post_process_skill_content(content, user_invocable=False)
 
             # Inject argument-hint if available for this skill
             skill_dir_name = path.parent.name

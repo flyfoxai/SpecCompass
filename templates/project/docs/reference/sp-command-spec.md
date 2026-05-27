@@ -47,7 +47,7 @@ Typical examples:
 - `/sp.plan`
 - `/sp.analyze`
 
-Some integrations may generate internal skill directories such as `sp-specify/SKILL.md`. That hyphenated name is an installation detail, not the user invocation form.
+Skills integrations generate core skill directories such as `sp.specify/SKILL.md` so the physical command surface matches the user invocation form. Treat legacy `sp-specify/SKILL.md` as stale residue to remove during refresh.
 
 ## 4. What Must Stay Aligned With Upstream
 

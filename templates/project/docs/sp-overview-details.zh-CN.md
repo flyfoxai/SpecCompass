@@ -62,6 +62,6 @@
 ## Codex 补充说明
 
 - 用户可见命令统一使用 `/sp.*`，例如 `/sp.specify`
-- Codex、Claude 等宿主可能通过内部 `sp-*` skill 目录承载命令，但不要把 `sp-*` 当作用户输入形式
-- 当前安装器会把 Codex skills 写入 `.agents/skills/sp-*/SKILL.md`
-- 当前安装器会把 Claude skills 写入 `.claude/skills/sp-*/SKILL.md`
+- Codex、Claude 等宿主通过 `sp.analyze` 这类点号 skill 目录承载核心命令，和用户输入形式一致
+- 当前安装器会把 Codex skills 写入 `.agents/skills/sp.*/SKILL.md`，并同步镜像到 `.codex/skills/sp.*/SKILL.md`
+- 当前安装器会把 Claude skills 写入 `.claude/skills/sp.*/SKILL.md`

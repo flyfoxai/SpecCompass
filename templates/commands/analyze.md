@@ -47,7 +47,7 @@ You **MUST** consider the user input before proceeding (if not empty).
     ```
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
-# sp.analyze
+# /sp.analyze
 
 ## Outline
 
@@ -67,7 +67,7 @@ Global rules:
 - Do not report missing feature context until this routing reconciliation step has failed.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` only as an internal skill directory detail.
+- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
 - Manage context as an engineering budget: start from routing and memory, expand one layer at a time, and read only the source documents needed to prove or disprove the current finding.
 
 Execution flow:

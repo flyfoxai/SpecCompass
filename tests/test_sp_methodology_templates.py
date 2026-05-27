@@ -39,7 +39,7 @@ def test_planning_and_execution_commands_preserve_upward_fallback_rules():
 
 
 def test_commands_use_user_facing_dot_form_for_sp_commands():
-    """Templates should recommend /sp.* to users; sp-* is only an internal skill directory detail."""
+    """Templates should recommend /sp.* to users and treat sp-* as legacy residue."""
     for command_file in COMMANDS_DIR.glob("*.md"):
         content = command_file.read_text(encoding="utf-8")
         assert "/sp-" not in content, command_file.name
