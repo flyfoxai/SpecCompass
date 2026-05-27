@@ -142,7 +142,7 @@
 - User-facing command form is `/sp.<command>`, for example `/sp.analyze`. Use this form when telling a user what to run next.
 - Internal agent identifiers, phase names, and responsibility labels may use `sp.<command>` without slash because they are not user invocation syntax.
 - Machine hook fields may keep command values without slash, for example `EXECUTE_COMMAND: {command}`; user-facing hook display should show `/{command}`.
-- Internal skill directories such as `sp-analyze/SKILL.md` are installation details, not user invocation syntax.
+- Internal skill directories such as `sp.analyze/SKILL.md` are installation details, not user invocation syntax.
 - In memory text, use `sp.<command>` as the phase or responsibility name. Use command placeholders only for direct user action instructions that must render differently by host.
 
 ## Refresh Rules
