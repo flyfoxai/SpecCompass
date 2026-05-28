@@ -1,5 +1,4 @@
 <div align="center">
-    <img src="./media/logo_large.webp" alt="Spec Kit Logo" width="200" height="200"/>
     <h1>SpecCompass</h1>
     <h3><em>保留原版机制，增强分层规划、记忆和验证。</em></h3>
 </div>

@@ -1,5 +1,4 @@
 <div align="center">
-    <img src="./media/logo_large.webp" alt="Spec Kit Logo" width="200" height="200"/>
     <h1>SpecCompass</h1>
     <h3><em>Spec Kit mechanics with stronger layered planning, memory, and verification.</em></h3>
 </div>
