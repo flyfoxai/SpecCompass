@@ -1,10 +1,10 @@
 <div align="center">
     <img src="./media/logo_large.webp" alt="Spec Kit Logo" width="200" height="200"/>
-    <h1>Spec Kit SP</h1>
+    <h1>SpecPilot</h1>
     <h3><em>Spec Kit mechanics with stronger layered planning, memory, and verification.</em></h3>
 </div>
 
-Spec Kit SP is an enhanced fork of [github/spec-kit](https://github.com/github/spec-kit).
+SpecPilot is an enhanced fork of [github/spec-kit](https://github.com/github/spec-kit).
 
 The principle is simple: keep the proven upstream Spec Kit "bottle" as intact as possible, including the directory skeleton, template shell, CLI installation flow, integration framework, and script entry points. SP changes the "water" inside that bottle by adding richer content for complex projects and AI-assisted development.
 
@@ -41,13 +41,13 @@ SP is packaged as a standalone enhanced edition. Users install and use this fork
 Install the SP fork:
 
 ```bash
-uv tool install specify-cli --from git+https://github.com/flyfoxai/openSpecs.git
+uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecPilot.git
 ```
 
 Upgrade an existing installation:
 
 ```bash
-uv tool install specify-cli --force --from git+https://github.com/flyfoxai/openSpecs.git
+uv tool install specify-cli --force --from git+https://github.com/flyfoxai/SpecPilot.git
 ```
 
 Verify:

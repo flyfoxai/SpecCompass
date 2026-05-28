@@ -57,7 +57,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 ## Development workflow
 
-When working on Spec Kit SP:
+When working on SpecPilot:
 
 1. Test changes with the `specify` CLI commands (`/sp.specify`, `/sp.plan`, `/sp.tasks`) in your coding agent of choice
 2. Verify templates are working correctly in `templates/` directory

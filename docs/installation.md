@@ -10,7 +10,7 @@
 
 ## Installation
 
-> **Important:** Spec Kit SP is installed from this fork, `flyfoxai/openSpecs`. The upstream baseline is [github/spec-kit](https://github.com/github/spec-kit), but installing from upstream gives you the original workflow rather than the SP-enhanced commands and templates. Any package with the same name on PyPI is not maintained by this fork.
+> **Important:** SpecPilot is installed from this fork, `flyfoxai/SpecPilot`. The upstream baseline is [github/spec-kit](https://github.com/github/spec-kit), but installing from upstream gives you the original workflow rather than the SpecPilot commands and templates. Any package with the same name on PyPI is not maintained by this fork.
 
 ### Initialize a New Project
 
@@ -18,18 +18,18 @@ The easiest way to get started is to initialize a new project. Pin a specific re
 
 ```bash
 # Install from a specific stable release (recommended — replace vX.Y.Z with the latest tag)
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <PROJECT_NAME>
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <PROJECT_NAME>
 
 # Or install latest from main (may include unreleased changes)
-uvx --from git+https://github.com/flyfoxai/openSpecs.git specify init <PROJECT_NAME>
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git specify init <PROJECT_NAME>
 ```
 
 Or initialize in the current directory:
 
 ```bash
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init .
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init .
 # or use the --here flag
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init --here
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init --here
 ```
 
 ### Specify AI Agent
@@ -37,11 +37,11 @@ uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init --h
 You can proactively specify your AI agent during initialization:
 
 ```bash
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <project_name> --integration claude
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <project_name> --integration gemini
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <project_name> --integration codex
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <project_name> --integration codebuddy
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <project_name> --integration pi
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <project_name> --integration claude
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <project_name> --integration gemini
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <project_name> --integration codex
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <project_name> --integration codebuddy
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <project_name> --integration pi
 ```
 
 ### Specify Script Type (Shell vs PowerShell)
@@ -57,8 +57,8 @@ Auto behavior:
 Force a specific script type:
 
 ```bash
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <project_name> --script sh
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <project_name> --script ps
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <project_name> --script sh
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <project_name> --script ps
 ```
 
 ### Ignore Agent Tools Check
@@ -66,7 +66,7 @@ uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <pr
 If you prefer to get the templates without checking for the right tools:
 
 ```bash
-uvx --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z specify init <project_name> --integration claude --ignore-agent-tools
+uvx --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z specify init <project_name> --integration claude --ignore-agent-tools
 ```
 
 ## Verification
@@ -77,7 +77,7 @@ After installation, run the following command to confirm the correct version is 
 specify version
 ```
 
-This helps verify you are running the official Spec Kit SP build from GitHub, not an unrelated package with the same name.
+This helps verify you are running the official SpecPilot build from GitHub, not an unrelated package with the same name.
 
 After initialization, you should see the following commands available in your AI agent:
 
@@ -97,8 +97,8 @@ If your environment blocks access to PyPI (you see 403 errors when running `uv t
 
 ```bash
 # Clone the repository
-git clone https://github.com/flyfoxai/openSpecs.git
-cd openSpecs
+git clone https://github.com/flyfoxai/SpecPilot.git
+cd SpecPilot
 
 # Build the wheel
 pip install build

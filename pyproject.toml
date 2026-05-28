@@ -1,7 +1,7 @@
 [project]
 name = "specify-cli"
-version = "0.9.1"
-description = "Specify CLI for Spec Kit SP, an SP-enhanced toolkit for Spec-Driven Development (SDD)."
+version = "0.9.2"
+description = "Specify CLI for SpecPilot, a specification-driven AI engineering control toolkit."
 requires-python = ">=3.11"
 dependencies = [
     "typer>=0.24.0",

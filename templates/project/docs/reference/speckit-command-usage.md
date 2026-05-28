@@ -7,7 +7,7 @@
 SP 用户正常安装：
 
 ```bash
-uv tool install specify-cli --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z
+uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z
 ```
 
 确认当前实际运行的 CLI：

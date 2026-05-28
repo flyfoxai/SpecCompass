@@ -1,4 +1,4 @@
-# `speckit-layered`
+# `SpecPilot`
 
 `sp` 是一个基于 `Spec Kit` 改造出来的分层文档工作流。
 框架步骤名统一使用 `sp.*`，不同 agent 只是在触发形式上适配。

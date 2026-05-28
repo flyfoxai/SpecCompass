@@ -23,7 +23,7 @@
 - 官方安装方式：`uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.16 --force`
 - 官方实测版本：`specify 0.8.16`
 - 官方 Codex 测试目录：`/Users/hula/Projects/ASK3/upstream-codex-official-v0.8.16`
-- SP 当前开发版本：`specify 0.9.1`
+- SP 当前开发版本：`specify 0.9.2`
 
 重要边界：
 
@@ -43,13 +43,13 @@ uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@vX
 SP 对应安装方式：
 
 ```bash
-uv tool install specify-cli --from git+https://github.com/flyfoxai/openSpecs.git@vX.Y.Z
+uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z
 ```
 
 如果要从本地源码调试 SP：
 
 ```bash
-uv tool install specify-cli --from /Users/hula/Projects/speckit-layered --force
+uv tool install specify-cli --from /Users/hula/Projects/SpecPilot --force
 ```
 
 验证命令：

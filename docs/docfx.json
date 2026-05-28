@@ -58,13 +58,13 @@
     "cleanupCacheHistory": false,
     "disableGitFeatures": false,
     "globalMetadata": {
-      "_appTitle": "Spec Kit SP Documentation",
-      "_appName": "Spec Kit SP",
-      "_appFooter": "Spec Kit SP - an SP-enhanced specification-driven development toolkit",
+      "_appTitle": "SpecPilot Documentation",
+      "_appName": "SpecPilot",
+      "_appFooter": "SpecPilot - a specification-driven AI engineering control toolkit",
       "_enableSearch": true,
       "_disableContribution": false,
       "_gitContribute": {
-        "repo": "https://github.com/flyfoxai/openSpecs",
+        "repo": "https://github.com/flyfoxai/SpecPilot",
         "branch": "main"
       }
     }
