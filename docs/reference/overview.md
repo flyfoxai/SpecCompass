@@ -38,5 +38,8 @@ SP adds lightweight memory, traceability, open-items, and context-budget practic
 
 - [SP project methodology](sp-project-methodology.md)
 - [CodeGraph memory research](codegraph-memory-research.md)
-- [Gemini modular audit](gemini-modular-audit.md)
 - [SP next-step improvement plan](SP项目下一步完善工作计划.md)
+
+Archived process records are kept separately so user-facing reference pages stay focused:
+
+- [Gemini modular audit](archive/gemini-modular-audit.md)
