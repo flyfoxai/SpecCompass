@@ -62,6 +62,5 @@
 ## Codex 补充说明
 
 - 用户可见命令统一使用 `/sp.*`，例如 `/sp.specify`
-- Codex、Claude 等宿主通过 `sp.analyze` 这类点号 skill 目录承载核心命令，和用户输入形式一致
-- 当前安装器会把 Codex skills 写入 `.agents/skills/sp.*/SKILL.md`，并同步镜像到 `.codex/skills/sp.*/SKILL.md`
-- 当前安装器会把 Claude skills 写入 `.claude/skills/sp.*/SKILL.md`
+- Codex 保持原版风格，把核心 skill 包安装到 `.agents/skills/sp-*/SKILL.md`，并生成面向 `/prompt::sp.*` 的 prompt/plugin 入口；真实斜杠菜单是否显示取决于当前 Codex 客户端
+- Claude 通过 `.claude/commands/sp.*.md` 直接暴露项目斜杠命令

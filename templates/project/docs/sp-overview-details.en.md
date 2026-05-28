@@ -62,6 +62,5 @@ Less useful for very small tools with only a few pages and simple rules.
 ## Codex Notes
 
 - User-facing commands use the unified `/sp.*` form, such as `/sp.specify`
-- Hosts such as Codex and Claude back core commands with dotted skill directories such as `sp.analyze`
-- The current installer writes Codex skills to `.agents/skills/sp.*/SKILL.md` and mirrors them to `.codex/skills/sp.*/SKILL.md`
-- The current installer writes Claude skills to `.claude/skills/sp.*/SKILL.md`
+- Codex keeps upstream-style skill packages under `.agents/skills/sp-*/SKILL.md` and generates prompt/plugin entries that target `/prompt::sp.*`; actual slash-menu visibility depends on the current Codex client
+- Claude exposes direct project slash commands from `.claude/commands/sp.*.md`

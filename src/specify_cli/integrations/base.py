@@ -8,7 +8,7 @@ Provides:
 - ``TomlIntegration`` — concrete base for TOML-format integrations
   (Gemini, Tabnine — subclass, set three class attrs, done).
 - ``SkillsIntegration`` — concrete base for integrations that install
-  commands as agent skills. Core built-ins use ``sp.<name>/SKILL.md``;
+  commands as agent skills. Core built-ins use ``sp-<name>/SKILL.md``;
   extension and preset commands keep the upstream ``speckit-.../SKILL.md``
   namespace.
 """
@@ -280,7 +280,8 @@ class IntegrationBase(ABC):
     def _legacy_core_command_filenames(command_name: str) -> tuple[str, ...]:
         """Return obsolete top-level command filenames for a core command.
 
-        ``sp-<name>`` is obsolete as a user-visible command file name. Skills
+        ``sp-<name>`` is valid as an upstream-style skill directory name. It
+        is obsolete only as a user-facing markdown/TOML/YAML command file name.
         integrations also treat it as a legacy package directory for core
         commands because several hosts expose skill names in command menus.
         """
@@ -1333,7 +1334,7 @@ class YamlIntegration(IntegrationBase):
 class SkillsIntegration(IntegrationBase):
     """Concrete base for integrations that install commands as agent skills.
 
-    Skills use the ``sp.<name>/SKILL.md`` layout for core commands and
+    Skills use the ``sp-<name>/SKILL.md`` layout for core commands and
     ``speckit-<ext>-<name>/SKILL.md`` for extension commands, following
     the `agentskills.io <https://agentskills.io/specification>`_ spec.
 
@@ -1343,7 +1344,7 @@ class SkillsIntegration(IntegrationBase):
     ``--skills``, ``--migrate-legacy``).
 
     ``setup()`` processes each shared command template into a
-    ``sp.<name>/SKILL.md`` file with skills-oriented frontmatter for core commands.
+    ``sp-<name>/SKILL.md`` file with skills-oriented frontmatter for core commands.
     """
 
     def build_exec_args(
@@ -1503,7 +1504,7 @@ class SkillsIntegration(IntegrationBase):
     ) -> list[Path]:
         """Install command templates as agent skills.
 
-        Creates ``sp.<name>/SKILL.md`` for each shared core command
+        Creates ``sp-<name>/SKILL.md`` for each shared core command
         template.  Each SKILL.md has normalised frontmatter containing
         ``name``, ``description``, ``compatibility``, and ``metadata``.
         """

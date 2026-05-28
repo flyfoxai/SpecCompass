@@ -26,8 +26,9 @@ SP is packaged as a standalone enhanced edition. Users install and use this fork
 ## What SP Adds
 
 - Upstream-style `specify init`, templates, scripts, and agent integrations.
-- User-facing core commands use `/sp.*`, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
-- Skills-based agents such as Codex and Claude store core command skills with the same dotted name, for example `sp.analyze/SKILL.md`, so the visible command stays `/sp.analyze`. Codex installs both `.agents/skills/sp.*` and `.codex/skills/sp.*` for CLI and desktop discovery.
+- User-facing core commands use the `sp.*` namespace, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
+- Codex installs executable skills in `.agents/skills/sp-*/SKILL.md`, prompt companions in `.codex/prompts/sp.*.md`, and a project-local plugin marketplace under `.agents/plugins/`; `/prompt::sp.*` visibility depends on the current Codex client and must be verified in the real slash menu.
+- Claude and markdown-style hosts expose direct slash commands such as `/sp.analyze` through their normal command directories.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
 - Project memory for active context, feature map, hotspots, open items, and trace index, with rules for when to write back and when to avoid repeated checks.
@@ -77,6 +78,8 @@ If the current environment does not have the target agent CLI installed, or you 
 ```bash
 specify init . --integration codex --ignore-agent-tools
 ```
+
+For Codex, `specify init . --integration codex` attempts to register the project-local SP plugin automatically. If you used `--ignore-agent-tools` or registration failed, read `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md` and run the two commands shown there. After registration, restart or refresh Codex and verify whether your client exposes `/prompt::sp.*` in the slash menu.
 
 ## Core Commands
 

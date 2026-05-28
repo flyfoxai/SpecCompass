@@ -1,6 +1,6 @@
 """Trae IDE integration. — skills-based agent.
 
-Trae IDE installs core SP commands as ``.trae/skills/sp.<name>/SKILL.md``.
+Trae IDE installs core SP commands as ``.trae/skills/sp-<name>/SKILL.md``.
 Extension and preset commands keep the upstream ``speckit-.../SKILL.md``
 namespace. In the Specify CLI Trae integration, explicit command support was
 deprecated since v0.5.1; ``--skills`` defaults to ``True``.

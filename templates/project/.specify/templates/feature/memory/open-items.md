@@ -1,6 +1,6 @@
 # Open Items
 
-Use this file for real unresolved questions, todos, risks, blockers, rollback advice, and close conditions. Inline tags such as `@t0` and `@r1` are only search signals; the full reason, impact, owner, and close condition belong here when the item is not trivial.
+Use this file for real unresolved questions, todos, risks, blockers, rollback advice, and close conditions. Inline tags such as `@t0` and `@r0` are only search signals; the full reason, impact, owner, and close condition belong here when the item is not trivial.
 
 Common item types: `Question`, `Todo`, `Risk`, `Blocker`. Anchors should use fixed framework coordinates where possible, or trace/source anchors already registered in `memory/trace-index.md`.
 
@@ -34,7 +34,7 @@ Use the full form for any `Risk`, any `Blocker`, any `High` severity item, or an
 - Domain: scope | UI | API | data | permissions | delivery | operations
 - Workset: WS-PRIMARY-JOURNEY or another registered workset
 - Anchor: TRACE-001 or another trace/source anchor
-- Tags: @t0, @r1, or none
+- Tags: @t0, @r0, or none
 - Owner: named person, role, or next responsible step
 - Description: one sentence with the unresolved fact
 - Impact Area: affected scope, acceptance, release, data, security, or rollback area
@@ -51,7 +51,7 @@ Use the full form for any `Risk`, any `Blocker`, any `High` severity item, or an
 - Low/Medium `Question` or `Todo` items may stay short: `Type`, `Severity`, `Description`, and `Status` are enough unless the item affects scope, acceptance, release, rollback, security, or implementation confidence.
 - `Risk`, `Blocker`, and `High` severity items must use the full form with owner, impact, rollback/degradation, close condition, refresh date, and trace/source link.
 - Create a block when a `@t0` validation gap is not trivial: it affects scope, acceptance, release, rollback, human decision, follow-up work, or later implementation confidence.
-- Create a `Risk` or `Blocker` block when `@r1` appears in source documents, trace rows, tasks, or workset memory.
+- Create a `Risk` or `Blocker` block when `@r0` appears in source documents, trace rows, tasks, or workset memory.
 - Do not use this file for generic reminders, default concerns, or template examples.
 - If a block cannot be linked through `Anchor` or `Affected Docs`, keep it visible and mark the missing link as part of the item description rather than guessing the link.
 

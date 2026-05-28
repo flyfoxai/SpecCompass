@@ -99,9 +99,10 @@ class TestInitIntegrationFlag:
 
         normalized_output = _normalize_cli_output(result.output)
         assert result.exit_code == 0, result.output
-        assert "/sp.specify" in normalized_output
-        assert "/sp.plan" in normalized_output
-        assert "/sp.analyze" in normalized_output
+        assert "/prompt::sp.specify" in normalized_output
+        assert "/prompt::sp.plan" in normalized_output
+        assert "/prompt::sp.analyze" in normalized_output
+        assert "slash-menu visibility" in normalized_output
         assert "/sp-" not in normalized_output
 
         for command in ("specify", "plan", "analyze"):
@@ -109,6 +110,8 @@ class TestInitIntegrationFlag:
             assert skill_file.exists()
             assert "/sp-" not in skill_file.read_text(encoding="utf-8")
 
+        assert (project / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp.analyze.md").exists()
+        assert (project / ".agents" / "plugins" / "marketplace.json").exists()
         assert (project / ".specify" / "memory" / "constitution.md").exists()
         assert (project / ".specify" / "templates" / "feature" / "memory" / "open-items.md").exists()
         assert (project / ".specify" / "templates" / "feature" / "memory" / "trace-index.md").exists()
@@ -189,12 +192,9 @@ class TestInitIntegrationFlag:
 
         project = tmp_path / "claude-here-existing"
         project.mkdir()
-        commands_dir = project / ".claude" / "skills"
-        commands_dir.mkdir(parents=True)
-        skill_dir = commands_dir / skill_directory_name("specify")
-        skill_dir.mkdir(parents=True)
-        command_file = skill_dir / "SKILL.md"
-        command_file.write_text("# preexisting command\n", encoding="utf-8")
+        legacy_skill = project / ".claude" / "skills" / skill_directory_name("specify") / "SKILL.md"
+        legacy_skill.parent.mkdir(parents=True)
+        legacy_skill.write_text("# preexisting skill command\n", encoding="utf-8")
 
         old_cwd = os.getcwd()
         try:
@@ -207,11 +207,11 @@ class TestInitIntegrationFlag:
             os.chdir(old_cwd)
 
         assert result.exit_code == 0, result.output
+        command_file = project / ".claude" / "commands" / "sp.specify.md"
         assert command_file.exists()
-        # init replaces skills (not additive); verify the file has valid skill content
-        assert command_file.exists()
-        assert skill_directory_name("specify") in command_file.read_text(encoding="utf-8")
-        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert not legacy_skill.exists()
+        assert "sp.specify" in command_file.read_text(encoding="utf-8")
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
 
     def test_shared_infra_force_refreshes_existing_framework_files(self, tmp_path):
         """--force refreshes pre-existing SP framework files."""
@@ -315,9 +315,10 @@ class TestInitIntegrationFlag:
             path.write_text("legacy command surface\n", encoding="utf-8")
 
         legacy_skill_files = [
-            project / ".agents" / "skills" / "sp-plan" / "SKILL.md",
+            project / ".agents" / "skills" / "sp.plan" / "SKILL.md",
             project / ".agents" / "skills" / "speckit-plan" / "SKILL.md",
             project / ".agents" / "skills" / "speckit.plan" / "SKILL.md",
+            project / ".codex" / "skills" / "sp.plan" / "SKILL.md",
             project / ".codex" / "skills" / "sp-plan" / "SKILL.md",
             project / ".codex" / "skills" / "speckit-plan" / "SKILL.md",
             project / ".codex" / "skills" / "speckit.plan" / "SKILL.md",
@@ -362,12 +363,101 @@ class TestInitIntegrationFlag:
             assert not legacy_skill.parent.exists()
         assert extension_skill.exists()
         assert (project / ".agents" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
-        assert (project / ".codex" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
-        assert (project / ".codex" / "commands" / "sp.plan.md").exists()
+        assert not (project / ".codex" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert not (project / ".codex" / "commands" / "sp.plan.md").exists()
+        assert (project / ".codex" / "prompts" / "sp.plan.md").exists()
+        assert (project / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
+        assert (project / ".agents" / "plugins" / "marketplace.json").exists()
 
         assert (project / "prd" / "sp-plan.md").read_text(encoding="utf-8") == "business content\n"
         assert (project / "specs" / "speckit.plan.md").read_text(encoding="utf-8") == "business content\n"
         assert (project / "SDDspecs" / "sp-plan.toml").read_text(encoding="utf-8") == "business content\n"
+
+    def test_normal_init_cleans_claude_core_skill_duplicates_but_preserves_extensions(self, tmp_path):
+        """Re-init removes Claude core skill duplicates without touching extension skills."""
+        from typer.testing import CliRunner
+        from specify_cli import app
+
+        project = tmp_path / "claude-cleanup"
+        project.mkdir()
+
+        skills_dir = project / ".claude" / "skills"
+        for name in ("sp-plan", "sp.plan", "speckit-plan", "speckit.plan"):
+            skill_file = skills_dir / name / "SKILL.md"
+            skill_file.parent.mkdir(parents=True, exist_ok=True)
+            skill_file.write_text("stale core skill\n", encoding="utf-8")
+        extension_skill = skills_dir / "speckit-git-commit" / "SKILL.md"
+        extension_skill.parent.mkdir(parents=True, exist_ok=True)
+        extension_skill.write_text("extension skill\n", encoding="utf-8")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(project)
+            runner = CliRunner()
+            result = runner.invoke(app, [
+                "init",
+                "--here",
+                "--integration",
+                "claude",
+                "--script",
+                "sh",
+                "--no-git",
+                "--ignore-agent-tools",
+            ], input="y\n", catch_exceptions=False)
+        finally:
+            os.chdir(old_cwd)
+
+        assert result.exit_code == 0, result.output
+        for name in ("sp-plan", "sp.plan", "speckit-plan", "speckit.plan"):
+            assert not (skills_dir / name).exists()
+        assert extension_skill.exists()
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
+        assert not (project / ".claude" / "commands" / "speckit.plan.md").exists()
+
+    def test_normal_init_cleans_obsolete_codex_dirs_without_removing_agents_skills(self, tmp_path):
+        """Codex keeps skills, prompt companions, and plugin command entries."""
+        from typer.testing import CliRunner
+        from specify_cli import app
+
+        project = tmp_path / "codex-cleanup"
+        project.mkdir()
+
+        obsolete_codex_skill = project / ".codex" / "skills" / "sp-plan" / "SKILL.md"
+        obsolete_codex_skill.parent.mkdir(parents=True, exist_ok=True)
+        obsolete_codex_skill.write_text("obsolete codex skill\n", encoding="utf-8")
+        obsolete_codex_command = project / ".codex" / "commands" / "sp.plan.md"
+        obsolete_codex_command.parent.mkdir(parents=True, exist_ok=True)
+        obsolete_codex_command.write_text("obsolete codex command\n", encoding="utf-8")
+
+        valid_agent_skill = project / ".agents" / "skills" / "sp-plan" / "SKILL.md"
+        valid_agent_skill.parent.mkdir(parents=True, exist_ok=True)
+        valid_agent_skill.write_text("valid current skill\n", encoding="utf-8")
+
+        old_cwd = os.getcwd()
+        try:
+            os.chdir(project)
+            runner = CliRunner()
+            result = runner.invoke(app, [
+                "init",
+                "--here",
+                "--integration",
+                "codex",
+                "--script",
+                "sh",
+                "--no-git",
+                "--ignore-agent-tools",
+            ], input="y\n", catch_exceptions=False)
+        finally:
+            os.chdir(old_cwd)
+
+        assert result.exit_code == 0, result.output
+        assert not obsolete_codex_skill.parent.exists()
+        assert not obsolete_codex_command.exists()
+        assert valid_agent_skill.exists()
+        assert "name: sp-plan" in valid_agent_skill.read_text(encoding="utf-8")
+        assert (project / ".codex" / "prompts" / "sp.plan.md").exists()
+        assert (project / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
+        assert (project / ".agents" / "plugins" / "marketplace.json").exists()
 
     def test_shared_infra_preserves_existing_files_without_force(self, tmp_path):
         """A normal install still preserves pre-existing shared files."""
@@ -522,8 +612,12 @@ class TestGitInitializationDoesNotAutoInstallExtension:
         assert result.exit_code == 0, f"init failed: {result.output}"
 
         # Core SP commands are installed, extension commands are not.
+        claude_commands = project / ".claude" / "commands"
+        assert claude_commands.exists(), "Claude commands directory was not created"
+        assert (claude_commands / "sp.plan.md").exists()
+        git_commands = [f for f in claude_commands.iterdir() if f.name.startswith("speckit.git.")]
+        assert len(git_commands) == 0, "git extension commands should not be registered by default"
         claude_skills = project / ".claude" / "skills"
-        assert claude_skills.exists(), "Claude skills directory was not created"
-        assert (claude_skills / "sp.plan" / "SKILL.md").exists()
-        git_skills = [f for f in claude_skills.iterdir() if f.name.startswith("speckit-git-")]
-        assert len(git_skills) == 0, "git extension commands should not be registered by default"
+        if claude_skills.exists():
+            git_skills = [f for f in claude_skills.iterdir() if f.name.startswith("speckit-git-")]
+            assert len(git_skills) == 0, "git extension commands should not be registered by default"

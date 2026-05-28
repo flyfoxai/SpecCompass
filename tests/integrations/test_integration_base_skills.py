@@ -5,7 +5,7 @@ Each per-agent test file sets ``KEY``, ``FOLDER``, ``COMMANDS_SUBDIR``,
 logic from ``SkillsIntegrationTests``.
 
 Mirrors ``MarkdownIntegrationTests`` / ``TomlIntegrationTests`` closely,
-adapted for the skills layout. Core commands use ``sp.<name>/SKILL.md``;
+adapted for the skills layout. Core commands use ``sp-<name>/SKILL.md``;
 extension and preset skills keep the upstream ``speckit-.../SKILL.md``
 namespace.
 """

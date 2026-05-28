@@ -30,8 +30,8 @@
 
 ## 触发方式
 
-- 用户可见命令统一使用 `/sp.*`，例如 `/sp.specify`
-- Codex、Claude 等宿主会安装 `sp.analyze` 这类点号 skill 目录，和用户输入命令保持一致
+- 用户可见命令统一使用 `sp.*` 命名空间。Claude 这类宿主直接显示 `/sp.*`；Codex 会生成面向 `/prompt::sp.specify` 的 prompt/plugin 入口，但真实斜杠菜单是否显示取决于当前 Codex 客户端
+- skills 宿主的磁盘包保持原版风格，例如 `sp-specify/SKILL.md`；不要把 `sp-specify` 当成用户输入命令
 - 当前安装器把宿主集成文件写入目标项目，而不是旧的全局 prompt 目录
 
 ## 下一步看哪里

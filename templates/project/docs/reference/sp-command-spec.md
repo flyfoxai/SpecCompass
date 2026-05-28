@@ -47,7 +47,7 @@ Typical examples:
 - `/sp.plan`
 - `/sp.analyze`
 
-Skills integrations generate core skill directories such as `sp.specify/SKILL.md` so the physical command surface matches the user invocation form. Treat legacy `sp-specify/SKILL.md` as stale residue to remove during refresh.
+Skills integrations keep the upstream physical package shape. Codex installs core skills as `sp-specify/SKILL.md` and SP also generates prompt/plugin entries that target `/prompt::sp.specify`. Whether that prompt namespace appears in the slash menu depends on the current Codex client and must be verified in the real UI. Do not present `sp-specify` itself as the user command.
 
 ## 4. What Must Stay Aligned With Upstream
 

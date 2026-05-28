@@ -14,5 +14,5 @@
 
 - Treat this file as execution binding, not design brainstorming.
 - Each executable task should stay bound to a workset, acceptance anchor, and verification path.
-- If a task carries non-trivial `@t0` or `@r1`, the corresponding detail should exist in `memory/open-items.md`.
+- If a task carries non-trivial `@t0` or `@r0`, the corresponding detail should exist in `memory/open-items.md`.
 - If a task is too broad to verify in one focused pass, split it before execution rather than relying on model memory.

@@ -25,7 +25,7 @@
 - Record only explicit blockers.
 - If there are no blockers, state that clearly.
 - Register any blocker that affects scope, release, rollback, safety, data, permissions, or acceptance in `memory/open-items.md`.
-- Do not pass the gate while a blocking `@r1` or unresolved high-impact `@t0` remains without owner, impact, rollback or degrade path, and close condition.
+- Do not pass the gate while a blocking `@r0` or unresolved high-impact `@t0` remains without owner, impact, rollback or degrade path, and close condition.
 
 ## Accepted Risks
 

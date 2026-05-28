@@ -145,8 +145,9 @@ class TestIntegrationInstall:
         # Manifest created
         assert (project / ".specify" / "integrations" / "claude.manifest.json").exists()
 
-        # Claude uses skills directory (not commands)
-        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        # Claude exposes core commands through one slash-command surface.
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
+        assert not (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
 
     def test_install_bare_project_gets_shared_infra(self, tmp_path):
         """Installing into a bare project should create shared scripts and templates."""
@@ -200,7 +201,7 @@ class TestIntegrationInstall:
         assert not stale_command.exists()
         assert not stale_skill.parent.exists()
         assert (project / ".claude" / "commands" / "sp.plan.md").exists()
-        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert not (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
         assert business_file.read_text(encoding="utf-8") == "business content\n"
 
 
@@ -233,8 +234,7 @@ class TestIntegrationUninstall:
 
     def test_uninstall_removes_files(self, tmp_path):
         project = _init_project(tmp_path, "claude")
-        # Claude uses skills directory
-        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
         assert (project / ".specify" / "integrations" / "claude.manifest.json").exists()
 
         old_cwd = os.getcwd()
@@ -247,7 +247,7 @@ class TestIntegrationUninstall:
         assert "uninstalled" in result.output
 
         # Command files removed
-        assert not (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert not (project / ".claude" / "commands" / "sp.plan.md").exists()
 
         # Manifest removed
         assert not (project / ".specify" / "integrations" / "claude.manifest.json").exists()
@@ -258,7 +258,7 @@ class TestIntegrationUninstall:
     def test_uninstall_preserves_modified_files(self, tmp_path):
         """Full lifecycle: install → modify → uninstall → modified file kept."""
         project = _init_project(tmp_path, "claude")
-        plan_file = project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md"
+        plan_file = project / ".claude" / "commands" / "sp.plan.md"
         assert plan_file.exists()
 
         # Modify a file
@@ -345,8 +345,7 @@ class TestIntegrationSwitch:
 
     def test_switch_between_integrations(self, tmp_path):
         project = _init_project(tmp_path, "claude")
-        # Verify claude files exist (claude uses skills)
-        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert (project / ".claude" / "commands" / "sp.plan.md").exists()
 
         old_cwd = os.getcwd()
         try:
@@ -361,7 +360,7 @@ class TestIntegrationSwitch:
         assert "Switched to" in result.output
 
         # Old claude files removed
-        assert not (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert not (project / ".claude" / "commands" / "sp.plan.md").exists()
 
         # New copilot files created
         assert (project / ".github" / "agents" / f"{command_filename_base('plan')}.agent.md").exists()
@@ -435,7 +434,7 @@ class TestIntegrationSwitch:
         assert not stale_command.exists()
         assert not stale_skill.parent.exists()
         assert (project / ".claude" / "commands" / "sp.plan.md").exists()
-        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert not (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
 
 
 # ── upgrade ───────────────────────────────────────────────────────────
@@ -469,7 +468,7 @@ class TestIntegrationUpgrade:
         assert not stale_command.exists()
         assert not stale_skill.parent.exists()
         assert (project / ".claude" / "commands" / "sp.plan.md").exists()
-        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
+        assert not (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
         assert business_file.read_text(encoding="utf-8") == "business content\n"
 
 
@@ -495,8 +494,7 @@ class TestIntegrationLifecycle:
             assert result.exit_code == 0
             assert "installed successfully" in result.output
 
-            # Claude uses skills directory
-            plan_file = project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md"
+            plan_file = project / ".claude" / "commands" / "sp.plan.md"
             assert plan_file.exists()
 
             # Modify one file

@@ -1,6 +1,6 @@
 """Cursor IDE integration.
 
-Cursor Agent installs core SP commands as ``.cursor/skills/sp.<name>/SKILL.md``.
+Cursor Agent installs core SP commands as ``.cursor/skills/sp-<name>/SKILL.md``.
 Extension and preset commands keep the upstream ``speckit-.../SKILL.md``
 namespace. Commands are deprecated; ``--skills`` defaults to ``True``.
 """

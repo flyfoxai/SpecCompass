@@ -57,6 +57,23 @@ def test_memory_templates_keep_open_items_and_trace_responsibilities_separate():
     assert "`memory/open-items.md` may point here" in trace_index
 
 
+def test_feature_templates_use_r0_as_open_risk_signal():
+    """Feature scaffolds should not drift back to the old @r1 risk marker."""
+    for template_file in FEATURE_TEMPLATE_DIR.rglob("*.md"):
+        content = template_file.read_text(encoding="utf-8")
+        assert "@r1" not in content, template_file
+
+    open_items = (FEATURE_MEMORY_DIR / "open-items.md").read_text(encoding="utf-8")
+    memory_index = (FEATURE_MEMORY_DIR / "index.md").read_text(encoding="utf-8")
+    gate_template = (FEATURE_TEMPLATE_DIR / "gate.md").read_text(encoding="utf-8")
+    tasks_template = (FEATURE_TEMPLATE_DIR / "tasks.md").read_text(encoding="utf-8")
+
+    assert "@r0" in open_items
+    assert "@r0" in memory_index
+    assert "@r0" in gate_template
+    assert "@r0" in tasks_template
+
+
 def test_context_budget_rule_is_present_in_state_advancing_commands():
     """State-advancing SP commands should explicitly constrain context expansion."""
     for command in ("analyze", "bundle", "flow", "gate", "plan", "tasks", "ui"):

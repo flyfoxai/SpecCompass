@@ -52,7 +52,7 @@ from typer.core import TyperGroup
 # For cross-platform keyboard input
 import readchar
 
-from .command_names import skill_directory_name, slash_command_name
+from .command_names import skill_directory_name, skill_directory_variants, slash_command_name
 
 def _build_agent_config() -> dict[str, dict[str, Any]]:
     """Derive AGENT_CONFIG from INTEGRATION_REGISTRY."""
@@ -814,14 +814,14 @@ def _install_shared_infra(
                 + legacy_hyphen_example
                 + "` on skills "
                 + "hosts, which would pollute concept text with slash-call syntax.",
-                "User-facing invocation and core skill directories both use `/sp.<command>` / `sp.<command>` on supported hosts. `sp-<command>` is legacy residue, not user instruction text.",
+                "User-facing invocation uses `/sp.<command>` where supported; Codex installs upstream-style skill packages and prompt/plugin entries that target `/prompt::sp.<command>`, but slash-menu visibility must be verified in the current Codex client. `sp-<command>` is an on-disk skill package name, not user instruction text.",
             )
             updated = updated.replace(
                 "User-facing invocation remains `/sp.<command>` on all supported hosts. `"
                 + legacy_hyphen_example
                 + "` is only an internal skill "
                 + "directory/package name, not user instruction text.",
-                "User-facing invocation and core skill directories both use `/sp.<command>` / `sp.<command>` on supported hosts. `sp-<command>` is legacy residue, not user instruction text.",
+                "User-facing invocation uses `/sp.<command>` where supported; Codex installs upstream-style skill packages and prompt/plugin entries that target `/prompt::sp.<command>`, but slash-menu visibility must be verified in the current Codex client. `sp-<command>` is an on-disk skill package name, not user instruction text.",
             )
             if updated != content:
                 path.write_text(updated, encoding="utf-8")
@@ -937,6 +937,39 @@ def _cleanup_legacy_core_command_surfaces(project_path: Path) -> None:
                     companion_dirs,
                     suffixes=(".md",),
                 )
+            if integration.key == "claude":
+                claude_skills_dir = integration.skills_dest(project_path)
+                if claude_skills_dir.is_dir():
+                    for stem in sorted(CORE_COMMAND_STEMS):
+                        for skill_name in skill_directory_variants(stem):
+                            stale_dir = claude_skills_dir / skill_name
+                            if stale_dir.is_dir():
+                                shutil.rmtree(stale_dir)
+
+            if integration.key == "codex":
+                commands_dir = project_path / ".codex" / "commands"
+                if commands_dir.is_dir():
+                    for stem in sorted(CORE_COMMAND_STEMS):
+                        for prefix in ("sp.", "sp-", "speckit.", "speckit-"):
+                            stale_file = commands_dir / f"{prefix}{stem}.md"
+                            if stale_file.is_file():
+                                stale_file.unlink()
+
+                prompts_dir = project_path / ".codex" / "prompts"
+                if prompts_dir.is_dir():
+                    for stem in sorted(CORE_COMMAND_STEMS):
+                        for prefix in ("sp-", "speckit.", "speckit-"):
+                            stale_file = prompts_dir / f"{prefix}{stem}.md"
+                            if stale_file.is_file():
+                                stale_file.unlink()
+
+                codex_skills_dir = project_path / ".codex" / "skills"
+                if codex_skills_dir.is_dir():
+                    for stem in sorted(CORE_COMMAND_STEMS):
+                        for skill_name in skill_directory_variants(stem):
+                            stale_dir = codex_skills_dir / skill_name
+                            if stale_dir.is_dir():
+                                shutil.rmtree(stale_dir)
             continue
 
         suffixes: tuple[str, ...]
@@ -1435,6 +1468,7 @@ def init(
                 parsed_options=integration_parsed_options or None,
                 script_type=selected_script,
                 raw_options=integration_options,
+                register_agent_tools=not ignore_agent_tools,
             )
             manifest.save()
 
@@ -1513,7 +1547,7 @@ def init(
                             "description": definition.description,
                             "source": "bundled",
                         })
-                        tracker.complete("workflow", "speckit installed")
+                        tracker.complete("workflow", "SP workflow installed")
                 else:
                     tracker.skip("workflow", "bundled workflow not found")
             except Exception as wf_err:
@@ -1649,7 +1683,7 @@ def init(
         step_num = 2
 
     # Determine skill display mode for the next-steps panel.
-    # Skills integrations (codex, kimi, agy, trae, cursor-agent) should show skill invocation syntax.
+    # Skills integrations need host-specific invocation guidance.
     from .integrations.base import SkillsIntegration as _SkillsInt
     _is_skills_integration = isinstance(resolved_integration, _SkillsInt)
 
@@ -1663,10 +1697,10 @@ def init(
 
     if codex_skill_mode and not ai_skills:
         # Integration path installed skills; show the helpful notice
-        steps_lines.append(f"{step_num}. Start Codex in this project directory; SP skills were installed to [cyan].agents/skills[/cyan] and mirrored to [cyan].codex/skills[/cyan]")
+        steps_lines.append(f"{step_num}. Start Codex in this project directory; SP skills were installed to [cyan].agents/skills[/cyan], prompt/plugin entries target [cyan]/prompt::sp.*[/cyan], and real slash-menu visibility must be verified in Codex")
         step_num += 1
     if claude_skill_mode and not ai_skills:
-        steps_lines.append(f"{step_num}. Start Claude in this project directory; SP slash commands were installed to [cyan].claude/commands[/cyan] and skills to [cyan].claude/skills[/cyan]")
+        steps_lines.append(f"{step_num}. Start Claude in this project directory; core SP slash commands were installed to [cyan].claude/commands[/cyan]")
         step_num += 1
     if cursor_agent_skill_mode and not ai_skills:
         steps_lines.append(f"{step_num}. Start Cursor Agent in this project directory; SP skills were installed to [cyan].cursor/skills[/cyan]")
@@ -1674,6 +1708,8 @@ def init(
     usage_label = "commands"
 
     def _display_cmd(name: str) -> str:
+        if codex_skill_mode:
+            return f"/prompt::{slash_command_name(name)}"
         return f"/{slash_command_name(name)}"
 
     steps_lines.append(f"{step_num}. Start using {usage_label} with your AI agent:")
@@ -2076,6 +2112,7 @@ def integration_install(
             parsed_options=parsed_options,
             script_type=selected_script,
             raw_options=integration_options,
+            register_agent_tools=True,
         )
         manifest.save()
         _write_integration_json(project_root, integration.key)
@@ -2362,6 +2399,7 @@ def integration_switch(
             parsed_options=parsed_options,
             script_type=selected_script,
             raw_options=integration_options,
+            register_agent_tools=True,
         )
         manifest.save()
         _write_integration_json(project_root, target_integration.key)
@@ -2471,6 +2509,7 @@ def integration_upgrade(
             parsed_options=parsed_options,
             script_type=selected_script,
             raw_options=integration_options,
+            register_agent_tools=True,
         )
         new_manifest.save()
         _write_integration_json(project_root, key)

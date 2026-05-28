@@ -228,6 +228,19 @@ def test_bash_check_prerequisites_reports_no_active_feature_as_state(tmp_path: P
     assert payload["reason"] == "no-active-feature"
 
 
+def test_check_prerequisites_user_hints_use_slash_sp_commands():
+    """User-facing recovery hints should use /sp.* command syntax, not internal names."""
+    bash_content = CHECK_PREREQUISITES_SH.read_text(encoding="utf-8")
+    powershell_content = CHECK_PREREQUISITES_PS.read_text(encoding="utf-8")
+
+    for content in (bash_content, powershell_content):
+        assert "Run sp." not in content
+        assert "Run /speckit." not in content
+        assert "Run /sp.specify first" in content
+        assert "Run /sp.plan first" in content
+        assert "Run /sp.tasks first" in content
+
+
 @pytest.mark.skipif(not HAS_PWSH, reason="pwsh not available")
 def test_powershell_seeded_feature_scaffold_is_not_reported_as_tasks_prepared(tmp_path: Path):
     """PowerShell stage detection mirrors Bash for initialized SP scaffold files."""
@@ -302,6 +315,37 @@ def test_powershell_check_prerequisites_reports_no_active_feature_as_state(tmp_p
     assert payload["missing"] == ["feature"]
     assert payload["nextStep"] == "/sp.specify"
     assert payload["reason"] == "no-active-feature"
+
+
+@pytest.mark.skipif(not HAS_PWSH, reason="pwsh not available")
+def test_powershell_check_prerequisites_text_lists_quickstart_status(tmp_path: Path):
+    """PowerShell text output should include the same optional docs as Bash."""
+    scripts_dir = tmp_path / "scripts" / "powershell"
+    scripts_dir.mkdir(parents=True)
+    shutil.copy(PROJECT_ROOT / "scripts" / "powershell" / "common.ps1", scripts_dir / "common.ps1")
+    shutil.copy(CHECK_PREREQUISITES_PS, scripts_dir / "check-prerequisites.ps1")
+    feature_dir = tmp_path / "specs" / "001-demo"
+    feature_dir.mkdir(parents=True)
+    (feature_dir / "plan.md").write_text("# Plan\n", encoding="utf-8")
+    (feature_dir / "quickstart.md").write_text("# Quickstart\n", encoding="utf-8")
+    (tmp_path / ".specify").mkdir()
+
+    result = subprocess.run(
+        [
+            "pwsh",
+            "-NoProfile",
+            "-File",
+            str(tmp_path / "scripts" / "powershell" / "check-prerequisites.ps1"),
+        ],
+        cwd=tmp_path,
+        env={**os.environ, "SPECIFY_FEATURE_DIRECTORY": str(feature_dir)},
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "AVAILABLE_DOCS:" in result.stdout
+    assert "quickstart.md" in result.stdout
 
 
 # ── Timestamp Branch Tests ───────────────────────────────────────────────────

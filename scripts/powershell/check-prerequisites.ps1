@@ -126,26 +126,26 @@ if (-not $explicitRequirement) {
 
 if ($RequireSpec -and -not (Test-Path $paths.FEATURE_SPEC -PathType Leaf)) {
     Write-Output "ERROR: spec.md not found in $($paths.FEATURE_DIR)"
-    Write-Output "Run sp.specify first to create the feature specification."
+    Write-Output "Run /sp.specify first to create the feature specification."
     exit 1
 }
 
 if ($RequireBundle -and -not (Test-Path (Join-Path $paths.FEATURE_DIR 'bundle.md') -PathType Leaf)) {
     Write-Output "ERROR: bundle.md not found in $($paths.FEATURE_DIR)"
-    Write-Output "Run sp.bundle first to create the delivery bundle."
+    Write-Output "Run /sp.bundle first to create the delivery bundle."
     exit 1
 }
 
 if ($RequirePlan -and -not (Test-Path $paths.IMPL_PLAN -PathType Leaf)) {
     Write-Output "ERROR: plan.md not found in $($paths.FEATURE_DIR)"
-    Write-Output "Run sp.plan first to create the implementation plan."
+    Write-Output "Run /sp.plan first to create the implementation plan."
     exit 1
 }
 
 # Check for tasks.md if required
 if ($RequireTasks -and -not (Test-Path $paths.TASKS -PathType Leaf)) {
     Write-Output "ERROR: tasks.md not found in $($paths.FEATURE_DIR)"
-    Write-Output "Run sp.tasks first to create the task list."
+    Write-Output "Run /sp.tasks first to create the task list."
     exit 1
 }
 
@@ -188,7 +188,7 @@ if ($Json) {
     Test-FileExists -Path $paths.RESEARCH -Description 'research.md'
     Test-FileExists -Path $paths.DATA_MODEL -Description 'data-model.md'
     Test-DirHasFiles -Path $paths.CONTRACTS_DIR -Description 'contracts/'
-    Test-FileExists -Path $paths.QUICKSTART -Description 'quickstart.md' | Out-Null
+    Test-FileExists -Path $paths.QUICKSTART -Description 'quickstart.md'
     
     if ($IncludeTasks) {
         Test-FileExists -Path $paths.TASKS -Description 'tasks.md'

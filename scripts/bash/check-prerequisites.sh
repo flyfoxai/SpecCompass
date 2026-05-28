@@ -165,25 +165,25 @@ fi
 
 if $REQUIRE_SPEC && [[ ! -f "$FEATURE_SPEC" ]]; then
     echo "ERROR: spec.md not found in $FEATURE_DIR" >&2
-    echo "Run sp.specify first to create the feature specification." >&2
+    echo "Run /sp.specify first to create the feature specification." >&2
     exit 1
 fi
 
 if $REQUIRE_BUNDLE && [[ ! -f "$FEATURE_DIR/bundle.md" ]]; then
     echo "ERROR: bundle.md not found in $FEATURE_DIR" >&2
-    echo "Run sp.bundle first to create the delivery bundle." >&2
+    echo "Run /sp.bundle first to create the delivery bundle." >&2
     exit 1
 fi
 
 if $REQUIRE_PLAN && [[ ! -f "$IMPL_PLAN" ]]; then
     echo "ERROR: plan.md not found in $FEATURE_DIR" >&2
-    echo "Run sp.plan first to create the implementation plan." >&2
+    echo "Run /sp.plan first to create the implementation plan." >&2
     exit 1
 fi
 
 if $REQUIRE_TASKS && [[ ! -f "$TASKS" ]]; then
     echo "ERROR: tasks.md not found in $FEATURE_DIR" >&2
-    echo "Run sp.tasks first to create the task list." >&2
+    echo "Run /sp.tasks first to create the task list." >&2
     exit 1
 fi
 

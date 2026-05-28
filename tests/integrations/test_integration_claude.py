@@ -7,7 +7,7 @@ from unittest.mock import patch
 
 import yaml
 
-from specify_cli.command_names import CORE_COMMAND_STEMS, skill_basename_stem, skill_directory_name
+from specify_cli.command_names import CORE_COMMAND_STEMS, skill_directory_name
 from specify_cli.integrations import INTEGRATION_REGISTRY, get_integration
 from specify_cli.integrations.base import IntegrationBase
 from specify_cli.integrations.claude import ARGUMENT_HINTS
@@ -38,42 +38,69 @@ class TestClaudeIntegration:
         integration = get_integration("claude")
         assert integration.context_file == "CLAUDE.md"
 
-    def test_setup_creates_skill_files(self, tmp_path):
+    def test_setup_creates_command_files(self, tmp_path):
         integration = get_integration("claude")
         manifest = IntegrationManifest("claude", tmp_path)
         created = integration.setup(tmp_path, manifest, script_type="sh")
 
-        skill_files = [path for path in created if path.name == "SKILL.md"]
-        assert skill_files
+        command_files = [path for path in created if path.suffix == ".md"]
+        assert command_files
 
-        skills_dir = tmp_path / ".claude" / "skills"
-        assert skills_dir.is_dir()
+        commands_dir = tmp_path / ".claude" / "commands"
+        assert commands_dir.is_dir()
 
-        plan_skill = skills_dir / skill_directory_name("plan") / "SKILL.md"
-        assert plan_skill.exists()
+        plan_command = commands_dir / "sp.plan.md"
+        assert plan_command.exists()
 
-        content = plan_skill.read_text(encoding="utf-8")
+        content = plan_command.read_text(encoding="utf-8")
         assert "{SCRIPT}" not in content
         assert "{ARGS}" not in content
         assert "__AGENT__" not in content
 
         parts = content.split("---", 2)
         parsed = yaml.safe_load(parts[1])
-        assert parsed["name"] == skill_directory_name("plan")
-        assert "user-invocable" not in parsed
+        assert parsed["description"]
+        assert parsed["user-invocable"] is True
         assert parsed["disable-model-invocation"] is False
-        assert parsed["metadata"]["source"] == "templates/commands/plan.md"
+        assert parsed["argument-hint"] == ARGUMENT_HINTS["plan"]
 
-    def test_core_claude_skills_use_sp_prefix_not_legacy_speckit_prefix(self, tmp_path):
+    def test_core_claude_commands_use_sp_prefix_and_no_core_skills(self, tmp_path):
         integration = get_integration("claude")
         manifest = IntegrationManifest("claude", tmp_path)
         integration.setup(tmp_path, manifest, script_type="sh")
 
+        commands_dir = tmp_path / ".claude" / "commands"
+        assert (commands_dir / "sp.plan.md").exists()
+        assert (commands_dir / "sp.analyze.md").exists()
+        assert not (commands_dir / "speckit.plan.md").exists()
+        assert not (commands_dir / "speckit.analyze.md").exists()
+
         skills_dir = tmp_path / ".claude" / "skills"
-        assert (skills_dir / "sp.plan" / "SKILL.md").exists()
-        assert (skills_dir / "sp.analyze" / "SKILL.md").exists()
+        assert not (skills_dir / "sp-plan" / "SKILL.md").exists()
+        assert not (skills_dir / "sp-analyze" / "SKILL.md").exists()
+        assert not (skills_dir / "sp.plan" / "SKILL.md").exists()
+        assert not (skills_dir / "sp.analyze" / "SKILL.md").exists()
         assert not (skills_dir / "speckit-plan" / "SKILL.md").exists()
         assert not (skills_dir / "speckit-analyze" / "SKILL.md").exists()
+
+    def test_setup_removes_preexisting_core_skill_variants(self, tmp_path):
+        integration = get_integration("claude")
+        skills_dir = tmp_path / ".claude" / "skills"
+        for name in ("sp-plan", "sp.plan", "speckit-plan", "speckit.plan"):
+            skill_file = skills_dir / name / "SKILL.md"
+            skill_file.parent.mkdir(parents=True, exist_ok=True)
+            skill_file.write_text("stale core skill\n", encoding="utf-8")
+
+        extension_skill = skills_dir / "speckit-git-commit" / "SKILL.md"
+        extension_skill.parent.mkdir(parents=True, exist_ok=True)
+        extension_skill.write_text("extension skill\n", encoding="utf-8")
+
+        manifest = IntegrationManifest("claude", tmp_path)
+        integration.setup(tmp_path, manifest, script_type="sh")
+
+        for name in ("sp-plan", "sp.plan", "speckit-plan", "speckit.plan"):
+            assert not (skills_dir / name).exists()
+        assert extension_skill.exists()
 
     def test_setup_upserts_context_section(self, tmp_path):
         integration = get_integration("claude")
@@ -115,8 +142,8 @@ class TestClaudeIntegration:
             os.chdir(old_cwd)
 
         assert result.exit_code == 0, result.output
-        assert (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
         assert (project / ".claude" / "commands" / "sp.plan.md").exists()
+        assert not (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
         assert not (project / ".claude" / "commands" / "speckit.plan.md").exists()
 
         init_options = json.loads(
@@ -126,7 +153,7 @@ class TestClaudeIntegration:
         assert init_options["ai_skills"] is True
         assert init_options["integration"] == "claude"
 
-    def test_integration_flag_creates_skill_files(self, tmp_path):
+    def test_integration_flag_creates_command_files(self, tmp_path):
         from typer.testing import CliRunner
         from specify_cli import app
 
@@ -154,8 +181,8 @@ class TestClaudeIntegration:
             os.chdir(old_cwd)
 
         assert result.exit_code == 0, result.output
-        assert (project / ".claude" / "skills" / skill_directory_name("specify") / "SKILL.md").exists()
         assert (project / ".claude" / "commands" / "sp.specify.md").exists()
+        assert not (project / ".claude" / "skills" / skill_directory_name("specify") / "SKILL.md").exists()
         assert (project / ".specify" / "integrations" / "claude.manifest.json").exists()
 
     def test_interactive_claude_selection_uses_integration_path(self, tmp_path):
@@ -188,11 +215,12 @@ class TestClaudeIntegration:
         assert (project / ".specify" / "integration.json").exists()
         assert (project / ".specify" / "integrations" / "claude.manifest.json").exists()
 
-        skill_file = project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md"
-        assert skill_file.exists()
-        skill_content = skill_file.read_text(encoding="utf-8")
-        assert "user-invocable:" not in skill_content
-        assert "disable-model-invocation: false" in skill_content
+        command_file = project / ".claude" / "commands" / "sp.plan.md"
+        assert command_file.exists()
+        command_content = command_file.read_text(encoding="utf-8")
+        assert "user-invocable: true" in command_content
+        assert "disable-model-invocation: false" in command_content
+        assert not (project / ".claude" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
 
         init_options = json.loads(
             (project / ".specify" / "init-options.json").read_text(encoding="utf-8")
@@ -215,7 +243,8 @@ class TestClaudeIntegration:
         )
 
         assert result.exit_code == 0
-        assert (target / ".claude" / "skills" / skill_directory_name("specify") / "SKILL.md").exists()
+        assert (target / ".claude" / "commands" / "sp.specify.md").exists()
+        assert not (target / ".claude" / "skills" / skill_directory_name("specify") / "SKILL.md").exists()
 
     def test_claude_hooks_render_skill_invocation(self, tmp_path):
         from specify_cli.extensions import HookExecutor
@@ -302,19 +331,19 @@ class TestClaudeIntegration:
 
 
 class TestClaudeArgumentHints:
-    """Verify that argument-hint frontmatter is injected for Claude skills."""
+    """Verify that argument-hint frontmatter is injected for Claude commands."""
 
-    def test_all_skills_have_hints(self, tmp_path):
-        """Every generated SKILL.md must contain an argument-hint line."""
+    def test_all_commands_have_hints(self, tmp_path):
+        """Every generated command file must contain an argument-hint line."""
         i = get_integration("claude")
         m = IntegrationManifest("claude", tmp_path)
         created = i.setup(tmp_path, m, script_type="sh")
-        skill_files = [f for f in created if f.name == "SKILL.md"]
-        assert len(skill_files) > 0
-        for f in skill_files:
+        command_files = [f for f in created if f.parent.name == "commands" and f.suffix == ".md"]
+        assert len(command_files) > 0
+        for f in command_files:
             content = f.read_text(encoding="utf-8")
             assert "argument-hint:" in content, (
-                f"{f.parent.name}/SKILL.md is missing argument-hint frontmatter"
+                f"{f.name} is missing argument-hint frontmatter"
             )
 
     def test_argument_hints_match_core_command_stems(self):
@@ -326,19 +355,19 @@ class TestClaudeArgumentHints:
         i = get_integration("claude")
         m = IntegrationManifest("claude", tmp_path)
         created = i.setup(tmp_path, m, script_type="sh")
-        skill_files = [f for f in created if f.name == "SKILL.md"]
-        for f in skill_files:
-            stem = skill_basename_stem(f.parent.name)
+        command_files = [f for f in created if f.parent.name == "commands" and f.suffix == ".md"]
+        for f in command_files:
+            stem = f.stem.removeprefix("sp.")
             expected_hint = ARGUMENT_HINTS.get(stem)
             assert expected_hint is not None, (
-                f"No expected hint defined for skill '{stem}'"
+                f"No expected hint defined for command '{stem}'"
             )
             content = f.read_text(encoding="utf-8")
             parts = content.split("---", 2)
-            assert len(parts) >= 3, f"No frontmatter in {f.parent.name}/SKILL.md"
+            assert len(parts) >= 3, f"No frontmatter in {f.name}"
             parsed = yaml.safe_load(parts[1])
             assert parsed["argument-hint"] == expected_hint, (
-                f"{f.parent.name}/SKILL.md: expected hint '{expected_hint}' "
+                f"{f.name}: expected hint '{expected_hint}' "
                 f"but found {parsed.get('argument-hint')!r}"
             )
 
@@ -347,18 +376,18 @@ class TestClaudeArgumentHints:
         i = get_integration("claude")
         m = IntegrationManifest("claude", tmp_path)
         created = i.setup(tmp_path, m, script_type="sh")
-        skill_files = [f for f in created if f.name == "SKILL.md"]
-        for f in skill_files:
+        command_files = [f for f in created if f.parent.name == "commands" and f.suffix == ".md"]
+        for f in command_files:
             content = f.read_text(encoding="utf-8")
             parts = content.split("---", 2)
-            assert len(parts) >= 3, f"No frontmatter in {f.parent.name}/SKILL.md"
+            assert len(parts) >= 3, f"No frontmatter in {f.name}"
             frontmatter = parts[1]
             body = parts[2]
             assert "argument-hint:" in frontmatter, (
-                f"{f.parent.name}/SKILL.md: argument-hint not in frontmatter section"
+                f"{f.name}: argument-hint not in frontmatter section"
             )
             assert "argument-hint:" not in body, (
-                f"{f.parent.name}/SKILL.md: argument-hint leaked into body"
+                f"{f.name}: argument-hint leaked into body"
             )
 
     def test_hint_appears_after_description(self, tmp_path):
@@ -366,8 +395,8 @@ class TestClaudeArgumentHints:
         i = get_integration("claude")
         m = IntegrationManifest("claude", tmp_path)
         created = i.setup(tmp_path, m, script_type="sh")
-        skill_files = [f for f in created if f.name == "SKILL.md"]
-        for f in skill_files:
+        command_files = [f for f in created if f.parent.name == "commands" and f.suffix == ".md"]
+        for f in command_files:
             content = f.read_text(encoding="utf-8")
             lines = content.splitlines()
             found_description = False
@@ -375,14 +404,14 @@ class TestClaudeArgumentHints:
                 if line.startswith("description:"):
                     found_description = True
                     assert idx + 1 < len(lines), (
-                        f"{f.parent.name}/SKILL.md: description is last line"
+                        f"{f.name}: description is last line"
                     )
                     assert lines[idx + 1].startswith("argument-hint:"), (
-                        f"{f.parent.name}/SKILL.md: argument-hint does not follow description"
+                        f"{f.name}: argument-hint does not follow description"
                     )
                     break
             assert found_description, (
-                f"{f.parent.name}/SKILL.md: no description: line found in output"
+                f"{f.name}: no description: line found in output"
             )
 
     def test_inject_argument_hint_only_in_frontmatter(self):
@@ -423,34 +452,34 @@ class TestClaudeArgumentHints:
 
 
 class TestClaudeDisableModelInvocation:
-    """Verify disable-model-invocation is false for Claude skills."""
+    """Verify disable-model-invocation is false for Claude commands."""
 
     def test_setup_sets_disable_model_invocation_false(self, tmp_path):
-        """Generated SKILL.md files must have disable-model-invocation: false."""
+        """Generated command files must have disable-model-invocation: false."""
         i = get_integration("claude")
         m = IntegrationManifest("claude", tmp_path)
         created = i.setup(tmp_path, m, script_type="sh")
-        skill_files = [f for f in created if f.name == "SKILL.md"]
-        assert len(skill_files) > 0
-        for f in skill_files:
+        command_files = [f for f in created if f.parent.name == "commands" and f.suffix == ".md"]
+        assert len(command_files) > 0
+        for f in command_files:
             content = f.read_text(encoding="utf-8")
             parts = content.split("---", 2)
             parsed = yaml.safe_load(parts[1])
             assert parsed["disable-model-invocation"] is False, (
-                f"{f.parent.name}: expected disable-model-invocation: false"
+                f"{f.name}: expected disable-model-invocation: false"
             )
 
     def test_disable_model_invocation_not_true(self, tmp_path):
-        """No Claude skill should have disable-model-invocation: true."""
+        """No Claude command should have disable-model-invocation: true."""
         i = get_integration("claude")
         m = IntegrationManifest("claude", tmp_path)
         created = i.setup(tmp_path, m, script_type="sh")
         for f in created:
-            if f.name != "SKILL.md":
+            if f.parent.name != "commands" or f.suffix != ".md":
                 continue
             content = f.read_text(encoding="utf-8")
             assert "disable-model-invocation: true" not in content, (
-                f"{f.parent.name}: must not have disable-model-invocation: true"
+                f"{f.name}: must not have disable-model-invocation: true"
             )
 
     def test_non_claude_agents_lack_disable_model_invocation(self, tmp_path):
@@ -475,8 +504,8 @@ class TestClaudeDisableModelInvocation:
 class TestClaudeHookCommandNote:
     """Verify dot-to-hyphen normalization note is injected in hook sections."""
 
-    def test_hook_note_injected_in_skills_with_hooks(self, tmp_path):
-        """Every skill generated from a hook template should get the normalization note."""
+    def test_hook_note_injected_in_commands_with_hooks(self, tmp_path):
+        """Every command generated from a hook template should get the normalization note."""
         i = get_integration("claude")
         m = IntegrationManifest("claude", tmp_path)
         i.setup(tmp_path, m, script_type="sh")
@@ -490,11 +519,11 @@ class TestClaudeHookCommandNote:
         assert hook_templates
 
         for stem in hook_templates:
-            skill_file = tmp_path / ".claude" / "skills" / skill_directory_name(stem) / "SKILL.md"
-            assert skill_file.exists()
-            content = skill_file.read_text(encoding="utf-8")
+            command_file = tmp_path / ".claude" / "commands" / f"sp.{stem}.md"
+            assert command_file.exists()
+            content = command_file.read_text(encoding="utf-8")
             assert "extension hook skill lookup" in content, (
-                f"{skill_directory_name(stem)} should have extension hook skill lookup note"
+                f"sp.{stem}.md should have extension hook skill lookup note"
             )
             assert "/speckit-git-commit" not in content
 

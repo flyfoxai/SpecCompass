@@ -18,6 +18,7 @@ from specify_cli.command_names import (
     canonical_command_id,
     command_filename_base,
     command_title_text,
+    core_command_stem,
     skill_directory_name,
 )
 
@@ -543,6 +544,50 @@ class CommandRegistrar:
 
         return skill_directory_name(cmd_name)
 
+    @staticmethod
+    def _resolve_registration_target(
+        agent_name: str,
+        cmd_name: str,
+        agent_config: Dict[str, Any],
+        project_root: Path,
+    ) -> tuple[Dict[str, Any], Path, str]:
+        """Return the effective config, output dir, and basename for a command.
+
+        Claude core commands are user-visible slash commands, not skills. Core
+        preset/extension overrides must therefore land in `.claude/commands`
+        as dotted `sp.*.md` files; otherwise they are written to
+        `.claude/skills/sp-*` and later removed by Claude's stale-skill cleanup.
+        Extension commands keep the normal skills path.
+        """
+        if agent_name == "claude" and core_command_stem(cmd_name) is not None:
+            effective_config = dict(agent_config)
+            effective_config["dir"] = ".claude/commands"
+            effective_config["format"] = "markdown"
+            effective_config["extension"] = ".md"
+            return (
+                effective_config,
+                project_root / effective_config["dir"],
+                command_filename_base(cmd_name),
+            )
+
+        return (
+            agent_config,
+            project_root / agent_config["dir"],
+            CommandRegistrar._compute_output_name(agent_name, cmd_name, agent_config),
+        )
+
+    @staticmethod
+    def _agent_detection_dirs(
+        agent_name: str,
+        agent_config: Dict[str, Any],
+        project_root: Path,
+    ) -> tuple[Path, ...]:
+        """Return directories that prove an agent integration is installed."""
+        dirs = [project_root / agent_config["dir"]]
+        if agent_name == "claude":
+            dirs.append(project_root / ".claude" / "commands")
+        return tuple(dict.fromkeys(dirs))
+
     def register_commands(
         self,
         agent_name: str,
@@ -573,8 +618,6 @@ class CommandRegistrar:
             raise ValueError(f"Unsupported agent: {agent_name}")
 
         agent_config = self.AGENT_CONFIGS[agent_name]
-        commands_dir = project_root / agent_config["dir"]
-        commands_dir.mkdir(parents=True, exist_ok=True)
 
         registered = []
 
@@ -603,9 +646,12 @@ class CommandRegistrar:
                 body, "$ARGUMENTS", agent_config["args"]
             )
 
-            output_name = self._compute_output_name(agent_name, cmd_name, agent_config)
+            effective_config, commands_dir, output_name = self._resolve_registration_target(
+                agent_name, cmd_name, agent_config, project_root
+            )
+            commands_dir.mkdir(parents=True, exist_ok=True)
 
-            if agent_config["extension"] == "/SKILL.md":
+            if effective_config["extension"] == "/SKILL.md":
                 output = self.render_skill_command(
                     agent_name,
                     output_name,
@@ -615,20 +661,20 @@ class CommandRegistrar:
                     cmd_file,
                     project_root,
                 )
-            elif agent_config["format"] == "markdown":
+            elif effective_config["format"] == "markdown":
                 output = self.render_markdown_command(
                     frontmatter, body, source_id, context_note
                 )
-            elif agent_config["format"] == "toml":
+            elif effective_config["format"] == "toml":
                 output = self.render_toml_command(frontmatter, body, source_id)
-            elif agent_config["format"] == "yaml":
+            elif effective_config["format"] == "yaml":
                 output = self.render_yaml_command(
                     frontmatter, body, source_id, cmd_name
                 )
             else:
-                raise ValueError(f"Unsupported format: {agent_config['format']}")
+                raise ValueError(f"Unsupported format: {effective_config['format']}")
 
-            dest_file = commands_dir / f"{output_name}{agent_config['extension']}"
+            dest_file = commands_dir / f"{output_name}{effective_config['extension']}"
             dest_file.parent.mkdir(parents=True, exist_ok=True)
             dest_file.write_text(output, encoding="utf-8")
 
@@ -638,9 +684,14 @@ class CommandRegistrar:
             registered.append(cmd_name)
 
             for alias in cmd_info.get("aliases", []):
-                alias_output_name = self._compute_output_name(
-                    agent_name, alias, agent_config
+                (
+                    alias_effective_config,
+                    alias_commands_dir,
+                    alias_output_name,
+                ) = self._resolve_registration_target(
+                    agent_name, alias, agent_config, project_root
                 )
+                alias_commands_dir.mkdir(parents=True, exist_ok=True)
 
                 # For agents with inject_name, render with alias-specific frontmatter
                 if agent_config.get("inject_name"):
@@ -651,7 +702,7 @@ class CommandRegistrar:
                         format_name(alias) if format_name else alias
                     )
 
-                    if agent_config["extension"] == "/SKILL.md":
+                    if alias_effective_config["extension"] == "/SKILL.md":
                         alias_output = self.render_skill_command(
                             agent_name,
                             alias_output_name,
@@ -661,26 +712,27 @@ class CommandRegistrar:
                             cmd_file,
                             project_root,
                         )
-                    elif agent_config["format"] == "markdown":
+                    elif alias_effective_config["format"] == "markdown":
                         alias_output = self.render_markdown_command(
                             alias_frontmatter, body, source_id, context_note
                         )
-                    elif agent_config["format"] == "toml":
+                    elif alias_effective_config["format"] == "toml":
                         alias_output = self.render_toml_command(
                             alias_frontmatter, body, source_id
                         )
-                    elif agent_config["format"] == "yaml":
+                    elif alias_effective_config["format"] == "yaml":
                         alias_output = self.render_yaml_command(
                             alias_frontmatter, body, source_id, alias
                         )
                     else:
                         raise ValueError(
-                            f"Unsupported format: {agent_config['format']}"
+                            f"Unsupported format: {alias_effective_config['format']}"
                         )
                 else:
-                    # For other agents, reuse the primary output
-                    alias_output = output
-                    if agent_config["extension"] == "/SKILL.md":
+                    # Render against the alias target, because Claude core aliases
+                    # can use `.claude/commands/*.md` while extension commands use
+                    # `.claude/skills/*/SKILL.md`.
+                    if alias_effective_config["extension"] == "/SKILL.md":
                         alias_output = self.render_skill_command(
                             agent_name,
                             alias_output_name,
@@ -690,12 +742,29 @@ class CommandRegistrar:
                             cmd_file,
                             project_root,
                         )
+                    elif alias_effective_config["format"] == "markdown":
+                        alias_output = self.render_markdown_command(
+                            frontmatter, body, source_id, context_note
+                        )
+                    elif alias_effective_config["format"] == "toml":
+                        alias_output = self.render_toml_command(
+                            frontmatter, body, source_id
+                        )
+                    elif alias_effective_config["format"] == "yaml":
+                        alias_output = self.render_yaml_command(
+                            frontmatter, body, source_id, alias
+                        )
+                    else:
+                        raise ValueError(
+                            f"Unsupported format: {alias_effective_config['format']}"
+                        )
 
                 alias_file = (
-                    commands_dir / f"{alias_output_name}{agent_config['extension']}"
+                    alias_commands_dir
+                    / f"{alias_output_name}{alias_effective_config['extension']}"
                 )
                 try:
-                    alias_file.resolve().relative_to(commands_dir.resolve())
+                    alias_file.resolve().relative_to(alias_commands_dir.resolve())
                 except ValueError:
                     raise ValueError(
                         f"Alias output path escapes commands directory: {alias_file!r}"
@@ -746,9 +815,12 @@ class CommandRegistrar:
 
         self._ensure_configs()
         for agent_name, agent_config in self.AGENT_CONFIGS.items():
-            agent_dir = project_root / agent_config["dir"]
-
-            if agent_dir.exists():
+            if any(
+                agent_dir.exists()
+                for agent_dir in self._agent_detection_dirs(
+                    agent_name, agent_config, project_root
+                )
+            ):
                 try:
                     registered = self.register_commands(
                         agent_name,
@@ -780,13 +852,12 @@ class CommandRegistrar:
                 continue
 
             agent_config = self.AGENT_CONFIGS[agent_name]
-            commands_dir = project_root / agent_config["dir"]
 
             for cmd_name in cmd_names:
-                output_name = self._compute_output_name(
-                    agent_name, cmd_name, agent_config
+                effective_config, commands_dir, output_name = self._resolve_registration_target(
+                    agent_name, cmd_name, agent_config, project_root
                 )
-                cmd_file = commands_dir / f"{output_name}{agent_config['extension']}"
+                cmd_file = commands_dir / f"{output_name}{effective_config['extension']}"
                 if cmd_file.exists():
                     cmd_file.unlink()
                     # For SKILL.md agents each command lives in its own subdirectory

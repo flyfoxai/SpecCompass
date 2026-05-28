@@ -30,8 +30,8 @@ The current phase covers documentation only. The workflow ends at `sp.analyze` a
 
 ## Trigger Forms
 
-- User-facing commands use the unified `/sp.*` form, such as `/sp.specify`
-- Hosts such as Codex and Claude install core skill directories with dotted names such as `sp.analyze`, matching the user input form
+- User-facing commands use the unified `sp.*` namespace. Claude-style hosts expose direct `/sp.*` commands; Codex generates prompt/plugin entries that target `/prompt::sp.specify`, but real slash-menu visibility depends on the current Codex client
+- Skills hosts keep upstream-style on-disk skill packages such as `sp-specify/SKILL.md`; do not type `sp-specify` as the command
 - The active installer writes host integration files into the target project, not into archived global prompt directories
 
 ## Read Next

@@ -1,13 +1,13 @@
 """Kimi Code integration — skills-based agent (Moonshot AI).
 
-Kimi installs core SP commands as ``.kimi/skills/sp.<name>/SKILL.md``.
+Kimi installs core SP commands as ``.kimi/skills/sp-<name>/SKILL.md``.
 Extension and preset commands keep the upstream ``speckit-.../SKILL.md``
 namespace.
 
 Includes legacy migration logic for projects initialised before Kimi
 moved extension skills from dotted directories (``speckit.xxx``) to
 hyphenated (``speckit-xxx``), and before SP core commands moved to the
-``sp.`` namespace.
+``sp`` namespace.
 """
 
 from __future__ import annotations

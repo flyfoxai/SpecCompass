@@ -1,7 +1,9 @@
 """Shared command naming helpers.
 
-Core SP commands use the dotted ``sp.*`` runtime names. Extension commands
-keep the upstream ``speckit.<ext>.<cmd>`` namespace.
+Core SP commands use the dotted ``sp.*`` runtime names. Skills hosts keep
+the upstream hyphenated on-disk package shape and expose those skills through
+their own prompt/slash namespace. Extension commands keep the upstream
+``speckit.<ext>.<cmd>`` namespace.
 """
 
 from __future__ import annotations
@@ -103,7 +105,7 @@ def skill_directory_name(command_name: str) -> str:
     """Return the canonical skill directory / skill invocation basename."""
     stem = core_command_stem(command_name)
     if stem is not None:
-        return f"sp.{stem}"
+        return f"sp-{stem}"
 
     value = canonical_command_id(command_name)
     if value.startswith("speckit."):
@@ -123,7 +125,7 @@ def skill_directory_variants(command_name: str) -> tuple[str, ...]:
     variants: list[str] = [modern]
     if value.startswith("sp."):
         stem = value[len("sp.") :]
-        variants.extend([f"sp-{stem}", f"speckit-{stem}", f"speckit.{stem}"])
+        variants.extend([f"sp.{stem}", f"speckit-{stem}", f"speckit.{stem}"])
     elif value.startswith("speckit."):
         suffix = value[len("speckit.") :]
         variants.append(f"speckit.{suffix}")

@@ -31,7 +31,7 @@
 - `memory/open-items.md` is the source of truth for questions, todos, risks, blockers, rollback advice, and close conditions.
 - `memory/trace-index.md` is the source of truth for flow, screen, API, table, acceptance, workset, and source-doc trace chains.
 - A link is valid when `open-items.Anchor` matches a cell in `memory/trace-index.md`, or when `open-items.Affected Docs` matches at least one file in the related trace row's `Expand Docs`.
-- If `@r1` appears anywhere in the current read set, route to `memory/open-items.md` and confirm a matching `Risk` or `Blocker` is present.
+- If `@r0` appears anywhere in the current read set, route to `memory/open-items.md` and confirm a matching `Risk` or `Blocker` is present.
 - If `@t0` is non-trivial, route to `memory/open-items.md` and confirm a matching `Question`, `Todo`, or `Risk` is present.
 
 ## Recommended Read Order

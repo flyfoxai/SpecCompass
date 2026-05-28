@@ -9,7 +9,7 @@ import re
 
 import yaml
 
-from specify_cli.command_names import skill_basename_stem
+from specify_cli.command_names import CORE_COMMAND_STEMS, skill_directory_variants
 
 from ..base import SkillsIntegration
 from ..manifest import IntegrationManifest
@@ -43,7 +43,7 @@ ARGUMENT_HINTS: dict[str, str] = {
 
 
 class ClaudeIntegration(SkillsIntegration):
-    """Integration for Claude Code skills."""
+    """Integration for Claude Code project slash commands."""
 
     key = "claude"
     config = {
@@ -64,6 +64,19 @@ class ClaudeIntegration(SkillsIntegration):
     def companion_command_dirs(self, project_root: Path) -> tuple[Path, ...]:
         """Install user-visible dotted slash commands for Claude Code."""
         return (project_root / ".claude" / "commands",)
+
+    def _remove_core_skill_dirs(self, project_root: Path) -> None:
+        """Remove core command skills that Claude also exposes as slash commands."""
+        skills_dir = self.skills_dest(project_root)
+        if not skills_dir.is_dir():
+            return
+        import shutil
+
+        for stem in sorted(CORE_COMMAND_STEMS):
+            for skill_name in skill_directory_variants(stem):
+                skill_dir = skills_dir / skill_name
+                if skill_dir.is_dir():
+                    shutil.rmtree(skill_dir)
 
     @staticmethod
     def inject_argument_hint(content: str, hint: str) -> str:
@@ -222,37 +235,44 @@ class ClaudeIntegration(SkillsIntegration):
         parsed_options: dict[str, Any] | None = None,
         **opts: Any,
     ) -> list[Path]:
-        """Install Claude skills, then inject Claude-specific flags and argument-hints."""
-        created = super().setup(project_root, manifest, parsed_options, **opts)
+        """Install Claude Code core commands as a single user-visible command surface."""
+        script_type = opts.get("script_type", "sh")
+        arg_placeholder = (
+            self.registrar_config.get("args", "$ARGUMENTS")
+            if self.registrar_config
+            else "$ARGUMENTS"
+        )
 
-        # Post-process generated skill files
-        skills_dir = self.skills_dest(project_root).resolve()
+        created = self.install_companion_markdown_commands(
+            project_root,
+            manifest,
+            script_type=script_type,
+            arg_placeholder=arg_placeholder,
+        )
 
+        commands_dir = (project_root / ".claude" / "commands").resolve()
         for path in created:
-            # Only touch SKILL.md files under the skills directory
             try:
-                path.resolve().relative_to(skills_dir)
+                path.resolve().relative_to(commands_dir)
             except ValueError:
                 continue
-            if path.name != "SKILL.md":
+            if path.suffix != ".md":
                 continue
 
-            content_bytes = path.read_bytes()
-            content = content_bytes.decode("utf-8")
-
-            # Core SP skills use dotted names so Claude's skill discovery
-            # does not expose a second hyphenated command surface.
-            updated = self.post_process_skill_content(content, user_invocable=False)
-
-            # Inject argument-hint if available for this skill
-            skill_dir_name = path.parent.name
-            stem = skill_basename_stem(skill_dir_name)
+            content = path.read_text(encoding="utf-8")
+            updated = self.post_process_skill_content(content, user_invocable=True)
+            stem = path.stem.removeprefix("sp.")
             hint = ARGUMENT_HINTS.get(stem, "")
             if hint:
                 updated = self.inject_argument_hint(updated, hint)
-
             if updated != content:
-                path.write_bytes(updated.encode("utf-8"))
+                path.write_text(updated, encoding="utf-8")
                 self.record_file_in_manifest(path, project_root, manifest)
+
+        self._remove_core_skill_dirs(project_root)
+        created.extend(self.install_scripts(project_root, manifest))
+        ctx_path = self.upsert_context_section(project_root)
+        if ctx_path is not None:
+            self.record_file_in_manifest(ctx_path, project_root, manifest)
 
         return created

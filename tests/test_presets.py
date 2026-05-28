@@ -34,8 +34,6 @@ from specify_cli.presets import (
     VALID_PRESET_TEMPLATE_TYPES,
 )
 from specify_cli.extensions import ExtensionRegistry
-from specify_cli.command_names import skill_directory_name
-
 
 # ===== Fixtures =====
 
@@ -1823,20 +1821,19 @@ class TestSelfTestPreset:
         assert "preset:self-test" in content
 
     def test_self_test_registers_commands_for_claude(self, project_dir):
-        """Test that installing self-test registers skills in .claude/skills/."""
-        # Create Claude skills directory to simulate Claude being set up
-        claude_dir = project_dir / ".claude" / "skills"
+        """Test that installing self-test registers Claude core slash commands."""
+        # Claude core commands are user-visible slash commands, not skills.
+        claude_dir = project_dir / ".claude" / "commands"
         claude_dir.mkdir(parents=True)
 
         manager = PresetManager(project_dir)
         manager.install_from_directory(SELF_TEST_PRESET_DIR, "0.1.5")
 
-        # Check the skill was registered
-        cmd_file = claude_dir / skill_directory_name("specify") / "SKILL.md"
-        assert cmd_file.exists(), "Skill not registered in .claude/skills/"
+        cmd_file = claude_dir / "sp.specify.md"
+        assert cmd_file.exists(), "Command not registered in .claude/commands/"
         content = cmd_file.read_text()
         assert "self-test" in content
-        assert "source:" in content  # skill frontmatter includes metadata.source
+        assert "Source: self-test" in content
 
     def test_self_test_registers_commands_for_gemini(self, project_dir):
         """Test that installing self-test registers commands in .gemini/commands/ as TOML."""
@@ -1856,13 +1853,13 @@ class TestSelfTestPreset:
 
     def test_self_test_unregisters_commands_on_remove(self, project_dir):
         """Test that removing self-test cleans up registered commands."""
-        claude_dir = project_dir / ".claude" / "skills"
+        claude_dir = project_dir / ".claude" / "commands"
         claude_dir.mkdir(parents=True)
 
         manager = PresetManager(project_dir)
         manager.install_from_directory(SELF_TEST_PRESET_DIR, "0.1.5")
 
-        cmd_file = claude_dir / skill_directory_name("specify") / "SKILL.md"
+        cmd_file = claude_dir / "sp.specify.md"
         assert cmd_file.exists()
 
         manager.remove("self-test")
@@ -1959,6 +1956,56 @@ class TestSelfTestPreset:
 
         cmd_file = claude_dir / "speckit-fakeext-cmd" / "SKILL.md"
         assert cmd_file.exists(), "Skill not registered despite extension being present"
+
+    def test_extension_skill_with_core_alias_for_claude(self, project_dir, temp_dir):
+        """Claude extension skills may expose core aliases as slash commands."""
+        skills_dir = project_dir / ".claude" / "skills"
+        commands_dir = project_dir / ".claude" / "commands"
+        skills_dir.mkdir(parents=True)
+        commands_dir.mkdir(parents=True)
+        (project_dir / ".specify" / "extensions" / "fakeext").mkdir(parents=True)
+
+        preset_dir = temp_dir / "ext-core-alias-preset"
+        preset_dir.mkdir()
+        (preset_dir / "commands").mkdir()
+        (preset_dir / "commands" / "speckit.fakeext.cmd.md").write_text(
+            "---\ndescription: Override fakeext cmd\n---\nOverridden content"
+        )
+        manifest_data = {
+            "schema_version": "1.0",
+            "preset": {
+                "id": "ext-core-alias",
+                "name": "Ext Core Alias",
+                "version": "1.0.0",
+                "description": "Test",
+            },
+            "requires": {"speckit_version": ">=0.1.0"},
+            "provides": {
+                "templates": [
+                    {
+                        "type": "command",
+                        "name": "speckit.fakeext.cmd",
+                        "file": "commands/speckit.fakeext.cmd.md",
+                        "description": "Override fakeext cmd",
+                        "aliases": ["sp.specify"],
+                    }
+                ]
+            },
+        }
+        with open(preset_dir / "preset.yml", "w") as f:
+            yaml.dump(manifest_data, f)
+
+        manager = PresetManager(project_dir)
+        manager.install_from_directory(preset_dir, "0.1.5")
+
+        skill_file = skills_dir / "speckit-fakeext-cmd" / "SKILL.md"
+        alias_file = commands_dir / "sp.specify.md"
+        assert skill_file.exists(), "Extension skill not registered"
+        assert alias_file.exists(), "Core alias not registered as Claude slash command"
+        alias_content = alias_file.read_text()
+        assert "Source: ext-core-alias" in alias_content
+        assert "metadata:" not in alias_content
+        assert not (skills_dir / "sp-specify" / "SKILL.md").exists()
 
 
 # ===== Init Options and Skills Tests =====

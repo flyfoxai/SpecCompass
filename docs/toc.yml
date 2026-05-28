@@ -27,6 +27,8 @@
       href: reference/presets.md
     - name: Workflows
       href: reference/workflows.md
+    - name: Speckit CLI Usage
+      href: reference/speckit-command-usage.md
     - name: SP Project Methodology
       href: reference/sp-project-methodology.md
     - name: CodeGraph Memory Research
