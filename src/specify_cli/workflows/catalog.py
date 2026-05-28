@@ -136,11 +136,11 @@ class WorkflowCatalog:
     """
 
     DEFAULT_CATALOG_URL = (
-        "https://raw.githubusercontent.com/flyfoxai/SpecPilot/main/"
+        "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/"
         "workflows/catalog.json"
     )
     COMMUNITY_CATALOG_URL = (
-        "https://raw.githubusercontent.com/flyfoxai/SpecPilot/main/"
+        "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/"
         "workflows/catalog.community.json"
     )
     CACHE_DURATION = 3600  # 1 hour

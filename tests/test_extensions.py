@@ -1949,8 +1949,8 @@ class TestExtensionCatalog:
 
         catalog = ExtensionCatalog(project_dir)
 
-        assert "flyfoxai/openSpecs" in catalog.DEFAULT_CATALOG_URL
-        assert "flyfoxai/openSpecs" in catalog.COMMUNITY_CATALOG_URL
+        assert "flyfoxai/SpecCompass" in catalog.DEFAULT_CATALOG_URL
+        assert "flyfoxai/SpecCompass" in catalog.COMMUNITY_CATALOG_URL
         assert "github/spec-kit" not in catalog.DEFAULT_CATALOG_URL
         assert "github/spec-kit" not in catalog.COMMUNITY_CATALOG_URL
 

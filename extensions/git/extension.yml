@@ -6,7 +6,7 @@ extension:
   version: "1.0.0"
   description: "Feature branch creation, numbering (sequential/timestamp), validation, and Git remote detection"
   author: spec-kit-core
-  repository: https://github.com/flyfoxai/openSpecs
+  repository: https://github.com/flyfoxai/SpecCompass
   license: MIT
 
 requires:

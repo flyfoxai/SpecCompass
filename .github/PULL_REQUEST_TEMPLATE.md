@@ -13,7 +13,7 @@
 ## AI Disclosure
 
 <!-- Per our Contributing guidelines, AI assistance must be disclosed. -->
-<!-- See: https://github.com/flyfoxai/SpecPilot/blob/main/CONTRIBUTING.md#ai-contributions-in-spec-kit -->
+<!-- See: https://github.com/flyfoxai/SpecCompass/blob/main/CONTRIBUTING.md#ai-contributions-in-spec-kit -->
 
 - [ ] I **did not** use AI assistance for this contribution
 - [ ] I **did** use AI assistance (describe below)

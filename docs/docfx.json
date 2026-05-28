@@ -58,13 +58,13 @@
     "cleanupCacheHistory": false,
     "disableGitFeatures": false,
     "globalMetadata": {
-      "_appTitle": "SpecPilot Documentation",
-      "_appName": "SpecPilot",
-      "_appFooter": "SpecPilot - a specification-driven AI engineering control toolkit",
+      "_appTitle": "SpecCompass Documentation",
+      "_appName": "SpecCompass",
+      "_appFooter": "SpecCompass - a specification-driven AI engineering control toolkit",
       "_enableSearch": true,
       "_disableContribution": false,
       "_gitContribute": {
-        "repo": "https://github.com/flyfoxai/SpecPilot",
+        "repo": "https://github.com/flyfoxai/SpecCompass",
         "branch": "main"
       }
     }

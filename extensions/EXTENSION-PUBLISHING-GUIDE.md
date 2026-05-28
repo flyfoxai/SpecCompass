@@ -139,11 +139,11 @@ Spec Kit uses a dual-catalog system. For details about how catalogs work, see th
 
 ```bash
 # Fork on GitHub
-# https://github.com/flyfoxai/openSpecs/fork
+# https://github.com/flyfoxai/SpecCompass/fork
 
 # Clone your fork
-git clone https://github.com/YOUR-USERNAME/openSpecs.git
-cd openSpecs
+git clone https://github.com/YOUR-USERNAME/SpecCompass.git
+cd SpecCompass
 ```
 
 ### 2. Add Extension to Community Catalog
@@ -154,7 +154,7 @@ Edit `extensions/catalog.community.json` and add your extension:
 {
   "schema_version": "1.0",
   "updated_at": "2026-01-28T15:54:00Z",
-  "catalog_url": "https://raw.githubusercontent.com/flyfoxai/openSpecs/main/extensions/catalog.community.json",
+  "catalog_url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/extensions/catalog.community.json",
   "extensions": {
     "your-extension": {
       "name": "Your Extension Name",
@@ -247,7 +247,7 @@ git commit -m "Add your-extension to community catalog
 git push origin add-your-extension
 
 # Create Pull Request on GitHub
-# https://github.com/flyfoxai/openSpecs/compare
+# https://github.com/flyfoxai/SpecCompass/compare
 ```
 
 **Pull Request Template**:

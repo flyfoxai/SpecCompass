@@ -1149,8 +1149,8 @@ class TestPresetCatalog:
     def test_default_catalog_urls_use_open_specs_fork(self, project_dir):
         """Runtime catalog defaults should fetch SP catalogs, not upstream spec-kit."""
         catalog = PresetCatalog(project_dir)
-        assert "flyfoxai/openSpecs" in catalog.DEFAULT_CATALOG_URL
-        assert "flyfoxai/openSpecs" in catalog.COMMUNITY_CATALOG_URL
+        assert "flyfoxai/SpecCompass" in catalog.DEFAULT_CATALOG_URL
+        assert "flyfoxai/SpecCompass" in catalog.COMMUNITY_CATALOG_URL
         assert "github/spec-kit" not in catalog.DEFAULT_CATALOG_URL
         assert "github/spec-kit" not in catalog.COMMUNITY_CATALOG_URL
 

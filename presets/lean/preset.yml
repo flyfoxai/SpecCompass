@@ -6,7 +6,7 @@ preset:
   version: "1.0.0"
   description: "Minimal core workflow commands - just the prompt, just the artifact"
   author: "github"
-  repository: "https://github.com/flyfoxai/openSpecs"
+  repository: "https://github.com/flyfoxai/SpecCompass"
   license: "MIT"
 
 requires:

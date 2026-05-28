@@ -30,7 +30,7 @@ Add your integration under the top-level `integrations` key in `integrations/cat
       "version": "1.0.0",
       "description": "Integration for My Agent",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     }
   }
@@ -91,7 +91,7 @@ provides:
 
 ### Submitting to the Community Catalog
 
-1. **Fork** the [openSpecs repository](https://github.com/flyfoxai/openSpecs)
+1. **Fork** the [SpecCompass repository](https://github.com/flyfoxai/SpecCompass)
 2. **Add your entry** under the `integrations` key in `integrations/catalog.community.json`:
 
 ```json

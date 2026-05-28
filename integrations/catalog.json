@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "updated_at": "2026-04-08T00:00:00Z",
-  "catalog_url": "https://raw.githubusercontent.com/flyfoxai/openSpecs/main/integrations/catalog.json",
+  "catalog_url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/integrations/catalog.json",
   "integrations": {
     "claude": {
       "id": "claude",
@@ -9,7 +9,7 @@
       "version": "1.0.0",
       "description": "Anthropic Claude Code CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli", "anthropic"]
     },
     "copilot": {
@@ -18,7 +18,7 @@
       "version": "1.0.0",
       "description": "GitHub Copilot IDE integration with agent commands and prompt files",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["ide", "github"]
     },
     "gemini": {
@@ -27,7 +27,7 @@
       "version": "1.0.0",
       "description": "Google Gemini CLI integration with TOML command format",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli", "google"]
     },
     "cursor-agent": {
@@ -36,7 +36,7 @@
       "version": "1.0.0",
       "description": "Cursor IDE integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["ide"]
     },
     "windsurf": {
@@ -45,7 +45,7 @@
       "version": "1.0.0",
       "description": "Windsurf IDE workflow integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["ide"]
     },
     "amp": {
@@ -54,7 +54,7 @@
       "version": "1.0.0",
       "description": "Amp CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "codex": {
@@ -63,7 +63,7 @@
       "version": "1.0.0",
       "description": "Codex CLI skills-based integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli", "skills"]
     },
     "qwen": {
@@ -72,7 +72,7 @@
       "version": "1.0.0",
       "description": "Alibaba Qwen Code CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli", "alibaba"]
     },
     "opencode": {
@@ -81,7 +81,7 @@
       "version": "1.0.0",
       "description": "opencode CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "forge": {
@@ -90,7 +90,7 @@
       "version": "1.0.0",
       "description": "Forge CLI integration with parameter-based commands",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "kiro-cli": {
@@ -99,7 +99,7 @@
       "version": "1.0.0",
       "description": "Kiro CLI prompt-based integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "junie": {
@@ -108,7 +108,7 @@
       "version": "1.0.0",
       "description": "Junie by JetBrains CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli", "jetbrains"]
     },
     "auggie": {
@@ -117,7 +117,7 @@
       "version": "1.0.0",
       "description": "Auggie CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "shai": {
@@ -126,7 +126,7 @@
       "version": "1.0.0",
       "description": "SHAI CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "tabnine": {
@@ -135,7 +135,7 @@
       "version": "1.0.0",
       "description": "Tabnine CLI integration with TOML command format",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "kilocode": {
@@ -144,7 +144,7 @@
       "version": "1.0.0",
       "description": "Kilo Code IDE workflow integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["ide"]
     },
     "roo": {
@@ -153,7 +153,7 @@
       "version": "1.0.0",
       "description": "Roo Code IDE integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["ide"]
     },
     "bob": {
@@ -162,7 +162,7 @@
       "version": "1.0.0",
       "description": "IBM Bob IDE integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["ide", "ibm"]
     },
     "trae": {
@@ -171,7 +171,7 @@
       "version": "1.0.0",
       "description": "Trae IDE rules-based integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["ide"]
     },
     "codebuddy": {
@@ -180,7 +180,7 @@
       "version": "1.0.0",
       "description": "CodeBuddy CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "qodercli": {
@@ -189,7 +189,7 @@
       "version": "1.0.0",
       "description": "Qoder CLI integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "kimi": {
@@ -198,7 +198,7 @@
       "version": "1.0.0",
       "description": "Kimi Code CLI skills-based integration by Moonshot AI",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli", "skills"]
     },
     "pi": {
@@ -207,7 +207,7 @@
       "version": "1.0.0",
       "description": "Pi terminal coding agent prompt-based integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "iflow": {
@@ -216,7 +216,7 @@
       "version": "1.0.0",
       "description": "iFlow CLI integration by iflow-ai",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     },
     "vibe": {
@@ -225,7 +225,7 @@
       "version": "1.0.0",
       "description": "Mistral Vibe CLI prompt-based integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli", "mistral"]
     },
     "agy": {
@@ -234,7 +234,7 @@
       "version": "1.0.0",
       "description": "Antigravity IDE skills-based integration",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["ide", "skills"]
     },
     "generic": {
@@ -243,7 +243,7 @@
       "version": "1.0.0",
       "description": "Generic integration for any agent via --ai-commands-dir",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["generic"]
     },
     "goose": {
@@ -252,7 +252,7 @@
       "version": "1.0.0",
       "description": "Goose CLI integration with YAML recipe format",
       "author": "spec-kit-core",
-      "repository": "https://github.com/flyfoxai/openSpecs",
+      "repository": "https://github.com/flyfoxai/SpecCompass",
       "tags": ["cli"]
     }
   }

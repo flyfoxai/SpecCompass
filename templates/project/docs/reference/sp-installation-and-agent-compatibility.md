@@ -23,7 +23,7 @@ That means the normal entry point is still:
 Typical forms:
 
 ```bash
-uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecPilot.git
+uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecCompass.git
 specify init . --integration <agent>
 specify check
 ```
@@ -31,7 +31,7 @@ specify check
 Or one-shot:
 
 ```bash
-uvx --from git+https://github.com/flyfoxai/SpecPilot.git specify init . --integration <agent>
+uvx --from git+https://github.com/flyfoxai/SpecCompass.git specify init . --integration <agent>
 ```
 
 On non-empty directories, upstream-style `--force` behavior still matters:

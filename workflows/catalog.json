@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0",
   "updated_at": "2026-04-13T00:00:00Z",
-  "catalog_url": "https://raw.githubusercontent.com/flyfoxai/openSpecs/main/workflows/catalog.json",
+  "catalog_url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/workflows/catalog.json",
   "workflows": {
     "speckit": {
       "id": "speckit",
@@ -9,7 +9,7 @@
       "description": "Runs specify \u2192 plan \u2192 tasks \u2192 implement with review gates",
       "author": "GitHub",
       "version": "1.0.0",
-      "url": "https://raw.githubusercontent.com/flyfoxai/openSpecs/main/workflows/speckit/workflow.yml",
+      "url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/workflows/speckit/workflow.yml",
       "tags": ["sdd", "full-cycle"]
     }
   }

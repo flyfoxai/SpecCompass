@@ -177,7 +177,7 @@ Edit `presets/catalog.community.json` and add your preset.
 {
   "schema_version": "1.0",
   "updated_at": "2026-03-10T00:00:00Z",
-  "catalog_url": "https://raw.githubusercontent.com/flyfoxai/openSpecs/main/presets/catalog.community.json",
+  "catalog_url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/presets/catalog.community.json",
   "presets": {
     "your-preset": {
       "name": "Your Preset Name",

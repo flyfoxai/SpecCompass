@@ -1,4 +1,4 @@
-# `SpecPilot`
+# `SpecCompass`
 
 `sp` is a layered documentation workflow adapted from `Spec Kit`.
 The framework step names stay in `sp.*`; each agent only changes how those steps are triggered.

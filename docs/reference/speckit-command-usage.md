@@ -43,13 +43,13 @@ uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@vX
 SP 对应安装方式：
 
 ```bash
-uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecPilot.git@vX.Y.Z
+uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecCompass.git@vX.Y.Z
 ```
 
 如果要从本地源码调试 SP：
 
 ```bash
-uv tool install specify-cli --from /Users/hula/Projects/SpecPilot --force
+uv tool install specify-cli --from /Users/hula/Projects/SpecCompass --force
 ```
 
 验证命令：

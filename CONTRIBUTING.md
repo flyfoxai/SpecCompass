@@ -57,7 +57,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 
 ## Development workflow
 
-When working on SpecPilot:
+When working on SpecCompass:
 
 1. Test changes with the `specify` CLI commands (`/sp.specify`, `/sp.plan`, `/sp.tasks`) in your coding agent of choice
 2. Verify templates are working correctly in `templates/` directory

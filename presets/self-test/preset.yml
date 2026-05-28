@@ -6,7 +6,7 @@ preset:
   version: "1.0.0"
   description: "A preset that overrides all core templates for testing purposes"
   author: "github"
-  repository: "https://github.com/flyfoxai/openSpecs"
+  repository: "https://github.com/flyfoxai/SpecCompass"
   license: "MIT"
 
 requires:
