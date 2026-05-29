@@ -102,21 +102,19 @@ slash-command 宿主的用户可见命令是：
 
 - Claude、Gemini 等宿主应通过自己的命令目录显示 SP 命令。
 - Codex 至少应生成 `.agents/skills/sp-*/SKILL.md`，这是当前稳定入口。
-- Codex 下不要把 `/sp.*` 或 `/prompt::sp.*` 是否出现在 slash menu 作为安装成功标准。
+- Codex 下不要把 `/sp.*` 是否出现在 slash menu 作为安装成功标准。
 
 ### 4.1 Codex skills-first 边界
 
 OpenAI Codex 维护者已在公开 issue（包括 #15939、#22674、#14459、#13893）中说明：custom slash commands 和 custom prompts 已废弃，推荐迁移到 skills。因此 SP 对 Codex 的主路径必须是 skills-first。
 
-因此，SP 对 Codex 的判断必须分层：
+因此，SP 对 Codex 的判断必须收敛到 skills：
 
 - `.agents/skills/sp-*/SKILL.md` 生成成功：说明基础 Codex skills 路径存在。
-- `.codex/prompts/sp.*.md` 生成成功：说明 prompt 兼容文件存在。
-- `plugins/sp/.codex-plugin/plugin.json` 和 `.agents/plugins/marketplace.json` 存在：说明 plugin 兼容层文件存在。
-- `codex plugin list` 显示 `sp@... installed/enabled`：说明 plugin 管理层接受了注册。
-- slash menu 是否显示 `/sp.*` 或 `/prompt::sp.*`：不是当前 Codex 安装成功标准。
+- slash menu 是否显示 `/sp.*`：不是当前 Codex 安装成功标准。
+- 旧实验版生成的 `.codex/prompts/sp.*.md`、`plugins/sp/`、`.agents/plugins/marketplace.json` 不再作为有效安装产物。
 
-Codex 使用时应输入 `$` 或运行 `/skills`，选择 `sp-specify`、`sp-plan`、`sp-tasks`、`sp-analyze`、`sp-implement`、`sp-gate`、`sp-ui` 等 skill。prompt/plugin 文件可以继续保留为兼容产物，但不能把 slash menu 可见性写成成功承诺。
+Codex 使用时应输入 `$` 或运行 `/skills`，选择 `sp-specify`、`sp-plan`、`sp-tasks`、`sp-analyze`、`sp-implement`、`sp-gate`、`sp-ui` 等 skill。
 
 ## 5. Feature 路由
 

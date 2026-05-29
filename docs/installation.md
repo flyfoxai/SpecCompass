@@ -91,7 +91,7 @@ Codex uses skills as the stable entry point. In Codex, type `$` or run `/skills`
 - `$sp-plan` - Generate implementation plans
 - `$sp-tasks` - Break down into actionable tasks
 
-For Codex, do not use slash-menu visibility for `/sp.*` or `/prompt::sp.*` as the installation success criterion. Check that `.agents/skills/sp-*/SKILL.md` exists; prompt and plugin files are compatibility artifacts.
+For Codex, do not use slash-menu visibility for `/sp.*` as the installation success criterion. Check that `.agents/skills/sp-*/SKILL.md` exists; Codex uses skills as the stable entry point.
 
 The `.specify/scripts` directory will contain both `.sh` and `.ps1` scripts.
 

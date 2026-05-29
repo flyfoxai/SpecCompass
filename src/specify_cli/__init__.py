@@ -814,14 +814,14 @@ def _install_shared_infra(
                 + legacy_hyphen_example
                 + "` on skills "
                 + "hosts, which would pollute concept text with slash-call syntax.",
-                "User-facing invocation uses `/sp.<command>` where supported; Codex installs upstream-style skill packages and prompt/plugin entries that target `/prompt::sp.<command>`, but slash-menu visibility must be verified in the current Codex client. `sp-<command>` is an on-disk skill package name, not user instruction text.",
+                "User-facing invocation uses `/sp.<command>` on slash-command hosts. Codex uses skills as the stable entry point: type `$` or run `/skills`, then choose the matching `sp-<command>` skill. `sp-<command>` is an on-disk skill package name and Codex skill name, not slash-call syntax.",
             )
             updated = updated.replace(
                 "User-facing invocation remains `/sp.<command>` on all supported hosts. `"
                 + legacy_hyphen_example
                 + "` is only an internal skill "
                 + "directory/package name, not user instruction text.",
-                "User-facing invocation uses `/sp.<command>` where supported; Codex installs upstream-style skill packages and prompt/plugin entries that target `/prompt::sp.<command>`, but slash-menu visibility must be verified in the current Codex client. `sp-<command>` is an on-disk skill package name, not user instruction text.",
+                "User-facing invocation uses `/sp.<command>` on slash-command hosts. Codex uses skills as the stable entry point: type `$` or run `/skills`, then choose the matching `sp-<command>` skill. `sp-<command>` is an on-disk skill package name and Codex skill name, not slash-call syntax.",
             )
             if updated != content:
                 path.write_text(updated, encoding="utf-8")
@@ -1697,7 +1697,7 @@ def init(
 
     if codex_skill_mode and not ai_skills:
         # Integration path installed skills; show the helpful notice
-        steps_lines.append(f"{step_num}. Start Codex in this project directory; SP skills were installed to [cyan].agents/skills[/cyan], prompt/plugin entries target [cyan]/prompt::sp.*[/cyan], and real slash-menu visibility must be verified in Codex")
+        steps_lines.append(f"{step_num}. Start Codex in this project directory; SP skills were installed to [cyan].agents/skills[/cyan]. In Codex, type [cyan]$[/cyan] or run [cyan]/skills[/cyan], then choose the matching [cyan]sp-*[/cyan] skill")
         step_num += 1
     if claude_skill_mode and not ai_skills:
         steps_lines.append(f"{step_num}. Start Claude in this project directory; core SP slash commands were installed to [cyan].claude/commands[/cyan]")
@@ -1709,7 +1709,7 @@ def init(
 
     def _display_cmd(name: str) -> str:
         if codex_skill_mode:
-            return f"/prompt::{slash_command_name(name)}"
+            return f"${slash_command_name(name).replace('.', '-')}"
         return f"/{slash_command_name(name)}"
 
     steps_lines.append(f"{step_num}. Start using {usage_label} with your AI agent:")

@@ -74,7 +74,7 @@ class TestInitIntegrationFlag:
         shared_manifest = project / ".specify" / "integrations" / "speckit.manifest.json"
         assert shared_manifest.exists()
 
-    def test_integration_codex_here_smoke_uses_sp_dot_user_commands(self, tmp_path):
+    def test_integration_codex_here_smoke_uses_skills_only(self, tmp_path):
         from typer.testing import CliRunner
         from specify_cli import app
 
@@ -99,10 +99,13 @@ class TestInitIntegrationFlag:
 
         normalized_output = _normalize_cli_output(result.output)
         assert result.exit_code == 0, result.output
-        assert "/prompt::sp.specify" in normalized_output
-        assert "/prompt::sp.plan" in normalized_output
-        assert "/prompt::sp.analyze" in normalized_output
-        assert "slash-menu visibility" in normalized_output
+        assert "SP skills were installed to" in normalized_output
+        assert ".agents/skills" in normalized_output
+        assert "$sp-specify" in normalized_output
+        assert "$sp-plan" in normalized_output
+        assert "$sp-analyze" in normalized_output
+        assert "/prompt::sp" not in normalized_output
+        assert "slash-menu visibility" not in normalized_output
         assert "/sp-" not in normalized_output
 
         for command in ("specify", "plan", "analyze"):
@@ -110,8 +113,9 @@ class TestInitIntegrationFlag:
             assert skill_file.exists()
             assert "/sp-" not in skill_file.read_text(encoding="utf-8")
 
-        assert (project / "plugins" / "sp" / "commands" / "sp.analyze.md").exists()
-        assert (project / ".agents" / "plugins" / "marketplace.json").exists()
+        assert not (project / ".codex" / "prompts" / "sp.analyze.md").exists()
+        assert not (project / "plugins" / "sp" / "commands" / "sp.analyze.md").exists()
+        assert not (project / ".agents" / "plugins" / "marketplace.json").exists()
         assert (project / ".specify" / "memory" / "constitution.md").exists()
         assert (project / ".specify" / "templates" / "feature" / "memory" / "open-items.md").exists()
         assert (project / ".specify" / "templates" / "feature" / "memory" / "trace-index.md").exists()
@@ -365,9 +369,9 @@ class TestInitIntegrationFlag:
         assert (project / ".agents" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
         assert not (project / ".codex" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
         assert not (project / ".codex" / "commands" / "sp.plan.md").exists()
-        assert (project / ".codex" / "prompts" / "sp.plan.md").exists()
-        assert (project / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
-        assert (project / ".agents" / "plugins" / "marketplace.json").exists()
+        assert not (project / ".codex" / "prompts" / "sp.plan.md").exists()
+        assert not (project / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
+        assert not (project / ".agents" / "plugins" / "marketplace.json").exists()
 
         assert (project / "prd" / "sp-plan.md").read_text(encoding="utf-8") == "business content\n"
         assert (project / "specs" / "speckit.plan.md").read_text(encoding="utf-8") == "business content\n"
@@ -415,7 +419,7 @@ class TestInitIntegrationFlag:
         assert not (project / ".claude" / "commands" / "speckit.plan.md").exists()
 
     def test_normal_init_cleans_obsolete_codex_dirs_without_removing_agents_skills(self, tmp_path):
-        """Codex keeps skills, prompt companions, and plugin command entries."""
+        """Codex keeps skills and removes obsolete prompt/plugin command entries."""
         from typer.testing import CliRunner
         from specify_cli import app
 
@@ -455,9 +459,9 @@ class TestInitIntegrationFlag:
         assert not obsolete_codex_command.exists()
         assert valid_agent_skill.exists()
         assert "name: sp-plan" in valid_agent_skill.read_text(encoding="utf-8")
-        assert (project / ".codex" / "prompts" / "sp.plan.md").exists()
-        assert (project / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
-        assert (project / ".agents" / "plugins" / "marketplace.json").exists()
+        assert not (project / ".codex" / "prompts" / "sp.plan.md").exists()
+        assert not (project / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
+        assert not (project / ".agents" / "plugins" / "marketplace.json").exists()
 
     def test_shared_infra_preserves_existing_files_without_force(self, tmp_path):
         """A normal install still preserves pre-existing shared files."""

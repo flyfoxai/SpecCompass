@@ -70,11 +70,11 @@ For Codex, use skills instead:
 
 The installed files are host-specific:
 
-- Codex installs executable core SP skills as `.agents/skills/sp-<name>/SKILL.md`, for example `.agents/skills/sp-specify/SKILL.md`. Current Codex versions use skills as the stable entry point: type `$` or run `/skills`, then choose `sp-<name>`. Prompt companions in `.codex/prompts/sp.<name>.md` and the project-local plugin surface with `.agents/plugins/marketplace.json` plus `plugins/sp/` are compatibility artifacts, not the install success criterion.
+- Codex installs executable core SP skills as `.agents/skills/sp-<name>/SKILL.md`, for example `.agents/skills/sp-specify/SKILL.md`. Current Codex versions use skills as the stable entry point: type `$` or run `/skills`, then choose `sp-<name>`.
 - Claude uses project slash-command files: core SP commands are installed as `.claude/commands/sp.<name>.md`, for example `.claude/commands/sp.specify.md`, and should surface as `/sp.<name>`.
 - Gemini and other markdown/TOML/YAML command hosts use their integration-specific command file formats, but the user-facing core command name remains `/sp.<name>` where the host supports slash commands.
 
-Treat `.codex/commands`, `.codex/skills`, legacy `.codex/prompts/sp-*.md`, legacy `.codex/prompts/speckit*.md`, legacy `.agents/plugins/plugins/sp/`, and Claude core skill directories such as `.claude/skills/sp-*`, `.claude/skills/sp.*`, `.claude/skills/speckit-*`, or `.claude/skills/speckit.*` as stale installation residue. Keep `.codex/prompts/sp.*.md`, `.agents/plugins/marketplace.json`, and `plugins/sp/`; those files are the current Codex compatibility layer.
+Treat `.codex/commands`, `.codex/skills`, `.codex/prompts/sp*.md`, `.codex/prompts/speckit*.md`, `plugins/sp/`, `.agents/plugins/marketplace.json`, legacy `.agents/plugins/plugins/sp/`, and Claude core skill directories such as `.claude/skills/sp-*`, `.claude/skills/sp.*`, `.claude/skills/speckit-*`, or `.claude/skills/speckit.*` as stale installation residue.
 
 ## 5. Project-Local Integration Files
 

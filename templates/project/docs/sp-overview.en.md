@@ -32,7 +32,7 @@ The current phase covers documentation only. The workflow ends at `sp.analyze` a
 
 - User-facing commands use the unified `sp.*` namespace on slash-command hosts. Claude-style hosts expose direct `/sp.*` commands.
 - Codex uses skills as the stable entry point: type `$` or run `/skills`, then choose `sp-specify`, `sp-plan`, `sp-tasks`, `sp-analyze`, `sp-implement`, `sp-gate`, or `sp-ui`.
-- Skills hosts keep upstream-style on-disk skill packages such as `sp-specify/SKILL.md`; in Codex, choose them through the skills UI rather than expecting `/prompt::sp.*` slash commands.
+- Skills hosts keep upstream-style on-disk skill packages such as `sp-specify/SKILL.md`; in Codex, choose them through the skills UI rather than expecting `/sp.*` slash commands.
 - The active installer writes host integration files into the target project, not into archived global prompt directories
 
 ## Read Next

@@ -62,5 +62,5 @@
 ## Codex 补充说明
 
 - 用户可见命令统一使用 `/sp.*`，例如 `/sp.specify`
-- Codex 保持原版风格，把核心 skill 包安装到 `.agents/skills/sp-*/SKILL.md`；输入 `$` 或运行 `/skills`，选择对应 `sp-*` skill。prompt/plugin 文件只是兼容产物，不作为安装成功标准。
+- Codex 保持原版风格，把核心 skill 包安装到 `.agents/skills/sp-*/SKILL.md`；输入 `$` 或运行 `/skills`，选择对应 `sp-*` skill。已废弃的 prompt/plugin 命令面不属于当前 Codex 路径。
 - Claude 通过 `.claude/commands/sp.*.md` 直接暴露项目斜杠命令

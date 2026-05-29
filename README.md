@@ -45,7 +45,7 @@ The methodology is documented in [SP Project Methodology](./docs/reference/sp-pr
 
 - Upstream-style `specify init`, templates, scripts, and agent integrations.
 - User-facing core commands use the `sp.*` namespace, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
-- Codex uses skills as the stable entry point. It installs executable skills in `.agents/skills/sp-*/SKILL.md`; prompt companions and plugin files are kept as compatibility artifacts, not as the success criterion.
+- Codex uses skills as the stable entry point. It installs executable skills in `.agents/skills/sp-*/SKILL.md` and does not rely on deprecated custom slash commands or prompt/plugin command surfaces.
 - Claude and markdown-style hosts expose direct slash commands such as `/sp.analyze` through their normal command directories.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
@@ -99,7 +99,7 @@ If the current environment does not have the target agent CLI installed, or you 
 specify init . --integration codex --ignore-agent-tools
 ```
 
-For Codex, do not use slash-menu visibility for `/sp.*` or `/prompt::sp.*` as the install success criterion. Current Codex versions use skills as the stable entry point.
+For Codex, do not use slash-menu visibility for `/sp.*` as the install success criterion. Current Codex versions use skills as the stable entry point.
 
 In Codex, type `$` or run `/skills`, then choose:
 
@@ -119,13 +119,11 @@ Installation acceptance checks:
 specify version
 specify check
 test -d .agents/skills
-test -d .codex/prompts
-test -f .agents/plugins/marketplace.json
-test -f plugins/sp/.codex-plugin/plugin.json
-codex plugin list
+test -f .agents/skills/sp-plan/SKILL.md
+test -f .agents/skills/sp-analyze/SKILL.md
 ```
 
-`specify init . --integration codex` still attempts to register the project-local SP plugin automatically. If you used `--ignore-agent-tools` or registration failed, read `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md` and run the two commands shown there. Plugin registration confirms the compatibility layer is installed; normal Codex use should still go through skills.
+If an older project already contains `.codex/prompts/sp.*`, `plugins/sp/`, or `.agents/plugins/marketplace.json` from an experimental SP install, rerun `specify init . --integration codex` to refresh the integration. Current Codex support keeps the skills and removes those obsolete command surfaces.
 
 ## Core Commands
 

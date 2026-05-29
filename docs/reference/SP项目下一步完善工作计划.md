@@ -9,8 +9,8 @@
 ## 固化规则
 
 - 支持 slash 命令的宿主，用户可见命令统一写 `/sp.*`，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。
-- Codex 的稳定用户入口是 skills：输入 `$` 或运行 `/skills`，选择 `sp-*` skill。不要把 `/sp.*` 或 `/prompt::sp.*` 是否出现在 Codex slash menu 里作为安装成功标准。
-- Codex project-local plugin 的规范产物是 `.agents/plugins/marketplace.json` 与项目根目录下的 `plugins/sp/`，注册时应执行 `codex plugin marketplace add <project-root>`。不能把插件实体嵌套到 `.agents/plugins/plugins/sp/`，也不能生成 `.agents/plugins/.agents/plugins/marketplace.json` 这种嵌套 marketplace。
+- Codex 的稳定用户入口是 skills：输入 `$` 或运行 `/skills`，选择 `sp-*` skill。不要把 `/sp.*` 是否出现在 Codex slash menu 里作为安装成功标准。
+- Codex project-local prompt/plugin 命令面已废弃，不再作为当前目标产物。旧实验版留下的 `.codex/prompts/sp.*`、`plugins/sp/` 和 `.agents/plugins/marketplace.json` 应在安装时清理，避免误导用户和模型。
 - 主坐标用于稳定定位，例如 `FEAT01.WS02.ACC01`。坐标发布后不因为排序、插入、删除而重排。
 - 副标签用于关联，例如 `API-APPROVE`、`ACC-DECISION-SUCCESS`。副标签服务搜索，不替代主坐标。
 - 状态位只做搜索入口。`@t0` 表示需要验证或待确认；`@r0` 表示存在未关闭风险或 blocker。旧的 `@r1` 不再使用。
@@ -173,24 +173,22 @@ SP 已吸收的部分：
 
 ### Codex skills-first 入口
 
-当前代码应生成 `.agents/skills/sp-*/SKILL.md`、`.codex/prompts/sp.*.md`、`.agents/plugins/marketplace.json` 和 `plugins/sp/` plugin 文件。这里是安装机制层面的目标产物。
+当前代码应生成 `.agents/skills/sp-*/SKILL.md`。这里是 Codex 安装机制层面的目标产物。
 
 根据当前 Codex 维护者在 openai/codex issue 中的公开说明，custom slash commands 和 custom prompts 已经废弃，推荐迁移到 skills。因此 SP 对 Codex 的主路径应回到 skills-first：用户输入 `$` 或运行 `/skills`，再选择 `sp-specify`、`sp-plan`、`sp-tasks`、`sp-analyze`、`sp-implement`、`sp-gate`、`sp-ui` 等 skill。
 
-`.codex/prompts/sp.*.md` 和 `plugins/sp/commands/sp.*.md` 可以继续生成，用于兼容、诊断或未来 Codex plugin 机制变化，但不能再作为主要调用路径宣传。
+`.codex/prompts/sp.*.md` 和 `plugins/sp/commands/sp.*.md` 不再生成。未来如果 Codex 官方重新提供稳定 prompt/plugin 接口，应作为新功能重新设计和实测，而不是保留当前误导性兼容层。
 
 处理原则：
 
 - 文档必须把 Codex 主入口写成 `$sp-*` skills。
-- 安装验收不能要求 slash menu 显示 `/sp.*` 或 `/prompt::sp.*`。
-- `codex plugin list` 只能证明 plugin 兼容层已注册，不能证明 slash menu 会显示命令。
+- 安装验收不能要求 slash menu 显示 `/sp.*`。
 
 当前代码验收边界：
 
 - `.agents/skills/sp-*/SKILL.md` 必须完整生成。
-- `.codex/prompts/sp.*.md`、`.agents/plugins/marketplace.json`、`plugins/sp/.codex-plugin/plugin.json` 作为兼容产物应完整生成。
-- `codex plugin list` 可作为兼容层注册检查。
-- slash menu 不显示 `/sp.*` 或 `/prompt::sp.*` 不应被判定为安装失败。
+- `.codex/prompts/sp.*.md`、`.agents/plugins/marketplace.json`、`plugins/sp/.codex-plugin/plugin.json` 不应生成；如旧项目已有，应被清理。
+- slash menu 不显示 `/sp.*` 不应被判定为安装失败。
 
 ### 真实业务项目反馈
 

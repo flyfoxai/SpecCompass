@@ -45,7 +45,7 @@ SP 把 AI 开发看成一个工程控制闭环，而不是一次性 prompt。目
 
 - 仍然使用 upstream 风格的 `specify init`、模板、脚本和 agent integration。
 - 用户可见命令统一使用 `sp.*` 命名空间，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。
-- Codex 的稳定入口是 skills：可执行 skill 包安装在 `.agents/skills/sp-*/SKILL.md`；prompt 伴随文件和 plugin 文件保留为兼容产物，不作为安装成功标准。
+- Codex 的稳定入口是 skills：可执行 skill 包安装在 `.agents/skills/sp-*/SKILL.md`，不再依赖已经废弃的 custom slash commands 或 prompt/plugin 命令面。
 - Claude 和 markdown 命令类宿主通过自己的命令目录直接显示 `/sp.analyze` 这类命令。
 - 新增 flow、ui、delivery、memory、trace、open-items 等分层文档，帮助模型按最小上下文工作。
 - 增加稳定编码和锚点规则，用来标记 feature、workset、UI、API、风险、测试和 trace 关系，方便模型快速搜索和定位关联内容。
@@ -100,7 +100,7 @@ specify init . --integration codex
 specify init . --integration codex --ignore-agent-tools
 ```
 
-对 Codex 来说，不要再用斜杠菜单里是否出现 `/sp.*` 或 `/prompt::sp.*` 作为安装成功标准。当前 Codex 的稳定入口是 skills。
+对 Codex 来说，不要再用斜杠菜单里是否出现 `/sp.*` 作为安装成功标准。当前 Codex 的稳定入口是 skills。
 
 在 Codex 里输入 `$`，或者运行 `/skills`，然后选择：
 
@@ -120,13 +120,11 @@ $sp-ui
 specify version
 specify check
 test -d .agents/skills
-test -d .codex/prompts
-test -f .agents/plugins/marketplace.json
-test -f plugins/sp/.codex-plugin/plugin.json
-codex plugin list
+test -f .agents/skills/sp-plan/SKILL.md
+test -f .agents/skills/sp-analyze/SKILL.md
 ```
 
-`specify init . --integration codex` 仍会尝试自动注册项目本地 SP plugin。如果你用了 `--ignore-agent-tools`，或者自动注册失败，就打开 `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md`，按里面的两条命令手动注册。plugin 注册只说明兼容层安装成功；Codex 日常使用仍应走 skills。
+如果旧项目里已经有早期实验版生成的 `.codex/prompts/sp.*`、`plugins/sp/` 或 `.agents/plugins/marketplace.json`，重新运行 `specify init . --integration codex` 即可刷新集成。当前 Codex 支持会保留 skills，并清理这些过时命令面。
 
 ## 常用命令
 

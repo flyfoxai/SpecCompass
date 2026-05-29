@@ -425,7 +425,7 @@ Once you've run `specify init`, the SP commands or skills are **permanently inst
 
 3. **Check you're in the correct directory** where you ran `specify init`
 
-4. **For Codex**, do not use `/sp.*` or `/prompt::sp.*` slash-menu visibility as the success check. Type `$` or run `/skills` and select the matching `sp-*` skill.
+4. **For Codex**, do not use `/sp.*` slash-menu visibility as the success check. Type `$` or run `/skills` and select the matching `sp-*` skill.
 
 5. **For some agents**, you may need to reload the workspace or clear cache
 

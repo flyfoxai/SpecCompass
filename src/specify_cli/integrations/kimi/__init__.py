@@ -54,7 +54,7 @@ class KimiIntegration(SkillsIntegration):
                 "--migrate-legacy",
                 is_flag=True,
                 default=False,
-                help="Migrate legacy dotted skill dirs (core speckit.xxx → sp.xxx; extensions speckit.xxx → speckit-xxx)",
+                help="Migrate legacy dotted skill dirs (core speckit.xxx → sp-xxx; extensions speckit.xxx → speckit-xxx)",
             ),
         ]
 
