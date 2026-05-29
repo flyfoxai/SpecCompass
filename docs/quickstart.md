@@ -31,15 +31,21 @@ uvx --from git+https://github.com/flyfoxai/SpecCompass.git specify init <PROJECT
 
 ### Step 2: Define Your Constitution
 
-**In your AI Agent's chat interface**, use the `/sp.constitution` slash command to establish the core rules and principles for your project. You should provide your project's specific principles as arguments.
+**In your AI Agent's chat interface**, use the SP command for your host to establish the core rules and principles for your project. Slash-command hosts use `/sp.constitution`; Codex uses the `sp-constitution` skill by typing `$` or running `/skills` and selecting it. You should provide your project's specific principles as arguments.
 
 ```markdown
 /sp.constitution This project follows a "Library-First" approach. All features must be implemented as standalone libraries first. We use TDD strictly. We prefer functional programming patterns.
 ```
 
+For Codex, use the matching skill form:
+
+```markdown
+$sp-constitution This project follows a "Library-First" approach. All features must be implemented as standalone libraries first. We use TDD strictly. We prefer functional programming patterns.
+```
+
 ### Step 3: Create the Spec
 
-**In the chat**, use the `/sp.specify` slash command to describe what you want to build. Focus on the **what** and **why**, not the tech stack.
+**In the chat**, use `/sp.specify` on slash-command hosts, or `$sp-specify` in Codex, to describe what you want to build. Focus on the **what** and **why**, not the tech stack.
 
 ```markdown
 /sp.specify Build an application that can help me organize my photos in separate photo albums. Albums are grouped by date and can be re-organized by dragging and dropping on the main page. Albums are never in other nested albums. Within each album, photos are previewed in a tile-like interface.
@@ -47,7 +53,7 @@ uvx --from git+https://github.com/flyfoxai/SpecCompass.git specify init <PROJECT
 
 ### Step 4: Refine the Spec
 
-**In the chat**, use the `/sp.clarify` slash command to identify and resolve ambiguities in your specification. You can provide specific focus areas as arguments.
+**In the chat**, use `/sp.clarify` on slash-command hosts, or `$sp-clarify` in Codex, to identify and resolve ambiguities in your specification. You can provide specific focus areas as arguments.
 
 ```bash
 /sp.clarify Focus on security and performance requirements.
@@ -55,7 +61,7 @@ uvx --from git+https://github.com/flyfoxai/SpecCompass.git specify init <PROJECT
 
 ### Step 5: Create a Technical Implementation Plan
 
-**In the chat**, use the `/sp.plan` slash command to provide your tech stack and architecture choices.
+**In the chat**, use `/sp.plan` on slash-command hosts, or `$sp-plan` in Codex, to provide your tech stack and architecture choices.
 
 ```markdown
 /sp.plan The application uses Vite with minimal number of libraries. Use vanilla HTML, CSS, and JavaScript as much as possible. Images are not uploaded anywhere and metadata is stored in a local SQLite database.
@@ -63,19 +69,19 @@ uvx --from git+https://github.com/flyfoxai/SpecCompass.git specify init <PROJECT
 
 ### Step 6: Break Down and Implement
 
-**In the chat**, use the `/sp.tasks` slash command to create an actionable task list.
+**In the chat**, use `/sp.tasks` on slash-command hosts, or `$sp-tasks` in Codex, to create an actionable task list.
 
 ```markdown
 /sp.tasks
 ```
 
-Optionally, validate the plan with `/sp.analyze`:
+Optionally, validate the plan with `/sp.analyze`, or `$sp-analyze` in Codex:
 
 ```markdown
 /sp.analyze
 ```
 
-Then, use the `/sp.implement` slash command to execute the plan.
+Then, use `/sp.implement`, or `$sp-implement` in Codex, to execute the plan.
 
 ```markdown
 /sp.implement

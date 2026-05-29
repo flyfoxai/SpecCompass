@@ -45,7 +45,7 @@ SP 把 AI 开发看成一个工程控制闭环，而不是一次性 prompt。目
 
 - 仍然使用 upstream 风格的 `specify init`、模板、脚本和 agent integration。
 - 用户可见命令统一使用 `sp.*` 命名空间，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。
-- Codex 会同时安装三类入口：可执行 skill 包在 `.agents/skills/sp-*/SKILL.md`，prompt 伴随文件在 `.codex/prompts/sp.*.md`，项目本地 plugin 入口由 `.agents/plugins/marketplace.json` 和 `plugins/sp/` 组成；`/prompt::sp.*` 是否出现在斜杠菜单里，取决于当前 Codex 客户端，需要真实打开菜单验证。
+- Codex 的稳定入口是 skills：可执行 skill 包安装在 `.agents/skills/sp-*/SKILL.md`；prompt 伴随文件和 plugin 文件保留为兼容产物，不作为安装成功标准。
 - Claude 和 markdown 命令类宿主通过自己的命令目录直接显示 `/sp.analyze` 这类命令。
 - 新增 flow、ui、delivery、memory、trace、open-items 等分层文档，帮助模型按最小上下文工作。
 - 增加稳定编码和锚点规则，用来标记 feature、workset、UI、API、风险、测试和 trace 关系，方便模型快速搜索和定位关联内容。
@@ -100,28 +100,54 @@ specify init . --integration codex
 specify init . --integration codex --ignore-agent-tools
 ```
 
-对 Codex 来说，`specify init . --integration codex` 会尝试自动注册项目本地 SP plugin。如果你用了 `--ignore-agent-tools`，或者自动注册失败，就打开 `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md`，按里面的两条命令手动注册。这里的 marketplace root 是项目根目录，`.agents/plugins/marketplace.json` 会指向 `plugins/sp/`。注册后需要重启或刷新 Codex，并在真实斜杠菜单里确认是否出现 `/prompt::sp.*`。
+对 Codex 来说，不要再用斜杠菜单里是否出现 `/sp.*` 或 `/prompt::sp.*` 作为安装成功标准。当前 Codex 的稳定入口是 skills。
+
+在 Codex 里输入 `$`，或者运行 `/skills`，然后选择：
+
+```text
+$sp-specify
+$sp-plan
+$sp-tasks
+$sp-analyze
+$sp-implement
+$sp-gate
+$sp-ui
+```
+
+安装验收建议检查：
+
+```bash
+specify version
+specify check
+test -d .agents/skills
+test -d .codex/prompts
+test -f .agents/plugins/marketplace.json
+test -f plugins/sp/.codex-plugin/plugin.json
+codex plugin list
+```
+
+`specify init . --integration codex` 仍会尝试自动注册项目本地 SP plugin。如果你用了 `--ignore-agent-tools`，或者自动注册失败，就打开 `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md`，按里面的两条命令手动注册。plugin 注册只说明兼容层安装成功；Codex 日常使用仍应走 skills。
 
 ## 常用命令
 
 | 命令 | 作用 |
 | --- | --- |
-| `/sp.constitution` | 建立或更新项目原则、工程约束和治理规则 |
-| `/sp.specify` | 创建 feature 规格，说明要做什么、为什么做 |
-| `/sp.clarify` | 对不清楚的需求做结构化澄清 |
-| `/sp.plan` | 生成技术方案、架构选择和实施计划 |
-| `/sp.flow` | 生成或刷新业务流程、状态流、时序流 |
-| `/sp.ui` | 生成或刷新界面、页面映射、表单和交互说明 |
-| `/sp.tasks` | 把方案拆成可执行任务 |
-| `/sp.analyze` | 检查 spec、plan、tasks、flow、ui、delivery、memory 是否一致和完整 |
-| `/sp.gate` | 判断当前文档状态是否可以继续进入下一阶段 |
-| `/sp.implement` | 按任务执行实现，并要求验证和必要的 memory 回写 |
-| `/sp.bundle` | 打包当前 feature 的交付文档 |
-| `/sp.checklist` | 生成质量检查清单 |
+| `/sp.constitution`，Codex 中用 `$sp-constitution` | 建立或更新项目原则、工程约束和治理规则 |
+| `/sp.specify`，Codex 中用 `$sp-specify` | 创建 feature 规格，说明要做什么、为什么做 |
+| `/sp.clarify`，Codex 中用 `$sp-clarify` | 对不清楚的需求做结构化澄清 |
+| `/sp.plan`，Codex 中用 `$sp-plan` | 生成技术方案、架构选择和实施计划 |
+| `/sp.flow`，Codex 中用 `$sp-flow` | 生成或刷新业务流程、状态流、时序流 |
+| `/sp.ui`，Codex 中用 `$sp-ui` | 生成或刷新界面、页面映射、表单和交互说明 |
+| `/sp.tasks`，Codex 中用 `$sp-tasks` | 把方案拆成可执行任务 |
+| `/sp.analyze`，Codex 中用 `$sp-analyze` | 检查 spec、plan、tasks、flow、ui、delivery、memory 是否一致和完整 |
+| `/sp.gate`，Codex 中用 `$sp-gate` | 判断当前文档状态是否可以继续进入下一阶段 |
+| `/sp.implement`，Codex 中用 `$sp-implement` | 按任务执行实现，并要求验证和必要的 memory 回写 |
+| `/sp.bundle`，Codex 中用 `$sp-bundle` | 打包当前 feature 的交付文档 |
+| `/sp.checklist`，Codex 中用 `$sp-checklist` | 生成质量检查清单 |
 
 ## 和原版的关系
 
-SP 来源于 [github/spec-kit](https://github.com/github/spec-kit)，并尽量保留原版稳定的安装和工作流风格。对用户来说，这个仓库就是安装目标：安装 SP，初始化项目，然后直接使用 `/sp.*` 命令即可。
+SP 来源于 [github/spec-kit](https://github.com/github/spec-kit)，并尽量保留原版稳定的安装和工作流风格。对用户来说，这个仓库就是安装目标：安装 SP，初始化项目，然后按宿主入口使用 SP：支持 slash 命令的宿主用 `/sp.*`，Codex 用 `$sp-*` skills。
 
 ## 许可证
 

@@ -51,23 +51,30 @@ The command templates keep `scripts:` frontmatter for both variants so the host 
 
 ## 4. User-Facing Trigger Form
 
-The user-facing workflow is always the same `sp` step set.
+The user-facing workflow is always the same `sp` step set, but the trigger
+form is host-specific.
 
-Use the canonical `/sp.*` form in user instructions and model-facing next steps:
+Use the canonical `/sp.*` form on hosts that support project slash commands:
 
 - `/sp.specify`
 - `/sp.plan`
 - `/sp.analyze`
 
+For Codex, use skills instead:
+
+- `$sp-specify`
+- `$sp-plan`
+- `$sp-analyze`
+
 ### 4.1 Host-Specific Command Surfaces
 
 The installed files are host-specific:
 
-- Codex installs executable core SP skills as `.agents/skills/sp-<name>/SKILL.md`, for example `.agents/skills/sp-specify/SKILL.md`, installs prompt companions as `.codex/prompts/sp.<name>.md`, and installs a project-local plugin surface with `.agents/plugins/marketplace.json` plus `plugins/sp/`. These files target `/prompt::sp.<name>`, for example `/prompt::sp.specify`, but actual slash-menu visibility depends on the current Codex client and must be verified in the real UI.
+- Codex installs executable core SP skills as `.agents/skills/sp-<name>/SKILL.md`, for example `.agents/skills/sp-specify/SKILL.md`. Current Codex versions use skills as the stable entry point: type `$` or run `/skills`, then choose `sp-<name>`. Prompt companions in `.codex/prompts/sp.<name>.md` and the project-local plugin surface with `.agents/plugins/marketplace.json` plus `plugins/sp/` are compatibility artifacts, not the install success criterion.
 - Claude uses project slash-command files: core SP commands are installed as `.claude/commands/sp.<name>.md`, for example `.claude/commands/sp.specify.md`, and should surface as `/sp.<name>`.
 - Gemini and other markdown/TOML/YAML command hosts use their integration-specific command file formats, but the user-facing core command name remains `/sp.<name>` where the host supports slash commands.
 
-Treat `.codex/commands`, `.codex/skills`, legacy `.codex/prompts/sp-*.md`, legacy `.codex/prompts/speckit*.md`, legacy `.agents/plugins/plugins/sp/`, and Claude core skill directories such as `.claude/skills/sp-*`, `.claude/skills/sp.*`, `.claude/skills/speckit-*`, or `.claude/skills/speckit.*` as stale installation residue. Keep `.codex/prompts/sp.*.md`, `.agents/plugins/marketplace.json`, and `plugins/sp/`; those files are part of the current Codex prompt/plugin surface.
+Treat `.codex/commands`, `.codex/skills`, legacy `.codex/prompts/sp-*.md`, legacy `.codex/prompts/speckit*.md`, legacy `.agents/plugins/plugins/sp/`, and Claude core skill directories such as `.claude/skills/sp-*`, `.claude/skills/sp.*`, `.claude/skills/speckit-*`, or `.claude/skills/speckit.*` as stale installation residue. Keep `.codex/prompts/sp.*.md`, `.agents/plugins/marketplace.json`, and `plugins/sp/`; those files are the current Codex compatibility layer.
 
 ## 5. Project-Local Integration Files
 
@@ -122,7 +129,7 @@ At minimum, the installed project should be able to do the following:
 
 - open the project in the chosen host
 - discover the installed `sp` commands or skills
-- run `/sp.specify`, `/sp.plan`, `/sp.analyze`, and the rest of the active path
+- run `/sp.specify`, `/sp.plan`, `/sp.analyze`, and the rest of the active path on slash-command hosts, or the matching `$sp-*` skills on Codex
 - resolve the platform script hooks from the project root
 - keep `.specify/`, `templates/`, `scripts/`, and `specs/` in a coherent state
 
@@ -146,7 +153,7 @@ After installation, the practical checks are:
 1. run `specify check`
 2. confirm the target project contains the expected `.specify/`, `templates/`, and integration outputs
 3. open the chosen host in the target project
-4. trigger a real `sp` command such as `sp.specify` or `sp.analyze`
+4. trigger a real `sp` command such as `/sp.specify` or `/sp.analyze`, or `$sp-specify` / `$sp-analyze` in Codex
 5. confirm the command resolves routing and scripts from the project root
 
 This is the level that proves the mechanism is actually usable, not just structurally similar.

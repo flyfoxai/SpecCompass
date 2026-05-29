@@ -30,8 +30,9 @@ The current phase covers documentation only. The workflow ends at `sp.analyze` a
 
 ## Trigger Forms
 
-- User-facing commands use the unified `sp.*` namespace. Claude-style hosts expose direct `/sp.*` commands; Codex generates prompt/plugin entries that target `/prompt::sp.specify`, but real slash-menu visibility depends on the current Codex client
-- Skills hosts keep upstream-style on-disk skill packages such as `sp-specify/SKILL.md`; do not type `sp-specify` as the command
+- User-facing commands use the unified `sp.*` namespace on slash-command hosts. Claude-style hosts expose direct `/sp.*` commands.
+- Codex uses skills as the stable entry point: type `$` or run `/skills`, then choose `sp-specify`, `sp-plan`, `sp-tasks`, `sp-analyze`, `sp-implement`, `sp-gate`, or `sp-ui`.
+- Skills hosts keep upstream-style on-disk skill packages such as `sp-specify/SKILL.md`; in Codex, choose them through the skills UI rather than expecting `/prompt::sp.*` slash commands.
 - The active installer writes host integration files into the target project, not into archived global prompt directories
 
 ## Read Next

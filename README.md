@@ -45,7 +45,7 @@ The methodology is documented in [SP Project Methodology](./docs/reference/sp-pr
 
 - Upstream-style `specify init`, templates, scripts, and agent integrations.
 - User-facing core commands use the `sp.*` namespace, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
-- Codex installs executable skills in `.agents/skills/sp-*/SKILL.md`, prompt companions in `.codex/prompts/sp.*.md`, and a project-local plugin surface with `.agents/plugins/marketplace.json` plus `plugins/sp/`; `/prompt::sp.*` visibility depends on the current Codex client and must be verified in the real slash menu.
+- Codex uses skills as the stable entry point. It installs executable skills in `.agents/skills/sp-*/SKILL.md`; prompt companions and plugin files are kept as compatibility artifacts, not as the success criterion.
 - Claude and markdown-style hosts expose direct slash commands such as `/sp.analyze` through their normal command directories.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
@@ -99,28 +99,54 @@ If the current environment does not have the target agent CLI installed, or you 
 specify init . --integration codex --ignore-agent-tools
 ```
 
-For Codex, `specify init . --integration codex` attempts to register the project-local SP plugin automatically. If you used `--ignore-agent-tools` or registration failed, read `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md` and run the two commands shown there. The marketplace root is the project root; `.agents/plugins/marketplace.json` points to `plugins/sp/`. After registration, restart or refresh Codex and verify whether your client exposes `/prompt::sp.*` in the slash menu.
+For Codex, do not use slash-menu visibility for `/sp.*` or `/prompt::sp.*` as the install success criterion. Current Codex versions use skills as the stable entry point.
+
+In Codex, type `$` or run `/skills`, then choose:
+
+```text
+$sp-specify
+$sp-plan
+$sp-tasks
+$sp-analyze
+$sp-implement
+$sp-gate
+$sp-ui
+```
+
+Installation acceptance checks:
+
+```bash
+specify version
+specify check
+test -d .agents/skills
+test -d .codex/prompts
+test -f .agents/plugins/marketplace.json
+test -f plugins/sp/.codex-plugin/plugin.json
+codex plugin list
+```
+
+`specify init . --integration codex` still attempts to register the project-local SP plugin automatically. If you used `--ignore-agent-tools` or registration failed, read `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md` and run the two commands shown there. Plugin registration confirms the compatibility layer is installed; normal Codex use should still go through skills.
 
 ## Core Commands
 
 | Command | Purpose |
 | --- | --- |
-| `/sp.constitution` | Create or update project principles, engineering constraints, and governance rules |
-| `/sp.specify` | Create a feature specification: what to build and why |
-| `/sp.clarify` | Clarify unclear requirements and record decisions |
-| `/sp.plan` | Create the technical plan, architecture choices, and implementation route |
-| `/sp.flow` | Create or refresh business flows, state flows, and sequence flows |
-| `/sp.ui` | Create or refresh screens, screen maps, forms, and interaction notes |
-| `/sp.tasks` | Break the plan into executable tasks |
-| `/sp.analyze` | Check consistency and completeness across specs, plans, tasks, flow, UI, delivery, and memory |
-| `/sp.gate` | Decide whether the current state can safely move to the next phase |
-| `/sp.implement` | Execute tasks with verification and necessary memory updates |
-| `/sp.bundle` | Package the current feature documents for review or delivery |
-| `/sp.checklist` | Generate quality checklists for the current feature |
+| `/sp.constitution` or `$sp-constitution` in Codex | Create or update project principles, engineering constraints, and governance rules |
+| `/sp.specify` or `$sp-specify` in Codex | Create a feature specification: what to build and why |
+| `/sp.clarify` or `$sp-clarify` in Codex | Clarify unclear requirements and record decisions |
+| `/sp.plan` or `$sp-plan` in Codex | Create the technical plan, architecture choices, and implementation route |
+| `/sp.flow` or `$sp-flow` in Codex | Create or refresh business flows, state flows, and sequence flows |
+| `/sp.ui` or `$sp-ui` in Codex | Create or refresh screens, screen maps, forms, and interaction notes |
+| `/sp.tasks` or `$sp-tasks` in Codex | Break the plan into executable tasks |
+| `/sp.analyze` or `$sp-analyze` in Codex | Check consistency and completeness across specs, plans, tasks, flow, UI, delivery, and memory |
+| `/sp.gate` or `$sp-gate` in Codex | Decide whether the current state can safely move to the next phase |
+| `/sp.implement` or `$sp-implement` in Codex | Execute tasks with verification and necessary memory updates |
+| `/sp.bundle` or `$sp-bundle` in Codex | Package the current feature documents for review or delivery |
+| `/sp.checklist` or `$sp-checklist` in Codex | Generate quality checklists for the current feature |
 
 ## Relationship With Upstream
 
-SP comes from [github/spec-kit](https://github.com/github/spec-kit) and keeps its proven installation and workflow style where practical. For users, this repository is the install target: install SP, initialize a project, and run `/sp.*` commands directly.
+SP comes from [github/spec-kit](https://github.com/github/spec-kit) and keeps its proven installation and workflow style where practical. For users, this repository is the install target: install SP, initialize a project, then use the host-appropriate SP entry point: `/sp.*` on slash-command hosts and `$sp-*` skills on Codex.
 
 ## License
 

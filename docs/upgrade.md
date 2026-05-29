@@ -1,6 +1,6 @@
 # Upgrade Guide
 
-> You have SpecCompass installed and want to upgrade to the latest version to get new features, bug fixes, or updated slash commands. This guide covers both upgrading the CLI tool and updating your project files.
+> You have SpecCompass installed and want to upgrade to the latest version to get new features, bug fixes, or updated agent commands and skills. This guide covers both upgrading the CLI tool and updating your project files.
 
 ---
 
@@ -9,7 +9,7 @@
 | What to Upgrade | Command | When to Use |
 |----------------|---------|-------------|
 | **CLI Tool Only** | `uv tool install specify-cli --force --from git+https://github.com/flyfoxai/SpecCompass.git@vX.Y.Z` | Get latest CLI features without touching project files |
-| **Project Files** | `specify init --here --force --integration <your-agent>` | Update slash commands, templates, and scripts in your project |
+| **Project Files** | `specify init --here --force --integration <your-agent>` | Update agent commands or skills, templates, and scripts in your project |
 | **Both** | Run CLI upgrade, then project update | Recommended for major version updates |
 
 ---
@@ -46,13 +46,13 @@ This shows installed tools and confirms the CLI is working.
 
 ## Part 2: Updating Project Files
 
-When SpecCompass releases new features (like new slash commands or updated templates), you need to refresh your project's SpecCompass files.
+When SpecCompass releases new features (like new agent commands, skills, or updated templates), you need to refresh your project's SpecCompass files.
 
 ### What gets updated?
 
 Running `specify init --here --force` will update:
 
-- ✅ **Slash command files** (`.claude/commands/`, `.github/prompts/`, etc.)
+- ✅ **Agent command or skill files** (`.claude/commands/`, `.github/prompts/`, `.agents/skills/`, etc.)
 - ✅ **Script files** (`.specify/scripts/`)
 - ✅ **Template files** (`.specify/templates/`)
 - ✅ **Shared memory files** (`.specify/memory/`) - **⚠️ See warnings below**
@@ -163,7 +163,7 @@ Restart your IDE to refresh the command list.
 
 ## Common Scenarios
 
-### Scenario 1: "I just want new slash commands"
+### Scenario 1: "I just want new commands or skills"
 
 ```bash
 # Upgrade CLI (if using persistent install)
@@ -401,9 +401,9 @@ The `specify` CLI tool is used for:
 - **Upgrades:** `specify init --here --force` to update templates and commands
 - **Diagnostics:** `specify check` to verify tool installation
 
-Once you've run `specify init`, the SP commands (like `/sp.specify`, `/sp.plan`, etc.) are **permanently installed** in your project's agent folder (`.claude/`, `.github/prompts/`, `.pi/prompts/`, `.agents/skills/`, etc.). Your AI coding agent reads these command files directly—no need to run `specify` again.
+Once you've run `specify init`, the SP commands or skills are **permanently installed** in your project's agent folder (`.claude/`, `.github/prompts/`, `.pi/prompts/`, `.agents/skills/`, etc.). Slash-command hosts use entries like `/sp.specify` and `/sp.plan`; Codex uses skills such as `$sp-specify` and `$sp-plan` through `$` or `/skills`. Your AI coding agent reads these files directly—no need to run `specify` again.
 
-**If your agent isn't recognizing slash commands:**
+**If your agent isn't recognizing SP commands or skills:**
 
 1. **Verify command files exist:**
 
@@ -416,13 +416,18 @@ Once you've run `specify init`, the SP commands (like `/sp.specify`, `/sp.plan`,
 
    # For Pi
    ls -la .pi/prompts/
+
+   # For Codex
+   ls -la .agents/skills/
    ```
 
 2. **Restart your IDE/editor completely** (not just reload window)
 
 3. **Check you're in the correct directory** where you ran `specify init`
 
-4. **For some agents**, you may need to reload the workspace or clear cache
+4. **For Codex**, do not use `/sp.*` or `/prompt::sp.*` slash-menu visibility as the success check. Type `$` or run `/skills` and select the matching `sp-*` skill.
+
+5. **For some agents**, you may need to reload the workspace or clear cache
 
 **Related issue:** If Copilot can't open local files or uses PowerShell commands unexpectedly, this is typically an IDE context issue, not related to `specify`. Try:
 
@@ -444,7 +449,7 @@ SpecCompass follows semantic versioning for major releases. The CLI and project 
 
 After upgrading:
 
-- **Test new slash commands:** Run `/sp.constitution` or another command to verify everything works
+- **Test new commands or skills:** Run `/sp.constitution` on slash-command hosts, or `$sp-constitution` in Codex, to verify everything works
 - **Review release notes:** Check the fork release notes for SP changes, and compare upstream [github/spec-kit](https://github.com/github/spec-kit) when rebasing to a newer upstream baseline
 - **Update workflows:** If new commands were added, update your team's development workflows
 - **Check documentation:** Visit [github.io/spec-kit](https://github.github.io/spec-kit/) for updated guides

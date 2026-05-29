@@ -78,9 +78,14 @@ specify workflow --help
 
 ## 4. Agent 命令暴露
 
-原版 Spec Kit 的多数 agent 显示 `/speckit.*` 命令；Codex skills 模式官方写法是 `$speckit-*`，安装文件位于 `.agents/skills/speckit-*/SKILL.md`。
+Spec Kit 不直接控制每个 agent 的 UI。它负责把命令模板、上下文文件、脚本和 manifest 安装到对应 agent 会读取的位置。
 
-SP 的用户可见目标是 `/sp.*`：
+SP 的用户入口按宿主分层：
+
+- Claude、Gemini 等 slash-command 宿主：使用 `/sp.*`。
+- Codex：使用 skills。输入 `$` 或运行 `/skills`，选择 `sp-*` skill。
+
+slash-command 宿主的用户可见命令是：
 
 ```text
 /sp.constitution
@@ -95,23 +100,23 @@ SP 的用户可见目标是 `/sp.*`：
 
 关键边界：
 
-- `sp-*` 只能作为 skill 目录名或内部实现细节，不应要求用户手动输入。
 - Claude、Gemini 等宿主应通过自己的命令目录显示 SP 命令。
-- Codex 至少应生成 `.agents/skills/sp-*/SKILL.md`。
-- 如果文档声称 Codex 会显示 `/prompt::sp.*`，必须用真实 Codex 客户端验证；不能只看文件存在。
+- Codex 至少应生成 `.agents/skills/sp-*/SKILL.md`，这是当前稳定入口。
+- Codex 下不要把 `/sp.*` 或 `/prompt::sp.*` 是否出现在 slash menu 作为安装成功标准。
 
-### 4.1 Codex `/prompt::...` 边界
+### 4.1 Codex skills-first 边界
 
-当前证据不能证明原版 Spec Kit 通过 `specify init --integration codex` 能稳定显示 `/prompt::speckit.*`。原版明确生成的是 `.agents/skills/speckit-*/SKILL.md`，官方文档对 Codex skills 模式的描述更接近 `$speckit-*` 或 `speckit-<command>` skill。
+OpenAI Codex 维护者已在公开 issue（包括 #15939、#22674、#14459、#13893）中说明：custom slash commands 和 custom prompts 已废弃，推荐迁移到 skills。因此 SP 对 Codex 的主路径必须是 skills-first。
 
 因此，SP 对 Codex 的判断必须分层：
 
 - `.agents/skills/sp-*/SKILL.md` 生成成功：说明基础 Codex skills 路径存在。
-- `.codex/prompts/sp.*.md` 或 `.codex/commands/sp.*.md` 生成成功：说明 prompt/command 文件存在。
-- Codex plugin installed/enabled：说明 plugin 管理层接受了注册。
-- Codex 斜杠菜单显示 `/prompt::sp.*`：必须由真实 Codex 客户端 UI 验证，不能由文件存在或 plugin list 代替。
+- `.codex/prompts/sp.*.md` 生成成功：说明 prompt 兼容文件存在。
+- `plugins/sp/.codex-plugin/plugin.json` 和 `.agents/plugins/marketplace.json` 存在：说明 plugin 兼容层文件存在。
+- `codex plugin list` 显示 `sp@... installed/enabled`：说明 plugin 管理层接受了注册。
+- slash menu 是否显示 `/sp.*` 或 `/prompt::sp.*`：不是当前 Codex 安装成功标准。
 
-如果当前 Codex 客户端没有显示 `/prompt::sp.*`，不要把用户命令改成 `sp-*`。正确处理是记录为 Codex prompt/plugin discovery 问题，并检查 Codex 客户端版本、plugin marketplace、cache、重启刷新策略，以及当前客户端是否支持该命名空间。
+Codex 使用时应输入 `$` 或运行 `/skills`，选择 `sp-specify`、`sp-plan`、`sp-tasks`、`sp-analyze`、`sp-implement`、`sp-gate`、`sp-ui` 等 skill。prompt/plugin 文件可以继续保留为兼容产物，但不能把 slash menu 可见性写成成功承诺。
 
 ## 5. Feature 路由
 

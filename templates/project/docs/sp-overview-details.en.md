@@ -62,5 +62,5 @@ Less useful for very small tools with only a few pages and simple rules.
 ## Codex Notes
 
 - User-facing commands use the unified `/sp.*` form, such as `/sp.specify`
-- Codex keeps upstream-style skill packages under `.agents/skills/sp-*/SKILL.md` and generates prompt/plugin entries that target `/prompt::sp.*`; actual slash-menu visibility depends on the current Codex client
+- Codex keeps upstream-style skill packages under `.agents/skills/sp-*/SKILL.md`; type `$` or run `/skills`, then choose an `sp-*` skill. Prompt/plugin files are compatibility artifacts and are not the install success criterion.
 - Claude exposes direct project slash commands from `.claude/commands/sp.*.md`

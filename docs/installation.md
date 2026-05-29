@@ -79,11 +79,19 @@ specify version
 
 This helps verify you are running the official SpecCompass build from GitHub, not an unrelated package with the same name.
 
-After initialization, you should see the following commands available in your AI agent:
+After initialization, use the host-appropriate SP entry point. Slash-command hosts such as Claude and Gemini should expose commands like:
 
 - `/sp.specify` - Create specifications
 - `/sp.plan` - Generate implementation plans  
 - `/sp.tasks` - Break down into actionable tasks
+
+Codex uses skills as the stable entry point. In Codex, type `$` or run `/skills`, then choose:
+
+- `$sp-specify` - Create specifications
+- `$sp-plan` - Generate implementation plans
+- `$sp-tasks` - Break down into actionable tasks
+
+For Codex, do not use slash-menu visibility for `/sp.*` or `/prompt::sp.*` as the installation success criterion. Check that `.agents/skills/sp-*/SKILL.md` exists; prompt and plugin files are compatibility artifacts.
 
 The `.specify/scripts` directory will contain both `.sh` and `.ps1` scripts.
 

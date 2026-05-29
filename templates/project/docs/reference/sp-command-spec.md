@@ -47,7 +47,7 @@ Typical examples:
 - `/sp.plan`
 - `/sp.analyze`
 
-Skills integrations keep the upstream physical package shape. Codex installs core skills as `sp-specify/SKILL.md` and SP also generates prompt/plugin entries that target `/prompt::sp.specify`. Whether that prompt namespace appears in the slash menu depends on the current Codex client and must be verified in the real UI. Do not present `sp-specify` itself as the user command.
+Skills integrations keep the upstream physical package shape. Current Codex uses skills as the stable entry point: type `$` or run `/skills`, then choose `sp-specify`, `sp-plan`, `sp-tasks`, `sp-analyze`, `sp-implement`, `sp-gate`, or `sp-ui`. SP may also generate prompt/plugin compatibility files, but `/sp.*` or `/prompt::sp.*` slash-menu visibility is not the Codex install success criterion.
 
 ## 4. What Must Stay Aligned With Upstream
 

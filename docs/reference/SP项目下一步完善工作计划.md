@@ -8,8 +8,8 @@
 
 ## 固化规则
 
-- 用户可见命令统一写 `/sp.*`，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。`sp-*` 只允许作为 skills 宿主的磁盘目录或内部实现细节，不作为用户输入命令宣传。
-- Codex 目标入口是 `.codex/prompts/sp.*.md` 与 `/prompt::sp.*` 这一类 prompt/plugin 形式；真实斜杠菜单是否显示受 Codex 客户端行为影响，必须用当前客户端实测，不能在文档中承诺必然显示。
+- 支持 slash 命令的宿主，用户可见命令统一写 `/sp.*`，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。
+- Codex 的稳定用户入口是 skills：输入 `$` 或运行 `/skills`，选择 `sp-*` skill。不要把 `/sp.*` 或 `/prompt::sp.*` 是否出现在 Codex slash menu 里作为安装成功标准。
 - Codex project-local plugin 的规范产物是 `.agents/plugins/marketplace.json` 与项目根目录下的 `plugins/sp/`，注册时应执行 `codex plugin marketplace add <project-root>`。不能把插件实体嵌套到 `.agents/plugins/plugins/sp/`，也不能生成 `.agents/plugins/.agents/plugins/marketplace.json` 这种嵌套 marketplace。
 - 主坐标用于稳定定位，例如 `FEAT01.WS02.ACC01`。坐标发布后不因为排序、插入、删除而重排。
 - 副标签用于关联，例如 `API-APPROVE`、`ACC-DECISION-SUCCESS`。副标签服务搜索，不替代主坐标。
@@ -171,23 +171,26 @@ SP 已吸收的部分：
 
 ## 仍需人工或真实客户端验证的部分
 
-### Codex 斜杠菜单可见性
+### Codex skills-first 入口
 
-当前代码应生成 `.codex/prompts/sp.*.md`、`.agents/skills/sp-*/SKILL.md`、`.agents/plugins/marketplace.json` 和 `plugins/sp/` plugin 文件。这里是安装机制层面的目标产物。
+当前代码应生成 `.agents/skills/sp-*/SKILL.md`、`.codex/prompts/sp.*.md`、`.agents/plugins/marketplace.json` 和 `plugins/sp/` plugin 文件。这里是安装机制层面的目标产物。
 
-但 Codex 客户端是否把这些 prompt 显示成 `/prompt::sp.*`，取决于当前 Codex 版本、插件发现机制、启动目录、缓存和客户端 UI 行为。这个不能只靠仓库测试证明，必须由真实 Codex 客户端启动后验证。
+根据当前 Codex 维护者在 openai/codex issue 中的公开说明，custom slash commands 和 custom prompts 已经废弃，推荐迁移到 skills。因此 SP 对 Codex 的主路径应回到 skills-first：用户输入 `$` 或运行 `/skills`，再选择 `sp-specify`、`sp-plan`、`sp-tasks`、`sp-analyze`、`sp-implement`、`sp-gate`、`sp-ui` 等 skill。
+
+`.codex/prompts/sp.*.md` 和 `plugins/sp/commands/sp.*.md` 可以继续生成，用于兼容、诊断或未来 Codex plugin 机制变化，但不能再作为主要调用路径宣传。
 
 处理原则：
 
-- 文档可以说明目标入口和排查方式。
-- 不能承诺所有 Codex 客户端都会立刻在 slash autocomplete 中显示。
-- 如果真实客户端不显示，应优先对比 upstream Spec Kit 的当前表现，再判断是 SP 安装产物缺失，还是 Codex 客户端行为变化。
+- 文档必须把 Codex 主入口写成 `$sp-*` skills。
+- 安装验收不能要求 slash menu 显示 `/sp.*` 或 `/prompt::sp.*`。
+- `codex plugin list` 只能证明 plugin 兼容层已注册，不能证明 slash menu 会显示命令。
 
 当前代码验收边界：
 
-- 代码和安装烟测只能证明文件生成、plugin 注册命令和清理逻辑正确。
-- `/prompt::sp.*` 是否出现在 Codex 斜杠菜单，必须由用户在真实 Codex 客户端里验证。
-- 如果文件产物缺失，属于本仓库安装机制问题；如果文件产物齐全但菜单不显示，属于 Codex 客户端发现、缓存、注册或启动目录问题，需要单独排查。
+- `.agents/skills/sp-*/SKILL.md` 必须完整生成。
+- `.codex/prompts/sp.*.md`、`.agents/plugins/marketplace.json`、`plugins/sp/.codex-plugin/plugin.json` 作为兼容产物应完整生成。
+- `codex plugin list` 可作为兼容层注册检查。
+- slash menu 不显示 `/sp.*` 或 `/prompt::sp.*` 不应被判定为安装失败。
 
 ### 真实业务项目反馈
 
@@ -213,10 +216,10 @@ Claude 曾提出 4 个普通改进项。当前处理状态如下：
 未来升级新版 Spec Kit 时，建议按这个顺序执行：
 
 1. 拉取干净 upstream 基线，先确认 upstream 安装、集成注册、命令渲染和脚本入口是否变化。
-2. 迁移 SP 命名规则：用户命令 `/sp.*`，skills 目录可保留宿主需要的 `sp-*` 实现细节，extension/preset 允许保留 upstream 兼容命名空间。
+2. 迁移 SP 命名规则：slash 命令类宿主使用 `/sp.*`；Codex 使用 `$sp-*` skills；extension/preset 允许保留 upstream 兼容命名空间。
 3. 迁移 SP 内容增强：feature memory、open-items、trace-index、worksets、上下文预算、稳健兜底、需求冲突处理、headless 失败报告。
 4. 迁移轻量检查：`check-sp-memory`、workflow YAML 开放校验、相关测试。
-5. 运行集成测试和真实安装烟测：Claude、Gemini、Codex 的安装产物分别检查；Codex slash UI 需要真实客户端验证。
+5. 运行集成测试和真实安装烟测：Claude、Gemini、Codex 的安装产物分别检查；Codex 以 skills 可用和安装产物完整为验收，不以 slash UI 显示为验收。
 6. 更新本文档，把已完成、仍需真实验证、暂不引入的内容重新分清。
 
 ## 当前验收标准
