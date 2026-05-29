@@ -2,8 +2,10 @@
 
 Codex installs the executable skill packages under
 ``.agents/skills/<skill-name>/SKILL.md`` and also writes project-local prompt
-companions under ``.codex/prompts/sp.<name>.md`` plus a project-local plugin
-marketplace. These files target ``/prompt::sp.<name>``, but actual slash-menu
+companions under ``.codex/prompts/sp.<name>.md`` plus a project-local Codex
+plugin marketplace. The marketplace manifest lives under
+``.agents/plugins/marketplace.json`` and points at ``plugins/sp/`` from the
+project root. These files target ``/prompt::sp.<name>``, but actual slash-menu
 visibility depends on the current Codex client and must be verified in the UI.
 """
 
@@ -72,8 +74,14 @@ class CodexIntegration(SkillsIntegration):
 
     @classmethod
     def codex_plugin_source_root(cls, project_root: Path) -> Path:
-        """Return the Codex marketplace source root for project-local SP."""
-        return project_root / ".agents" / "plugins"
+        """Return the Codex marketplace source root for project-local SP.
+
+        Codex resolves `.agents/plugins/marketplace.json` relative to the
+        marketplace root passed to `codex plugin marketplace add`. For a
+        project-local marketplace, that root is the project root itself, while
+        plugin entries use `source.path: ./plugins/sp`.
+        """
+        return project_root
 
     @classmethod
     def codex_plugin_commands_dir(cls, project_root: Path) -> Path:
@@ -85,13 +93,11 @@ class CodexIntegration(SkillsIntegration):
 
     @classmethod
     def codex_marketplace_path(cls, project_root: Path) -> Path:
-        # The marketplace source root contains marketplace.json and plugins/sp/.
-        # Do not nest another .agents/plugins tree under this project-local root.
-        return cls.codex_plugin_source_root(project_root) / "marketplace.json"
+        return project_root / ".agents" / "plugins" / "marketplace.json"
 
     @classmethod
     def codex_registration_report_path(cls, project_root: Path) -> Path:
-        return cls.codex_plugin_source_root(project_root) / "CODEX_PLUGIN_REGISTRATION.md"
+        return project_root / ".agents" / "plugins" / "CODEX_PLUGIN_REGISTRATION.md"
 
     @classmethod
     def codex_marketplace_name(cls, project_root: Path) -> str:
@@ -189,25 +195,23 @@ class CodexIntegration(SkillsIntegration):
                     if stale_dir.is_dir():
                         shutil.rmtree(stale_dir)
 
-        plugin_commands = CodexIntegration.codex_plugin_commands_dir(project_root)
-        if plugin_commands.is_dir():
-            for stem in sorted(CORE_COMMAND_STEMS):
-                for prefix in ("sp-", "speckit.", "speckit-"):
-                    stale_file = plugin_commands / f"{prefix}{stem}.md"
-                    if stale_file.is_file():
-                        stale_file.unlink()
+        for plugin_commands in (
+            CodexIntegration.codex_plugin_commands_dir(project_root),
+            project_root / ".agents" / "plugins" / "plugins" / _CODEX_PLUGIN_NAME / "commands",
+        ):
+            if plugin_commands.is_dir():
+                for stem in sorted(CORE_COMMAND_STEMS):
+                    for prefix in ("sp-", "speckit.", "speckit-"):
+                        stale_file = plugin_commands / f"{prefix}{stem}.md"
+                        if stale_file.is_file():
+                            stale_file.unlink()
 
-        stale_nested_marketplace = (
-            CodexIntegration.codex_plugin_source_root(project_root)
-            / ".agents"
-            / "plugins"
-            / "marketplace.json"
-        )
-        if stale_nested_marketplace.is_file():
-            stale_nested_marketplace.unlink()
-            parent = stale_nested_marketplace.parent
-            source_root = CodexIntegration.codex_plugin_source_root(project_root)
-            while parent != source_root:
+        stale_nested_plugin = project_root / ".agents" / "plugins" / "plugins" / _CODEX_PLUGIN_NAME
+        if stale_nested_plugin.is_dir():
+            shutil.rmtree(stale_nested_plugin)
+            parent = stale_nested_plugin.parent
+            marketplace_dir = project_root / ".agents" / "plugins"
+            while parent != marketplace_dir:
                 try:
                     parent.rmdir()
                 except OSError:

@@ -45,7 +45,7 @@ SP 把 AI 开发看成一个工程控制闭环，而不是一次性 prompt。目
 
 - 仍然使用 upstream 风格的 `specify init`、模板、脚本和 agent integration。
 - 用户可见命令统一使用 `sp.*` 命名空间，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。
-- Codex 会同时安装三类入口：可执行 skill 包在 `.agents/skills/sp-*/SKILL.md`，prompt 伴随文件在 `.codex/prompts/sp.*.md`，项目本地 plugin marketplace 在 `.agents/plugins/`；`/prompt::sp.*` 是否出现在斜杠菜单里，取决于当前 Codex 客户端，需要真实打开菜单验证。
+- Codex 会同时安装三类入口：可执行 skill 包在 `.agents/skills/sp-*/SKILL.md`，prompt 伴随文件在 `.codex/prompts/sp.*.md`，项目本地 plugin 入口由 `.agents/plugins/marketplace.json` 和 `plugins/sp/` 组成；`/prompt::sp.*` 是否出现在斜杠菜单里，取决于当前 Codex 客户端，需要真实打开菜单验证。
 - Claude 和 markdown 命令类宿主通过自己的命令目录直接显示 `/sp.analyze` 这类命令。
 - 新增 flow、ui、delivery、memory、trace、open-items 等分层文档，帮助模型按最小上下文工作。
 - 增加稳定编码和锚点规则，用来标记 feature、workset、UI、API、风险、测试和 trace 关系，方便模型快速搜索和定位关联内容。
@@ -100,7 +100,7 @@ specify init . --integration codex
 specify init . --integration codex --ignore-agent-tools
 ```
 
-对 Codex 来说，`specify init . --integration codex` 会尝试自动注册项目本地 SP plugin。如果你用了 `--ignore-agent-tools`，或者自动注册失败，就打开 `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md`，按里面的两条命令手动注册。注册后需要重启或刷新 Codex，并在真实斜杠菜单里确认是否出现 `/prompt::sp.*`。
+对 Codex 来说，`specify init . --integration codex` 会尝试自动注册项目本地 SP plugin。如果你用了 `--ignore-agent-tools`，或者自动注册失败，就打开 `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md`，按里面的两条命令手动注册。这里的 marketplace root 是项目根目录，`.agents/plugins/marketplace.json` 会指向 `plugins/sp/`。注册后需要重启或刷新 Codex，并在真实斜杠菜单里确认是否出现 `/prompt::sp.*`。
 
 ## 常用命令
 

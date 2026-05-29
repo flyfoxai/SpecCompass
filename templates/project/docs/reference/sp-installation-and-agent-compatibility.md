@@ -63,11 +63,11 @@ Use the canonical `/sp.*` form in user instructions and model-facing next steps:
 
 The installed files are host-specific:
 
-- Codex installs executable core SP skills as `.agents/skills/sp-<name>/SKILL.md`, for example `.agents/skills/sp-specify/SKILL.md`, installs prompt companions as `.codex/prompts/sp.<name>.md`, and installs a project-local plugin marketplace under `.agents/plugins/`. These files target `/prompt::sp.<name>`, for example `/prompt::sp.specify`, but actual slash-menu visibility depends on the current Codex client and must be verified in the real UI.
+- Codex installs executable core SP skills as `.agents/skills/sp-<name>/SKILL.md`, for example `.agents/skills/sp-specify/SKILL.md`, installs prompt companions as `.codex/prompts/sp.<name>.md`, and installs a project-local plugin surface with `.agents/plugins/marketplace.json` plus `plugins/sp/`. These files target `/prompt::sp.<name>`, for example `/prompt::sp.specify`, but actual slash-menu visibility depends on the current Codex client and must be verified in the real UI.
 - Claude uses project slash-command files: core SP commands are installed as `.claude/commands/sp.<name>.md`, for example `.claude/commands/sp.specify.md`, and should surface as `/sp.<name>`.
 - Gemini and other markdown/TOML/YAML command hosts use their integration-specific command file formats, but the user-facing core command name remains `/sp.<name>` where the host supports slash commands.
 
-Treat `.codex/commands`, `.codex/skills`, legacy `.codex/prompts/sp-*.md`, legacy `.codex/prompts/speckit*.md`, and Claude core skill directories such as `.claude/skills/sp-*`, `.claude/skills/sp.*`, `.claude/skills/speckit-*`, or `.claude/skills/speckit.*` as stale installation residue. Keep `.codex/prompts/sp.*.md` and `.agents/plugins/`; those files are part of the current Codex prompt/plugin surface.
+Treat `.codex/commands`, `.codex/skills`, legacy `.codex/prompts/sp-*.md`, legacy `.codex/prompts/speckit*.md`, legacy `.agents/plugins/plugins/sp/`, and Claude core skill directories such as `.claude/skills/sp-*`, `.claude/skills/sp.*`, `.claude/skills/speckit-*`, or `.claude/skills/speckit.*` as stale installation residue. Keep `.codex/prompts/sp.*.md`, `.agents/plugins/marketplace.json`, and `plugins/sp/`; those files are part of the current Codex prompt/plugin surface.
 
 ## 5. Project-Local Integration Files
 

@@ -10,7 +10,7 @@
 
 - 用户可见命令统一写 `/sp.*`，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。`sp-*` 只允许作为 skills 宿主的磁盘目录或内部实现细节，不作为用户输入命令宣传。
 - Codex 目标入口是 `.codex/prompts/sp.*.md` 与 `/prompt::sp.*` 这一类 prompt/plugin 形式；真实斜杠菜单是否显示受 Codex 客户端行为影响，必须用当前客户端实测，不能在文档中承诺必然显示。
-- Codex project-local plugin 的规范产物是 `.agents/plugins/marketplace.json` 与 `.agents/plugins/plugins/sp/`，不能生成 `.agents/plugins/.agents/plugins/marketplace.json` 这种嵌套 marketplace。
+- Codex project-local plugin 的规范产物是 `.agents/plugins/marketplace.json` 与项目根目录下的 `plugins/sp/`，注册时应执行 `codex plugin marketplace add <project-root>`。不能把插件实体嵌套到 `.agents/plugins/plugins/sp/`，也不能生成 `.agents/plugins/.agents/plugins/marketplace.json` 这种嵌套 marketplace。
 - 主坐标用于稳定定位，例如 `FEAT01.WS02.ACC01`。坐标发布后不因为排序、插入、删除而重排。
 - 副标签用于关联，例如 `API-APPROVE`、`ACC-DECISION-SUCCESS`。副标签服务搜索，不替代主坐标。
 - 状态位只做搜索入口。`@t0` 表示需要验证或待确认；`@r0` 表示存在未关闭风险或 blocker。旧的 `@r1` 不再使用。
@@ -173,7 +173,7 @@ SP 已吸收的部分：
 
 ### Codex 斜杠菜单可见性
 
-当前代码应生成 `.codex/prompts/sp.*.md`、`.agents/skills/sp-*/SKILL.md`、`.agents/plugins/marketplace.json` 和 `.agents/plugins/plugins/sp/` plugin 文件。这里是安装机制层面的目标产物。
+当前代码应生成 `.codex/prompts/sp.*.md`、`.agents/skills/sp-*/SKILL.md`、`.agents/plugins/marketplace.json` 和 `plugins/sp/` plugin 文件。这里是安装机制层面的目标产物。
 
 但 Codex 客户端是否把这些 prompt 显示成 `/prompt::sp.*`，取决于当前 Codex 版本、插件发现机制、启动目录、缓存和客户端 UI 行为。这个不能只靠仓库测试证明，必须由真实 Codex 客户端启动后验证。
 

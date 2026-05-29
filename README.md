@@ -45,7 +45,7 @@ The methodology is documented in [SP Project Methodology](./docs/reference/sp-pr
 
 - Upstream-style `specify init`, templates, scripts, and agent integrations.
 - User-facing core commands use the `sp.*` namespace, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
-- Codex installs executable skills in `.agents/skills/sp-*/SKILL.md`, prompt companions in `.codex/prompts/sp.*.md`, and a project-local plugin marketplace under `.agents/plugins/`; `/prompt::sp.*` visibility depends on the current Codex client and must be verified in the real slash menu.
+- Codex installs executable skills in `.agents/skills/sp-*/SKILL.md`, prompt companions in `.codex/prompts/sp.*.md`, and a project-local plugin surface with `.agents/plugins/marketplace.json` plus `plugins/sp/`; `/prompt::sp.*` visibility depends on the current Codex client and must be verified in the real slash menu.
 - Claude and markdown-style hosts expose direct slash commands such as `/sp.analyze` through their normal command directories.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
@@ -99,7 +99,7 @@ If the current environment does not have the target agent CLI installed, or you 
 specify init . --integration codex --ignore-agent-tools
 ```
 
-For Codex, `specify init . --integration codex` attempts to register the project-local SP plugin automatically. If you used `--ignore-agent-tools` or registration failed, read `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md` and run the two commands shown there. After registration, restart or refresh Codex and verify whether your client exposes `/prompt::sp.*` in the slash menu.
+For Codex, `specify init . --integration codex` attempts to register the project-local SP plugin automatically. If you used `--ignore-agent-tools` or registration failed, read `.agents/plugins/CODEX_PLUGIN_REGISTRATION.md` and run the two commands shown there. The marketplace root is the project root; `.agents/plugins/marketplace.json` points to `plugins/sp/`. After registration, restart or refresh Codex and verify whether your client exposes `/prompt::sp.*` in the slash menu.
 
 ## Core Commands
 

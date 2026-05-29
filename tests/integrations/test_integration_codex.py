@@ -17,12 +17,12 @@ class TestCodexIntegration(SkillsIntegrationTests):
     def _expected_files(self, script_variant: str) -> list[str]:
         files = super()._expected_files(script_variant)
         for command in self._SKILL_COMMANDS:
-            files.append(f".agents/plugins/plugins/sp/commands/sp.{command}.md")
+            files.append(f"plugins/sp/commands/sp.{command}.md")
         files.extend(
             [
                 ".agents/plugins/marketplace.json",
                 ".agents/plugins/CODEX_PLUGIN_REGISTRATION.md",
-                ".agents/plugins/plugins/sp/.codex-plugin/plugin.json",
+                "plugins/sp/.codex-plugin/plugin.json",
             ]
         )
         return sorted(files)
@@ -48,14 +48,14 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "{SCRIPT}" not in prompt_content
         assert "{ARGS}" not in prompt_content
         assert "__AGENT__" not in prompt_content
-        plugin_command = tmp_path / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp.analyze.md"
+        plugin_command = tmp_path / "plugins" / "sp" / "commands" / "sp.analyze.md"
         assert plugin_command.exists()
         plugin_content = plugin_command.read_text(encoding="utf-8")
         assert "# /sp.analyze" in plugin_content
         assert "{SCRIPT}" not in plugin_content
         assert "{ARGS}" not in plugin_content
         assert "__AGENT__" not in plugin_content
-        assert (tmp_path / ".agents" / "plugins" / "plugins" / "sp" / ".codex-plugin" / "plugin.json").exists()
+        assert (tmp_path / "plugins" / "sp" / ".codex-plugin" / "plugin.json").exists()
         marketplace = tmp_path / ".agents" / "plugins" / "marketplace.json"
         assert marketplace.exists()
         assert "sp-local-" in marketplace.read_text(encoding="utf-8")
@@ -81,10 +81,12 @@ class TestCodexIntegration(SkillsIntegrationTests):
             tmp_path / ".codex" / "prompts" / "sp-plan.md",
             tmp_path / ".codex" / "prompts" / "speckit.plan.md",
             tmp_path / ".codex" / "prompts" / "speckit-plan.md",
+            tmp_path / "plugins" / "sp" / "commands" / "sp-plan.md",
+            tmp_path / "plugins" / "sp" / "commands" / "speckit.plan.md",
+            tmp_path / "plugins" / "sp" / "commands" / "speckit-plan.md",
             tmp_path / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp-plan.md",
             tmp_path / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "speckit.plan.md",
             tmp_path / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "speckit-plan.md",
-            tmp_path / ".agents" / "plugins" / ".agents" / "plugins" / "marketplace.json",
         ]
         for path in stale_files:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -169,7 +171,7 @@ class TestCodexIntegration(SkillsIntegrationTests):
             "plugin",
             "marketplace",
             "add",
-            str((tmp_path / "current" / ".agents" / "plugins").resolve()),
+            str((tmp_path / "current").resolve()),
         ] in calls
         assert ["/usr/bin/codex", "plugin", "add", "sp@sp-local-current"] in calls
 
@@ -218,7 +220,7 @@ class TestCodexAutoPromote:
 
         assert result.exit_code == 0, f"init --ai codex failed: {result.output}"
         assert (target / ".agents" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
-        assert (target / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
+        assert (target / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
         assert (target / ".agents" / "plugins" / "marketplace.json").exists()
         report = target / ".agents" / "plugins" / "CODEX_PLUGIN_REGISTRATION.md"
         assert report.exists()

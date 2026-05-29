@@ -110,7 +110,7 @@ class TestInitIntegrationFlag:
             assert skill_file.exists()
             assert "/sp-" not in skill_file.read_text(encoding="utf-8")
 
-        assert (project / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp.analyze.md").exists()
+        assert (project / "plugins" / "sp" / "commands" / "sp.analyze.md").exists()
         assert (project / ".agents" / "plugins" / "marketplace.json").exists()
         assert (project / ".specify" / "memory" / "constitution.md").exists()
         assert (project / ".specify" / "templates" / "feature" / "memory" / "open-items.md").exists()
@@ -366,7 +366,7 @@ class TestInitIntegrationFlag:
         assert not (project / ".codex" / "skills" / skill_directory_name("plan") / "SKILL.md").exists()
         assert not (project / ".codex" / "commands" / "sp.plan.md").exists()
         assert (project / ".codex" / "prompts" / "sp.plan.md").exists()
-        assert (project / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
+        assert (project / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
         assert (project / ".agents" / "plugins" / "marketplace.json").exists()
 
         assert (project / "prd" / "sp-plan.md").read_text(encoding="utf-8") == "business content\n"
@@ -456,7 +456,7 @@ class TestInitIntegrationFlag:
         assert valid_agent_skill.exists()
         assert "name: sp-plan" in valid_agent_skill.read_text(encoding="utf-8")
         assert (project / ".codex" / "prompts" / "sp.plan.md").exists()
-        assert (project / ".agents" / "plugins" / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
+        assert (project / "plugins" / "sp" / "commands" / "sp.plan.md").exists()
         assert (project / ".agents" / "plugins" / "marketplace.json").exists()
 
     def test_shared_infra_preserves_existing_files_without_force(self, tmp_path):
