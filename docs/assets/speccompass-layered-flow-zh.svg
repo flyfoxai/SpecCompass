@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="720" viewBox="0 0 1180 720" role="img" aria-labelledby="title desc">
+  <title id="title">SpecCompass 多层次处理流程</title>
+  <desc id="desc">从意图到交付的 SpecCompass 多层次处理流程，并展示反馈控制。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f8f3ea"/>
+      <stop offset="100%" stop-color="#e8f0f2"/>
+    </linearGradient>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#31564f"/>
+    </marker>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="9" flood-color="#263b35" flood-opacity="0.15"/>
+    </filter>
+    <style>
+      .title { font: 700 30px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #14362f; }
+      .subtitle { font: 15px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #4a625d; }
+      .layer-title { font: 700 17px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #11362f; }
+      .layer-text { font: 13px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #4a625d; }
+      .tag { font: 700 12px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #fff; }
+      .arrow { stroke: #31564f; stroke-width: 2.4; marker-end: url(#arrow); fill: none; }
+      .feedback { stroke: #7d6c45; stroke-width: 2.2; stroke-dasharray: 7 7; marker-end: url(#arrow); fill: none; }
+    </style>
+  </defs>
+  <rect width="1180" height="720" rx="28" fill="url(#bg)"/>
+  <text x="58" y="62" class="title">面向稳定交付的多层次处理流程</text>
+  <text x="58" y="90" class="subtitle">工作从意图向代码逐层下沉；当证据、风险或需求不一致时，反馈向上回到正确层级。</text>
+
+  <rect x="150" y="126" width="880" height="72" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="150" y="126" width="132" height="72" rx="18" fill="#17483d"/>
+  <text x="180" y="157" class="tag">第 1 层</text>
+  <text x="180" y="177" class="tag">意图</text>
+  <text x="314" y="154" class="layer-title">constitution、PRD、/sp.specify、/sp.clarify</text>
+  <text x="314" y="178" class="layer-text">明确目标、范围、约束、成功标准和未决决策。</text>
+
+  <rect x="150" y="230" width="880" height="72" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="150" y="230" width="132" height="72" rx="18" fill="#245f52"/>
+  <text x="180" y="261" class="tag">第 2 层</text>
+  <text x="180" y="281" class="tag">结构</text>
+  <text x="314" y="258" class="layer-title">/sp.plan、workset、影响半径、多 agent 边界</text>
+  <text x="314" y="282" class="layer-text">在模型上下文过载之前，把项目拆成安全可控的小块。</text>
+
+  <rect x="150" y="334" width="880" height="72" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="150" y="334" width="132" height="72" rx="18" fill="#2f6e7c"/>
+  <text x="180" y="365" class="tag">第 3 层</text>
+  <text x="180" y="385" class="tag">流程</text>
+  <text x="314" y="362" class="layer-title">/sp.flow 连接业务流程、界面、API、数据、测试和代码</text>
+  <text x="314" y="386" class="layer-text">Flow 是关系主轴；UI 是部分流程节点的属性，不是孤立文档。</text>
+
+  <rect x="150" y="438" width="880" height="72" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="150" y="438" width="132" height="72" rx="18" fill="#6d5932"/>
+  <text x="180" y="469" class="tag">第 4 层</text>
+  <text x="180" y="489" class="tag">构建</text>
+  <text x="314" y="466" class="layer-title">/sp.ui、/sp.tasks、/sp.implement</text>
+  <text x="314" y="490" class="layer-text">从流程绑定元素组织界面；用小任务实现，并留下新鲜验证证据。</text>
+
+  <rect x="150" y="542" width="880" height="72" rx="18" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="150" y="542" width="132" height="72" rx="18" fill="#344f67"/>
+  <text x="180" y="573" class="tag">第 5 层</text>
+  <text x="180" y="593" class="tag">控制</text>
+  <text x="314" y="570" class="layer-title">/sp.analyze、/sp.gate、memory、trace、open-items</text>
+  <text x="314" y="594" class="layer-text">关闭风险、发现漂移、引导兜底，并判断下一阶段是否安全。</text>
+
+  <path d="M590 200 L590 226" class="arrow"/>
+  <path d="M590 304 L590 330" class="arrow"/>
+  <path d="M590 408 L590 434" class="arrow"/>
+  <path d="M590 512 L590 538" class="arrow"/>
+  <path d="M1030 578 C1100 520 1100 230 1034 164" class="feedback"/>
+
+  <rect x="220" y="650" width="740" height="34" rx="17" fill="#e6eee9" stroke="#bbcec7"/>
+  <text x="246" y="672" class="layer-text">控制规则：PASS 必须有证据；不清楚或冲突的状态必须回到正确上层。</text>
+</svg>

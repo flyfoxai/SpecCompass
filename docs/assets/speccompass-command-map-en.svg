@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="760" viewBox="0 0 1180 760" role="img" aria-labelledby="title desc">
+  <title id="title">SpecCompass command responsibility map</title>
+  <desc id="desc">A list-style overview of each SpecCompass command and what it controls.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7f1e7"/>
+      <stop offset="55%" stop-color="#eef5ef"/>
+      <stop offset="100%" stop-color="#e8eef8"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#213934" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .title { font: 700 30px Georgia, serif; fill: #14362f; }
+      .subtitle { font: 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #4a625d; }
+      .group { font: 700 17px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #ffffff; }
+      .cmd { font: 700 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #12372f; }
+      .text { font: 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #4a625d; }
+      .note { font: 700 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #25564b; }
+    </style>
+  </defs>
+  <rect width="1180" height="760" rx="28" fill="url(#bg)"/>
+  <circle cx="1040" cy="96" r="160" fill="#fff" opacity="0.35"/>
+  <circle cx="110" cy="710" r="180" fill="#fff" opacity="0.28"/>
+  <text x="58" y="66" class="title">SpecCompass command map</text>
+  <text x="58" y="94" class="subtitle">Each command owns one layer of control. The agent should move to the right layer instead of guessing across layers.</text>
+
+  <rect x="58" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="58" y="128" width="505" height="48" rx="22" fill="#17483d"/>
+  <text x="82" y="159" class="group">1. Define intent</text>
+  <text x="86" y="208" class="cmd">/sp.constitution</text>
+  <text x="226" y="208" class="text">Project principles, engineering constraints, governance</text>
+  <text x="86" y="246" class="cmd">/sp.specify</text>
+  <text x="226" y="246" class="text">Feature goal, scope, requirements, conflict checks</text>
+  <text x="86" y="284" class="cmd">/sp.clarify</text>
+  <text x="226" y="284" class="text">Focused user decisions when intent is unsafe to infer</text>
+  <text x="86" y="322" class="cmd">/sp.checklist</text>
+  <text x="226" y="322" class="text">Targeted quality checklist for requirements and review</text>
+  <text x="86" y="360" class="note">Output: stable intent, open decisions, acceptance direction</text>
+
+  <rect x="617" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="617" y="128" width="505" height="48" rx="22" fill="#245f52"/>
+  <text x="641" y="159" class="group">2. Shape the work</text>
+  <text x="645" y="208" class="cmd">/sp.plan</text>
+  <text x="785" y="208" class="text">Architecture route, worksets, impact radius, boundaries</text>
+  <text x="645" y="246" class="cmd">/sp.flow</text>
+  <text x="785" y="246" class="text">Business process backbone, branches, events, state changes</text>
+  <text x="645" y="284" class="cmd">/sp.ui</text>
+  <text x="785" y="284" class="text">Screens and elements derived from flow, data, and actions</text>
+  <text x="645" y="322" class="cmd">/sp.tasks</text>
+  <text x="785" y="322" class="text">Small executable tasks with evidence and write boundaries</text>
+  <text x="645" y="360" class="note">Output: bounded work plan, trace anchors, implementable tasks</text>
+
+  <rect x="58" y="430" width="505" height="238" rx="22" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="58" y="430" width="505" height="48" rx="22" fill="#6d5932"/>
+  <text x="82" y="461" class="group">3. Execute safely</text>
+  <text x="86" y="512" class="cmd">/sp.implement</text>
+  <text x="226" y="512" class="text">Code, tests, verification evidence, necessary state updates</text>
+  <text x="86" y="550" class="cmd">Multi-agent rule</text>
+  <text x="226" y="550" class="text">Coordinator assigns worksets; workers stay in allowed files</text>
+  <text x="86" y="588" class="cmd">Memory writeback</text>
+  <text x="226" y="588" class="text">Write stable facts, risks, and unresolved items only when changed</text>
+  <text x="86" y="626" class="note">Output: changed code, fresh evidence, updated stable state</text>
+
+  <rect x="617" y="430" width="505" height="238" rx="22" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="617" y="430" width="505" height="48" rx="22" fill="#344f67"/>
+  <text x="641" y="461" class="group">4. Close the loop</text>
+  <text x="645" y="512" class="cmd">/sp.analyze</text>
+  <text x="785" y="512" class="text">Detect drift, broken trace links, stale context, unresolved risks</text>
+  <text x="645" y="550" class="cmd">/sp.gate</text>
+  <text x="785" y="550" class="text">Decide PASS, FAIL, or NEEDS_DECISION with evidence</text>
+  <text x="645" y="588" class="cmd">/sp.bundle</text>
+  <text x="785" y="588" class="text">Package feature documents for review and delivery</text>
+  <text x="645" y="626" class="note">Output: readiness decision, fallback route, or delivery package</text>
+
+  <rect x="58" y="700" width="1064" height="34" rx="17" fill="#e0ebe7" stroke="#b9cec7"/>
+  <text x="86" y="722" class="note">Fallback principle: if a lower layer cannot proceed safely, move upward to clarify, specify, plan, or gate with clear options.</text>
+</svg>

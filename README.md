@@ -9,7 +9,9 @@ The principle is simple: keep the proven upstream Spec Kit "bottle" as intact as
 
 Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
 
-![SpecCompass control loop](./docs/assets/speccompass-control-loop.svg)
+![SpecCompass command responsibility map](./docs/assets/speccompass-command-map-en.svg)
+
+![SpecCompass layered process](./docs/assets/speccompass-layered-flow-en.svg)
 
 ## Why This Fork Exists
 

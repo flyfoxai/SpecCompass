@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="760" viewBox="0 0 1180 760" role="img" aria-labelledby="title desc">
+  <title id="title">SpecCompass 命令职责图</title>
+  <desc id="desc">用列表形式说明每个 SpecCompass 命令负责处理的内容。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f7f1e7"/>
+      <stop offset="55%" stop-color="#eef5ef"/>
+      <stop offset="100%" stop-color="#e8eef8"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#213934" flood-opacity="0.14"/>
+    </filter>
+    <style>
+      .title { font: 700 30px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #14362f; }
+      .subtitle { font: 15px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #4a625d; }
+      .group { font: 700 17px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #ffffff; }
+      .cmd { font: 700 15px ui-sans-serif, system-ui, sans-serif; fill: #12372f; }
+      .text { font: 13px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #4a625d; }
+      .note { font: 700 12px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #25564b; }
+    </style>
+  </defs>
+  <rect width="1180" height="760" rx="28" fill="url(#bg)"/>
+  <circle cx="1040" cy="96" r="160" fill="#fff" opacity="0.35"/>
+  <circle cx="110" cy="710" r="180" fill="#fff" opacity="0.28"/>
+  <text x="58" y="66" class="title">SpecCompass 命令职责图</text>
+  <text x="58" y="94" class="subtitle">每个命令负责一个控制层级。模型应该回到正确层级处理问题，而不是跨层猜测。</text>
+
+  <rect x="58" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="58" y="128" width="505" height="48" rx="22" fill="#17483d"/>
+  <text x="82" y="159" class="group">1. 明确意图</text>
+  <text x="86" y="208" class="cmd">/sp.constitution</text>
+  <text x="226" y="208" class="text">项目原则、工程约束、治理规则</text>
+  <text x="86" y="246" class="cmd">/sp.specify</text>
+  <text x="226" y="246" class="text">功能目标、范围、需求、冲突检查</text>
+  <text x="86" y="284" class="cmd">/sp.clarify</text>
+  <text x="226" y="284" class="text">意图不能安全推断时，向用户确认关键决策</text>
+  <text x="86" y="322" class="cmd">/sp.checklist</text>
+  <text x="226" y="322" class="text">面向需求和复核的质量检查清单</text>
+  <text x="86" y="360" class="note">产出：稳定意图、待决问题、验收方向</text>
+
+  <rect x="617" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="617" y="128" width="505" height="48" rx="22" fill="#245f52"/>
+  <text x="641" y="159" class="group">2. 组织工作</text>
+  <text x="645" y="208" class="cmd">/sp.plan</text>
+  <text x="785" y="208" class="text">技术路线、workset、影响半径、边界</text>
+  <text x="645" y="246" class="cmd">/sp.flow</text>
+  <text x="785" y="246" class="text">业务流程主轴、分支、事件、状态变化</text>
+  <text x="645" y="284" class="cmd">/sp.ui</text>
+  <text x="785" y="284" class="text">由流程、数据、动作推导界面和元素</text>
+  <text x="645" y="322" class="cmd">/sp.tasks</text>
+  <text x="785" y="322" class="text">可执行小任务、验证证据、允许写入范围</text>
+  <text x="645" y="360" class="note">产出：有边界的计划、trace 锚点、可实现任务</text>
+
+  <rect x="58" y="430" width="505" height="238" rx="22" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="58" y="430" width="505" height="48" rx="22" fill="#6d5932"/>
+  <text x="82" y="461" class="group">3. 稳健执行</text>
+  <text x="86" y="512" class="cmd">/sp.implement</text>
+  <text x="226" y="512" class="text">编码、测试、验证证据、必要状态回写</text>
+  <text x="86" y="550" class="cmd">多 agent 规则</text>
+  <text x="226" y="550" class="text">coordinator 分配 workset，worker 只写允许文件</text>
+  <text x="86" y="588" class="cmd">memory 回写</text>
+  <text x="226" y="588" class="text">只在稳定事实、风险、未决项变化时写入</text>
+  <text x="86" y="626" class="note">产出：代码变更、新鲜证据、更新后的稳定状态</text>
+
+  <rect x="617" y="430" width="505" height="238" rx="22" fill="#ffffff" filter="url(#shadow)"/>
+  <rect x="617" y="430" width="505" height="48" rx="22" fill="#344f67"/>
+  <text x="641" y="461" class="group">4. 闭环收口</text>
+  <text x="645" y="512" class="cmd">/sp.analyze</text>
+  <text x="785" y="512" class="text">检查漂移、trace 断链、过期上下文、未闭环风险</text>
+  <text x="645" y="550" class="cmd">/sp.gate</text>
+  <text x="785" y="550" class="text">基于证据判断 PASS、FAIL 或 NEEDS_DECISION</text>
+  <text x="645" y="588" class="cmd">/sp.bundle</text>
+  <text x="785" y="588" class="text">打包 feature 文档，用于评审和交付</text>
+  <text x="645" y="626" class="note">产出：准入结论、兜底路线或交付包</text>
+
+  <rect x="58" y="700" width="1064" height="34" rx="17" fill="#e0ebe7" stroke="#b9cec7"/>
+  <text x="86" y="722" class="note">兜底原则：低层不能安全继续时，向上回到 clarify、specify、plan 或 gate，并给出清楚选项。</text>
+</svg>

@@ -9,7 +9,9 @@ SpecCompass 是基于 [github/spec-kit](https://github.com/github/spec-kit) 的�
 
 英文版说明见 [README.md](./README.md)。
 
-![SpecCompass 控制闭环](./docs/assets/speccompass-control-loop.svg)
+![SpecCompass 命令职责图](./docs/assets/speccompass-command-map-zh.svg)
+
+![SpecCompass 多层次处理流程](./docs/assets/speccompass-layered-flow-zh.svg)
 
 ## 为什么要改
 
