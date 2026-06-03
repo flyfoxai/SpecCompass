@@ -137,10 +137,25 @@ The file should support both forward tracing and reverse lookup.
 
 The trace index should stay a lookup table, not a risk ledger. It may include stable coordinates such as `FEAT01.WS02.API02`, source anchors, worksets, and expand docs. Risk state and todo details should point back through `open-items.md`.
 
+For business features, flow should normally be the main relation axis. UI, API, TABLE, CODE, TEST, EVENT, PERM, and ACC entries should trace to a `FLOW` coordinate, a source document, or an explicit `open-items.md` entry. This does not mean every UI field becomes a flow node. It means important interface, data, and code objects should remain explainable from the business process they serve.
+
+Recommended relation fields are lightweight and searchable:
+
+- `Type`: FLOW, UI, API, TABLE, CODE, TEST, EVENT, PERM, ACC
+- `Coordinate`: stable ID such as `FEAT01.WS02.UI03`
+- `Qualified Name`: optional semantic alias such as `attendance.leave::UI.APPROVE`
+- `Relation`: `uses`, `calls`, `persists_to`, `verifies`, `guards`, `blocks`, `depends_on`, or another simple verb
+- `Expand Docs`: direct documents or source files to read next
+
+Critical flow steps should expose a lightweight port contract in the source flow document or trace notes: input, precondition or permission, business action, output or side effect, target state, failure path, and verification evidence. If any part is unknown and important, put it in `open-items.md`.
+
+New or refreshed outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts until checked by `sp.analyze`, `sp.gate`, or equivalent current evidence. Draft facts may route the next read set, but they must not close risks, rewrite stable context, or support PASS.
+
 Recommended coordinate rules:
 
 - Use stable searchable coordinates for important objects, for example `FEAT01.WS02.UI03`, `FEAT01.WS02.API02`, or `FEAT01.WS03.ACC01`.
 - Keep the main coordinate stable after it is assigned.
+- Keep public coordinates shallow. Prefer `FEAT01.WS02.UI03` plus local labels such as `Action: submit` over deep public IDs such as `UI03.BTN05` unless the detail recurs across documents and needs promotion.
 - Use short status tags only when they help search or stage checks, for example `@t0` for missing validation evidence and `@r0` for open risk.
 - Do not add status tags by default. One object should normally have no more than two status tags.
 - A non-trivial `@r0` should resolve to a `RISK-*` row in `open-items.md`; a non-trivial `@t0` should resolve to an `OPEN-*` or `RISK-*` row.

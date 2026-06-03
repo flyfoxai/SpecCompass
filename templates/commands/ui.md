@@ -28,6 +28,7 @@ Global rules:
 - If required inputs are missing or unstable, stop and report the gap explicitly.
 - User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
 - Keep screen, action, field, and acceptance anchors traceable. Put unresolved UI risks or blockers in `memory/open-items.md`.
+- Treat newly generated or refreshed UI outputs as draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent evidence. Draft UI facts may guide layout discussion, but they must not close risks, support PASS, or replace stable source facts.
 - Manage context as an engineering budget: start from routing, trace, flow, and open items; expand only to the screens and contracts involved in the current UI decision.
 
 ## Purpose
@@ -43,9 +44,13 @@ Global rules:
 
 - Define the screen map and screen responsibilities.
 - Document key actions, fields, sections, and validation constraints.
+- Use the upstream flow port contract as the UI boundary: input, permission, action, side effect, target state, failure path, and verification tell UI what it may collect, show, trigger, and validate.
+- Bind each screen to the flow step, business event, data object, permission, or acceptance path it serves. A screen without a business source must become an open item, not a stable UI fact.
+- Bind each critical UI action to an allowed business event or flow effect. If the action changes state, writes data, calls an API, triggers an external side effect, or affects acceptance, the source flow/API/data contract must be visible.
+- Bind each business field to its data object, validation source, permission rule, or API contract when those exist. UI may organize fields, but it must not invent business validation.
 - Keep screen-level Markdown and JSON Forms assets aligned when JSON Forms is in use.
-- Use stable IDs for screens, sections, fields, and actions where practical.
-- Refresh trace and memory entries when UI structure changes stable facts or source routing.
+- Use stable IDs for screens, sections, fields, and actions where practical. Keep the main coordinate at `FEATxx.WSxx.TYPExx`; use local labels such as `Field: email`, `Action: submit`, or `State: empty` for screen internals instead of deep micro IDs.
+- Refresh trace and memory entries when UI structure changes stable facts or source routing. If the change is only a draft inference, keep it in `ui/*` or `memory/open-items.md` until checked.
 - Preserve links from UI anchors to flow, API, data, permissions, and acceptance paths when those are relevant.
 - Mark non-trivial missing validation evidence with `@t0` only when it can be resolved through trace or open-items.
 - If the UI decision depends on unresolved scope, flow, permission, or acceptance behavior, fall back to `/sp.clarify`, `/sp.flow`, or `/sp.specify` instead of inventing the screen behavior.
@@ -56,6 +61,9 @@ Global rules:
 - Do not invent screens that are not justified by the feature scope.
 - Do not leave owner boundaries or action outcomes ambiguous.
 - Do not treat UI convenience ideas as requirements unless the feature scope or clarification supports them.
+- Do not add business events, permissions, state transitions, side effects, or data validation that the flow, spec, clarification, API, or data contract does not support.
+- Do not write draft UI assumptions into `memory/stable-context.md` or use them to close `OPEN-*`, `RISK-*`, `@t0`, or `@r0`.
+- Do not use deep default IDs such as `UI03.BTN05`, `UI03.FIELD07`, or `FLOW01.STEP04` as stable public coordinates unless a recurring cross-document object truly needs promotion.
 
 ## Output
 
@@ -71,7 +79,10 @@ Global rules:
 
 - Confirm screen responsibilities match the flow and clarified rules.
 - Confirm critical actions and field constraints are explicit.
+- Confirm every critical screen, action, and field has a flow, data, API, permission, acceptance, or open-item source.
+- Confirm UI actions do not create unapproved business events, state transitions, side effects, or validation rules.
 - Confirm UI IDs and ownership terms stay consistent across files.
+- Confirm draft assumptions are labeled or routed to `memory/open-items.md` instead of being promoted to stable memory.
 - Confirm unresolved screens, fields, permissions, or validation gaps are registered in `memory/open-items.md`.
 
 ## Next

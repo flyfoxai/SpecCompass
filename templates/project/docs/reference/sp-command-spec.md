@@ -162,16 +162,23 @@ Not every file is seeded up front by the template root. Some are created or expa
 
 - express the business and state transitions clearly
 - connect major steps and decision points back to stable IDs
+- make the flow the main relation axis for business, UI, API, data, acceptance, tests, and code
+- give critical steps a lightweight port contract: input, precondition or permission, action, output or side effect, target state, failure path, and verification evidence
+- mark new or refreshed flow outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
 
 ### `sp.ui`
 
 - define screen structure, user actions, and interface-level responsibilities
 - connect screens back to clarified business intent
+- bind screens, fields, and actions to flow steps, business events, data objects, permissions, API contracts, acceptance paths, or open items
+- avoid inventing business events, state transitions, permissions, side effects, or validation rules from UI convenience alone
+- mark new or refreshed UI outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
 
 ### `sp.gate`
 
 - judge whether the first layer is strong enough to continue
 - surface blockers, risks, and stale information
+- block unconditional PASS when critical flow port contracts are missing, Flow-UI relations are broken, or unchecked draft flow/UI/plan facts are being used as stable evidence
 
 ### `sp.bundle`
 
@@ -194,6 +201,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - test whether the whole document system is automation-ready
 - verify consistency across the routed source set
 - fail explicitly when memory is stale, coverage is weak, or smoke checks are missing
+- detect Flow-UI relation breaks, orphan UI/API/data/test anchors, missing port-contract fields, and unchecked draft facts being promoted to stable memory
 
 ## 9. Read-Order Contract
 
@@ -241,7 +249,27 @@ Status tags are short search signals, not full records:
 
 Low or Medium `Question` and `Todo` items may stay lightweight when they are local and do not affect scope, acceptance, release, rollback, security, or implementation confidence. `Risk`, `Blocker`, High severity items, and any broader-impact item must use the full `open-items.md` record with owner, impact, rollback or degradation path, close condition, refresh date, and trace/source link.
 
-## 12. Workflow YAML Extension Boundary
+## 12. Flow, UI, And Draft Fact Contract
+
+For business features, `FLOW` is the preferred relation axis. UI, API, TABLE, CODE, TEST, EVENT, PERM, and ACC anchors should normally trace to a `FLOW` coordinate, a source document, or an explicit `open-items.md` entry.
+
+Critical flow steps should carry a lightweight port contract:
+
+- input
+- precondition or permission
+- business action
+- output or side effect
+- target state
+- failure path
+- verification or acceptance evidence
+
+UI is a projection of flow and data, not an independent source of business behavior. A screen, field, or action should be tied to a flow step, business event, data object, permission, API contract, acceptance path, or open item. If UI work discovers a new business event, state transition, validation rule, or side effect, the correct route is back to `sp.flow`, `sp.specify`, or `sp.clarify`.
+
+Outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts until checked by `sp.analyze`, `sp.gate`, or equivalent current evidence. Draft facts may guide the next discussion, but they must not close risks, update stable trace conclusions, support PASS, or become the sole implementation basis.
+
+Keep public coordinates shallow and stable. The main coordinate should usually look like `FEAT01.WS02.UI03`, not `FLOW01.STEP04.BUTTON02.FIELD07`. Use local labels for internal details, and promote a detail to a stable coordinate only when it recurs across documents.
+
+## 13. Workflow YAML Extension Boundary
 
 Workflow YAML should stay open enough for future `Spec Kit` and SP extensions.
 
@@ -256,7 +284,7 @@ Known structural errors still fail validation, for example missing `workflow.id`
 
 Keep todo, risk, blocker, rollback, impact, owner, and close-condition details in `memory/open-items.md`. Keep lookup chains in `memory/trace-index.md`.
 
-## 12. PASS / FAIL Expectations
+## 14. PASS / FAIL Expectations
 
 `sp.analyze` and related review-style steps must remain evidence-based.
 
@@ -270,7 +298,7 @@ A `PASS` is only justified when:
 
 If those conditions are not met, the correct result is `FAIL` with the exact blocking step to revisit.
 
-## 13. Why This Reference Exists
+## 15. Why This Reference Exists
 
 This file exists so overview documents can point to a stable explanation of the `sp` command contract without forcing readers to open every command template one by one.
 

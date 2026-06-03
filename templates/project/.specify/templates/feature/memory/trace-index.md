@@ -18,6 +18,12 @@
 ## Link Rules
 
 - `Trace ID` and `Coordinate` are stable lookup keys.
+- For business features, prefer `FLOW` as the relation axis. UI, API, TABLE, CODE, TEST, EVENT, PERM, and ACC entries should normally trace to a `FLOW` coordinate, a source document, or an explicit open item.
+- Critical flow steps should expose a lightweight port contract in the source flow document or trace notes: input, precondition or permission, business action, output or side effect, target state, failure path, and verification or acceptance evidence.
+- Outputs newly created or refreshed by `sp.flow`, `sp.ui`, or `sp.plan` are draft facts until checked by `sp.analyze`, `sp.gate`, or equivalent current evidence. Draft facts may route reading, but must not close risks, rewrite stable conclusions, or support PASS.
+- Keep public coordinates shallow and stable, for example `FEAT01.WS02.UI03`. Use local labels for details such as `Action: submit` or `Field: email`; do not default to deep IDs such as `UI03.BTN05` or `FLOW01.STEP04`.
+- Optional semantic aliases can help search, for example `attendance.leave::UI.APPROVE`.
+- Recommended relation verbs: `uses`, `calls`, `persists_to`, `verifies`, `guards`, `blocks`, `depends_on`.
 - `memory/open-items.md` may point here through its `Anchor` column or through files listed in `Affected Docs`.
 - A link is valid when `open-items.Anchor` matches any cell in this table, or at least one `Affected Docs` file matches a file in `Expand Docs`.
 - Do not add risk or open-item status columns here. Keep risk, blocker, todo, rollback, and close-condition details in `memory/open-items.md`.

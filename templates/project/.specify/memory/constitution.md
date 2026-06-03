@@ -45,6 +45,11 @@
 - Flow documentation uses Mermaid.
 - UI documentation uses Markdown plus JSON Forms when needed.
 - Stable facts, rules, screens, APIs, tables, and acceptance anchors should use stable IDs.
+- For business features, `FLOW` is the preferred relation axis. UI, API, TABLE, CODE, TEST, EVENT, PERM, and ACC anchors should trace to a `FLOW` coordinate, source document, or explicit open item when they belong to the business capability.
+- Critical flow steps should expose a lightweight port contract: input, precondition or permission, business action, output or side effect, target state, failure path, and verification or acceptance evidence.
+- UI is a projection of flow, data, and user action. Do not invent business events, state transitions, permissions, side effects, or validation rules from UI convenience alone; route those discoveries back to `sp.flow`, `sp.specify`, or `sp.clarify`.
+- Outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts until checked by `sp.analyze`, `sp.gate`, or equivalent current evidence. Draft facts may guide routing, but they must not close risks, update stable trace conclusions, support PASS, or become the sole implementation basis.
+- Keep public coordinates shallow and stable, for example `FEAT01.WS02.UI03`. Use local labels for internal details instead of default deep IDs such as `FLOW01.STEP04` or `UI03.BTN05`.
 
 ## Memory Rules
 

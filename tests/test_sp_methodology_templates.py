@@ -392,3 +392,88 @@ def test_oscillation_protection_and_headless_failure_report_are_documented():
         assert "failed command" in content or "失败命令" in content, label
         assert "automatic recovery is unsafe" in content or "自动恢复不安全" in content, label
         assert "SP_EXIT_CODE: 1" in content, label
+
+
+def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
+    """Flow/UI methodology should be executable command discipline, not only reference prose."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    constitution = (PROJECT_MEMORY_DIR / "constitution.md").read_text(encoding="utf-8")
+    flow = _command("flow")
+    ui = _command("ui")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    plan = _command("plan")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    memory_arch = (
+        PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-context-memory-architecture.md"
+    ).read_text(encoding="utf-8")
+    trace_index = (FEATURE_MEMORY_DIR / "trace-index.md").read_text(encoding="utf-8")
+    open_items = (FEATURE_MEMORY_DIR / "open-items.md").read_text(encoding="utf-8")
+
+    for content, label in (
+        (methodology, "methodology"),
+        (constitution, "constitution"),
+        (flow, "flow"),
+        (ui, "ui"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+        (plan, "plan"),
+        (command_spec, "command_spec"),
+        (memory_arch, "memory_arch"),
+        (trace_index, "trace_index"),
+    ):
+        assert "draft facts" in content or "草稿" in content, label
+        assert "port contract" in content or "端口契约" in content, label
+        assert "FLOW" in content, label
+
+    assert "input, precondition or permission, business action, output or side effect, target state, failure path" in flow
+    assert "node type: `ui`, `system`, `external`, `scheduled`, `manual`, or `none_ui`" in flow
+    assert "fields to collect, business facts to show, events allowed, permissions, and error states" in flow
+
+    assert "Bind each screen to the flow step" in ui
+    assert "Bind each critical UI action to an allowed business event or flow effect" in ui
+    assert "must not invent business validation" in ui
+
+    assert "Check Flow-UI relation integrity" in analyze
+    assert "Check orphan relation objects" in analyze
+    assert "Check draft facts" in analyze
+
+    assert "Verify Flow-UI relation integrity" in gate
+    assert "cannot support PASS" in gate
+    assert "critical flow port-contract gaps" in gate
+
+    assert "Treat unchecked `/sp.flow` and `/sp.ui` outputs as draft facts" in plan
+    assert "Preserve `FLOW` as the main relation axis" in plan
+
+    assert "UI is a projection of flow" in command_spec
+    assert "New or refreshed outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts" in memory_arch
+    assert "Recommended relation verbs" in trace_index
+    assert "UI screen, field, or action cannot trace" in open_items
+
+
+def test_flow_ui_rules_avoid_deep_public_coordinates_by_default():
+    """The new relation model should not introduce CodeGraph-style deep public IDs by default."""
+    flow = _command("flow")
+    ui = _command("ui")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    constitution = (PROJECT_MEMORY_DIR / "constitution.md").read_text(encoding="utf-8")
+    trace_index = (FEATURE_MEMORY_DIR / "trace-index.md").read_text(encoding="utf-8")
+
+    for content, label in (
+        (flow, "flow"),
+        (ui, "ui"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+        (constitution, "constitution"),
+        (trace_index, "trace_index"),
+    ):
+        assert "FEATxx.WSxx.TYPExx" in content or "FEAT01.WS02.UI03" in content, label
+        assert "FLOW01.STEP04" in content, label
+        assert "UI03.BTN05" in content, label
+
+    assert "unless a recurring cross-document object truly needs promotion" in flow
+    assert "unless a recurring cross-document object truly needs promotion" in ui
+    assert "should not appear as stable public coordinates unless" in analyze

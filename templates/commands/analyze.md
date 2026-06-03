@@ -110,6 +110,15 @@ Execution flow:
    - Treat incremental review as a document-read optimization, not a verification downgrade. If the current task directly changed or affected dependencies, public contracts, data, permissions, acceptance paths, or critical tests, require local affected test/check/manual verification evidence when feasible. Route only broader regression or locally infeasible checks to CI/full verification.
    - Check consistency across `spec.md`, `clarifications.md`, `flows/*`, `ui/*`, `gate.md`, `bundle.md`, `plan.md`, `delivery/*`, and `tasks.md`.
    - Verify coverage of IDs, owners, states, screens, APIs, tables, permissions, and acceptance paths.
+   - Check Flow-UI relation integrity:
+     - critical flow steps have a node type: `ui`, `system`, `external`, `scheduled`, `manual`, or `none_ui`
+     - critical flow steps have a lightweight port contract: input, precondition or permission, business action, output or side effect, target state, failure path, and verification or acceptance evidence
+     - `ui` type flow steps link to at least one UI coordinate or an explicit open item
+     - screens and critical UI actions trace back to a flow step, business event, data object, permission, API contract, acceptance path, or open item
+     - UI-created actions do not invent business events, state transitions, side effects, permissions, or validation rules that are absent from `spec.md`, clarifications, flows, API/data docs, or open items
+   - Check orphan relation objects. UI, API, TABLE, CODE, ACC, TEST, EVENT, and PERM anchors that belong to a business capability should trace to a `FLOW` coordinate, source document, or explicit open item.
+   - Check draft facts. Newly generated or refreshed outputs from `/sp.flow`, `/sp.ui`, or `/sp.plan` are draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent current evidence. Draft facts cannot close risks, update stable trace conclusions, support PASS, or act as the sole implementation basis.
+   - Check coordinate depth. Main coordinates should stay at `FEATxx.WSxx.TYPExx`; deep micro IDs such as `FLOW01.STEP04`, `UI03.BTN05`, or `API02.FIELD03` should not appear as stable public coordinates unless a recurring cross-document object has been intentionally promoted.
    - Check feature memory link integrity:
      - Treat an empty `specs/<feature>/memory/open-items.md` table as valid when no real unresolved feature issue is present.
      - Before accepting an empty open-items table, scan the current read set for unresolved scope, acceptance, permissions, data, API, UI, event/side-effect, rollback, release, security/compliance, migration, external dependency, and test-evidence gaps.
@@ -148,6 +157,9 @@ Execution flow:
 - PASS/FAIL here is diagnostic: it means the document, memory, trace, and automation-readiness analysis passed or failed. It is not the final stage gate.
 - Do not mark PASS when major gaps, stale memory, or missing smoke checks remain.
 - Do not mark PASS when open `Blocker` items remain.
+- Do not mark PASS when critical flow steps are missing node type, port contract coverage, failure path, or verification route unless the missing part is explicitly routed through `memory/open-items.md`.
+- Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
+- Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
 - Do not mark PASS when open `Risk` items affect acceptance, release, data, security, rollback, or implementation confidence unless the analysis records owner, explicit human acceptance/defer decision, revisit anchor or exact next `sp.*` step, trace registration, impact scope, rollback/degrade path, and close condition.
 - Low/Medium risks that do not block the next stage may receive diagnostic PASS with warning only when they are tracked in `specs/<feature>/memory/open-items.md` or the report, have owner, close condition, and revisit anchor, and do not require rewriting `spec.md`, `plan.md`, or `tasks.md` before safe continuation.
 - Soft issues may be warnings only when they do not affect routing, contracts, tests, acceptance, trace, open `Blocker`, or high-impact `Risk`. Failed tests/build/checks, route errors, acceptance breaks, critical trace breaks, and high-risk items missing required fields are blockers, not warnings.

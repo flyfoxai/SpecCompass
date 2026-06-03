@@ -28,6 +28,7 @@ Global rules:
 - If required inputs are missing or unstable, stop and report the gap explicitly.
 - User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
 - Keep trace coordinates stable and searchable. Put unresolved flow risks or blockers in `memory/open-items.md`.
+- Treat newly generated or refreshed flow outputs as draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent evidence. Draft flow facts may guide discussion, but they must not close risks, support PASS, or replace stable source facts.
 - Manage context as an engineering budget: start from routing, spec, clarifications, and open items; expand only to the flow source documents needed for the current branch or state decision.
 
 ## Purpose
@@ -44,9 +45,13 @@ Global rules:
 
 - Define the business mainline stages and actor boundaries.
 - Capture state progression, branches, exceptions, defaults, and overrides.
+- For each critical flow step, record the node type: `ui`, `system`, `external`, `scheduled`, `manual`, or `none_ui`.
+- For each critical flow step, record a lightweight port contract: input, precondition or permission, business action, output or side effect, target state, failure path, and verification or acceptance evidence.
+- For `ui` type steps, record only the UI contract: fields to collect, business facts to show, events allowed, permissions, and error states. Leave layout and composition to `/sp.ui`.
+- For non-UI steps, record the trigger, required input, side effect, failure path, and verification route. Do not force a screen binding when no screen is needed.
 - Keep Mermaid flow assets and supporting Markdown in sync.
-- Use stable IDs for states, actions, decisions, and exceptions when practical.
-- Refresh trace and memory files when flow changes alter stable facts or routing.
+- Use stable IDs for states, actions, decisions, and exceptions when practical. Keep the main coordinate at `FEATxx.WSxx.TYPExx`; use local labels such as `Step 1`, `Decision: reject`, or `Event: approve_submitted` for internal flow details instead of deep micro IDs.
+- Refresh trace and memory files when flow changes alter stable facts or routing. If the change is only a draft inference, keep it in `flows/*` or `memory/open-items.md` until checked.
 - Mark non-trivial missing validation evidence with `@t0` only when it can be resolved through trace or open-items.
 - If one flow area is too large for one focused read set, recommend a workset split for `/sp.plan` instead of hiding complexity in one diagram.
 - If branch, state, or exception behavior cannot be resolved after bounded evidence review, fall back to `/sp.clarify` or `/sp.specify` instead of inventing the transition.
@@ -57,6 +62,8 @@ Global rules:
 - Do not write delivery-layer implementation details.
 - Do not leave missing branch handling implicit.
 - Do not invent exception handling or state transitions that are not supported by `spec.md` or clarifications.
+- Do not use deep default IDs such as `FLOW01.STEP04`, `UI03.BTN05`, or `API02.FIELD03` as stable public coordinates unless a recurring cross-document object truly needs promotion.
+- Do not write draft flow assumptions into `memory/stable-context.md` or use them to close `OPEN-*`, `RISK-*`, `@t0`, or `@r0`.
 
 ## Output
 
@@ -70,7 +77,10 @@ Global rules:
 
 - Confirm the mainline and exception paths are both visible.
 - Confirm state transitions are consistent with the clarified business rules.
+- Confirm every critical flow step has node type and port contract coverage, or an explicit `OPEN-*` / `RISK-*` item.
+- Confirm every `ui` type step links to a UI contract or an open item, and every non-UI step has a trigger and verification route.
 - Confirm every Mermaid artifact matches the written description.
+- Confirm draft assumptions are labeled or routed to `memory/open-items.md` instead of being promoted to stable memory.
 - Confirm any open branch, state conflict, or unresolved exception is registered in `memory/open-items.md`.
 
 ## Next

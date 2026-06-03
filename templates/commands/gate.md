@@ -90,6 +90,11 @@ Global rules:
 
 - Evaluate whether the feature has enough stable scope, flow, UI, and clarification coverage.
 - Identify blocking gaps, conflicts, stale memory, and revisit steps.
+- Verify that critical flow steps have node type and lightweight port contract coverage: input, precondition or permission, business action, output or side effect, target state, failure path, and verification or acceptance evidence.
+- Verify Flow-UI relation integrity: `ui` type steps link to UI coordinates or open items; critical UI actions link to business events or flow effects; business events link to effect, API/data, target state, acceptance, or open items.
+- Verify that UI, API, TABLE, ACC, CODE, TEST, EVENT, and PERM anchors that belong to the business capability are not orphaned from flow/source/open-item evidence.
+- Verify public coordinates stay shallow and stable, for example `FEATxx.WSxx.TYPExx`; deep IDs such as `FLOW01.STEP04` or `UI03.BTN05` should not be treated as stable public coordinates unless intentionally promoted.
+- Treat unchecked outputs from `/sp.flow`, `/sp.ui`, and `/sp.plan` as draft facts. They may explain current direction but cannot support PASS, close a risk, or replace stable source evidence until analyzed or otherwise verified.
 - Summarize the current error signals before deciding: open `Blocker`, high-impact open `Risk`, non-trivial `@t0`, `@r0`, unresolved references, stale memory, trace/acceptance breaks, blocking placeholders, and failed checks. This is a lightweight stability panel, not a heavy score.
 - Identify whether the current layer is the wrong place to continue. If safe progress requires moving upward to spec, plan, tasks, or human decision, record the fallback target and block unconditional PASS.
 - Apply the soft issue boundary before PASS or CONDITIONAL: only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as warnings. Test/build/check failure, route error, acceptance break, critical trace break, open `Blocker`, or high-impact `Risk` without required fields blocks PASS.
@@ -116,6 +121,9 @@ Global rules:
 - Do not hide blockers behind optimistic language.
 - Do not mark PASS when major route decisions remain open.
 - Do not mark PASS when an open blocker remains.
+- Do not mark PASS when a critical flow step is missing node type, port contract coverage, failure path, or verification route unless the gap is explicitly tracked in `memory/open-items.md` and the verdict is FAIL or CONDITIONAL with a safe next route.
+- Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
+- Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
 - Do not mark PASS solely because a risk is known. Known risk still needs owner, explicit human acceptance/defer decision, trace registration, impact scope, rollback/degrade path, close condition, and revisit anchor.
 - Do not mark PASS when a remaining open item would force `spec.md`, `plan.md`, or `tasks.md` to be rewritten before safe continuation.
 - Do not mark PASS when the feature needs upward fallback or complex-part promotion and the next layer/next `sp.*` step is not explicit.
@@ -143,6 +151,8 @@ Global rules:
 - Confirm the decision is explicit and evidence-based.
 - Confirm each blocker points to the exact `sp.*` step that must be revisited.
 - Confirm each upward fallback decision names the source layer, target layer, and next `sp.*` step.
+- Confirm critical flow port-contract gaps and Flow-UI relation breaks are either closed with evidence or visible in `memory/open-items.md`.
+- Confirm no unchecked draft flow, UI, or plan fact is being used as PASS evidence.
 - If the gate detects business-layer signals that may require splitting, record them as a recommendation for `sp.plan`; do not decide delivery-layer promotion granularity at gate.
 - Confirm open items are still visible after the gate decision.
 - Confirm every open risk or conditional pass cites the affected `OPEN-*` or `RISK-*` item, close condition, and revisit step.

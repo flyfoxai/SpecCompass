@@ -52,6 +52,9 @@ Use the full form for any `Risk`, any `Blocker`, any `High` severity item, or an
 - `Risk`, `Blocker`, and `High` severity items must use the full form with owner, impact, rollback/degradation, close condition, refresh date, and trace/source link.
 - Create a block when a `@t0` validation gap is not trivial: it affects scope, acceptance, release, rollback, human decision, follow-up work, or later implementation confidence.
 - Create a `Risk` or `Blocker` block when `@r0` appears in source documents, trace rows, tasks, or workset memory.
+- Create a block when a critical flow step lacks node type, port contract coverage, failure path, or verification evidence and the gap affects later planning, implementation, or acceptance.
+- Create a block when a UI screen, field, or action cannot trace to a flow step, business event, data object, permission, API contract, acceptance path, or source document.
+- Create a block when a draft fact from `sp.flow`, `sp.ui`, or `sp.plan` is needed for a PASS, risk closure, stable trace update, or implementation basis before it has been checked.
 - Do not use this file for generic reminders, default concerns, or template examples.
 - If a block cannot be linked through `Anchor` or `Affected Docs`, keep it visible and mark the missing link as part of the item description rather than guessing the link.
 

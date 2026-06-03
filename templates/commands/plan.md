@@ -87,6 +87,9 @@ Execution flow:
 3. Produce or refresh the delivery design outputs.
    - Define the delivery design objects and workset structure.
    - Keep relationships among flows, screens, data, APIs, permissions, and acceptance explicit.
+   - Treat unchecked `/sp.flow` and `/sp.ui` outputs as draft facts. They may guide planning, but any workset, API, data, permission, event, or acceptance decision that depends on an unchecked draft must cite the draft status and create or preserve an open item until `/sp.analyze`, `/sp.gate`, or equivalent evidence checks it.
+   - Preserve `FLOW` as the main relation axis: delivery objects should trace back to `FLOW` coordinates, source documents, or open-item evidence instead of inventing independent UI/API/data behavior.
+   - Before finalizing worksets, check that critical flow steps have enough port contract evidence for delivery planning: input, permission or precondition, action, output or side effect, target state, failure path, and verification route. Missing pieces should trigger fallback to `/sp.flow`, `/sp.ui`, `/sp.specify`, `/sp.clarify`, or a human macro decision.
    - Split the feature into bounded work areas when the scope justifies it.
    - Assess whether any work area is too large for a stable workset before writing the final plan.
    - Predict direct disturbances for high-impact delivery changes before finalizing worksets:
@@ -143,6 +146,7 @@ Execution flow:
 - Do not promote just because implementation is technically hard when the scope and contracts are clear. Split tasks or add tests first.
 - Do not oscillate around split thresholds. Near-threshold complexity should be recorded as an observation item; confirmed splits should not be auto-merged without a new explicit decision.
 - Do not lose traceability back to first-layer sources.
+- Do not treat unchecked flow or UI draft facts as stable workset, delivery, risk-closure, or implementation basis.
 - Keep planning constrained to the active feature and workset area.
 - Do not continue splitting delivery tasks when the safe next action is to repair first-layer source documents or ask for a macro decision.
 
