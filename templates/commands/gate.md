@@ -99,6 +99,7 @@ Global rules:
 - Identify whether the current layer is the wrong place to continue. If safe progress requires moving upward to spec, plan, tasks, or human decision, record the fallback target and block unconditional PASS.
 - Apply the soft issue boundary before PASS or CONDITIONAL: only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as warnings. Test/build/check failure, route error, acceptance break, critical trace break, open `Blocker`, or high-impact `Risk` without required fields blocks PASS.
 - Apply oscillation protection: if the same failure signature has already appeared twice at the same layer, or the same workset is bouncing between two layers without new evidence, return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
+- When multi-agent work occurred, verify coordinator closeout before PASS or CONDITIONAL: all worker handoffs are present, intentionally deferred, or marked stale/abandoned with task state reopened; write-set violations are resolved; shared memory/task/trace/routing updates were merged serially; global registry-like changes were handled by one owner; and merged-state checks ran where worker outputs can interact.
 - Identify only business-layer complexity that is already visible before delivery planning: independent user goals, 3+ roles, 4+ user paths, external systems, separate release/compliance constraints, or blockers that prevent stable scope. Do not decide API/table/event/migration-based promotion at gate; leave those delivery-layer signals for `sp.plan` or `sp.analyze`.
 - Evaluate `specs/<feature>/memory/open-items.md` before deciding:
   - `Blocker` with `Status=Open` prevents PASS.
@@ -124,6 +125,7 @@ Global rules:
 - Do not mark PASS when a critical flow step is missing node type, port contract coverage, failure path, or verification route unless the gap is explicitly tracked in `memory/open-items.md` and the verdict is FAIL or CONDITIONAL with a safe next route.
 - Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
 - Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
+- Do not mark PASS after multi-agent work when worker handoffs are unresolved, a stale or abandoned worker has no discard/defer/reassign decision, a critical worker branch/report is unmerged, a forbidden write violation remains, shared memory or trace was edited by multiple workers without coordinator closeout, or merged-state verification is missing.
 - Do not mark PASS solely because a risk is known. Known risk still needs owner, explicit human acceptance/defer decision, trace registration, impact scope, rollback/degrade path, close condition, and revisit anchor.
 - Do not mark PASS when a remaining open item would force `spec.md`, `plan.md`, or `tasks.md` to be rewritten before safe continuation.
 - Do not mark PASS when the feature needs upward fallback or complex-part promotion and the next layer/next `sp.*` step is not explicit.
@@ -153,6 +155,7 @@ Global rules:
 - Confirm each upward fallback decision names the source layer, target layer, and next `sp.*` step.
 - Confirm critical flow port-contract gaps and Flow-UI relation breaks are either closed with evidence or visible in `memory/open-items.md`.
 - Confirm no unchecked draft flow, UI, or plan fact is being used as PASS evidence.
+- If multi-agent work occurred, confirm coordinator closeout is complete: handoffs reviewed, diffs merged serially, shared memory/task/trace/routing updates reconciled, conflicts recorded, and required merged-state checks run.
 - If the gate detects business-layer signals that may require splitting, record them as a recommendation for `sp.plan`; do not decide delivery-layer promotion granularity at gate.
 - Confirm open items are still visible after the gate decision.
 - Confirm every open risk or conditional pass cites the affected `OPEN-*` or `RISK-*` item, close condition, and revisit step.

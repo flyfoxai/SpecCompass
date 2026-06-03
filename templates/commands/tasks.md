@@ -104,6 +104,9 @@ Execution flow:
    - In headless or non-interactive execution, observation-band work should shrink into sequential, verifiable local tasks inside the current workset instead of one oversized task. If a hard trigger exists or the shrunken scope still repeatedly fails, route to `NEEDS_DECISION` or `BLOCKED` instead of expanding context.
    - For parallel `[P]` tasks, keep implementation scopes independent and avoid assigning simultaneous writes to shared memory files. If multiple parallel tasks affect `tasks.md`, `memory/open-items.md`, `memory/trace-index.md`, workset routing, or broad status summaries, add a serialized closeout task to merge those updates after worker evidence is collected.
    - When a task is intended for a parallel worker, name the disjoint write set and mark shared memory files as read-only for that worker. Shared memory updates should be returned as evidence or proposed changes and merged by the serialized closeout task.
+   - For tasks intended for multi-agent execution, make the task boundary readable from `tasks.md` without relying on chat history, but avoid bloating the task file. For `[P]` worker tasks, explicitly name `Allowed Write Set` and `Required Checks`; use global defaults for read set and forbidden shared files unless the task needs an exception.
+   - Do not mark global registry-like files as parallel by default. Treat package manifests, lockfiles, route registries, shared constants, database schemas, permission matrices, global config, cross-module contracts, migration scripts, event bus registries, and core type definitions as serialized work unless the plan proves the write impact is isolated.
+   - When a parallel worker needs to change shared memory, task state, trace, or routing, create a follow-up closeout task owned by one coordinator. The worker task should output evidence and proposed updates, not apply shared-state changes directly.
    - Add fallback metadata only to high-risk tasks: tasks touching external dependencies, contracts, migrations, permissions, `@r0`, acceptance gaps, release/rollback risk, or unresolved human/product decisions. Ordinary tasks should not carry fallback boilerplate.
    - For those high-risk tasks, include the fallback target, trigger condition, and writeback requirement in the task text.
    - If a task cannot be made executable without changing upstream documents, stop task expansion for that area and record the exact fallback target: `/sp.plan`, `/sp.bundle`, `/sp.flow`, `/sp.ui`, `/sp.clarify`, `/sp.specify`, or a human macro decision.
@@ -118,6 +121,8 @@ Execution flow:
    - Confirm dependencies and acceptance hooks are explicit.
    - Confirm the active local work area can be discovered from memory.
    - Confirm each task that changes a stable fact has a memory/source-doc writeback path.
+   - Confirm `[P]` or multi-agent tasks declare allowed write boundaries and required checks, and explicitly document any exception to the default read set, forbidden shared files, or expected handoff output.
+   - Confirm tasks touching global registry-like files are serialized or have an explicit isolation reason.
    - Confirm no task requires a hidden context set larger than its workset can safely hold.
 
 ## Output
@@ -138,6 +143,7 @@ Execution flow:
 - Keep task outputs anchored to documentation artifacts.
 - Do not drop `OPEN-*`, `RISK-*`, `@t0`, or `@r0` context during task generation; either resolve it, keep it visible, or point to the revisit step.
 - Do not create implementation tasks that can change contracts, data, UI, permissions, acceptance, or risk state without a matching documentation or memory writeback task.
+- Do not let a parallel task rely on implicit ownership. If the allowed write set or required checks cannot be stated, make the task sequential.
 - Do not create implementation tasks that require hidden impact analysis. The task should point to the trace/workset context needed to check affected flows, screens, contracts, tables, permissions, acceptance, and tests.
 - Do not create high-impact tasks without naming the expected direct disturbance surface and verification path.
 - Do not keep generating local tasks when the next safe step is to revisit an upstream `sp.*` command.

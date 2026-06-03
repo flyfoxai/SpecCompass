@@ -130,6 +130,14 @@ Execution flow:
      - If an open item cannot be traced through `Anchor` or `Affected Docs`, report it as a memory/trace break rather than guessing the missing link.
    - Report feature-memory fact gaps directly. Do not invent abstract quality levels; list the missing files, anchors, close conditions, stale entries, or unresolved items that block later automation.
    - Check whether recent failures are being handled at the wrong layer. Use observable signals: repeated failure on the same task/acceptance/file area, implementation touching spec boundaries, unresolved task dependencies, missing acceptance, or contradictions across spec/plan/tasks/source docs.
+   - Check multi-agent merge integrity when worker handoffs, subagent reports, parallel task notes, temp branches, or worktree evidence are present:
+     - every worker report names task/workset, allowed write set, files changed, inputs read, checks run, result, evidence, proposed shared-memory updates, open items, and merge notes
+     - no worker changed `Forbidden Write Set`, coordinator-owned shared memory, trace, routing, broad status summaries, or global registry-like files without explicit permission
+     - parallel write sets do not overlap unless a serialized closeout merged and verified the overlap
+     - proposed updates to `tasks.md`, `memory/open-items.md`, `memory/trace-index.md`, workset routing, and broad status summaries have been merged by one owner step or remain visibly open
+     - worker outputs do not contradict each other across UI actions, API contracts, data models, permissions, events, acceptance paths, trace anchors, or memory state
+     - merged-state checks ran after integration when worker changes can interact
+     - stale or abandoned workers, branches, or worktrees are identified; missing handoffs default to open/unassigned task state unless the coordinator has reliable evidence to accept or intentionally defer them
    - Check whether any workset is too large for stable automation. Flag areas only when evidence is strong:
      - any hard signal: distinct external system, release cadence, permission/data model, independent migration, irreversible data/security/compliance/rollback risk, or 2+ blocking open items affecting acceptance/release/rollback/security
      - or at least three warning signals: 3+ roles, 4+ user paths, 5+ artifact categories across UI/API/data/permissions/events/migration/external systems, 12+ trace anchors, 8+ core docs needed for one workset, or implementation expected across 8+ major files or 4+ module boundaries
@@ -160,6 +168,7 @@ Execution flow:
 - Do not mark PASS when critical flow steps are missing node type, port contract coverage, failure path, or verification route unless the missing part is explicitly routed through `memory/open-items.md`.
 - Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
 - Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
+- Do not mark PASS when multi-agent work has unresolved worker handoffs, stale workers without a discard/defer decision, unmerged critical branches or reports, write-set overlap without closeout evidence, forbidden write violations, conflicting proposed memory updates, or missing merged-state verification.
 - Do not mark PASS when open `Risk` items affect acceptance, release, data, security, rollback, or implementation confidence unless the analysis records owner, explicit human acceptance/defer decision, revisit anchor or exact next `sp.*` step, trace registration, impact scope, rollback/degrade path, and close condition.
 - Low/Medium risks that do not block the next stage may receive diagnostic PASS with warning only when they are tracked in `specs/<feature>/memory/open-items.md` or the report, have owner, close condition, and revisit anchor, and do not require rewriting `spec.md`, `plan.md`, or `tasks.md` before safe continuation.
 - Soft issues may be warnings only when they do not affect routing, contracts, tests, acceptance, trace, open `Blocker`, or high-impact `Risk`. Failed tests/build/checks, route errors, acceptance breaks, critical trace breaks, and high-risk items missing required fields are blockers, not warnings.

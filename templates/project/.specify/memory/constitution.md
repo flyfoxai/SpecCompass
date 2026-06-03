@@ -116,6 +116,11 @@
 - Task completion is the normal time to update task checkbox, current verification evidence, and directly affected status/open-item state. Mark a task complete only when that task's own completion conditions are met. If review or human decision is part of the same task, keep it open until review passes or the decision is recorded; if review or decision is separate, close the verified implementation task and keep the review/decision item visibly open with owner, close condition, and next review step.
 - Parallel `[P]` tasks may implement independent files or scopes concurrently, but shared writeback must be serialized or batched. Do not let parallel agents simultaneously edit `tasks.md`, `memory/open-items.md`, `memory/trace-index.md`, workset routing, or broad status summaries; collect their evidence and merge shared memory in one owner step.
 - Parallel agent prompts must state the disjoint write set and shared read-only files. Agents should return evidence and requested shared-memory changes instead of editing shared memory directly.
+- Multi-agent execution uses a lightweight coordinator/worker model. The coordinator owns source docs, task DAG, shared memory, serial merge, final verification, and `sp.gate`; a worker owns only one assigned task or workset.
+- A parallel worker task must name `Allowed Write Set` and required checks. Use global defaults for read set, forbidden shared files, and handoff fields unless the task states an exception. If the allowed write set or required checks are missing, run sequentially or ask the coordinator instead of guessing.
+- Worker handoff should be concise: task/workset, actual changes, checks, evidence, proposed shared-memory updates, open items or risks, and merge notes.
+- Global registry-like files default to serial work: package manifests, lockfiles, route registries, shared constants, database schemas, permission matrices, global config, cross-module contracts, migration scripts, event bus registries, and core type definitions.
+- `sp.analyze` checks worker contradictions, stale workers, and shared-state drift after multi-agent work. `sp.gate` must not PASS until coordinator closeout, shared memory/trace/task reconciliation, stale worker discard/defer/reassign decisions, and required merged-state verification are complete.
 
 ## Evidence Rules
 
