@@ -472,8 +472,9 @@ if ($script:candidateT0 -gt 0 -and $openQuestionTodoRiskCount -eq 0) {
     Add-Finding -Severity 'WARN' -Code 'T0_WITHOUT_OPEN_ITEM' -Message 'Found candidate @t0 status tags but no open Question, Todo, or Risk row in memory/open-items.md. Confirm whether the gap is trivial.' -File $FeatureDir -NextStep '/sp.analyze'
 }
 
-$errorCount = @($findings | Where-Object { $_.severity -eq 'ERROR' }).Count
-$warningCount = @($findings | Where-Object { $_.severity -ne 'ERROR' }).Count
+$findingItems = @($findings.ToArray())
+$errorCount = @($findingItems | Where-Object { $_.severity -eq 'ERROR' }).Count
+$warningCount = @($findingItems | Where-Object { $_.severity -ne 'ERROR' }).Count
 $status = if ($errorCount -gt 0) { 'FAIL' } elseif ($warningCount -gt 0) { 'WARN' } else { 'PASS' }
 
 if ($Json) {
@@ -482,11 +483,11 @@ if ($Json) {
         featureDir   = $FeatureDir
         errorCount   = $errorCount
         warningCount = $warningCount
-        findings     = @($findings)
+        findings     = $findingItems
     } | ConvertTo-Json -Compress -Depth 5
 } else {
     Write-Output "SP memory check: $status ($errorCount errors, $warningCount warnings)"
-    foreach ($finding in $findings) {
+    foreach ($finding in $findingItems) {
         $line = "$($finding.severity) $($finding.code): $($finding.message)"
         if ($finding.file) { $line += " [$($finding.file)]" }
         if ($finding.nextStep) { $line += " Next: $($finding.nextStep)" }
