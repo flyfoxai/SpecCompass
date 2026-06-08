@@ -455,7 +455,8 @@ function Normalize-FeatureDescription {
         [Parameter(Mandatory = $true)][string]$BranchName
     )
 
-    $normalized = (($Description ?? '') -replace '\s+', ' ').Trim()
+    if ($null -eq $Description) { $Description = '' }
+    $normalized = ($Description -replace '\s+', ' ').Trim()
     if ([string]::IsNullOrWhiteSpace($normalized)) {
         $normalized = Get-FeatureTitleFromBranch -BranchName $BranchName
     }

@@ -17,7 +17,6 @@ import yaml
 from specify_cli.command_names import (
     canonical_command_id,
     command_filename_base,
-    command_title_text,
     core_command_stem,
     skill_directory_name,
 )

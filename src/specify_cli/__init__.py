@@ -52,7 +52,7 @@ from typer.core import TyperGroup
 # For cross-platform keyboard input
 import readchar
 
-from .command_names import skill_directory_name, skill_directory_variants, slash_command_name
+from .command_names import skill_directory_variants, slash_command_name
 
 def _build_agent_config() -> dict[str, dict[str, Any]]:
     """Derive AGENT_CONFIG from INTEGRATION_REGISTRY."""
@@ -1689,12 +1689,7 @@ def init(
 
     codex_skill_mode = selected_ai == "codex" and (ai_skills or _is_skills_integration)
     claude_skill_mode = selected_ai == "claude" and (ai_skills or _is_skills_integration)
-    kimi_skill_mode = selected_ai == "kimi"
-    agy_skill_mode = selected_ai == "agy" and _is_skills_integration
-    trae_skill_mode = selected_ai == "trae"
     cursor_agent_skill_mode = selected_ai == "cursor-agent" and (ai_skills or _is_skills_integration)
-    native_skill_mode = codex_skill_mode or claude_skill_mode or kimi_skill_mode or agy_skill_mode or trae_skill_mode or cursor_agent_skill_mode
-
     if codex_skill_mode and not ai_skills:
         # Integration path installed skills; show the helpful notice
         steps_lines.append(f"{step_num}. Start Codex in this project directory; SP skills were installed to [cyan].agents/skills[/cyan]. In Codex, type [cyan]$[/cyan], run [cyan]/skills[/cyan] and choose the matching [cyan]sp-*[/cyan] skill, or use a matching natural-language request")

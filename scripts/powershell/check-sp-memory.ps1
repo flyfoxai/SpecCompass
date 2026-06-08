@@ -82,13 +82,15 @@ if (-not $FeatureDir) {
 function Test-EmptyValue {
     param([AllowNull()][string]$Value)
 
-    $clean = (($Value ?? '') -replace '`', '').Trim()
+    if ($null -eq $Value) { $Value = '' }
+    $clean = ($Value -replace '`', '').Trim()
     return $clean -eq '' -or $clean -in @('-', 'n/a', 'na', 'none', 'tbd')
 }
 
 function Clean-Cell {
     param([AllowNull()][string]$Value)
-    $clean = (($Value ?? '') -replace '`', '').Trim()
+    if ($null -eq $Value) { $Value = '' }
+    $clean = ($Value -replace '`', '').Trim()
     $clean = [regex]::Replace($clean, '\[([^\[\]]+)\]\([^)]+\)', '$1')
     return $clean.Trim()
 }
@@ -96,8 +98,21 @@ function Clean-Cell {
 function Test-MarkdownTableSeparator {
     param([AllowNull()][string]$Line)
 
-    $clean = (($Line ?? '') -replace '\|', '' -replace ':', '' -replace '-', '' -replace '\s', '')
+    if ($null -eq $Line) { $Line = '' }
+    $clean = ($Line -replace '\|', '' -replace ':', '' -replace '-', '' -replace '\s', '')
     return $clean -eq ''
+}
+
+function Get-CellOrEmpty {
+    param(
+        [string[]]$Cells,
+        [int]$Index
+    )
+
+    if ($Index -lt $Cells.Count -and $null -ne $Cells[$Index]) {
+        return $Cells[$Index]
+    }
+    return ''
 }
 
 function Test-SkipOpenItemsRow {
@@ -398,18 +413,18 @@ if (-not (Test-Path -LiteralPath $openItems -PathType Leaf)) {
         if (Test-SkipOpenItemsRow $cols) { continue }
 
         Invoke-OpenItemCheck `
-            -ItemId ($cols[0] ?? '') `
-            -ItemType ($cols[1] ?? '') `
-            -Severity ($cols[2] ?? '') `
-            -Anchor ($cols[5] ?? '') `
-            -Owner ($cols[7] ?? '') `
-            -Description ($cols[8] ?? '') `
-            -ImpactArea ($cols[9] ?? '') `
-            -AffectedDocs ($cols[10] ?? '') `
-            -Rollback ($cols[11] ?? '') `
-            -CloseCondition ($cols[12] ?? '') `
-            -LastRefresh ($cols[13] ?? '') `
-            -Status ($cols[14] ?? '')
+            -ItemId (Get-CellOrEmpty $cols 0) `
+            -ItemType (Get-CellOrEmpty $cols 1) `
+            -Severity (Get-CellOrEmpty $cols 2) `
+            -Anchor (Get-CellOrEmpty $cols 5) `
+            -Owner (Get-CellOrEmpty $cols 7) `
+            -Description (Get-CellOrEmpty $cols 8) `
+            -ImpactArea (Get-CellOrEmpty $cols 9) `
+            -AffectedDocs (Get-CellOrEmpty $cols 10) `
+            -Rollback (Get-CellOrEmpty $cols 11) `
+            -CloseCondition (Get-CellOrEmpty $cols 12) `
+            -LastRefresh (Get-CellOrEmpty $cols 13) `
+            -Status (Get-CellOrEmpty $cols 14)
     }
     Invoke-OpenItemBlockFlush
 }
