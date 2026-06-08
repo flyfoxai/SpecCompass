@@ -105,9 +105,12 @@ def _run_bash(feature: Path, *extra: str) -> dict:
 def _run_powershell(feature: Path) -> dict:
     result = subprocess.run(
         ["pwsh", "-NoProfile", "-File", str(POWERSHELL_CHECK), "-Json", "-FeatureDir", str(feature)],
-        check=True,
         text=True,
         capture_output=True,
+    )
+    assert result.returncode == 0, (
+        f"PowerShell memory check failed with exit code {result.returncode}\n"
+        f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
     )
     return json.loads(result.stdout)
 

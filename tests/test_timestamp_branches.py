@@ -307,7 +307,13 @@ def test_powershell_check_prerequisites_reports_no_active_feature_as_state(tmp_p
 
     assert result.returncode == 0, result.stderr
     assert "Feature directory not found" not in result.stdout
-    payload = json.loads(result.stdout)
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise AssertionError(
+            f"PowerShell check-prerequisites did not output JSON.\n"
+            f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        ) from exc
     assert payload["hasActiveFeature"] is False
     assert payload["activeFeature"] == ""
     assert payload["featureDir"] == ""
@@ -1053,7 +1059,7 @@ class TestDryRun:
         assert re.match(r"^\d{8}-\d{6}-ts-feat$", branch), f"unexpected: {branch}"
         # Verify no side effects
         branches = subprocess.run(
-            ["git", "branch", "--list", f"*ts-feat*"],
+            ["git", "branch", "--list", "*ts-feat*"],
             cwd=git_repo,
             capture_output=True,
             text=True,
@@ -1191,7 +1197,13 @@ class TestPowerShellDryRun:
             ps_git_repo, "-Json", "-ShortName", "ps-no-dry", "No dry run"
         )
         assert result.returncode == 0, result.stderr
-        data = json.loads(result.stdout)
+        try:
+            data = json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            raise AssertionError(
+                f"PowerShell create-new-feature did not output JSON.\n"
+                f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+            ) from exc
         assert "DRY_RUN" not in data, f"DRY_RUN should not be in normal JSON: {data}"
 
 
