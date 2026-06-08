@@ -105,7 +105,7 @@ function Test-MarkdownTableSeparator {
 
 function Get-CellOrEmpty {
     param(
-        [string[]]$Cells,
+        [object[]]$Cells,
         [int]$Index
     )
 
@@ -413,18 +413,18 @@ if (-not (Test-Path -LiteralPath $openItems -PathType Leaf)) {
         if (Test-SkipOpenItemsRow $cols) { continue }
 
         Invoke-OpenItemCheck `
-            -ItemId (Get-CellOrEmpty $cols 0) `
-            -ItemType (Get-CellOrEmpty $cols 1) `
-            -Severity (Get-CellOrEmpty $cols 2) `
-            -Anchor (Get-CellOrEmpty $cols 5) `
-            -Owner (Get-CellOrEmpty $cols 7) `
-            -Description (Get-CellOrEmpty $cols 8) `
-            -ImpactArea (Get-CellOrEmpty $cols 9) `
-            -AffectedDocs (Get-CellOrEmpty $cols 10) `
-            -Rollback (Get-CellOrEmpty $cols 11) `
-            -CloseCondition (Get-CellOrEmpty $cols 12) `
-            -LastRefresh (Get-CellOrEmpty $cols 13) `
-            -Status (Get-CellOrEmpty $cols 14)
+            -ItemId (Get-CellOrEmpty -Cells $cols -Index 0) `
+            -ItemType (Get-CellOrEmpty -Cells $cols -Index 1) `
+            -Severity (Get-CellOrEmpty -Cells $cols -Index 2) `
+            -Anchor (Get-CellOrEmpty -Cells $cols -Index 5) `
+            -Owner (Get-CellOrEmpty -Cells $cols -Index 7) `
+            -Description (Get-CellOrEmpty -Cells $cols -Index 8) `
+            -ImpactArea (Get-CellOrEmpty -Cells $cols -Index 9) `
+            -AffectedDocs (Get-CellOrEmpty -Cells $cols -Index 10) `
+            -Rollback (Get-CellOrEmpty -Cells $cols -Index 11) `
+            -CloseCondition (Get-CellOrEmpty -Cells $cols -Index 12) `
+            -LastRefresh (Get-CellOrEmpty -Cells $cols -Index 13) `
+            -Status (Get-CellOrEmpty -Cells $cols -Index 14)
     }
     Invoke-OpenItemBlockFlush
 }

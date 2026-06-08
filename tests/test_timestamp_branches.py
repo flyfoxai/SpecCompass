@@ -38,6 +38,17 @@ def _has_pwsh() -> bool:
     return HAS_PWSH
 
 
+def _json_from_stdout(result: subprocess.CompletedProcess, label: str) -> dict:
+    """Extract JSON from stdout that may include PowerShell warning lines."""
+    json_lines = [line for line in result.stdout.splitlines() if line.strip().startswith("{")]
+    if not json_lines:
+        raise AssertionError(
+            f"{label} did not output JSON.\n"
+            f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
+        )
+    return json.loads(json_lines[-1])
+
+
 @pytest.fixture
 def git_repo(tmp_path: Path) -> Path:
     """Create a temp git repo with scripts and .specify dir."""
@@ -307,13 +318,7 @@ def test_powershell_check_prerequisites_reports_no_active_feature_as_state(tmp_p
 
     assert result.returncode == 0, result.stderr
     assert "Feature directory not found" not in result.stdout
-    try:
-        payload = json.loads(result.stdout)
-    except json.JSONDecodeError as exc:
-        raise AssertionError(
-            f"PowerShell check-prerequisites did not output JSON.\n"
-            f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
-        ) from exc
+    payload = _json_from_stdout(result, "PowerShell check-prerequisites")
     assert payload["hasActiveFeature"] is False
     assert payload["activeFeature"] == ""
     assert payload["featureDir"] == ""
@@ -1191,19 +1196,11 @@ class TestPowerShellDryRun:
 
     def test_ps_dry_run_json_absent_without_flag(self, ps_git_repo: Path):
         """PowerShell normal JSON output does NOT include DRY_RUN field."""
-        import json
-
         result = run_ps_script(
             ps_git_repo, "-Json", "-ShortName", "ps-no-dry", "No dry run"
         )
         assert result.returncode == 0, result.stderr
-        try:
-            data = json.loads(result.stdout)
-        except json.JSONDecodeError as exc:
-            raise AssertionError(
-                f"PowerShell create-new-feature did not output JSON.\n"
-                f"STDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}"
-            ) from exc
+        data = _json_from_stdout(result, "PowerShell create-new-feature")
         assert "DRY_RUN" not in data, f"DRY_RUN should not be in normal JSON: {data}"
 
 
