@@ -7,6 +7,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from tests.conftest import requires_bash
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BASH_CHECK = PROJECT_ROOT / "scripts" / "bash" / "check-sp-memory.sh"
@@ -92,9 +94,13 @@ def _feature(tmp_path: Path) -> Path:
     return feature
 
 
+def _bash_path(path: Path) -> str:
+    return path.as_posix()
+
+
 def _run_bash(feature: Path, *extra: str) -> dict:
     result = subprocess.run(
-        ["bash", str(BASH_CHECK), "--json", "--feature-dir", str(feature), *extra],
+        ["bash", _bash_path(BASH_CHECK), "--json", "--feature-dir", _bash_path(feature), *extra],
         check=True,
         text=True,
         capture_output=True,
@@ -124,6 +130,7 @@ def _run_powershell(feature: Path) -> dict:
     return json.loads(result.stdout)
 
 
+@requires_bash
 def test_empty_open_items_table_passes(tmp_path: Path):
     feature = _feature(tmp_path)
 
@@ -134,6 +141,7 @@ def test_empty_open_items_table_passes(tmp_path: Path):
     assert payload["warningCount"] == 0
 
 
+@requires_bash
 def test_empty_open_items_markdown_table_skeleton_passes(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "memory" / "open-items.md").write_text(OPEN_ITEMS_EMPTY_TABLE, encoding="utf-8")
@@ -145,6 +153,7 @@ def test_empty_open_items_markdown_table_skeleton_passes(tmp_path: Path):
     assert payload["warningCount"] == 0
 
 
+@requires_bash
 def test_empty_open_items_table_variant_passes(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "memory" / "open-items.md").write_text(OPEN_ITEMS_EMPTY_TABLE_VARIANT, encoding="utf-8")
@@ -156,6 +165,7 @@ def test_empty_open_items_table_variant_passes(tmp_path: Path):
     assert payload["warningCount"] == 0
 
 
+@requires_bash
 def test_open_blocker_blocks_pass(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "memory" / "open-items.md").write_text(
@@ -169,6 +179,7 @@ def test_open_blocker_blocks_pass(tmp_path: Path):
     assert any(f["code"] == "OPEN_BLOCKER" and f["nextStep"] == "/sp.gate" for f in payload["findings"])
 
 
+@requires_bash
 def test_low_medium_question_todo_can_stay_lightweight(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "memory" / "open-items.md").write_text(
@@ -194,6 +205,7 @@ def test_low_medium_question_todo_can_stay_lightweight(tmp_path: Path):
     assert any(f["code"] == "OPEN_ITEM_TRACE_LINK_MISSING" for f in payload["findings"])
 
 
+@requires_bash
 def test_high_impact_open_items_require_full_fields(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "memory" / "open-items.md").write_text(
@@ -219,6 +231,7 @@ def test_high_impact_open_items_require_full_fields(tmp_path: Path):
     assert any(f["code"] == "OPEN_ITEM_TRACE_LINK_MISSING" for f in payload["findings"])
 
 
+@requires_bash
 def test_open_item_must_link_to_trace_index(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "memory" / "open-items.md").write_text(
@@ -241,6 +254,7 @@ def test_open_item_must_link_to_trace_index(tmp_path: Path):
     assert any(f["code"] == "OPEN_ITEM_TRACE_LINK_MISSING" for f in payload["findings"])
 
 
+@requires_bash
 def test_markdown_link_anchor_resolves_to_trace_index(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "memory" / "open-items.md").write_text(
@@ -264,6 +278,7 @@ def test_markdown_link_anchor_resolves_to_trace_index(tmp_path: Path):
     assert payload["findings"] == []
 
 
+@requires_bash
 def test_r0_source_tag_requires_open_risk_or_blocker(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "spec.md").write_text("Payment rollback gap @r0\n", encoding="utf-8")
@@ -274,6 +289,7 @@ def test_r0_source_tag_requires_open_risk_or_blocker(tmp_path: Path):
     assert any(f["code"] == "R0_WITHOUT_OPEN_RISK" for f in payload["findings"])
 
 
+@requires_bash
 def test_t0_source_tag_warns_without_open_item(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "spec.md").write_text("Copy decision pending @t0\n", encoding="utf-8")

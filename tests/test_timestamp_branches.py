@@ -49,6 +49,10 @@ def _json_from_stdout(result: subprocess.CompletedProcess, label: str) -> dict:
     return json.loads(json_lines[-1])
 
 
+def _bash_path(path: Path) -> str:
+    return path.as_posix()
+
+
 @pytest.fixture
 def git_repo(tmp_path: Path) -> Path:
     """Create a temp git repo with scripts and .specify dir."""
@@ -152,7 +156,7 @@ def run_script(cwd: Path, *args: str) -> subprocess.CompletedProcess:
 
 def source_and_call(func_call: str, env: dict | None = None) -> subprocess.CompletedProcess:
     """Source common.sh and call a function."""
-    cmd = f'source "{COMMON_SH}" && {func_call}'
+    cmd = f'source "{_bash_path(COMMON_SH)}" && {func_call}'
     return subprocess.run(
         ["bash", "-c", cmd],
         capture_output=True,
@@ -161,6 +165,7 @@ def source_and_call(func_call: str, env: dict | None = None) -> subprocess.Compl
     )
 
 
+@requires_bash
 def test_seeded_feature_scaffold_is_not_reported_as_tasks_prepared(tmp_path: Path):
     """Initial SP scaffold files should not advance the feature stage by existence alone."""
     feature_dir = tmp_path / "specs" / "001-demo"
@@ -177,12 +182,13 @@ def test_seeded_feature_scaffold_is_not_reported_as_tasks_prepared(tmp_path: Pat
     (feature_dir / "bundle.md").write_text("# Bundle\n<!-- SP_STAGE_SEED: bundle -->\n", encoding="utf-8")
     (feature_dir / "tasks.md").write_text("# Tasks\n<!-- SP_STAGE_SEED: tasks -->\n", encoding="utf-8")
 
-    result = source_and_call(f'feature_stage_label "{feature_dir}"')
+    result = source_and_call(f'feature_stage_label "{_bash_path(feature_dir)}"')
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "scaffolded"
 
 
+@requires_bash
 def test_feature_stage_advances_only_after_seed_marker_is_removed(tmp_path: Path):
     """A real generated document without the seed marker may advance routing stage."""
     feature_dir = tmp_path / "specs" / "001-demo"
@@ -191,12 +197,13 @@ def test_feature_stage_advances_only_after_seed_marker_is_removed(tmp_path: Path
     (feature_dir / "bundle.md").write_text("# Bundle\n<!-- SP_STAGE_SEED: bundle -->\n", encoding="utf-8")
     (feature_dir / "tasks.md").write_text("# Tasks\n<!-- SP_STAGE_SEED: tasks -->\n", encoding="utf-8")
 
-    result = source_and_call(f'feature_stage_label "{feature_dir}"')
+    result = source_and_call(f'feature_stage_label "{_bash_path(feature_dir)}"')
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "specified"
 
 
+@requires_bash
 def test_feature_primary_workset_prefers_main_journey_over_alphabetical_order(tmp_path: Path):
     """Fresh scaffold routing should start from the primary journey, not alpha order."""
     worksets_dir = tmp_path / "specs" / "001-demo" / "memory" / "worksets"
@@ -204,7 +211,7 @@ def test_feature_primary_workset_prefers_main_journey_over_alphabetical_order(tm
     (worksets_dir / "ws-decision-and-approval.md").write_text("# Decision\n", encoding="utf-8")
     (worksets_dir / "ws-primary-journey.md").write_text("# Primary\n", encoding="utf-8")
 
-    result = source_and_call(f'feature_primary_workset "{tmp_path / "specs" / "001-demo"}"')
+    result = source_and_call(f'feature_primary_workset "{_bash_path(tmp_path / "specs" / "001-demo")}"')
 
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "ws-primary-journey"
