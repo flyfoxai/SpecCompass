@@ -104,7 +104,16 @@ def _run_bash(feature: Path, *extra: str) -> dict:
 
 def _run_powershell(feature: Path) -> dict:
     result = subprocess.run(
-        ["pwsh", "-NoProfile", "-File", str(POWERSHELL_CHECK), "-Json", "-FeatureDir", str(feature)],
+        [
+            "pwsh",
+            "-NoProfile",
+            "-Command",
+            (
+                "$ErrorActionPreference='Stop'; "
+                f"try {{ & '{POWERSHELL_CHECK}' -Json -FeatureDir '{feature}' }} "
+                "catch { Write-Error ($_.Exception.Message + \"`n\" + $_.ScriptStackTrace); exit 1 }"
+            ),
+        ],
         text=True,
         capture_output=True,
     )

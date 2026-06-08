@@ -440,7 +440,11 @@ $memoryExcludes = @(
 
 Get-ChildItem -LiteralPath $FeatureDir -Recurse -File -Filter '*.md' -ErrorAction SilentlyContinue | ForEach-Object {
     $filePath = (Get-Item -LiteralPath $_.FullName).FullName
-    $relative = [System.IO.Path]::GetRelativePath($featureRoot, $filePath) -replace '\\', '/'
+    $relative = $filePath
+    if ($relative.StartsWith($featureRoot)) {
+        $relative = $relative.Substring($featureRoot.Length)
+    }
+    $relative = $relative.TrimStart([char[]]@('\', '/')) -replace '\\', '/'
     $relativeLower = $relative.ToLowerInvariant().TrimStart([char[]]@('.', '/'))
     if ($memoryExcludes -contains $relative -or $relative.StartsWith('memory/worksets/')) {
         return
