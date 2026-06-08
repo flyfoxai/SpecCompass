@@ -116,7 +116,7 @@ function Get-CellOrEmpty {
 }
 
 function Test-SkipOpenItemsRow {
-    param([string[]]$Cells)
+    param([object[]]$Cells)
 
     $nonEmpty = 0
     $lowerCells = @()
@@ -410,7 +410,7 @@ if (-not (Test-Path -LiteralPath $openItems -PathType Leaf)) {
 
         $row = $line.Trim('|')
         $cols = $row -split '\|'
-        if (Test-SkipOpenItemsRow $cols) { continue }
+        if (Test-SkipOpenItemsRow -Cells $cols) { continue }
 
         Invoke-OpenItemCheck `
             -ItemId (Get-CellOrEmpty -Cells $cols -Index 0) `
