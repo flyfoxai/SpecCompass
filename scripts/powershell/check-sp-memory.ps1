@@ -184,7 +184,7 @@ if (-not $FeatureDir -or -not (Test-Path -LiteralPath $FeatureDir -PathType Cont
 
 $openItems = Join-Path $FeatureDir 'memory/open-items.md'
 $traceIndex = Join-Path $FeatureDir 'memory/trace-index.md'
-$featureRoot = (Get-Item -LiteralPath $FeatureDir).FullName.TrimEnd('\', '/')
+$featureRoot = (Get-Item -LiteralPath $FeatureDir).FullName.TrimEnd([char[]]@('\', '/'))
 $traceText = ''
 if (Test-Path -LiteralPath $traceIndex -PathType Leaf) {
     $traceText = Get-Content -LiteralPath $traceIndex -Raw
@@ -408,7 +408,7 @@ if (-not (Test-Path -LiteralPath $openItems -PathType Leaf)) {
         if (-not $line.StartsWith('|')) { continue }
         if (Test-MarkdownTableSeparator $line) { continue }
 
-        $row = $line.Trim('|')
+        $row = $line.Trim([char[]]@('|'))
         $cols = $row -split '\|'
         if (Test-SkipOpenItemsRow -Cells $cols) { continue }
 
@@ -441,7 +441,7 @@ $memoryExcludes = @(
 Get-ChildItem -LiteralPath $FeatureDir -Recurse -File -Filter '*.md' -ErrorAction SilentlyContinue | ForEach-Object {
     $filePath = (Get-Item -LiteralPath $_.FullName).FullName
     $relative = [System.IO.Path]::GetRelativePath($featureRoot, $filePath) -replace '\\', '/'
-    $relativeLower = $relative.ToLowerInvariant().TrimStart('./')
+    $relativeLower = $relative.ToLowerInvariant().TrimStart([char[]]@('.', '/'))
     if ($memoryExcludes -contains $relative -or $relative.StartsWith('memory/worksets/')) {
         return
     }
