@@ -62,5 +62,5 @@ Less useful for very small tools with only a few pages and simple rules.
 ## Codex Notes
 
 - User-facing commands use the unified `/sp.*` form, such as `/sp.specify`
-- Codex keeps upstream-style skill packages under `.agents/skills/sp-*/SKILL.md`; type `$` or run `/skills`, then choose an `sp-*` skill. Deprecated prompt/plugin command surfaces are not part of the current Codex path.
+- Codex keeps upstream-style skill packages under `.agents/skills/sp-*/SKILL.md`; invoke `$sp-*`, run `/skills` and choose an `sp-*` skill, or ask in natural language when the task matches the skill description. Deprecated prompt/plugin command surfaces are not part of the current Codex path, and explicit invocation is recommended for deterministic SP workflow stages.
 - Claude exposes direct project slash commands from `.claude/commands/sp.*.md`

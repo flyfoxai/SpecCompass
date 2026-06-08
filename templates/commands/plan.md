@@ -1,9 +1,9 @@
 ---
-description: Organize delivery design outputs and split the feature into worksets.
+description: Organize delivery design outputs, code landing boundaries, and implementation readiness.
 handoffs:
   - label: Create Tasks
     agent: sp.tasks
-    prompt: Bind worksets, deliverables, and acceptance items into an executable documentation task set.
+    prompt: Bind worksets, deliverables, code landing boundaries, and acceptance items into executable doc or implementation tasks.
     send: true
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --require-bundle
@@ -59,10 +59,10 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-Goal: Organize delivery design outputs and split the active feature into bounded worksets while preserving traceability back to the first-layer business documents.
+Goal: Organize delivery design outputs, code landing boundaries, and implementation readiness while preserving traceability back to the first-layer business documents.
 
 Global rules:
-- Stay within documentation work only.
+- Stay within planning work only: this command may plan code landing, test strategy, and implementation readiness, but it must not edit production code.
 - Reuse existing project context and active feature state.
 - Do not write production code.
 - If `.specify/memory/project-index.md` exists, read it first and use it as the project routing entry.
@@ -70,7 +70,7 @@ Global rules:
 - If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
+- User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Manage context as an engineering budget: start from routing, bundle, trace, and open items; expand only to the workset or source documents needed for the current planning decision.
 
 Execution flow:
@@ -113,6 +113,16 @@ Execution flow:
      - business scope, flow, or UI source is inconsistent -> revisit `/sp.specify`, `/sp.clarify`, `/sp.flow`, or `/sp.ui`
      - product tradeoff or acceptance boundary is missing -> ask for a human macro decision
    - Record the source layer, reason, target layer, exact next `/sp.*` step, and memory/source-doc writeback requirement for every fallback.
+   - Produce the code-stage landing plan needed for later implementation without writing code:
+     - `Source Layout`: target modules, directories, or key files by workset
+     - `Runtime Commands`: install, test, build, lint, typecheck, and local smoke commands when known
+     - `Code Mapping`: workset/flow/UI/API/data/permission/event/acceptance anchors to module, directory, boundary object, or key-file level
+     - `Test Mapping`: acceptance-critical tests, contract tests, UI interaction checks, or manual verification paths
+     - `Workset Code Boundary`: allowed code/test/config areas and forbidden/shared areas for implementation tasks
+     - `Global Registry Risk`: package manifests, lockfiles, route registries, schemas, permission matrices, global config, cross-module contracts, migrations, event registries, or other shared files that require serialized ownership
+     - `Implementation Readiness`: the single source of truth for whether each workset can produce `Mode: impl` tasks
+   - Keep `Code Mapping` at module, directory, boundary-object, or key-file level unless a high-risk public API, permission rule, data migration, event boundary, or core acceptance test already needs a stable `CODE` or `TEST` anchor. Do not invent function-level trace before implementation evidence exists.
+   - When implementation readiness is blocked, record the exact reason and fallback route: `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.bundle`, `/sp.plan`, `/sp.tasks`, or human macro decision.
 4. Refresh workset and routing memory.
    - Create or update `specs/<feature>/plan.md`
    - Create or update `specs/<feature>/memory/worksets/index.md`
@@ -127,6 +137,7 @@ Execution flow:
    - Confirm worksets are bounded and actionable.
    - Confirm major delivery objects and relationships are visible.
    - Confirm routing memory points to the current primary workset.
+   - Confirm `Implementation Readiness` is present in `plan.md` and is not contradicted by open blockers, missing code landing boundaries, missing validation commands, or missing source contracts.
 
 ## Output
 
@@ -138,7 +149,8 @@ Execution flow:
 
 ## Key Rules
 
-- Do not write production code or implementation tasks here.
+- Do not write production code here.
+- Do not generate executable implementation tasks here. Record implementation readiness and code landing boundaries so `/sp.tasks` can generate `Mode: impl` tasks later.
 - Do not collapse multiple independent work areas into one vague workset.
 - Do not keep an oversized area inside one workset when it already exceeds the model's stable context window; recommend splitting or promotion with an explicit parent-child contract, then get confirmation before creating sub-features or sub-projects.
 - Do not over-split ordinary work. Promote only when complexity blocks stable understanding, verification, or execution.
@@ -149,6 +161,7 @@ Execution flow:
 - Do not treat unchecked flow or UI draft facts as stable workset, delivery, risk-closure, or implementation basis.
 - Keep planning constrained to the active feature and workset area.
 - Do not continue splitting delivery tasks when the safe next action is to repair first-layer source documents or ask for a macro decision.
+- Do not let `tasks.md`, `analysis.md`, or `gate.md` invent a separate implementation-readiness source. `plan.md` `Implementation Readiness` is the authority; other commands consume, diagnose, or decide from it.
 
 ## Post-Execution Checks
 

@@ -68,7 +68,7 @@
   <text x="645" y="512" class="cmd">/sp.analyze</text>
   <text x="785" y="512" class="text">检查漂移、trace 断链、过期上下文、未闭环风险</text>
   <text x="645" y="550" class="cmd">/sp.gate</text>
-  <text x="785" y="550" class="text">基于证据判断 PASS、FAIL 或 NEEDS_DECISION</text>
+  <text x="785" y="550" class="text">判断 PASS、FAIL、CONDITIONAL、BLOCKED 或 NEEDS_DECISION</text>
   <text x="645" y="588" class="cmd">/sp.bundle</text>
   <text x="785" y="588" class="text">打包 feature 文档，用于评审和交付</text>
   <text x="645" y="626" class="note">产出：准入结论、兜底路线或交付包</text>

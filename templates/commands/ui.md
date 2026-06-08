@@ -26,7 +26,7 @@ Global rules:
 - If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
+- User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Keep screen, action, field, and acceptance anchors traceable. Put unresolved UI risks or blockers in `memory/open-items.md`.
 - Treat newly generated or refreshed UI outputs as draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent evidence. Draft UI facts may guide layout discussion, but they must not close risks, support PASS, or replace stable source facts.
 - Manage context as an engineering budget: start from routing, trace, flow, and open items; expand only to the screens and contracts involved in the current UI decision.
@@ -71,8 +71,8 @@ Global rules:
 - Create or update `specs/<feature>/ui/screen-map.md`
 - Create or update `specs/<feature>/ui/screen-*.md`
 - Create or update `specs/<feature>/ui/jsonforms/*` when applicable
-- Refresh `specs/<feature>/memory/stable-context.md`
-- Refresh `specs/<feature>/memory/trace-index.md`
+- Refresh `specs/<feature>/memory/stable-context.md` only when source-backed or checked UI facts changed, or when routing changed. Draft inferences stay in `ui/*` or `memory/open-items.md`.
+- Refresh `specs/<feature>/memory/trace-index.md` only when stable UI trace links changed. Draft links stay in `ui/*` or `memory/open-items.md` until checked.
 - Refresh `specs/<feature>/memory/index.md` if routing changes
 
 ## Check Before Finish

@@ -2975,6 +2975,8 @@ LEAN_COMMAND_NAMES = [
     "sp.plan",
     "sp.tasks",
     "sp.implement",
+    "sp.analyze",
+    "sp.gate",
     "sp.constitution",
 ]
 
@@ -2993,7 +2995,7 @@ class TestLeanPreset:
         assert manifest.id == "lean"
         assert manifest.name == "Lean Workflow"
         assert manifest.version == "1.0.0"
-        assert len(manifest.templates) == 5  # 5 commands
+        assert len(manifest.templates) == 7  # 7 commands
 
     def test_lean_provides_core_workflow_commands(self):
         """Verify the lean preset provides overrides for core workflow commands."""

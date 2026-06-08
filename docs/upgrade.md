@@ -401,7 +401,7 @@ The `specify` CLI tool is used for:
 - **Upgrades:** `specify init --here --force` to update templates and commands
 - **Diagnostics:** `specify check` to verify tool installation
 
-Once you've run `specify init`, the SP commands or skills are **permanently installed** in your project's agent folder (`.claude/`, `.github/prompts/`, `.pi/prompts/`, `.agents/skills/`, etc.). Slash-command hosts use entries like `/sp.specify` and `/sp.plan`; Codex uses skills such as `$sp-specify` and `$sp-plan` through `$` or `/skills`. Your AI coding agent reads these files directly—no need to run `specify` again.
+Once you've run `specify init`, the SP commands or skills are **permanently installed** in your project's agent folder (`.claude/`, `.github/prompts/`, `.pi/prompts/`, `.agents/skills/`, etc.). Slash-command hosts use entries like `/sp.specify` and `/sp.plan`; Codex uses skills such as `$sp-specify` and `$sp-plan` through `$`, `/skills`, or matching natural-language requests. Your AI coding agent reads these files directly—no need to run `specify` again.
 
 **If your agent isn't recognizing SP commands or skills:**
 
@@ -425,7 +425,7 @@ Once you've run `specify init`, the SP commands or skills are **permanently inst
 
 3. **Check you're in the correct directory** where you ran `specify init`
 
-4. **For Codex**, do not use `/sp.*` slash-menu visibility as the success check. Type `$` or run `/skills` and select the matching `sp-*` skill.
+4. **For Codex**, do not use `/sp.*` slash-menu visibility as the success check. Type `$sp-*` or run `/skills` and select the matching `sp-*` skill; natural-language requests may also invoke a matching skill, but explicit invocation is the deterministic check.
 
 5. **For some agents**, you may need to reload the workspace or clear cache
 

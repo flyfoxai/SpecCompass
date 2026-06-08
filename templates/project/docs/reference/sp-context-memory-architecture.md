@@ -118,6 +118,8 @@ If a fact is still disputed, it belongs in `open-items.md`, not in the stable la
 
 Not every item needs the same weight. Low or Medium `Question` and `Todo` items may stay lightweight when they are local and do not affect scope, acceptance, release, rollback, security, or implementation confidence. `Risk`, `Blocker`, High severity items, and any item with broader impact need the full record: owner, impact area, rollback or degradation path, close condition, last refresh, and a trace/source link.
 
+Lightweight items still need enough location, status, and next-action detail for a later command to find and close them. Full field validation is required for `Risk`, `Blocker`, High severity items, and broader-impact items; local low-risk Question/Todo records can stay compact.
+
 ## 6. Trace Index and Worksets
 
 ### `trace-index.md`
@@ -150,6 +152,8 @@ Recommended relation fields are lightweight and searchable:
 Critical flow steps should expose a lightweight port contract in the source flow document or trace notes: input, precondition or permission, business action, output or side effect, target state, failure path, and verification evidence. If any part is unknown and important, put it in `open-items.md`.
 
 New or refreshed outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts until checked by `sp.analyze`, `sp.gate`, or equivalent current evidence. Draft facts may route the next read set, but they must not close risks, rewrite stable context, or support PASS.
+
+Before `tasks.md` exists, equivalent current evidence means a bounded draft-safety check: source backing is visible, stable memory was not overwritten, risks were not closed, PASS was not claimed from the draft, and trace/open-item routing exists or the output remains explicitly draft.
 
 Recommended coordinate rules:
 

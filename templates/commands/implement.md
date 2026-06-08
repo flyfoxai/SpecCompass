@@ -1,5 +1,5 @@
 ---
-description: Execute the implementation plan by processing and executing all tasks defined in tasks.md
+description: "Execute selected Mode: impl tasks from tasks.md following the implementation plan"
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
   ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
@@ -85,8 +85,9 @@ You **MUST** consider the user input before proceeding (if not empty).
      - Automatically proceed to step 3
 
 3. Load and analyze the implementation context:
-   - **REQUIRED**: Read tasks.md for the complete task list and execution plan
+   - **REQUIRED**: Read tasks.md for the task list, then select only the requested `Mode: impl` task or task group for this run. If the user did not name a task, pick the next unblocked `Mode: impl` task that is ready under dependency order.
    - **REQUIRED**: Read plan.md for tech stack, architecture, and file structure
+   - **REQUIRED**: Read `plan.md` `Implementation Readiness`; it is the single source of truth for whether a workset can enter implementation.
    - **IF EXISTS**: Read `FEATURE_DIR/memory/index.md` first to choose the smallest sufficient workset context
    - **IF EXISTS**: Read `FEATURE_DIR/memory/open-items.md` for unresolved risks, blockers, todos, rollback advice, and close conditions affecting the selected task
    - **IF EXISTS**: Read `FEATURE_DIR/memory/trace-index.md` for trace anchors only when the task touches flow, UI, API, table, acceptance, permission, event, or test behavior
@@ -142,16 +143,24 @@ You **MUST** consider the user input before proceeding (if not empty).
 5. Parse tasks.md structure and extract:
    - **Task phases**: Setup, Tests, Core, Integration, Polish
    - **Task dependencies**: Sequential vs parallel execution rules
-   - **Task details**: ID, description, file paths, parallel markers [P]
+   - **Task mode**: `Mode: impl` tasks are executable by this command; missing mode or `Mode: doc` tasks are not production-code tasks and must be routed back to `/sp.tasks` or executed by the appropriate document command.
+   - **Task details**: ID, description, file paths, parallel markers [P], `Allowed Write Set`, `Required Checks`, trace anchors, and effective defaults
    - **Execution flow**: Order and dependency requirements
+   - **Task packet defaults**: Confirm the selected task exposes compressed effective defaults for `Forbidden Write Set`, `Fallback Route`, `Writeback Rule`, and `Required Evidence`, or points to a small stable defaults file that was read before editing.
+   - If a selected implementation task lacks `Mode: impl`, stop and return `NEEDS_TASKS` with the task ID, why it cannot be executed as code, and the next `/sp.tasks` route.
+   - If `plan.md` does not mark the task's workset implementation-ready, stop and return `NEEDS_PLAN` or `NEEDS_DECISION` with the blocking readiness evidence and next route.
+   - If required task context is missing and cannot be recovered from routed files, stop and return `NEEDS_CONTEXT` with the missing context, files checked, and next route.
 
-6. Execute implementation following the task plan:
-   - **Phase-by-phase execution**: Complete each phase before moving to the next
+6. Execute implementation following the selected task plan:
+   - **Selected-scope execution**: Execute only the selected `Mode: impl` task or task group for this run. Do not treat `/sp.implement` as permission to finish every task in `tasks.md` unless the user explicitly requested full remaining implementation and every included task is independently ready.
+   - **Phase-by-phase execution**: Complete each selected phase before moving to the next
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together  
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
    - **Acceptance-first when feasible**: Before changing implementation, identify the failing or missing test, checklist item, or acceptance path that will prove the task is complete. If no automated test is practical, write down the manual verification path before coding.
    - Before modifying existing code, inspect directly related tests, failing tests, same-name or adjacent tests, or at least their test names and contract-bearing assertions. For indirect impact tests, read signatures and scope first, then expand only when evidence requires it.
    - **Impact-radius check**: Before changing APIs, UI fields, table/data structures, permissions, events, acceptance behavior, or tests, use `FEATURE_DIR/memory/trace-index.md`, `FEATURE_DIR/memory/open-items.md`, and the selected workset to identify the affected flow, screen, contract, table, permission, acceptance, and test surface. If an optional code graph such as CodeGraph is already installed in the target project, it may be used as supporting evidence; never require it and always fall back to SP memory, source docs, search, and tests.
+   - **Allowed write boundary**: Before the first edit, confirm every target file is inside the task's `Allowed Write Set`. If the set is insufficient, do not auto-expand it. Return `NEEDS_PLAN` when the code boundary or workset is wrong; return `NEEDS_TASKS` when the task packet or split is incomplete; return `NEEDS_CONTEXT` when required context is missing and cannot be recovered from routed files. Keep valid local evidence, but do not continue by guessing permission.
+   - **CODE/TEST trace discipline**: High-risk boundary objects and acceptance-critical tests must have formal `CODE` or `TEST` trace entries, fields, or proposed updates. Ordinary internal helpers, private functions, pure style components, and local glue code do not require `CODE` anchors unless they become stable cross-document objects.
    - For tasks that trigger the impact-radius check, write a concise `Impact-Radius Plan` before the first relevant change. Name expected anchors, direct source docs or files to check, and intended verification. Keep it in the task execution output or the relevant `tasks.md` task note. Do not write `Impact-Radius Evidence` until after the actual check or verification runs. If tests, checks, static review, or manual verification fail, Evidence must record the failure output, affected scope, and next route; it must not say PASS, verified, or close the task/risk. The plan and evidence may be recorded in one execution turn, but do not present after-the-fact planning as a pre-change safety check, and do not issue parallel tool calls that can modify target files before the plan note is recorded.
    - Low-risk small edits may use a fast path: when impact is clear, normally one file or one local behavior, and no architecture/dependency/data/permission/acceptance change is involved, write a brief pre-change plan, edit, then record current verification evidence. Do not use the fast path for high-impact or unclear tasks.
    - **File-based coordination**: Tasks affecting the same files must run sequentially
@@ -189,6 +198,8 @@ You **MUST** consider the user input before proceeding (if not empty).
      - unresolved project principle or product tradeoff -> ask for human decision
    - When using fallback, record the source layer, reason, target layer, exact next `sp.*` step, and whether any changed fact must be written back to memory or source docs.
    - **Trace-aware execution**: Preserve existing stable anchors in code comments, tests, or docs where the project already uses them. Do not invent new anchors unless source docs or memory are also updated.
+   - **Delete/move/rename safety**: Before deleting, moving, or renaming code, tests, routes, schemas, permissions, migrations, events, or public UI/API objects, perform a lightweight reference scan even when no trace row exists. Check direct text references, imports, calls, routes, tests, same-directory references, and registered contracts as applicable. If references exist but the safe impact is unclear, stop and route to `/sp.plan` or `/sp.tasks`.
+   - **Soft-delete lifecycle**: If safe removal requires temporary compatibility, tombstone, or soft-delete behavior, create or propose an open item with object, reason, affected trace, cleanup trigger or deadline, verification requirement, owner or next route. Do not leave "clean up later" as an untracked note.
    - **Subagent discipline**: Use subagents only when cross-module scope, parallel investigation, context pressure, or an explicit analysis recommendation justifies delegation. Do not spawn subagents for routine single-file execution.
 
 7. Implementation execution rules:
@@ -206,9 +217,11 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Provide clear error messages with context for debugging
    - Suggest next steps if implementation cannot proceed
    - For tasks that triggered the impact-radius check, include one concise `Impact-Radius Evidence` note after the actual check or verification. Name affected trace/workset anchors, checked source docs/files, verification result, and open items, or state that no direct adjacent impact was found. If the check fails, preserve the failure as open evidence with the next route; do not rewrite it as success. Keep this to direct neighbors; do not expand into multi-hop graph analysis unless current evidence requires it. Do not write impact-radius notes as production code comments; update memory, trace, open-items, or source-of-truth docs only when stable facts, risks, or open items changed.
+   - Treat normal trace gaps as warnings only when they do not affect acceptance, tests, release, rollback, or human decisions. Record the warning in task evidence, analysis, or open-items. If the same trace warning crosses the stage unresolved or starts affecting acceptance/test/release/rollback/decision, escalate it to blocker or `NEEDS_DECISION`.
    - Do not keep retrying the same local fix when the evidence shows the task, plan, or spec is wrong. Two failed attempts on the same task, acceptance item, or file area are enough evidence to escalate one layer upward by default. Jump multiple layers only when at least two escalation triggers are present, or when there is unsafe data/permission/security/compliance risk or a clearly missing human decision.
    - **IMPORTANT** For every task whose own completion conditions are met, update the task state in the same execution:
-     - mark the task off as [X] in the tasks file only after its required implementation, verification, review, or decision condition is satisfied
+     - if `tasks.md` uses checklist tasks, mark the task off as `[X]` only after its required implementation, verification, review, or decision condition is satisfied
+     - if `tasks.md` uses a Task Matrix, update the task's `Status` column to the agreed completed value such as `Completed` or `Verified`, and record evidence in `Notes` or the task evidence field
      - record the current verification or review evidence required by that task
      - close or adjust directly affected `@t0`, `@r0`, `OPEN`, or `RISK` state only when evidence or an explicit accepted decision exists
      - when closing, deleting, or downgrading `Blocker`, high-impact `Risk`, or `@r0`, record the current evidence, traceable code/doc change, rollback/degrade path, or explicit human acceptance that justifies it
@@ -221,7 +234,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Do not defer ordinary task-state closure to `sp.analyze` or `sp.gate`. Those commands verify and correct drift; they are not the normal substitute for per-task completion writeback.
 
 9. Completion validation:
-   - Verify all required tasks are completed
+   - Verify all selected required tasks for this run are completed; do not require unrelated future tasks to be closed before reporting the current run result.
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
@@ -229,6 +242,7 @@ You **MUST** consider the user input before proceeding (if not empty).
      - API contracts, table/data structures, UI fields, permissions, events, acceptance paths, or rollback behavior changed
      - `Risk`, `Todo`, or `Blocker` status changed
      - new evidence closes `@t0` validation gaps or changes `@r0` risk status
+     - high-risk boundary `CODE` or acceptance-critical `TEST` trace was added, removed, renamed, or discovered missing
    - Confirm each task completed in this run has its checkbox/status updated and has current evidence recorded. If a review-dependent task cannot be closed yet, confirm the open state and close condition are recorded instead.
    - When writeback is required, update the appropriate source doc and feature memory (`FEATURE_DIR/memory/open-items.md`, `FEATURE_DIR/memory/trace-index.md`, `FEATURE_DIR/memory/worksets/*`, or `FEATURE_DIR/memory/stable-context.md`) before claiming completion.
    - If writeback cannot be completed because the fact is still unstable, leave or create an `OPEN01` or `RISK01`-style entry with owner, affected docs, rollback advice, close condition, and next revisit step.

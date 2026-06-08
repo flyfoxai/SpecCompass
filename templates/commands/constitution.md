@@ -70,11 +70,11 @@ Execution flow:
    - Read the layered workflow rules and command spec if they already exist.
    - Read `.specify/memory/project-index.md` and `.specify/memory/active-context.md` when present.
 2. Write or refresh `.specify/memory/constitution.md`.
-   - State that this project uses a layered document workflow.
-   - Make the documentation-only boundary explicit for the current stage.
+   - State that this project uses a layered, documentation-first workflow.
+   - Make the documentation-first boundary explicit: implementation is allowed only as a downstream, bounded phase after `plan.md` records `Implementation Readiness` and `tasks.md` produces executable `Mode: impl` task packets.
    - State that flow assets use Mermaid and UI documentation uses Markdown plus JSON Forms.
-   - State that second-layer work starts only after the relevant gate passes.
-   - State that the current document workflow stops at `sp.analyze`.
+   - State that second-layer work and implementation-stage work start only after the relevant gate/readiness evidence passes.
+   - State that the controlled implementation chain is `sp.plan -> sp.tasks -> sp.implement -> sp.analyze -> sp.gate`.
    - Preserve compatibility with upstream Spec Kit mechanism where practical.
    - Include context control rules: choose the smallest sufficient read set, include related flow/UI/API/data/permissions/tests/risks when they affect the task, and refresh memory after stable facts change.
    - Include fallback rules: after bounded evidence-based attempts, move up one layer instead of guessing; inspect unstable implementation changes before fallback; use `sp.clarify` as a non-linear clarification route when confusion comes from unclear scope, conflicting docs, missing acceptance, or unclear user intent, then write the clarified result back before continuing.

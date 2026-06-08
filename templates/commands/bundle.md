@@ -26,7 +26,7 @@ Global rules:
 - If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
+- User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Do not compress away open risks, blockers, stale memory, or validation gaps.
 - Manage context as an engineering budget: start from routing, stable context, gate, and open items; expand to flow or UI source docs only when the bundle needs that evidence.
 

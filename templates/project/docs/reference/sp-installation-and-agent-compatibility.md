@@ -60,7 +60,9 @@ Use the canonical `/sp.*` form on hosts that support project slash commands:
 - `/sp.plan`
 - `/sp.analyze`
 
-For Codex, use skills instead:
+For Codex, use skills instead. Invoke them explicitly with `$sp-*`, run `/skills` and choose the matching `sp-*` skill, or ask in natural language when the task matches the skill description. Explicit invocation is recommended for deterministic SP workflow stages.
+
+Examples:
 
 - `$sp-specify`
 - `$sp-plan`
@@ -70,7 +72,7 @@ For Codex, use skills instead:
 
 The installed files are host-specific:
 
-- Codex installs executable core SP skills as `.agents/skills/sp-<name>/SKILL.md`, for example `.agents/skills/sp-specify/SKILL.md`. Current Codex versions use skills as the stable entry point: type `$` or run `/skills`, then choose `sp-<name>`.
+- Codex installs executable core SP skills as `.agents/skills/sp-<name>/SKILL.md`, for example `.agents/skills/sp-specify/SKILL.md`. Current Codex versions use skills as the stable entry point: invoke `$sp-<name>`, run `/skills` and choose `sp-<name>`, or ask in natural language when the task matches the skill description.
 - Claude uses project slash-command files: core SP commands are installed as `.claude/commands/sp.<name>.md`, for example `.claude/commands/sp.specify.md`, and should surface as `/sp.<name>`.
 - Gemini and other markdown/TOML/YAML command hosts use their integration-specific command file formats, but the user-facing core command name remains `/sp.<name>` where the host supports slash commands.
 

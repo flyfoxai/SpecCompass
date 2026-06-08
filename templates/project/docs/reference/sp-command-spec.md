@@ -14,11 +14,9 @@ Its role is not to replace the command templates themselves. It acts as the stab
 
 ## 2. Current Scope
 
-The current `sp` workflow is a documentation-first workflow.
+The current `sp` workflow is documentation-first, but it is no longer documentation-only. The business and delivery documents remain the source of control; implementation is allowed only as a downstream, bounded phase after `plan.md` records implementation readiness and `tasks.md` produces executable `Mode: impl` task packets.
 
-It deliberately stops at document analysis and preparation for later automation. It does not treat the current phase as a production-code workflow.
-
-The active command set is:
+The main stage chain is:
 
 1. `sp.constitution`
 2. `sp.specify`
@@ -30,8 +28,20 @@ The active command set is:
 8. `sp.plan`
 9. `sp.tasks`
 10. `sp.analyze`
+11. `sp.gate`
+12. `sp.implement`
+13. `sp.analyze`
+14. `sp.gate`
 
-Related upstream-shaped commands such as `implement`, `checklist`, or issue-export helpers may still exist in the broader template tree, but the core `sp` documentation contract above is the main path.
+The active command set also includes `sp.checklist` for quality checklists. Issue-export helpers such as `sp.taskstoissues` may exist in the broader template tree, but they are integration helpers rather than required SP stage steps.
+
+The code-stage contract is controlled by five commands:
+
+- `sp.plan` is the single source of truth for `Implementation Readiness`.
+- `sp.tasks` consumes readiness and creates `Mode: doc` or `Mode: impl` task packets.
+- `sp.implement` executes only authorized `Mode: impl` tasks.
+- `sp.analyze` diagnoses readiness, task packets, trace, memory, and implementation evidence.
+- `sp.gate` consumes analysis and current decisive evidence to return `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION`.
 
 ## 3. Command Naming
 
@@ -47,7 +57,7 @@ Typical examples:
 - `/sp.plan`
 - `/sp.analyze`
 
-Skills integrations keep the upstream physical package shape. Current Codex uses skills as the stable entry point: type `$` or run `/skills`, then choose `sp-specify`, `sp-plan`, `sp-tasks`, `sp-analyze`, `sp-implement`, `sp-gate`, or `sp-ui`. `/sp.*` slash-menu visibility is not the Codex install success criterion.
+Skills integrations keep the upstream physical package shape. Current Codex uses skills as the stable entry point instead of project-local `/sp.*` slash commands: invoke `$sp-specify`, `$sp-plan`, `$sp-tasks`, `$sp-analyze`, `$sp-implement`, `$sp-gate`, or `$sp-ui`; run `/skills` and choose the matching `sp-*` skill; or ask in natural language when the task matches the skill description. Explicit `$sp-*` or `/skills` invocation is recommended for deterministic SP workflow stages, and `/sp.*` slash-menu visibility is not the Codex install success criterion.
 
 ## 4. What Must Stay Aligned With Upstream
 
@@ -69,7 +79,8 @@ The fork changes the workflow content, not only the wording.
 Allowed content-level differences include:
 
 - added layered steps such as `flow`, `ui`, `gate`, and `bundle`
-- a stronger documentation-first boundary
+- a stronger documentation-first boundary before implementation
+- controlled code-stage handoff through `Implementation Readiness`, `Mode: impl` task packets, allowed write sets, required checks, and implementation evidence
 - feature memory and workset routing requirements
 - richer analysis expectations
 - `sp.analyze` being allowed to write `analysis.md` and refresh related memory when findings require it
@@ -91,7 +102,7 @@ In practical terms, each command should make the model do four things clearly:
 
 - read the right routing files first
 - stay inside the current phase boundary
-- update only the documents owned by the step
+- update only the artifacts owned by the step
 - expose missing inputs instead of inventing facts
 
 Every command should also preserve the SP stability rules:
@@ -176,9 +187,13 @@ Not every file is seeded up front by the template root. Some are created or expa
 
 ### `sp.gate`
 
-- judge whether the first layer is strong enough to continue
-- surface blockers, risks, and stale information
-- block unconditional PASS when critical flow port contracts are missing, Flow-UI relations are broken, or unchecked draft flow/UI/plan facts are being used as stable evidence
+- decide whether the current stage is strong enough to continue
+- support Business, Delivery, Implementation Readiness, and Implementation Regression gate modes
+- consume the latest `analysis.md` or equivalent diagnostics when present instead of recomputing all analysis by default
+- surface blockers, risks, stale information, trace gaps, readiness gaps, and verification gaps
+- return `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION` with evidence and the next `/sp.*` route
+- block unconditional PASS when critical flow port contracts are missing, Flow-UI relations are broken, unchecked draft flow/UI/plan facts are being used as stable evidence, implementation readiness is missing or contradicted, implementation task packets are incomplete, or implementation evidence cannot be independently checked when required
+- identify only pre-planning business complexity at the gate; delivery-level split signals remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze`
 
 ### `sp.bundle`
 
@@ -189,19 +204,41 @@ Not every file is seeded up front by the template root. Some are created or expa
 
 - organize delivery design outputs
 - split the feature into worksets
+- define Source Layout, Runtime Commands, Code Mapping, Test Mapping, and Workset Code Boundary when implementation may follow
+- maintain `Implementation Readiness` as the single source of truth for whether each workset may produce `Mode: impl` tasks
+- keep code mapping at module, directory, boundary-object, or key-file level unless high-risk public APIs, permissions, migrations, event boundaries, or acceptance-critical tests require stable CODE/TEST anchors
 - make later reading smaller and more local
 
 ### `sp.tasks`
 
-- bind worksets and deliverables into an actionable documentation task set
+- bind worksets and deliverables into executable `Mode: doc` or `Mode: impl` tasks
+- consume `plan.md` `Implementation Readiness`; do not invent a separate readiness source
+- default missing mode to `Mode: doc`
+- create `Mode: impl` task packets only when readiness supports implementation
+- include `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and visible effective defaults for implementation tasks
 - keep task boundaries aligned with the workset split
+
+### `sp.implement`
+
+- execute only selected `Mode: impl` tasks with sufficient task-packet fields
+- confirm `plan.md` readiness, `Allowed Write Set`, `Required Checks`, trace anchors, open items, and effective defaults before editing
+- refuse to auto-expand write boundaries; return `NEEDS_PLAN` for wrong code/workset boundaries, `NEEDS_TASKS` for incomplete task packets, and `NEEDS_CONTEXT` for missing required context that cannot be recovered from routed files
+- preserve CODE/TEST trace discipline for high-risk boundaries and acceptance-critical tests
+- perform lightweight reference scans before deleting, moving, or renaming code, tests, routes, schemas, permissions, migrations, events, or public UI/API objects
+- record verification evidence, task state, proposed trace updates, and open-item changes before claiming completion
+
+### `sp.checklist`
+
+- generate focused quality checklists for requirements, design, implementation readiness, or review contexts
+- keep checklist items tied to source documents and acceptance expectations
 
 ### `sp.analyze`
 
-- test whether the whole document system is automation-ready
+- test whether the whole document and implementation-evidence system is automation-ready
 - verify consistency across the routed source set
-- fail explicitly when memory is stale, coverage is weak, or smoke checks are missing
-- detect Flow-UI relation breaks, orphan UI/API/data/test anchors, missing port-contract fields, and unchecked draft facts being promoted to stable memory
+- diagnose `Implementation Readiness`, task mode integrity, implementation task packets, CODE/TEST trace, trace warning escalation, and implementation evidence without replacing `plan.md` as the readiness source
+- fail explicitly when memory is stale, coverage is weak, smoke checks are missing, task packets are incomplete, or high-risk trace/evidence gaps are untracked
+- detect Flow-UI relation breaks, orphan UI/API/data/CODE/TEST anchors, missing port-contract fields, and unchecked draft facts being promoted to stable memory
 
 ## 9. Read-Order Contract
 
@@ -222,13 +259,17 @@ If there is no reliable active feature, the command should stop with a clear nex
 
 All current `sp` commands should preserve these rules unless a later product decision changes them explicitly:
 
-- stay within documentation work
-- do not invent missing facts
+- stay within the command's phase boundary
+- do not write production code from documentation, planning, task-generation, analysis, gate, bundle, flow, UI, clarify, specify, constitution, or checklist commands
+- let `sp.implement` write code only for authorized `Mode: impl` tasks with current readiness, allowed write boundaries, and required checks
+- do not invent missing facts, readiness, task packet fields, trace anchors, or human decisions
 - do not silently ignore stale routing
-- do not treat memory as a replacement for source-of-truth documents
+- do not treat memory as a replacement for source-of-truth documents or current code/test evidence
 - do not redo full-project reading when a smaller routed read set is enough
+- do not auto-expand `Allowed Write Set`; route wrong boundaries to `NEEDS_PLAN`, incomplete packets to `NEEDS_TASKS`, and unrecoverable missing context to `NEEDS_CONTEXT`
 - do not turn ordinary local uncertainty into a user decision request before checking the bounded evidence
 - do not mark a blocker or high-impact risk as PASS without owner, impact, rollback or degrade path, and close condition
+- do not treat implementation self-reports as release evidence without rerunnable checks or explicit alternative evidence when checks cannot run
 
 ## 11. Coordinates, Status, And Open Items
 
@@ -249,6 +290,8 @@ Status tags are short search signals, not full records:
 
 Low or Medium `Question` and `Todo` items may stay lightweight when they are local and do not affect scope, acceptance, release, rollback, security, or implementation confidence. `Risk`, `Blocker`, High severity items, and any broader-impact item must use the full `open-items.md` record with owner, impact, rollback or degradation path, close condition, refresh date, and trace/source link.
 
+Lightweight does not mean invisible. A local low-risk `Question` or `Todo` still needs enough location, status, and next-action detail for a later command to find it. Full field validation applies to `Risk`, `Blocker`, High severity items, and any item that affects scope, acceptance, release, rollback, security, or implementation confidence.
+
 ## 12. Flow, UI, And Draft Fact Contract
 
 For business features, `FLOW` is the preferred relation axis. UI, API, TABLE, CODE, TEST, EVENT, PERM, and ACC anchors should normally trace to a `FLOW` coordinate, a source document, or an explicit `open-items.md` entry.
@@ -267,6 +310,8 @@ UI is a projection of flow and data, not an independent source of business behav
 
 Outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts until checked by `sp.analyze`, `sp.gate`, or equivalent current evidence. Draft facts may guide the next discussion, but they must not close risks, update stable trace conclusions, support PASS, or become the sole implementation basis.
 
+When `tasks.md` does not exist yet, equivalent current evidence is a bounded draft-safety check: the output has source backing, did not overwrite stable memory, did not close risks, did not support PASS, and has trace/open-item routing or remains labeled as draft. This check does not replace full `sp.analyze`, `sp.gate`, or `plan.md` `Implementation Readiness`.
+
 Keep public coordinates shallow and stable. The main coordinate should usually look like `FEAT01.WS02.UI03`, not `FLOW01.STEP04.BUTTON02.FIELD07`. Use local labels for internal details, and promote a detail to a stable coordinate only when it recurs across documents.
 
 ## 13. Workflow YAML Extension Boundary
@@ -284,19 +329,48 @@ Known structural errors still fail validation, for example missing `workflow.id`
 
 Keep todo, risk, blocker, rollback, impact, owner, and close-condition details in `memory/open-items.md`. Keep lookup chains in `memory/trace-index.md`.
 
-## 14. PASS / FAIL Expectations
+## 14. PASS / FAIL / BLOCKED Expectations
 
 `sp.analyze` and related review-style steps must remain evidence-based.
 
-A `PASS` is only justified when:
+A diagnostic `PASS` is only justified when:
 
 - routing is coherent
 - the active feature is identifiable
 - core documents are present and cross-consistent
-- traceability is good enough for later automation
+- readiness and task packets are coherent when implementation is in scope
+- traceability is good enough for later automation or bounded implementation
 - stale memory, missing smoke checks, and major coverage gaps are not left open
 
-If those conditions are not met, the correct result is `FAIL` with the exact blocking step to revisit.
+If those conditions are not met, the correct diagnostic result is `FAIL`,
+`BLOCKED`, or `NEEDS_DECISION` with the exact blocking step to revisit.
+Use `FAIL` for a repairable evidence or consistency failure, `BLOCKED` when
+safe automatic progress is no longer possible, and `NEEDS_DECISION` when the
+next step depends on human product, risk, compliance, rollback, or scope choice.
+
+Missing required context should normally be reported as `BLOCKED` with context
+details and the next `/sp.*` route, or `NEEDS_DECISION` when the missing context
+requires human choice. `NEEDS_CONTEXT` remains an implementation/task fallback
+route, not an `/sp.analyze` verdict.
+
+When `sp.analyze` has only low-risk warnings, the formal verdict field remains
+`PASS`; warning details belong in findings, evidence, or `memory/open-items.md`.
+`PASS with warning` is prose, not a machine-readable verdict value.
+
+`sp.analyze` and `sp.gate` may update routing, status, open-items, and memory,
+but post-verdict writeback from the same run must not be the primary evidence
+for that run's `PASS`. `PASS` evidence must come from current inputs, check
+results, upstream source documents, current code/test evidence, or explicit
+human decisions.
+
+`sp.gate` uses the formal stage verdict set: `PASS`, `FAIL`, `CONDITIONAL`,
+`BLOCKED`, or `NEEDS_DECISION`. If gate evidence lacks required context, the gate
+should explain the missing context in evidence and normally return `BLOCKED` or
+`NEEDS_DECISION`, not invent a separate gate verdict.
+
+`CONDITIONAL` is a gate-only verdict for named conditions that must be closed or
+explicitly accepted before the downstream stage is suggested. `PASS with warning`
+is not a valid gate verdict.
 
 ## 15. Why This Reference Exists
 

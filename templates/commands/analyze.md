@@ -54,7 +54,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 Goal: Verify whether the active document system is actually strong enough for later automation, not merely complete on paper.
 
 Global rules:
-- Stay within documentation work only.
+- Stay within diagnostic work only: this command may inspect documents, memory, trace, task packets, and current code/test evidence, but it must not edit production code.
 - Reuse existing project context and active feature state.
 - Do not write production code.
 - If `.specify/memory/project-index.md` exists, read it first and use it as the project routing entry.
@@ -67,7 +67,7 @@ Global rules:
 - Do not report missing feature context until this routing reconciliation step has failed.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
+- User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Manage context as an engineering budget: start from routing and memory, expand one layer at a time, and read only the source documents needed to prove or disprove the current finding.
 
 Execution flow:
@@ -109,6 +109,18 @@ Execution flow:
    - Deep recheck completed areas only when directly related source docs, public API contracts, data structures, permissions, acceptance paths, critical test evidence, routing, direct upstream contract dependencies, or related risks changed, or when the user requests a full audit.
    - Treat incremental review as a document-read optimization, not a verification downgrade. If the current task directly changed or affected dependencies, public contracts, data, permissions, acceptance paths, or critical tests, require local affected test/check/manual verification evidence when feasible. Route only broader regression or locally infeasible checks to CI/full verification.
    - Check consistency across `spec.md`, `clarifications.md`, `flows/*`, `ui/*`, `gate.md`, `bundle.md`, `plan.md`, `delivery/*`, and `tasks.md`.
+   - Check implementation readiness without replacing its source of truth:
+     - `plan.md` `Implementation Readiness` exists when implementation tasks are present
+     - each ready workset has source layout, runtime commands, code mapping, test mapping, and workset code boundary evidence
+     - `tasks.md` consumes readiness instead of inventing a conflicting readiness conclusion
+     - any conflict is reported as stale or contradictory readiness and routed to `/sp.plan`
+     - if `tasks.md` contradicts `plan.md` `Implementation Readiness`, set the diagnostic verdict to `FAIL` and route to `/sp.plan`; use `BLOCKED` only when readiness is missing or cannot be safely evaluated, and `NEEDS_DECISION` only when a human product, risk, compliance, rollback, or scope choice is required
+   - Check task mode integrity:
+     - every task or task group declares `Mode: doc` or `Mode: impl`, or missing mode is treated as `Mode: doc`
+     - no `Mode: doc` task asks `/sp.implement` to write production code
+     - every `Mode: impl` task has `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and visible effective defaults
+     - incomplete implementation packets route to `NEEDS_TASKS`; missing or wrong code boundary routes to `NEEDS_PLAN`
+     - if a task is in `NEEDS_CONTEXT` state, treat it as a task-packet gap: route to `/sp.tasks` when the missing context can be recovered from existing documents, route to `/sp.plan` when the missing context is a workset or code-boundary problem, or return `NEEDS_DECISION` when human input is required
    - Verify coverage of IDs, owners, states, screens, APIs, tables, permissions, and acceptance paths.
    - Check Flow-UI relation integrity:
      - critical flow steps have a node type: `ui`, `system`, `external`, `scheduled`, `manual`, or `none_ui`
@@ -117,12 +129,19 @@ Execution flow:
      - screens and critical UI actions trace back to a flow step, business event, data object, permission, API contract, acceptance path, or open item
      - UI-created actions do not invent business events, state transitions, side effects, permissions, or validation rules that are absent from `spec.md`, clarifications, flows, API/data docs, or open items
    - Check orphan relation objects. UI, API, TABLE, CODE, ACC, TEST, EVENT, and PERM anchors that belong to a business capability should trace to a `FLOW` coordinate, source document, or explicit open item.
+   - Check `CODE` and `TEST` trace at the lightweight level:
+     - high-risk public API handlers, permission rules, data migrations, event boundaries, core UI actions, and acceptance-critical tests should have formal `CODE` or `TEST` trace rows/fields or a tracked open item
+     - ordinary private helpers and local glue code do not require anchors unless they became stable cross-document objects
+     - trace rows pointing to missing files, renamed tests, or absent anchors are findings
+     - normal trace warnings must be visible in task evidence, analysis, or `memory/open-items.md`; warnings that cross a stage unresolved or affect acceptance, tests, release, rollback, or human decisions become blockers
    - Check draft facts. Newly generated or refreshed outputs from `/sp.flow`, `/sp.ui`, or `/sp.plan` are draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent current evidence. Draft facts cannot close risks, update stable trace conclusions, support PASS, or act as the sole implementation basis.
+   - For early flow/UI work before `tasks.md` exists, equivalent current evidence means a bounded check that confirms the draft has source backing, did not rewrite stable memory, did not close risks, did not support PASS, and either has trace/open-item routing or stays labeled as draft. This is a draft-safety check, not a full implementation-readiness analysis.
    - Check coordinate depth. Main coordinates should stay at `FEATxx.WSxx.TYPExx`; deep micro IDs such as `FLOW01.STEP04`, `UI03.BTN05`, or `API02.FIELD03` should not appear as stable public coordinates unless a recurring cross-document object has been intentionally promoted.
    - Check feature memory link integrity:
      - Treat an empty `specs/<feature>/memory/open-items.md` table as valid when no real unresolved feature issue is present.
      - Before accepting an empty open-items table, scan the current read set for unresolved scope, acceptance, permissions, data, API, UI, event/side-effect, rollback, release, security/compliance, migration, external dependency, and test-evidence gaps.
-     - If `specs/<feature>/memory/open-items.md` exists, every open item must have an `Anchor`, `Affected Docs`, `Close Condition`, `Last Refresh`, and `Status`.
+     - If `specs/<feature>/memory/open-items.md` exists, `Risk`, `Blocker`, High severity items, and broader-impact items must have `Anchor`, `Affected Docs`, `Close Condition`, `Last Refresh`, `Status`, and the required owner/impact/rollback fields.
+     - Low or Medium local `Question` and `Todo` items may stay lightweight when they do not affect scope, acceptance, release, rollback, security, or implementation confidence; they still need enough location, status, and next-action detail for a later command to find and close them.
      - An open-item link is valid when its `Anchor` appears in `specs/<feature>/memory/trace-index.md` or one of its `Affected Docs` appears in a related trace row's `Expand Docs`.
      - If `@r0` appears in the current read set, confirm `specs/<feature>/memory/open-items.md` has a matching open `Risk` or `Blocker`. Otherwise report a blocking memory gap.
      - If non-trivial `@t0` appears in the current read set, confirm `specs/<feature>/memory/open-items.md` has a matching `Question`, `Todo`, or `Risk`. Treat `@t0` as non-trivial when it affects scope, acceptance, release, rollback, human decision, or follow-up work.
@@ -143,6 +162,7 @@ Execution flow:
      - or at least three warning signals: 3+ roles, 4+ user paths, 5+ artifact categories across UI/API/data/permissions/events/migration/external systems, 12+ trace anchors, 8+ core docs needed for one workset, or implementation expected across 8+ major files or 4+ module boundaries
    - Report conflicts, stale memory, missing links, and weak spots explicitly.
    - Apply the soft issue boundary before PASS: only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as warnings. Test/build/check failure, route error, acceptance break, critical trace break, open `Blocker`, or high-impact `Risk` without required fields blocks PASS.
+   - Treat implementation evidence as audit input, not final release evidence. Worker or `/sp.implement` self-reports must be checked against current files, current task state, and rerunnable checks when feasible before they support diagnostic PASS.
    - Apply oscillation protection: if the same failure signature has already appeared twice at the same layer, or the same workset is bouncing between two layers without new evidence, return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
    - If the evidence shows the current layer is the wrong place to continue, do not keep auditing lower-level files. Record the source layer, target layer, reason, and exact next `/sp.*` step.
 5. Record the result.
@@ -151,26 +171,37 @@ Execution flow:
    - When an area is accepted as already completed and evidence remains current, record only the light-check result or cite the existing evidence. Do not rewrite broad memory just to repeat unchanged facts.
 6. Validate before finishing.
    - Confirm findings are evidence-based and traceable to current documents.
-   - Confirm PASS or FAIL is justified explicitly for analysis readiness only. This PASS/FAIL does not replace `/sp.gate` stage-entry judgment.
+   - Confirm the diagnostic verdict is one of `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION` and is justified explicitly for analysis readiness only. This verdict does not replace `/sp.gate` stage-entry judgment.
+   - Confirm missing required context is reported as `BLOCKED` with context details and the next `/sp.*` route, or `NEEDS_DECISION` when the missing context requires human choice. `NEEDS_CONTEXT` is an implementation/task fallback route, not a valid `/sp.analyze` verdict.
    - Confirm the next blocking actions are clear.
 
 ## Output
 
 - Create or update `specs/<feature>/analysis.md`
+  - Include `Verdict`: `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
+  - If the analysis passes with low-risk warnings, write the formal `Verdict` as `PASS` and record the warnings separately. `PASS with warning` may be used only as prose in the report, not as the machine-readable verdict value.
+  - Include evidence, findings, warnings, blockers, trace gaps, readiness/task-packet diagnostics, and the exact next `/sp.*` route when the verdict is not `PASS`.
 - Refresh related feature memory entries under `specs/<feature>/memory/*` when findings change routing or stable context
 
 ## Key Rules
 
 - Do not invent missing facts.
-- PASS/FAIL here is diagnostic: it means the document, memory, trace, and automation-readiness analysis passed or failed. It is not the final stage gate.
+- Diagnostic verdicts here are `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`: they mean the document, memory, trace, readiness, task-packet, and implementation-evidence analysis passed, failed, blocked automatic progress, or requires a human decision. They are not the final stage gate.
+- `NEEDS_CONTEXT` is not a diagnostic verdict for `/sp.analyze`. If the missing context can be recovered by a task or implementation worker, route there; if it cannot be recovered safely here, use `BLOCKED`, or `NEEDS_DECISION` when a human choice is required.
+- A task-level `NEEDS_CONTEXT` result is diagnostic evidence, not an analyze verdict. Report it as a task-packet or planning gap with the exact `/sp.tasks`, `/sp.plan`, or human-decision route.
 - Do not mark PASS when major gaps, stale memory, or missing smoke checks remain.
 - Do not mark PASS when open `Blocker` items remain.
 - Do not mark PASS when critical flow steps are missing node type, port contract coverage, failure path, or verification route unless the missing part is explicitly routed through `memory/open-items.md`.
 - Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
 - Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
+- Do not mark PASS when `Mode: impl` tasks lack `Allowed Write Set`, `Required Checks`, task-packet effective defaults, or readiness from `plan.md`.
+- Do not mark PASS when high-risk boundary `CODE` trace or acceptance-critical `TEST` trace is missing without a tracked open item, or when a normal trace warning has crossed the stage unresolved.
+- Do not mark PASS solely from worker or implementation prose. Use current files and rerunnable checks when feasible.
+- Do not let this run's post-verdict writeback prove this run's PASS. Routing, status, open-items, or memory updates made by `/sp.analyze` must be supported by current inputs, current checks, upstream source documents, current code/test evidence, or explicit human decisions.
 - Do not mark PASS when multi-agent work has unresolved worker handoffs, stale workers without a discard/defer decision, unmerged critical branches or reports, write-set overlap without closeout evidence, forbidden write violations, conflicting proposed memory updates, or missing merged-state verification.
 - Do not mark PASS when open `Risk` items affect acceptance, release, data, security, rollback, or implementation confidence unless the analysis records owner, explicit human acceptance/defer decision, revisit anchor or exact next `sp.*` step, trace registration, impact scope, rollback/degrade path, and close condition.
 - Low/Medium risks that do not block the next stage may receive diagnostic PASS with warning only when they are tracked in `specs/<feature>/memory/open-items.md` or the report, have owner, close condition, and revisit anchor, and do not require rewriting `spec.md`, `plan.md`, or `tasks.md` before safe continuation.
+- When using diagnostic PASS with warning, keep the formal verdict field as `PASS`; warnings belong in findings, evidence, or open-items.
 - Soft issues may be warnings only when they do not affect routing, contracts, tests, acceptance, trace, open `Blocker`, or high-impact `Risk`. Failed tests/build/checks, route errors, acceptance breaks, critical trace breaks, and high-risk items missing required fields are blockers, not warnings.
 - Do not mark PASS when the next safe action requires upward fallback but the target layer, reason, and next `sp.*` step are not recorded.
 - Do not mark PASS when an oversized workset must be promoted or split before reliable automation can continue.
@@ -217,5 +248,7 @@ Execution flow:
 
 ## Next
 
-- If PASS, the document set is diagnostically ready for later implementation work outside this workflow; use `/sp.gate` when a stage-entry decision is required.
-- If FAIL, point to the exact `sp.*` step that must be revisited.
+- If `PASS`, the document/readiness/task-packet/evidence set is diagnostically ready for the relevant next step; use `/sp.gate` when a stage-entry decision is required.
+- If `FAIL`, point to the exact `sp.*` step that must be revisited.
+- If `BLOCKED`, include the failure-site report and the exact next `/sp.*` route.
+- If `NEEDS_DECISION`, explain the background, impact, options, recommendation, and next `/sp.*` route.

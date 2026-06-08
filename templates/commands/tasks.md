@@ -1,5 +1,5 @@
 ---
-description: Bind worksets, deliverables, and acceptance items into an executable documentation task set.
+description: Bind worksets, deliverables, code boundaries, and acceptance items into executable doc or implementation tasks.
 handoffs:
   - label: Analyze Document Set
     agent: sp.analyze
@@ -56,10 +56,10 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-Goal: Bind worksets, deliverables, ownership, and acceptance items into an executable documentation task set that remains traceable to the active feature plan.
+Goal: Bind worksets, deliverables, ownership, code boundaries, and acceptance items into executable doc or implementation tasks that remain traceable to the active feature plan.
 
 Global rules:
-- Stay within documentation work only.
+- Stay within task-generation work only: this command may create `Mode: doc` and `Mode: impl` tasks, but it must not edit production code.
 - Reuse existing project context and active feature state.
 - Do not write production code.
 - If `.specify/memory/project-index.md` exists, read it first and use it as the project routing entry.
@@ -67,7 +67,7 @@ Global rules:
 - If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
+- User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Manage context as an engineering budget: start from routing, plan, worksets, trace, and open items; expand only to the delivery docs needed to make executable tasks.
 
 Execution flow:
@@ -84,9 +84,22 @@ Execution flow:
    - Remove the `SP_STAGE_SEED: tasks` marker once tasks are generated from the active plan instead of the initialization scaffold.
    - Keep `tasks.md` upstream-shaped: phases, task IDs, dependencies, parallel markers, and concrete file paths should remain easy for implementation agents to execute.
    - Add SP metadata only where it improves execution: workset, acceptance, trace, open-item, and memory/source-doc writeback anchors.
-   - Break the delivery plan into explicit documentation tasks tied to worksets and acceptance.
+   - Break the delivery plan into explicit tasks tied to worksets and acceptance.
+   - Every task or task group MUST declare `Mode: doc` or `Mode: impl`.
+   - Missing mode defaults to `Mode: doc`; `/sp.implement` must not execute it as production code.
+   - Generate `Mode: impl` tasks only for worksets that `plan.md` `Implementation Readiness` marks ready or conditionally ready with explicit close conditions.
+   - `Mode: doc` tasks may modify specs, flow, UI, delivery docs, memory, trace, open-items, analysis, or gate outputs. They must not modify production code.
+   - `Mode: impl` tasks must include enough task-packet fields to execute without hidden chat context:
+     - `Readiness Source`: the `plan.md` `Implementation Readiness` workset row or condition being consumed
+     - `Allowed Write Set`: files, directories, tests, configs, or docs the task may modify
+     - `Required Checks`: tests, build, lint, typecheck, script, or manual verification route
+     - `Trace Anchors`: relevant `FLOW`, `UI`, `API`, `TABLE`, `PERM`, `EVENT`, `ACC`, `CODE`, or `TEST` anchors
+     - `Task Packet Defaults`: compressed effective defaults for `Forbidden Write Set`, `Fallback Route`, `Writeback Rule`, `Required Evidence`, and rollback/degrade handling
+     - `Gate / Evidence Expectation`: whether the task needs later `/sp.analyze`, `/sp.gate`, review, or human decision before the workset can advance
+   - Use formal `CODE` and `TEST` trace fields or rows for high-risk boundary objects and acceptance-critical tests. Ordinary internal helpers, private functions, pure style components, and local glue code do not require `CODE` anchors unless they become stable cross-document objects.
+   - If `Allowed Write Set` is insufficient, do not auto-expand it. Return `NEEDS_PLAN` when the workset/code boundary is wrong or missing; return `NEEDS_TASKS` when the task split or packet fields are incomplete.
    - Keep task ownership, dependency order, and output targets visible.
-   - Keep the task set executable as documentation work, not production implementation.
+   - Keep doc tasks executable as documentation work and implementation tasks executable as bounded code work.
    - Preserve workset, acceptance, and trace anchors in task text when they already exist.
    - Add explicit documentation-memory follow-up tasks when task generation changes API contracts, table definitions, UI fields, event ordering, permissions, acceptance paths, risk status, or source-of-truth documents.
    - For tasks touching API contracts, UI fields, table/data structures, permissions, events, acceptance behavior, or tests, include enough trace/workset context for the implementer to perform an impact-radius check before editing.
@@ -124,6 +137,8 @@ Execution flow:
    - Confirm `[P]` or multi-agent tasks declare allowed write boundaries and required checks, and explicitly document any exception to the default read set, forbidden shared files, or expected handoff output.
    - Confirm tasks touching global registry-like files are serialized or have an explicit isolation reason.
    - Confirm no task requires a hidden context set larger than its workset can safely hold.
+   - Confirm every `Mode: impl` task has a readiness source, `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, effective defaults, and gate/evidence expectation visible in the task packet.
+   - Confirm no `Mode: impl` task was generated from a workset that lacks `plan.md` `Implementation Readiness`.
 
 ## Output
 
@@ -134,7 +149,8 @@ Execution flow:
 
 ## Key Rules
 
-- Do not write production code tasks that are disconnected from the document outputs.
+- Do not write production code.
+- Do not create `Mode: impl` tasks that are disconnected from `plan.md` implementation readiness, workset boundaries, trace anchors, validation paths, evidence expectations, or rollback/degrade handling for risky work.
 - Do not leave `SP_STAGE_SEED: tasks` in a completed task file; that marker means the file is still an initialization scaffold.
 - Do not leave dependencies implicit.
 - Do not merge unrelated worksets into one task bucket without justification.
@@ -147,6 +163,7 @@ Execution flow:
 - Do not create implementation tasks that require hidden impact analysis. The task should point to the trace/workset context needed to check affected flows, screens, contracts, tables, permissions, acceptance, and tests.
 - Do not create high-impact tasks without naming the expected direct disturbance surface and verification path.
 - Do not keep generating local tasks when the next safe step is to revisit an upstream `sp.*` command.
+- Do not auto-expand `Allowed Write Set` during task generation to make an implementation task look executable. Route boundary gaps to `NEEDS_PLAN`; route incomplete packets to `NEEDS_TASKS`.
 
 ## Post-Execution Checks
 

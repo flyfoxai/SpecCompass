@@ -9,7 +9,7 @@
 ## 固化规则
 
 - 支持 slash 命令的宿主，用户可见命令统一写 `/sp.*`，例如 `/sp.specify`、`/sp.plan`、`/sp.analyze`。
-- Codex 的稳定用户入口是 skills：输入 `$` 或运行 `/skills`，选择 `sp-*` skill。不要把 `/sp.*` 是否出现在 Codex slash menu 里作为安装成功标准。
+- Codex 的稳定用户入口是 skills：输入 `$`、运行 `/skills` 选择 `sp-*` skill，或提出匹配 skill description 的自然语言请求。不要把 `/sp.*` 是否出现在 Codex slash menu 里作为安装成功标准。
 - Codex project-local prompt/plugin 命令面已废弃，不再作为当前目标产物。旧实验版留下的 `.codex/prompts/sp.*`、`plugins/sp/` 和 `.agents/plugins/marketplace.json` 应在安装时清理，避免误导用户和模型。
 - 主坐标用于稳定定位，例如 `FEAT01.WS02.ACC01`。坐标发布后不因为排序、插入、删除而重排。
 - 副标签用于关联，例如 `API-APPROVE`、`ACC-DECISION-SUCCESS`。副标签服务搜索，不替代主坐标。
@@ -175,13 +175,13 @@ SP 已吸收的部分：
 
 当前代码应生成 `.agents/skills/sp-*/SKILL.md`。这里是 Codex 安装机制层面的目标产物。
 
-根据当前 Codex 维护者在 openai/codex issue 中的公开说明，custom slash commands 和 custom prompts 已经废弃，推荐迁移到 skills。因此 SP 对 Codex 的主路径应回到 skills-first：用户输入 `$` 或运行 `/skills`，再选择 `sp-specify`、`sp-plan`、`sp-tasks`、`sp-analyze`、`sp-implement`、`sp-gate`、`sp-ui` 等 skill。
+根据当前 Codex 维护者在 openai/codex issue 中的公开说明，custom slash commands 和 custom prompts 已经废弃，推荐迁移到 skills。因此 SP 对 Codex 的主路径应回到 skills-first：用户输入 `$`、运行 `/skills` 选择 `sp-specify`、`sp-plan`、`sp-tasks`、`sp-analyze`、`sp-implement`、`sp-gate`、`sp-ui` 等 skill，或提出匹配 skill description 的自然语言请求。
 
 `.codex/prompts/sp.*.md` 和 `plugins/sp/commands/sp.*.md` 不再生成。未来如果 Codex 官方重新提供稳定 prompt/plugin 接口，应作为新功能重新设计和实测，而不是保留当前误导性兼容层。
 
 处理原则：
 
-- 文档必须把 Codex 主入口写成 `$sp-*` skills。
+- 文档必须把 Codex 主入口写成 `$sp-*` skills、`/skills` 选择对应 skill，或匹配 skill description 的自然语言请求。
 - 安装验收不能要求 slash menu 显示 `/sp.*`。
 
 当前代码验收边界：
@@ -214,7 +214,7 @@ Claude 曾提出 4 个普通改进项。当前处理状态如下：
 未来升级新版 Spec Kit 时，建议按这个顺序执行：
 
 1. 拉取干净 upstream 基线，先确认 upstream 安装、集成注册、命令渲染和脚本入口是否变化。
-2. 迁移 SP 命名规则：slash 命令类宿主使用 `/sp.*`；Codex 使用 `$sp-*` skills；extension/preset 允许保留 upstream 兼容命名空间。
+2. 迁移 SP 命名规则：slash 命令类宿主使用 `/sp.*`；Codex 使用 `$sp-*` skills、`/skills` 或匹配的自然语言请求；extension/preset 允许保留 upstream 兼容命名空间。
 3. 迁移 SP 内容增强：feature memory、open-items、trace-index、worksets、上下文预算、稳健兜底、需求冲突处理、headless 失败报告。
 4. 迁移轻量检查：`check-sp-memory`、workflow YAML 开放校验、相关测试。
 5. 运行集成测试和真实安装烟测：Claude、Gemini、Codex 的安装产物分别检查；Codex 以 skills 可用和安装产物完整为验收，不以 slash UI 显示为验收。

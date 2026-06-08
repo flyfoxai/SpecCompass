@@ -71,7 +71,7 @@ Global rules:
 - If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
-- User-facing next-step commands must use `/sp.*` form. Treat `sp-*` as legacy core naming that must not be suggested.
+- User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Use stable searchable coordinates for important anchors when they first become clear; do not invent coordinates for unclear objects.
 - Put real unresolved questions, todos, risks, blockers, rollback advice, and close conditions in `memory/open-items.md`.
 

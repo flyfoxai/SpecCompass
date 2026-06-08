@@ -85,13 +85,13 @@ After initialization, use the host-appropriate SP entry point. Slash-command hos
 - `/sp.plan` - Generate implementation plans  
 - `/sp.tasks` - Break down into actionable tasks
 
-Codex uses skills as the stable entry point. In Codex, type `$` or run `/skills`, then choose:
+Codex uses skills as the stable entry point instead of project-local `/sp.*` slash commands. In Codex, invoke SP skills explicitly by typing `$sp-<command>` or by running `/skills` and choosing `sp-<command>`:
 
 - `$sp-specify` - Create specifications
 - `$sp-plan` - Generate implementation plans
 - `$sp-tasks` - Break down into actionable tasks
 
-For Codex, do not use slash-menu visibility for `/sp.*` as the installation success criterion. Check that `.agents/skills/sp-*/SKILL.md` exists; Codex uses skills as the stable entry point.
+Codex may also invoke a matching skill from a natural-language request when the task matches the skill description, but explicit skill invocation is recommended for deterministic SP workflow stages. Do not use slash-menu visibility for `/sp.*` as the installation success criterion; check that `.agents/skills/sp-*/SKILL.md` exists.
 
 The `.specify/scripts` directory will contain both `.sh` and `.ps1` scripts.
 

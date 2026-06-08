@@ -39,6 +39,18 @@ provides:
       replaces: "sp.implement"
 
     - type: "command"
+      name: "sp.analyze"
+      file: "commands/sp.analyze.md"
+      description: "Lean analyze - diagnose readiness, task packets, trace, and implementation evidence"
+      replaces: "sp.analyze"
+
+    - type: "command"
+      name: "sp.gate"
+      file: "commands/sp.gate.md"
+      description: "Lean gate - decide whether the current stage can move forward"
+      replaces: "sp.gate"
+
+    - type: "command"
       name: "sp.constitution"
       file: "commands/sp.constitution.md"
       description: "Lean constitution - create or update project constitution"

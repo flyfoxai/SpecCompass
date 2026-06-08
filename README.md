@@ -3,7 +3,7 @@
     <h3><em>Spec-Driven Development for AI coding agents, with layered planning, memory, and verification.</em></h3>
 </div>
 
-SpecCompass is an enhanced fork of [github/spec-kit](https://github.com/github/spec-kit) for **AI-assisted Spec-Driven Development** with coding agents such as Codex, Claude, and Gemini. It keeps the proven Spec Kit installation and integration mechanics, while adding layered planning, project memory, context-window management, traceability, verification discipline, and safer fallback rules for complex software projects.
+SpecCompass is an enhanced fork of [github/spec-kit](https://github.com/github/spec-kit) for **AI-assisted Spec-Driven Development** with coding agents such as Codex, Claude, and Gemini. It keeps the proven Spec Kit installation and integration mechanics, while adding layered planning, project memory, context-window management, traceability, implementation readiness, verification discipline, and safer fallback rules for complex software projects.
 
 The principle is simple: keep the proven upstream Spec Kit "bottle" as intact as possible, including the directory skeleton, template shell, CLI installation flow, integration framework, and script entry points. SP changes the "water" inside that bottle by adding richer content for complex projects and AI-assisted development.
 
@@ -30,6 +30,10 @@ SP is packaged as a standalone enhanced edition. Users install and use this fork
 
 It is designed for developers who want a more controlled AI software engineering workflow: use specs to define intent, use plans and tasks to constrain implementation, use memory and trace files to reduce repeated context loading, and use analyze/gate commands to catch drift before code changes continue.
 
+SP is **documentation-first, not documentation-only**. The document chain is used to control the code stage. Code work starts only after the plan has an explicit `Implementation Readiness` source, tasks declare executable `Mode: impl` packets, and implementation has bounded write areas and verification commands.
+
+In practice, `Mode: doc` tasks are used for specification, flow, UI, planning, memory, trace, analysis, and gate work. `Mode: impl` tasks appear only when a workset is ready or conditionally ready for code work. The task packet defines the `Allowed Write Set` and `Required Checks`; `/sp.implement` consumes that packet instead of guessing what files it may change.
+
 ## Methodology
 
 SP treats AI development as an engineering control loop, not a one-shot prompt. The goal is to give the agent enough context to work accurately, but not so much that the context window becomes noisy or expensive.
@@ -41,6 +45,8 @@ The methodology is documented in [SP Project Methodology](./docs/reference/sp-pr
 - Use stable anchors and searchable IDs for features, worksets, UI, APIs, risks, tests, and acceptance paths, so later agents can find related content without recomputing the whole project.
 - Track unresolved work explicitly in `memory/open-items.md`, including risks, blockers, decisions, owners, close conditions, and revisit points.
 - Use lightweight impact-radius checks before changing APIs, permissions, data, event flows, UI contracts, or core tests.
+- Treat `plan.md` `Implementation Readiness` as the single source of truth for code-stage entry. Other commands may consume, diagnose, or gate it, but should not invent a second readiness fact.
+- Separate documentation tasks from implementation tasks with `Mode: doc` and `Mode: impl`; `/sp.implement` may write code only for authorized `Mode: impl` tasks.
 - Let `/sp.analyze` find drift and `/sp.gate` decide phase readiness; do not let the model mark risky or unclear states as PASS without evidence.
 - Route failures upward instead of guessing: clarify requirements, repair specs, adjust plans, split oversized worksets, or ask the user for a decision with clear options.
 - Borrow CodeGraph-style ideas such as stable nodes, explicit relationships, and impact queries as lightweight methodology, without making a heavy code graph runtime a default dependency.
@@ -51,12 +57,12 @@ SpecCompass keeps the workflow readable for humans and predictable for agents:
 
 - Requirements enter through `/sp.specify`. New or changed requirements are checked for conflicts instead of being silently merged into stale specs.
 - When intent is unclear, `/sp.clarify` asks focused questions with plain-language options and records the decision so later agents do not need to rediscover it.
-- `/sp.plan` defines the technical route, worksets, impact radius, and agent boundaries before code changes begin.
+- `/sp.plan` defines the technical route, worksets, impact radius, agent boundaries, source layout, runtime commands, code/test mapping, and `Implementation Readiness` before code changes begin.
 - `/sp.flow` is the backbone. Business flows connect process nodes to UI screens, events, API calls, data objects, tests, and code anchors.
 - `/sp.ui` runs after flow: it collects the elements needed by each screen and turns process-bound elements into a coherent interface.
-- `/sp.tasks` keeps implementation small. Each task should have a clear scope, expected evidence, and a bounded write area.
-- `/sp.implement` writes code with verification evidence and updates stable state only when facts, risks, or unresolved items actually change.
-- `/sp.analyze` and `/sp.gate` close the loop: they detect drift, broken trace links, stale context, unresolved risks, and phase-readiness failures.
+- `/sp.tasks` keeps implementation small. It consumes `Implementation Readiness` and creates `Mode: doc` or `Mode: impl` task packets with clear scope, expected evidence, `Allowed Write Set`, and required checks.
+- `/sp.implement` writes code only for selected `Mode: impl` tasks. It checks `Allowed Write Set`, required checks, trace anchors, and task context before editing, then records verification evidence.
+- `/sp.analyze` and `/sp.gate` close the loop: they detect drift, broken trace links, stale context, unresolved risks, readiness contradictions, weak task packets, and phase-readiness failures.
 - For multi-agent work, one coordinator assigns worksets, workers stay inside declared write boundaries, and analyze/gate reconcile outputs before the project moves on.
 
 The intended result is not heavier ceremony. The intended result is fewer dead ends: when the agent cannot proceed safely, it moves upward to the right phase, explains the situation, and asks for a decision instead of inventing one.
@@ -65,15 +71,17 @@ The intended result is not heavier ceremony. The intended result is fewer dead e
 
 - Upstream-style `specify init`, templates, scripts, and agent integrations.
 - User-facing core commands use the `sp.*` namespace, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
-- Codex uses skills as the stable entry point. It installs executable skills in `.agents/skills/sp-*/SKILL.md` and does not rely on deprecated custom slash commands or prompt/plugin command surfaces.
+- Codex uses skills as the stable entry point. It installs executable skills in `.agents/skills/sp-*/SKILL.md`; users can invoke them explicitly with `$sp-*` or `/skills`, and Codex may also invoke a matching skill from natural-language requests when the task matches the skill description.
 - Claude and markdown-style hosts expose direct slash commands such as `/sp.analyze` through their normal command directories.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
 - Flow-first relationship management: business process nodes become the preferred link between requirements, UI, actions, API, data, tests, and code.
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
+- Controlled code-stage handoff: `plan.md` owns `Implementation Readiness`; `tasks.md` emits `Mode: doc` or `Mode: impl` task packets; `/sp.implement` executes only authorized implementation tasks.
+- Bounded implementation safety: `Allowed Write Set`, `Required Checks`, effective defaults, delete/move/rename scans, and `CODE` / `TEST` trace rules for high-risk boundaries and acceptance-critical tests.
 - Project memory for active context, feature map, hotspots, open items, and trace index, with rules for when to write back and when to avoid repeated checks.
 - Context-budget rules that favor current worksets, direct dependencies, related tests, and trace links before broad repository reads.
 - Impact-radius discipline for high-risk changes, including APIs, permissions, data migrations, event flows, UI contracts, and core tests.
-- Stronger `/sp.analyze`, `/sp.gate`, and `/sp.implement` rules for evidence checks, risk closure, fallback routing, headless failure reports, and memory updates.
+- Stronger `/sp.analyze`, `/sp.gate`, and `/sp.implement` rules for evidence checks, risk closure, fallback routing, headless failure reports, and memory updates. `/sp.analyze` uses `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`; `/sp.gate` uses `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION`. `CONDITIONAL` is gate-only and means the next stage depends on named conditions that must be closed or explicitly accepted.
 - Guardrails for unclear or conflicting requirements: ask for a decision, route back to the right `/sp.*` phase, and avoid guessing through business contradictions.
 - Better support for splitting complex domains before the model context becomes too large.
 - Lightweight multi-agent coordination: workset ownership, allowed write sets, shared-state serialization, stale-worker detection, and reconciliation checks.
@@ -121,9 +129,11 @@ If the current environment does not have the target agent CLI installed, or you 
 specify init . --integration codex --ignore-agent-tools
 ```
 
-For Codex, do not use slash-menu visibility for `/sp.*` as the install success criterion. Current Codex versions use skills as the stable entry point.
+For Codex, do not use slash-menu visibility for `/sp.*` as the install success criterion. Current Codex versions use skills as the stable entry point instead of project-local `/sp.*` slash commands.
 
-In Codex, type `$` or run `/skills`, then choose:
+In Codex, invoke SP skills explicitly by typing `$sp-<command>` or by running `/skills` and choosing `sp-<command>`. Codex may also invoke a matching skill from a natural-language request when the task matches the skill description, but explicit skill invocation is recommended for deterministic SP workflow stages.
+
+Common SP skills:
 
 ```text
 $sp-specify
@@ -145,7 +155,7 @@ test -f .agents/skills/sp-plan/SKILL.md
 test -f .agents/skills/sp-analyze/SKILL.md
 ```
 
-If an older project already contains `.codex/prompts/sp.*`, `plugins/sp/`, or `.agents/plugins/marketplace.json` from an experimental SP install, rerun `specify init . --integration codex` to refresh the integration. Current Codex support keeps the skills and removes those obsolete command surfaces.
+If an older project already contains `.codex/prompts/sp.*`, `.codex/commands`, `plugins/sp/`, `.agents/plugins/marketplace.json`, or other old Codex prompt/plugin/command residue from an experimental SP install, rerun `specify init . --integration codex` to refresh the integration. Current Codex support keeps the skills and removes obsolete command surfaces.
 
 ## Core Commands
 
@@ -154,19 +164,19 @@ If an older project already contains `.codex/prompts/sp.*`, `plugins/sp/`, or `.
 | `/sp.constitution` or `$sp-constitution` in Codex | Create or update project principles, engineering constraints, and governance rules |
 | `/sp.specify` or `$sp-specify` in Codex | Create a feature specification: what to build and why |
 | `/sp.clarify` or `$sp-clarify` in Codex | Clarify unclear requirements and record decisions |
-| `/sp.plan` or `$sp-plan` in Codex | Create the technical plan, architecture choices, and implementation route |
+| `/sp.plan` or `$sp-plan` in Codex | Create the technical plan, architecture choices, source layout, code/test mapping, and implementation readiness |
 | `/sp.flow` or `$sp-flow` in Codex | Create or refresh business flows, state flows, and sequence flows |
 | `/sp.ui` or `$sp-ui` in Codex | Create or refresh screens, screen maps, forms, and interaction notes |
-| `/sp.tasks` or `$sp-tasks` in Codex | Break the plan into executable tasks |
-| `/sp.analyze` or `$sp-analyze` in Codex | Check consistency and completeness across specs, plans, tasks, flow, UI, delivery, and memory |
-| `/sp.gate` or `$sp-gate` in Codex | Decide whether the current state can safely move to the next phase |
-| `/sp.implement` or `$sp-implement` in Codex | Execute tasks with verification and necessary memory updates |
+| `/sp.tasks` or `$sp-tasks` in Codex | Break the plan into `Mode: doc` or `Mode: impl` task packets with boundaries and checks |
+| `/sp.analyze` or `$sp-analyze` in Codex | Check consistency, readiness, task packets, trace, evidence, and drift across the feature |
+| `/sp.gate` or `$sp-gate` in Codex | Decide whether the current stage can safely move forward |
+| `/sp.implement` or `$sp-implement` in Codex | Execute selected `Mode: impl` tasks within allowed write boundaries and record verification evidence |
 | `/sp.bundle` or `$sp-bundle` in Codex | Package the current feature documents for review or delivery |
 | `/sp.checklist` or `$sp-checklist` in Codex | Generate quality checklists for the current feature |
 
 ## Relationship With Upstream
 
-SP comes from [github/spec-kit](https://github.com/github/spec-kit) and keeps its proven installation and workflow style where practical. For users, this repository is the install target: install SP, initialize a project, then use the host-appropriate SP entry point: `/sp.*` on slash-command hosts and `$sp-*` skills on Codex.
+SP comes from [github/spec-kit](https://github.com/github/spec-kit) and keeps its proven installation and workflow style where practical. For users, this repository is the install target: install SP, initialize a project, then use the host-appropriate SP entry point: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or matching natural-language requests.
 
 ## License
 

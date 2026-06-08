@@ -39,7 +39,7 @@ def test_planning_and_execution_commands_preserve_upward_fallback_rules():
 
 
 def test_commands_use_user_facing_dot_form_for_sp_commands():
-    """Templates should recommend /sp.* to users and treat sp-* as legacy residue."""
+    """Templates should avoid legacy /sp-* slash form while allowing Codex $sp-* skills."""
     for command_file in COMMANDS_DIR.glob("*.md"):
         content = command_file.read_text(encoding="utf-8")
         assert "/sp-" not in content, command_file.name
@@ -127,6 +127,18 @@ def test_analyze_and_gate_use_lightweight_memory_checker():
         assert "check-sp-memory.ps1 -Json" in content, command
         assert "`ERROR` findings block PASS" in content, command
         assert "`WARN` findings do not automatically block PASS" in content, command
+
+
+def test_analyze_readiness_conflicts_and_needs_context_routes_are_explicit():
+    """Analyze should diagnose readiness contradictions and task-level NEEDS_CONTEXT without expanding verdicts."""
+    analyze = _command("analyze")
+
+    assert "tasks.md` contradicts `plan.md` `Implementation Readiness" in analyze
+    assert "set the diagnostic verdict to `FAIL` and route to `/sp.plan`" in analyze
+    assert "A task-level `NEEDS_CONTEXT` result is diagnostic evidence" in analyze
+    assert "not an analyze verdict" in analyze
+    assert "task-packet or planning gap" in analyze
+    assert "`/sp.tasks`, `/sp.plan`, or human-decision route" in analyze
 
 
 def test_complex_part_thresholds_stay_aligned_across_commands():
@@ -295,6 +307,18 @@ def test_implementation_fast_path_and_test_read_boundaries_are_documented():
     assert "bounded test-read expectation" in tasks
 
 
+def test_implement_supports_checklist_and_task_matrix_completion_styles():
+    """Implement should close tasks according to the task format instead of forcing checklist syntax."""
+    implement = _command("implement")
+
+    assert "if `tasks.md` uses checklist tasks" in implement
+    assert "mark the task off as `[X]`" in implement
+    assert "if `tasks.md` uses a Task Matrix" in implement
+    assert "update the task's `Status` column" in implement
+    assert "such as `Completed` or `Verified`" in implement
+    assert "record evidence in `Notes` or the task evidence field" in implement
+
+
 def test_impact_radius_evidence_cannot_be_written_before_verification_or_hide_failure():
     """Impact-radius evidence should be tied to current verification, not optimistic prose."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
@@ -309,6 +333,83 @@ def test_impact_radius_evidence_cannot_be_written_before_verification_or_hide_fa
     assert "do not rewrite it as success" in implement
 
 
+def test_open_items_validation_allows_lightweight_local_questions_and_todos():
+    """Open-item validation should stay strict for risks but lightweight for harmless local items."""
+    analyze = _command("analyze")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    memory_arch = (
+        PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-context-memory-architecture.md"
+    ).read_text(encoding="utf-8")
+
+    for content, label in (
+        (analyze, "analyze"),
+        (command_spec, "command_spec"),
+        (memory_arch, "memory_arch"),
+    ):
+        assert "Low or Medium" in content, label
+        assert "`Question` and `Todo`" in content, label
+        assert "may stay lightweight" in content, label
+        assert "do not affect scope, acceptance, release, rollback, security, or implementation confidence" in content, label
+        assert "`Risk`, `Blocker`, High severity items" in content, label
+        assert "broader-impact" in content or "broader impact" in content, label
+
+
+def test_post_verdict_writeback_cannot_self_prove_pass():
+    """Analyze/gate writeback may update memory but cannot be the evidence for the same PASS."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+
+    for content, label in (
+        (_command("analyze"), "analyze"),
+        (_command("gate"), "gate"),
+        (command_spec, "command_spec"),
+    ):
+        assert "post-verdict writeback" in content, label
+        assert "must not" in content, label
+        assert "prove this run's PASS" in content or "primary evidence" in content, label
+
+    assert "post-verdict writeback" in command_spec
+    assert "current inputs" in command_spec
+    assert "current code/test evidence" in command_spec
+    assert "不能用本轮判定后的写回反过来证明本轮 PASS" in methodology
+
+
+def test_early_flow_ui_equivalent_evidence_is_bounded_draft_safety_only():
+    """Equivalent evidence before tasks.md should not become a hidden implementation-readiness gate."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    analyze = _command("analyze")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    memory_arch = (
+        PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-context-memory-architecture.md"
+    ).read_text(encoding="utf-8")
+    trace_index = (FEATURE_MEMORY_DIR / "trace-index.md").read_text(encoding="utf-8")
+
+    for content, label in (
+        (methodology, "methodology"),
+        (analyze, "analyze"),
+        (command_spec, "command_spec"),
+        (memory_arch, "memory_arch"),
+        (trace_index, "trace_index"),
+    ):
+        assert "equivalent current evidence" in content or "等价轻量检查" in content, label
+        assert "draft-safety check" in content or "草稿" in content, label
+        assert "did not close risks" in content or "risks were not closed" in content or "没有关闭风险" in content, label
+        assert "did not support PASS" in content or "PASS was not claimed" in content or "没有" in content and "PASS" in content, label
+
+    for content, label in (
+        (methodology, "methodology"),
+        (analyze, "analyze"),
+        (command_spec, "command_spec"),
+    ):
+        assert "Implementation Readiness" in content, label
+
+
 def test_t0_rules_distinguish_non_trivial_blockers_from_trivial_reminders():
     """Only non-trivial @t0 should require open-items and block PASS."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
@@ -319,6 +420,22 @@ def test_t0_rules_distinguish_non_trivial_blockers_from_trivial_reminders():
     assert "局部文案、格式、低风险 UI 微调" in methodology
     assert "A non-trivial `@t0` must have a matching" in constitution
     assert "Trivial `@t0` is only for local copy" in constitution
+
+
+def test_gate_complexity_only_covers_pre_planning_business_signals():
+    """Gate should not usurp plan/tasks/analyze ownership of delivery-level split signals."""
+    gate = _command("gate")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "business-layer complexity" in gate
+    assert "already visible before delivery planning" in gate
+    assert "Do not decide API/table/event/migration-based promotion at gate" in gate
+    assert "Delivery-level split signals" in gate
+    assert "remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze`" in gate
+    assert "pre-planning business complexity" in command_spec
+    assert "delivery-level split signals remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze`" in command_spec
 
 
 def test_specify_owns_requirement_conflicts_without_prd_command():
