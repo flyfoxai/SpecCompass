@@ -69,6 +69,16 @@ SpecCompass keeps the workflow readable for humans and predictable for agents:
 
 The intended result is not heavier ceremony. The intended result is fewer dead ends: when the agent cannot proceed safely, it moves upward to the right phase, explains the situation, and asks for a decision instead of inventing one.
 
+## Why `/sp.implement` Matters
+
+`/sp.implement` is not just a command that writes code. Its value is that it turns code generation into a bounded, auditable engineering step:
+
+- It prevents the agent from treating a broad feature as permission to edit the whole repository. Each implementation run should start from a selected `Mode: impl` task, an `Allowed Write Set`, and required checks.
+- It connects code changes back to requirement, flow, UI, API, data, test, and workset anchors, so later requirement changes can find affected files and later code changes can find related product context.
+- It reduces accidental deletion, rename, or cross-module edits by requiring impact-radius and reverse-trace checks before high-risk changes.
+- It keeps implementation small enough for the model to stay accurate: one task or task group at a time, with explicit dependencies and verification evidence.
+- It records what was verified, what failed, and which route should be used next. If implementation cannot proceed safely, it falls back to `/sp.tasks`, `/sp.plan`, `/sp.specify`, or `/sp.clarify` instead of guessing through the problem.
+
 ## What SP Adds
 
 - Upstream-style `specify init`, templates, scripts, and agent integrations.
