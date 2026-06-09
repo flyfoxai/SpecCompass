@@ -35,10 +35,26 @@
 
 - Do not write production code during documentation-only commands. Production code changes belong under `sp.implement` or another explicit implementation route with task and verification evidence.
 - Do not turn unresolved questions into fixed implementation commitments.
-- Do not add a separate `sp.prd` route. `sp.specify` owns requirement intake, PRD-like refinement, conflict checks, and baseline `spec.md` creation.
+- `sp.prd` may exist as an optional upstream discovery route for unclear 0-to-1 needs, candidate requirements, rejected ideas, and PRD draft notes. It is not a stable fact source. `sp.specify` owns stable requirement intake, conflict checks, and baseline `spec.md` creation.
+- `sp.prd` owns product and feature discovery: strategic goals, product positioning, business goals, capability maps, problem domains, scenarios, scope boundaries, flow/UI/data/risk seeds, and candidate requirements. `sp.constitution` owns durable project governance: principles, engineering discipline, phase boundaries, validation requirements, risk gates, memory rules, and human-decision rules.
+- Governance-like material discovered during `sp.prd` must be recorded as a `Constitution Candidate` instead of being treated as a formal rule. Formal constitution rules outrank PRD drafts and candidates until `sp.constitution` explicitly confirms, merges, rewrites, or promotes the candidate.
+- `sp.prd` may only append or update the `Constitution Candidates` section in this file. It must not directly edit formal constitution rules, phase boundaries, validation requirements, or governance text outside the candidate section.
+- Candidate strength threshold: record a candidate here only when it may recur across features or affects safety, compliance, irreversible action, real money/data risk, long-term engineering discipline, validation gates, or human-decision rules. Single-feature local risks, local TODOs, and ordinary requirement tradeoffs belong in PRD, feature memory, or `open-items.md`.
 - `sp.clarify` resolves ambiguity; it must not silently expand scope. If clarification reveals a new independent business goal, role, workflow, acceptance boundary, or release scope, record `NEW_FEATURE_DETECTED` and route back to `sp.specify` or ask the user to explicitly approve expanding the current feature.
 - Do not skip `sp.gate` before entering second-layer work.
 - Treat `sp.analyze` as diagnostic readiness analysis, not as authorization to skip required gate, task, or implementation checks.
+
+## Constitution Candidates
+
+| ID | Source Feature | Source Tag | Candidate Rule | Impact | Status | Next Route |
+| --- | --- | --- | --- | --- | --- | --- |
+
+- `sp.prd`, `sp.clarify`, or review work may record long-term governance candidates here when product discovery reveals durable project principles, safety requirements, risk policy, validation discipline, compliance constraints, or irreversible-action rules.
+- Candidates do not override formal constitution rules until confirmed and promoted by `sp.constitution`.
+- Preserve source feature, source tag, impact, status, and next route so later agents can understand why the candidate exists.
+- Status values are fixed: `proposed`, `under-review`, `promoted`, `rejected`, `merged`. Do not invent new status labels.
+- Merge duplicate candidates during `sp.constitution`; if a candidate is promoted, record the promotion reason and close or update the candidate row.
+- Keep the active candidate table concise. Once a candidate is `promoted`, `merged`, or `rejected`, remove it from the active table or archive it outside the active table after recording the decision summary, so processed candidates do not keep consuming future context.
 
 ## Representation Rules
 

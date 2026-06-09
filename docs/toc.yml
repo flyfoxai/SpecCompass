@@ -31,6 +31,8 @@
       href: reference/speckit-command-usage.md
     - name: SP Project Methodology
       href: reference/sp-project-methodology.md
+    - name: SP PRD Methodology
+      href: reference/SP-PRD命令方法论设计.md
     - name: CodeGraph Memory Research
       href: reference/codegraph-memory-research.md
 

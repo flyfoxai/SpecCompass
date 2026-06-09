@@ -178,13 +178,13 @@ specify init --here --integration codex
 | --- | --- |
 | `--integration <key>` | 使用新 integration 系统，推荐路径 |
 | `--integration-options "..."` | 给具体 integration 传递额外参数 |
-| `--script sh|ps` | 指定 Bash 或 PowerShell 脚本 |
+| `--script sh\|ps` | 指定 Bash 或 PowerShell 脚本 |
 | `--ignore-agent-tools` | 跳过 agent CLI 检查 |
 | `--no-git` | 跳过 git 初始化 |
 | `--here` | 在当前目录初始化 |
 | `--force` | 非空目录下强制合并或覆盖 |
 | `--preset <id>` | 初始化时安装 preset |
-| `--branch-numbering sequential|timestamp` | 指定 feature 分支编号策略 |
+| `--branch-numbering sequential\|timestamp` | 指定 feature 分支编号策略 |
 
 注意：
 

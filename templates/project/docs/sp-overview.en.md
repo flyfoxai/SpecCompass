@@ -7,9 +7,12 @@ Its goal is not to jump straight to code. It first builds a queryable, traceable
 
 The current workflow is documentation-first, not documentation-only. Implementation is allowed only as a downstream, bounded phase after `plan.md` records `Implementation Readiness` and `tasks.md` produces executable `Mode: impl` task packets.
 
+`sp.prd` is optional. Use it only when product intent is still immature and needs upstream PRD discovery before stable specification. Clear requirements can start directly at `sp.specify`.
+
 ## Core Ideas
 
 - Two layers: business clarification first, delivery design second.
+- Optional PRD discovery: `sp.prd` grows early product intent into a draft, but `prd.md` is not a stable fact source.
 - Unified clarify: `sp.clarify` handles high-impact spec, flow, and UI decisions.
 - Query-first memory: check project-level and feature-level memory before expanding source docs.
 - Worksets: split large features into local work areas.
@@ -18,24 +21,25 @@ The current workflow is documentation-first, not documentation-only. Implementat
 ## Basic Flow
 
 1. `sp.constitution`
-2. `sp.specify`
-3. `sp.clarify`
-4. `sp.flow`
-5. `sp.ui`
-6. `sp.gate`
-7. `sp.bundle`
-8. `sp.plan`
-9. `sp.tasks`
-10. `sp.analyze`
-11. `sp.gate`
-12. `sp.implement`
-13. `sp.analyze`
-14. `sp.gate`
+2. `[optional] sp.prd`
+3. `sp.specify`
+4. `sp.clarify`
+5. `sp.flow`
+6. `sp.ui`
+7. `sp.gate`
+8. `sp.bundle`
+9. `sp.plan`
+10. `sp.tasks`
+11. `sp.analyze`
+12. `sp.gate`
+13. `sp.implement`
+14. `sp.analyze`
+15. `sp.gate`
 
 ## Trigger Forms
 
 - User-facing commands use the unified `sp.*` namespace on slash-command hosts. Claude-style hosts expose direct `/sp.*` commands.
-- Codex uses skills as the stable entry point instead of project-local `/sp.*` slash commands: invoke `$sp-specify`, `$sp-plan`, `$sp-tasks`, `$sp-analyze`, `$sp-implement`, `$sp-gate`, or `$sp-ui`; run `/skills` and choose the matching `sp-*` skill; or ask in natural language when the task matches the skill description.
+- Codex uses skills as the stable entry point instead of project-local `/sp.*` slash commands: invoke `$sp-prd`, `$sp-specify`, `$sp-plan`, `$sp-tasks`, `$sp-analyze`, `$sp-implement`, `$sp-gate`, or `$sp-ui`; run `/skills` and choose the matching `sp-*` skill; or ask in natural language when the task matches the skill description.
 - Skills hosts keep upstream-style on-disk skill packages such as `sp-specify/SKILL.md`; in Codex, prefer explicit `$sp-*` or `/skills` invocation for deterministic SP workflow stages rather than expecting `/sp.*` slash commands.
 - The active installer writes host integration files into the target project, not into archived global prompt directories
 

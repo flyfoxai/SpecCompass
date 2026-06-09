@@ -15,6 +15,8 @@
 - 第一层：业务澄清文档
 - 第二层：交付设计文档
 
+当用户只有不成熟的产品想法时，可以在两层推进前先运行 `sp.prd`。它把上游发现放到 `specs/<feature>/prd.md`，但稳定需求仍然必须经过 `sp.specify`。
+
 ### 统一澄清入口
 
 `sp.clarify` 统一处理 `CF-SPEC`、`CF-FLOW`、`CF-UI` 三类高影响问题。
@@ -57,10 +59,11 @@
 2. `docs/reference/sp-context-memory-architecture.md`
 3. `.specify/memory/constitution.md`
 4. `.specify/memory/project-index.md`
-5. 开始第一个 feature 的 `sp.specify`
+5. 如果产品想法还不成熟，可以先运行可选 `sp.prd`
+6. 用 `sp.specify` 开始或稳定第一个 feature
 
 ## Codex 补充说明
 
 - 用户可见命令统一使用 `/sp.*`，例如 `/sp.specify`
-- Codex 保持原版风格，把核心 skill 包安装到 `.agents/skills/sp-*/SKILL.md`；输入 `$` 或运行 `/skills`，选择对应 `sp-*` skill。已废弃的 prompt/plugin 命令面不属于当前 Codex 路径。
+- Codex 保持原版风格，把核心 skill 包安装到 `.agents/skills/sp-*/SKILL.md`；输入 `$sp-prd`、`$sp-specify` 这类 `$sp-*`，或运行 `/skills` 选择对应 `sp-*` skill。已废弃的 prompt/plugin 命令面不属于当前 Codex 路径。
 - Claude 通过 `.claude/commands/sp.*.md` 直接暴露项目斜杠命令

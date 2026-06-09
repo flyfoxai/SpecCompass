@@ -86,14 +86,20 @@ Execution flow:
    - Treat route-changing questions as immediate.
    - Batch only low-risk local questions when doing so does not hide material ambiguity.
    - Separate macro decisions that require the user from local gaps that can be resolved by reading existing docs.
+   - For risk acceptance, requirement conflict, disputed split, verification downgrade, rollback choice, compliance/data choice, or other macro decisions, generate a structured decision package instead of making the decision yourself.
+   - A decision package must include: background, confirmed evidence, impact, 2-4 options, tradeoffs for each option, recommendation, and the next `/sp.*` route.
+   - The model recommendation is not the formal decision. Wait for the user to choose an option or provide a revised option before recording a stable decision.
    - If clarification reveals a new independent business goal, role, workflow, acceptance boundary, or release scope, return `NEW_FEATURE_DETECTED` instead of silently expanding the current feature.
    - For `NEW_FEATURE_DETECTED`, explain the background, impact, 2-4 options, recommendation, and next `/sp.specify` route. Ask the user to choose whether to create a new feature or deliberately expand the current one.
 4. Resolve and record decisions.
    - Remove the `SP_STAGE_SEED: clarifications` marker once `clarifications.md` contains real feature-specific decisions, questions, or explicitly unresolved items.
-   - Record the question, answer, impact, and revisit condition explicitly.
+   - Distinguish `Decision Package` from `Decision Record`: the package is the model-generated options and recommendation awaiting human choice; the record is the human-selected choice captured after the user answers.
+   - Record the question, user-selected answer, impact, affected documents or memory, close condition, and revisit condition explicitly.
+   - If the user changes the proposed option, record the user's revised choice rather than rewriting it as the original recommendation.
    - Update `spec.md` only where clarification stabilizes the baseline requirement.
    - Keep unresolved items visible instead of forcing closure.
    - For unresolved high-impact items, update `memory/open-items.md` with owner or revisit step, impact area, affected docs or trace anchor, and close condition.
+   - If no human choice is available, do not convert the recommendation into a decision; keep the item unresolved in `memory/open-items.md`, return `NEEDS_DECISION`, and include `SP_EXIT_CODE: 1` in headless or non-interactive output.
 5. Refresh memory and routing where necessary.
    - Update `specs/<feature>/clarifications.md`
    - Update `specs/<feature>/clarify-log.md`
@@ -123,6 +129,7 @@ Execution flow:
 - Do not silently expand feature scope while resolving ambiguity.
 - If a clarification answer is actually a new feature request, stop absorbing it, record `NEW_FEATURE_DETECTED`, and route back to `/sp.specify`.
 - Do not convert weak evidence into fixed decisions.
+- Do not convert a model recommendation into a final decision. Human choice is required before a decision can be recorded as stable.
 - Keep the clarification set focused on material downstream impact.
 - If two evidence-based clarification attempts cannot close the issue, fall back upward to `/sp.specify` or the relevant user macro decision instead of continuing to guess.
 

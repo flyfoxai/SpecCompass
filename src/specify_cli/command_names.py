@@ -21,6 +21,7 @@ CORE_COMMAND_STEMS = frozenset(
         "gate",
         "implement",
         "plan",
+        "prd",
         "specify",
         "tasks",
         "taskstoissues",

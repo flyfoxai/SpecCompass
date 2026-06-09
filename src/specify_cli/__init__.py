@@ -785,6 +785,7 @@ def _install_shared_infra(
             "/sp-gate": "/sp.gate",
             "/sp-implement": "/sp.implement",
             "/sp-plan": "/sp.plan",
+            "/sp-prd": "/sp.prd",
             "/sp-specify": "/sp.specify",
             "/sp-tasks": "/sp.tasks",
             "/sp-taskstoissues": "/sp.taskstoissues",
@@ -799,12 +800,12 @@ def _install_shared_infra(
             for old, new in replacements.items():
                 updated = updated.replace(old, new)
             updated = re.sub(
-                r"/speckit\.(analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|specify|tasks|taskstoissues|ui)\b",
+                r"/speckit\.(analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|prd|specify|tasks|taskstoissues|ui)\b",
                 r"/sp.\1",
                 updated,
             )
             updated = re.sub(
-                r"\bprompts:speckit\.(analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|specify|tasks|taskstoissues|ui)\b",
+                r"\bprompts:speckit\.(analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|prd|specify|tasks|taskstoissues|ui)\b",
                 r"/sp.\1",
                 updated,
             )
@@ -1134,6 +1135,7 @@ DEFAULT_SKILLS_DIR = ".agents/skills"
 NATIVE_SKILLS_AGENTS = {"codex", "kimi"}
 SKILL_DESCRIPTIONS = {
     "specify": "Create or update feature specifications from natural language descriptions.",
+    "prd": "Shape an optional upstream PRD draft before stable feature specification.",
     "plan": "Generate technical implementation plans from feature specifications.",
     "tasks": "Break down implementation plans into actionable task lists.",
     "implement": "Execute selected Mode: impl tasks from the task breakdown to build the feature safely.",
@@ -1710,10 +1712,11 @@ def init(
     steps_lines.append(f"{step_num}. Start using {usage_label} with your AI agent:")
 
     steps_lines.append(f"   {step_num}.1 [cyan]{_display_cmd('constitution')}[/] - Establish project principles")
-    steps_lines.append(f"   {step_num}.2 [cyan]{_display_cmd('specify')}[/] - Create baseline specification")
-    steps_lines.append(f"   {step_num}.3 [cyan]{_display_cmd('plan')}[/] - Create implementation plan")
-    steps_lines.append(f"   {step_num}.4 [cyan]{_display_cmd('tasks')}[/] - Generate actionable tasks")
-    steps_lines.append(f"   {step_num}.5 [cyan]{_display_cmd('implement')}[/] - Execute implementation")
+    steps_lines.append(f"   {step_num}.2 [cyan]{_display_cmd('prd')}[/] [bright_black](optional)[/bright_black] - Shape unclear product intent before specification")
+    steps_lines.append(f"   {step_num}.3 [cyan]{_display_cmd('specify')}[/] - Create baseline specification")
+    steps_lines.append(f"   {step_num}.4 [cyan]{_display_cmd('plan')}[/] - Create implementation plan")
+    steps_lines.append(f"   {step_num}.5 [cyan]{_display_cmd('tasks')}[/] - Generate actionable tasks")
+    steps_lines.append(f"   {step_num}.6 [cyan]{_display_cmd('implement')}[/] - Execute implementation")
 
     steps_panel = Panel("\n".join(steps_lines), title="Next Steps", border_style="cyan", padding=(1,2))
     console.print()

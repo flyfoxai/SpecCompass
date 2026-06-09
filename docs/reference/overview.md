@@ -37,6 +37,7 @@ Workflows automate multi-step Spec-Driven Development processes into repeatable 
 SP adds lightweight memory, traceability, open-items, and context-budget practices on top of the upstream Spec Kit mechanism. These references document the project-specific methodology and research notes used to keep those additions stable and low overhead.
 
 - [SP project methodology](sp-project-methodology.md)
+- [SP PRD methodology](SP-PRD命令方法论设计.md)
 - [CodeGraph memory research](codegraph-memory-research.md)
 - [SP next-step improvement plan](SP项目下一步完善工作计划.md)
 

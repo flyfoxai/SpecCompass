@@ -19,19 +19,61 @@ The current `sp` workflow is documentation-first, but it is no longer documentat
 The main stage chain is:
 
 1. `sp.constitution`
-2. `sp.specify`
-3. `sp.clarify`
-4. `sp.flow`
-5. `sp.ui`
-6. `sp.gate`
-7. `sp.bundle`
-8. `sp.plan`
-9. `sp.tasks`
-10. `sp.analyze`
-11. `sp.gate`
-12. `sp.implement`
-13. `sp.analyze`
-14. `sp.gate`
+2. `[optional] sp.prd`
+3. `sp.specify`
+4. `sp.clarify`
+5. `sp.flow`
+6. `sp.ui`
+7. `sp.gate`
+8. `sp.bundle`
+9. `sp.plan`
+10. `sp.tasks`
+11. `sp.analyze`
+12. `sp.gate`
+13. `sp.implement`
+14. `sp.analyze`
+15. `sp.gate`
+
+`sp.prd` is an optional upstream discovery step. It may collect raw intent,
+strategic goals, product positioning, business goals, capability maps,
+candidate requirements, rejected ideas, open questions, and flow/UI/data/risk
+seeds, but it does not create stable requirements. Stable requirements still
+enter the workflow through `sp.specify` and `spec.md`.
+
+When `sp.prd` is used, requirement growth should be top-down and
+product-oriented: strategic goal, product positioning, business goals, target
+users, capability map, problem domains, scenarios, scope boundaries, main
+flows, key branches, acceptance seeds, risks, and then local details.
+User-provided details may be kept, but they must attach to a parent strategic
+goal, capability, flow, UI surface, data object, or acceptance boundary; orphan
+details stay as candidates, seeds, or open items. The detail boundary is
+`ready for sp.specify`, not `ready for implementation`.
+`prd.md` must not replace `sp.flow`, `sp.ui`, `sp.plan`, or `sp.tasks`, and
+should not default to full UI element inventories, state machines, APIs,
+database schemas, code paths, test commands, or implementation tasks.
+
+`sp.prd` and `sp.constitution` have different goals. `sp.prd` owns product or
+feature discovery. `sp.constitution` owns durable project governance: long-term
+principles, engineering discipline, phase boundaries, validation requirements,
+risk gates, memory rules, and human-decision rules. Governance-like material
+found during PRD discovery should be written as a `Constitution Candidate` in
+`.specify/memory/constitution.md` with source feature, source tag, impact,
+status, and next route. Candidates do not override formal constitution rules
+until `sp.constitution` explicitly confirms, merges, rewrites, or promotes
+them. If `prd.md` conflicts with a formal constitution rule, the formal
+constitution wins and the safe route is `sp.clarify` or a human decision.
+The `Constitution Candidates` section is the primary landing zone for governance
+candidates. `prd.md` may keep source notes or handoff summaries, but it should
+not force later commands to re-read the full PRD to rediscover the same
+candidate. `sp.prd` may only append or update the candidate section; it must not
+edit formal constitution rules, phase boundaries, validation requirements, or
+governance text outside that section. Record a candidate only when it may recur
+across features or affects safety, compliance, irreversible action, real
+money/data risk, long-term engineering discipline, validation gates, or
+human-decision rules. Single-feature local risks, local TODOs, and ordinary
+requirement tradeoffs belong in PRD, feature memory, or `open-items.md`.
+Candidate status values are fixed: `proposed`, `under-review`, `promoted`,
+`rejected`, `merged`.
 
 The active command set also includes `sp.checklist` for quality checklists. Issue-export helpers such as `sp.taskstoissues` may exist in the broader template tree, but they are integration helpers rather than required SP stage steps.
 
@@ -156,6 +198,9 @@ Not every file is seeded up front by the template root. Some are created or expa
 - establish the project-level rules
 - create the first routing layer
 - define what must not be skipped later
+- own durable governance rather than feature PRD discovery
+- preserve and normalize `Constitution Candidate` rows discovered by PRD or clarification work, without promoting them to formal rules unless explicitly confirmed
+- keep `Constitution Candidates` as the primary candidate landing zone, with fixed status values and a strength threshold that keeps local feature risks out of global governance
 
 ### `sp.specify`
 
@@ -168,6 +213,13 @@ Not every file is seeded up front by the template root. Some are created or expa
 - resolve high-impact business ambiguities
 - record answers and propagation obligations
 - turn unresolved ambiguity into explicit tracked items
+- generate a structured `Decision Package` when the next safe step depends on
+  human scope, risk, compliance, rollback, split, or verification choice
+  with these required fields: background, confirmed evidence, impact, 2-4
+  options, tradeoffs, recommendation, and next `/sp.*` route
+- record a `Decision Record` only after the user selects an option or gives a
+  revised option; it must capture the selected choice, impact scope, writeback
+  targets, close condition, revisit condition, and next command. The model recommendation is not the final decision.
 
 ### `sp.flow`
 
@@ -329,6 +381,12 @@ Known structural errors still fail validation, for example missing `workflow.id`
 
 Keep todo, risk, blocker, rollback, impact, owner, and close-condition details in `memory/open-items.md`. Keep lookup chains in `memory/trace-index.md`.
 
+Keep cross-command fallback attempts in `specs/<feature>/memory/fallback-log.md`
+when repeated failures or upward routes occur. The fallback log is not a new
+truth source; it is a lightweight anti-oscillation ledger so later commands can
+recognize the same workset, failure signature, attempted routes, evidence, and
+next recommended step without rediscovering the loop.
+
 ## 14. PASS / FAIL / BLOCKED Expectations
 
 `sp.analyze` and related review-style steps must remain evidence-based.
@@ -352,6 +410,13 @@ Missing required context should normally be reported as `BLOCKED` with context
 details and the next `/sp.*` route, or `NEEDS_DECISION` when the missing context
 requires human choice. `NEEDS_CONTEXT` remains an implementation/task fallback
 route, not an `/sp.analyze` verdict.
+
+When a verdict depends on human judgment, route to `/sp.clarify` unless a
+current decision package and human-selected decision record already exists.
+The package must explain the background, confirmed evidence, impact, 2-4
+options, tradeoffs, recommendation, and next `/sp.*` route. The decision record
+must capture the user's selected or revised choice, impact scope, writeback
+targets, close condition, revisit condition, and next command.
 
 When `sp.analyze` has only low-risk warnings, the formal verdict field remains
 `PASS`; warning details belong in findings, evidence, or `memory/open-items.md`.

@@ -28,15 +28,17 @@
   <rect x="58" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
   <rect x="58" y="128" width="505" height="48" rx="22" fill="#17483d"/>
   <text x="82" y="159" class="group">1. Define intent</text>
-  <text x="86" y="208" class="cmd">/sp.constitution</text>
-  <text x="226" y="208" class="text">Project principles, engineering constraints, governance</text>
-  <text x="86" y="246" class="cmd">/sp.specify</text>
-  <text x="226" y="246" class="text">Feature goal, scope, requirements, conflict checks</text>
-  <text x="86" y="284" class="cmd">/sp.clarify</text>
-  <text x="226" y="284" class="text">Focused user decisions when intent is unsafe to infer</text>
-  <text x="86" y="322" class="cmd">/sp.checklist</text>
-  <text x="226" y="322" class="text">Targeted quality checklist for requirements and review</text>
-  <text x="86" y="360" class="note">Output: stable intent, open decisions, acceptance direction</text>
+  <text x="86" y="200" class="cmd">/sp.constitution</text>
+  <text x="226" y="200" class="text">Project principles, engineering constraints, governance</text>
+  <text x="86" y="234" class="cmd">/sp.prd</text>
+  <text x="226" y="234" class="text">Optional product discovery draft before stable specification</text>
+  <text x="86" y="268" class="cmd">/sp.specify</text>
+  <text x="226" y="268" class="text">Feature goal, scope, requirements, conflict checks</text>
+  <text x="86" y="302" class="cmd">/sp.clarify</text>
+  <text x="226" y="302" class="text">Focused user decisions when intent is unsafe to infer</text>
+  <text x="86" y="336" class="cmd">/sp.checklist</text>
+  <text x="226" y="336" class="text">Targeted quality checklist for requirements and review</text>
+  <text x="86" y="366" class="note">Output: stable intent, open decisions, acceptance direction</text>
 
   <rect x="617" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
   <rect x="617" y="128" width="505" height="48" rx="22" fill="#245f52"/>

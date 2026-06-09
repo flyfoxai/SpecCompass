@@ -1,10 +1,16 @@
 {
     "chat.promptFilesRecommendations": {
         "sp.constitution": true,
+        "sp.prd": true,
         "sp.specify": true,
+        "sp.clarify": true,
+        "sp.flow": true,
+        "sp.ui": true,
         "sp.plan": true,
         "sp.tasks": true,
-        "sp.implement": true
+        "sp.implement": true,
+        "sp.analyze": true,
+        "sp.gate": true
     },
     "chat.tools.terminal.autoApprove": {
         ".specify/scripts/bash/": true,

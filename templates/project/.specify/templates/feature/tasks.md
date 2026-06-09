@@ -16,7 +16,7 @@ Use these defaults unless a generated task explicitly overrides them.
 
 | Field | Default |
 | --- | --- |
-| Forbidden Write Set | `tasks.md`, `memory/open-items.md`, `memory/trace-index.md`, workset routing, global status summaries, package manifests, lockfiles, schemas, migrations, permissions, and global registries unless explicitly allowed |
+| Forbidden Write Set | shared truth files unless explicitly allowed: `tasks.md`, `memory/open-items.md`, `memory/trace-index.md`, `memory/worksets/*`, `memory/stable-context.md`, feature routing, stable summaries, `analysis.md`, `gate.md`, `<feature>/workers/*` cleanup or lifecycle decisions, package manifests, lockfiles, schemas, migrations, permissions, and global registries |
 | Fallback Route | `NEEDS_TASKS` for incomplete task packets; `NEEDS_PLAN` for missing code/workset boundaries; `NEEDS_CONTEXT` for missing required context that cannot be recovered from routed files; `NEEDS_DECISION` for human product/risk/compliance choices |
 | Writeback Rule | workers propose shared-memory updates; coordinator or serial closeout merges them |
 | Required Evidence | current command/check/manual-verification result, affected anchors, changed files, and remaining open items |
@@ -34,3 +34,4 @@ Use these defaults unless a generated task explicitly overrides them.
 - If `Allowed Write Set` is insufficient, do not expand it during implementation. Return `NEEDS_PLAN` for boundary/readiness problems, `NEEDS_TASKS` for incomplete task packet/split problems, or `NEEDS_CONTEXT` for missing required context that cannot be recovered from routed files.
 - If a task carries non-trivial `@t0` or `@r0`, the corresponding detail should exist in `memory/open-items.md`.
 - If a task is too broad to verify in one focused pass, split it before execution rather than relying on model memory.
+- Worker task packets and handoffs belong outside `memory/`, normally under `<feature>/workers/`. They are execution artifacts, not stable memory; memory recall should exclude them unless the coordinator is explicitly merging or auditing worker evidence.

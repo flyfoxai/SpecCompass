@@ -15,6 +15,13 @@ def _command(name: str) -> str:
     return (COMMANDS_DIR / f"{name}.md").read_text(encoding="utf-8")
 
 
+def _paragraph_containing(content: str, needle: str) -> str:
+    for paragraph in content.split("\n\n"):
+        if needle in paragraph:
+            return paragraph
+    return ""
+
+
 def test_risk_sensitive_commands_read_open_items_before_deciding():
     """Commands that can advance state should load open-items before judging stability."""
     for command in ("analyze", "bundle", "flow", "gate", "implement", "plan", "tasks", "ui"):
@@ -231,11 +238,60 @@ def test_headless_and_human_decision_rules_offer_safe_options():
     """Headless runs should fail safe, and human decisions should be asked in plain-language options."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     constitution = (PROJECT_MEMORY_DIR / "constitution.md").read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    clarify = _command("clarify")
     implement = _command("implement")
 
     assert "headless 自动化要优先靠隔离" in methodology
     assert "丢弃本次任务创建的临时分支、临时目录或 worktree" in methodology
     assert "2-4 个选项" in methodology
+    assert "决策包" in methodology
+    assert "推荐不等于正式决策" in methodology
+    assert "Decision Package" in clarify
+    assert "Decision Record" in clarify
+    assert "human-selected choice" in clarify
+    assert "return `NEEDS_DECISION`" in clarify
+    assert "SP_EXIT_CODE: 1" in clarify
+    assert "model recommendation is not the final decision" in command_spec
+    assert "Decision Package" in command_spec
+    assert "Decision Record" in command_spec
+    command_spec_package = _paragraph_containing(command_spec, "Decision Package")
+    command_spec_record = _paragraph_containing(command_spec, "Decision Record")
+    clarify_package = _paragraph_containing(clarify, "A decision package must include")
+    clarify_no_choice = _paragraph_containing(clarify, "If no human choice is available")
+    for field in (
+        "background",
+        "confirmed evidence",
+        "impact",
+        "2-4",
+        "options",
+        "tradeoffs",
+        "recommendation",
+        "next `/sp.*` route",
+        "selected choice",
+        "writeback",
+        "close condition",
+        "revisit condition",
+    ):
+        assert field in command_spec, field
+    for field in (
+        "background",
+        "confirmed evidence",
+        "impact",
+        "2-4",
+        "options",
+        "tradeoffs",
+        "recommendation",
+        "next `/sp.*` route",
+    ):
+        assert field in command_spec_package, field
+        assert field in clarify_package, field
+    for field in ("selected choice", "writeback", "close condition", "revisit condition", "next command"):
+        assert field in command_spec_record, field
+    assert "NEEDS_DECISION" in clarify_no_choice
+    assert "SP_EXIT_CODE: 1" in clarify_no_choice
     assert "Prefer isolation for headless automation" in constitution
     assert "discard the temporary branch, directory, or worktree" in constitution
     assert "discard the temporary branch, directory, or worktree" in implement
@@ -244,6 +300,16 @@ def test_headless_and_human_decision_rules_offer_safe_options():
         content = _command(command)
         assert "2-4" in content, command
         assert "recommendation" in content.lower() or "推荐" in content, command
+        assert "/sp.clarify" in content, command
+        assert "decision package" in content.lower(), command
+
+    for command in ("analyze", "gate", "implement"):
+        content = _command(command)
+        headless_path = _paragraph_containing(content, "headless or non-interactive runs")
+        assert "SP_EXIT_CODE: 1" in content, command
+        assert "do not invent" in content.lower(), command
+        assert "NEEDS_DECISION" in headless_path, command
+        assert "SP_EXIT_CODE: 1" in headless_path, command
 
 
 def test_observation_band_does_not_become_headless_hard_gate():
@@ -438,21 +504,96 @@ def test_gate_complexity_only_covers_pre_planning_business_signals():
     assert "delivery-level split signals remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze`" in command_spec
 
 
-def test_specify_owns_requirement_conflicts_without_prd_command():
-    """Requirement intake and PRD-like refinement should stay inside /sp.specify."""
+def test_specify_owns_stable_requirement_conflicts_with_optional_prd_discovery():
+    """Optional /sp.prd discovery must not replace /sp.specify as the stable spec entry."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     constitution = (PROJECT_MEMORY_DIR / "constitution.md").read_text(encoding="utf-8")
+    prd = _command("prd")
     specify = _command("specify")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
 
-    assert "不新增 `/sp.prd` 命令" in methodology
-    assert "PRD 类需求细化" in methodology
-    assert "Do not add a separate `sp.prd` route" in constitution
-    assert "requirement intake and PRD-like refinement" in specify
+    assert "`/sp.prd` 可以作为可选前置命令" in methodology
+    assert "不是强制入口，也不是稳定事实源" in methodology
+    assert "自上而下的需求生长" in methodology
+    assert "战略目标、产品定位、业务目标、目标用户和能力版图" in methodology
+    assert "足够交给 `/sp.specify` 提炼稳定规格" in methodology
+    assert "不能默认输出完整界面元素清单" in methodology
+    assert "`/sp.constitution` 面向整个项目" in methodology
+    assert "候选治理区" in methodology
+    assert "不能直接修改正式 constitution 正文" in methodology
+    assert "候选状态只使用固定枚举" in methodology
+    assert "单 feature 局部风险" in methodology
+    assert "`sp.prd` may exist as an optional upstream discovery route" in constitution
+    assert "It is not a stable fact source" in constitution
+    assert "Constitution Candidates" in constitution
+    assert "Candidates do not override formal constitution rules" in constitution
+    assert "may only append or update the `Constitution Candidates` section" in constitution
+    assert "Candidate strength threshold" in constitution
+    assert "Status values are fixed" in constitution
+    assert "Keep the active candidate table concise" in constitution
+    assert "stable requirement intake and baseline specification point" in specify
+    assert "`prd.md` is only an upstream draft" in specify
+    assert "Do not stabilize `[src:ai-proposed]`" in specify
+    assert "Do not treat `[src:ai-proposed]`" in specify
+    assert "without user confirmation" in specify
+    assert "# /sp.prd" in prd
+    assert "hooks.before_prd" in prd
+    assert "sp.constitution" in prd
+    assert "optional upstream discovery" in prd
+    assert "not a stable fact source" in prd
+    assert "top-down requirement growth" in prd
+    assert "[src:ai-proposed]" in prd
+    assert "SP_STATUS: NEEDS_DECISION" in prd
+    assert "SP_EXIT_CODE: 1" in prd
+    assert "ready for /sp.specify" in prd
+    assert "Constitution Candidates" in prd
+    assert "may only append or update" in prd
+    assert "Candidate status values are fixed" in prd
+    assert "Do not rewrite formal constitution content" in prd
+    assert "new independent business goal, role, workflow, acceptance boundary, release scope, or scope fork" in prd
+    assert "route to `/sp.specify`" in prd
+    assert "route to `/sp.clarify`" in prd
+    assert "unresolved product boundary or scope fork questions were not turned into guessed features" in prd
+    assert "requirement growth should be top-down" in command_spec
+    assert "strategic goal, product positioning, business goals" in command_spec
+    assert "capability map" in command_spec
+    assert "The detail boundary is" in command_spec
+    assert "`ready for sp.specify`" in command_spec
+    assert "`ready for implementation`" in command_spec
+    assert "Governance-like material" in command_spec
+    assert "found during PRD discovery" in command_spec
+    assert "Candidates do not override formal constitution rules" in command_spec
+    assert "primary landing zone for governance" in command_spec
+    assert "may only append or update the candidate section" in command_spec
+    assert "Candidate status values are fixed" in command_spec
+    assert "Single-feature local risks" in command_spec
+    assert "proposed" in command_spec
+    assert "under-review" in command_spec
+    assert "promoted" in command_spec
+    assert "rejected" in command_spec
+    assert "merged" in command_spec
     assert "conflicting user intent" in specify
     assert "contradictory acceptance criteria" in specify
     assert "NEEDS_DECISION" in specify
     assert "/sp.clarify" in specify
-    assert "/sp.specify" in specify
+
+
+def test_task_packet_defaults_protect_shared_truth_and_worker_artifact_boundaries():
+    """Scaffolded task packets should not let workers rewrite shared truth by default."""
+    tasks_template = (FEATURE_TEMPLATE_DIR / "tasks.md").read_text(encoding="utf-8")
+
+    for phrase in (
+        "memory/worksets/*",
+        "memory/stable-context.md",
+        "analysis.md",
+        "gate.md",
+        "<feature>/workers/*",
+        "execution artifacts, not stable memory",
+        "memory recall should exclude them",
+    ):
+        assert phrase in tasks_template
 
 
 def test_clarify_routes_new_feature_back_to_specify():

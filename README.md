@@ -38,9 +38,10 @@ In practice, `Mode: doc` tasks are used for specification, flow, UI, planning, m
 
 SP treats AI development as an engineering control loop, not a one-shot prompt. The goal is to give the agent enough context to work accurately, but not so much that the context window becomes noisy or expensive.
 
-The methodology is documented in [SP Project Methodology](./docs/reference/sp-project-methodology.md). In short:
+The main methodology is documented in [SP Project Methodology](./docs/reference/sp-project-methodology.md). Optional 0-to-1 product discovery is documented separately in [SP PRD Methodology](./docs/reference/SP-PRD命令方法论设计.md). In short:
 
 - Start from the trunk: clarify goals, scope, success criteria, constraints, and the active feature before expanding into implementation details.
+- Use optional `/sp.prd` only when product intent is still immature. It helps grow a PRD draft from strategic goals, positioning, users, scenarios, capability map, flow seeds, acceptance seeds, risks, and open questions, but `prd.md` is not a stable fact source.
 - Keep context small but sufficient: route through project memory, feature memory, worksets, trace files, and directly related source docs before reading the whole repository.
 - Use stable anchors and searchable IDs for features, worksets, UI, APIs, risks, tests, and acceptance paths, so later agents can find related content without recomputing the whole project.
 - Track unresolved work explicitly in `memory/open-items.md`, including risks, blockers, decisions, owners, close conditions, and revisit points.
@@ -55,7 +56,8 @@ The methodology is documented in [SP Project Methodology](./docs/reference/sp-pr
 
 SpecCompass keeps the workflow readable for humans and predictable for agents:
 
-- Requirements enter through `/sp.specify`. New or changed requirements are checked for conflicts instead of being silently merged into stale specs.
+- Unclear 0-to-1 product ideas may start with optional `/sp.prd`. Clear requirements should go directly to `/sp.specify`.
+- Stable requirements enter through `/sp.specify`. New or changed requirements are checked for conflicts instead of being silently merged into stale specs.
 - When intent is unclear, `/sp.clarify` asks focused questions with plain-language options and records the decision so later agents do not need to rediscover it.
 - `/sp.plan` defines the technical route, worksets, impact radius, agent boundaries, source layout, runtime commands, code/test mapping, and `Implementation Readiness` before code changes begin.
 - `/sp.flow` is the backbone. Business flows connect process nodes to UI screens, events, API calls, data objects, tests, and code anchors.
@@ -73,6 +75,7 @@ The intended result is not heavier ceremony. The intended result is fewer dead e
 - User-facing core commands use the `sp.*` namespace, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
 - Codex uses skills as the stable entry point. It installs executable skills in `.agents/skills/sp-*/SKILL.md`; users can invoke them explicitly with `$sp-*` or `/skills`, and Codex may also invoke a matching skill from natural-language requests when the task matches the skill description.
 - Claude and markdown-style hosts expose direct slash commands such as `/sp.analyze` through their normal command directories.
+- Optional PRD discovery with `/sp.prd` for early product shaping. PRD output stays in `specs/<feature>/prd.md`, uses source tags such as `[src:user]` and `[src:ai-proposed]`, and hands confirmed intent to `/sp.specify` instead of bypassing it.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
 - Flow-first relationship management: business process nodes become the preferred link between requirements, UI, actions, API, data, tests, and code.
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
@@ -137,6 +140,7 @@ Common SP skills:
 
 ```text
 $sp-specify
+$sp-prd
 $sp-plan
 $sp-tasks
 $sp-analyze
@@ -151,6 +155,7 @@ Installation acceptance checks:
 specify version
 specify check
 test -d .agents/skills
+test -f .agents/skills/sp-prd/SKILL.md
 test -f .agents/skills/sp-plan/SKILL.md
 test -f .agents/skills/sp-analyze/SKILL.md
 ```
@@ -162,6 +167,7 @@ If an older project already contains `.codex/prompts/sp.*`, `.codex/commands`, `
 | Command | Purpose |
 | --- | --- |
 | `/sp.constitution` or `$sp-constitution` in Codex | Create or update project principles, engineering constraints, and governance rules |
+| `/sp.prd` or `$sp-prd` in Codex | Optional upstream PRD discovery for immature product ideas; produces draft intent for `/sp.specify` |
 | `/sp.specify` or `$sp-specify` in Codex | Create a feature specification: what to build and why |
 | `/sp.clarify` or `$sp-clarify` in Codex | Clarify unclear requirements and record decisions |
 | `/sp.plan` or `$sp-plan` in Codex | Create the technical plan, architecture choices, source layout, code/test mapping, and implementation readiness |

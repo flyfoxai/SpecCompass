@@ -77,7 +77,7 @@ You **MUST** consider the user input before proceeding (if not empty).
      - Display the table with incomplete item counts
      - In interactive runs, ask: "Some checklists are incomplete. Do you want to proceed with implementation anyway? (yes/no)"
      - If user says "no" or "wait" or "stop", halt execution
-     - If user says "yes" or "proceed" or "continue", proceed to step 3
+     - If user says "yes" or "proceed" or "continue", record that choice as an explicit checklist bypass decision with impact, scope, owner or revisit point, and close condition, then proceed to step 3. This does not close the underlying incomplete checklist or risk unless the user explicitly accepts or resolves it.
      - In headless or non-interactive runs, do not wait forever and do not invent approval. Return `NEEDS_DECISION` with the checklist table, background, impact, 2-4 options, recommendation, and the next `/sp.*` route. End the output with `SP_EXIT_CODE: 1` as a machine-readable blocker marker; if the host supports process exit control, also terminate with a non-zero exit status so CI or automated runners cannot continue as if implementation succeeded.
 
    - **If all checklists are complete**:
@@ -184,6 +184,8 @@ You **MUST** consider the user input before proceeding (if not empty).
      - do not repeat the same fix with only wording changes
    - Record what was tried, what evidence failed, and why the current layer cannot solve it.
    - Same failure signature at the same implementation layer gets at most two evidence-based attempts. If the same workset bounces between implementation, tasks, plan, or spec layers beyond that threshold, stop automatic progress and return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
+   - When a failure causes upward fallback or repeats a previous signature, append or propose a concise entry in `FEATURE_DIR/memory/fallback-log.md`: workset or anchor, command, failure signature, failed evidence, attempted routes, next recommended route, and this run's timestamp or run label. Use this log only to prevent loops; do not treat it as a replacement for `open-items.md`, `trace-index.md`, or task evidence.
+   - Before a second fallback on the same task/workset, check `FEATURE_DIR/memory/fallback-log.md` when it exists. If the same signature already bounced across implementation/tasks/plan/spec without new evidence, stop with `BLOCKED` or `NEEDS_DECISION` instead of repeating the same route.
    - Skip the local attempt only for data loss, security, permission, compliance, irreversible migration, or clearly missing human/product decision risk, and name the missing decision.
    - Do not treat ordinary uncertainty, incomplete reading, or a locally verifiable issue as a missing human decision.
    - Business contradictions, incompatible requirements, or unclear user intent cannot be solved with implementation hacks. Route unclear intent to `/sp.clarify`; route baseline requirement changes or new independent features to `/sp.specify`; route workset or technical-route changes to `/sp.plan`.
@@ -251,7 +253,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Do not self-approve conditional risk acceptance. If a risk must remain open while work proceeds, ask the user for the decision and record the accepted scope, owner, revisit anchor, rollback or degrade path, and close condition.
    - Do not claim PASS from prose alone when mechanical evidence is available. Current test/build/lint/check results, existing active feature paths, required source docs, trace links, and open blockers/high risks override subjective confidence.
    - In headless or non-interactive runs, do not invent human approval. If the next safe step needs risk acceptance, disputed split, compliance/data decision, irreversible action, or hard-gate override, return `NEEDS_DECISION` or `BLOCKED` with background, impact, 2-4 options, recommendation, and the next `/sp.*` route. End the output with `SP_EXIT_CODE: 1`; if the host supports process exit control, also terminate with a non-zero exit status.
-   - When asking for human input, use plain language: explain the background, impact, 2-4 viable options, tradeoffs, your recommendation, and the next `/sp.*` route.
+   - When asking for human input, route to `/sp.clarify` to generate or complete the decision package unless a current package and human-selected decision record already exists. Use plain language: explain the background, impact, 2-4 viable options, tradeoffs, your recommendation, and the next `/sp.*` route. Do not record the model recommendation as the final decision.
    - Report final status with summary of completed work
    - Do not output a full file-read list by default. Include read-set details only when the user asks for debug/audit detail or when a failure needs that evidence.
 

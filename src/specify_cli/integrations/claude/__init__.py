@@ -27,6 +27,7 @@ _HOOK_COMMAND_NOTE = (
 # when a user invokes the slash command in Claude Code.
 ARGUMENT_HINTS: dict[str, str] = {
     "specify": "Describe the feature you want to specify",
+    "prd": "Optional product discovery or PRD shaping brief",
     "plan": "Optional guidance for the planning phase",
     "tasks": "Optional task generation constraints",
     "implement": "Optional implementation guidance or task filter",

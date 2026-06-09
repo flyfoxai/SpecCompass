@@ -113,8 +113,11 @@ Execution flow:
      - `plan.md` `Implementation Readiness` exists when implementation tasks are present
      - each ready workset has source layout, runtime commands, code mapping, test mapping, and workset code boundary evidence
      - `tasks.md` consumes readiness instead of inventing a conflicting readiness conclusion
-     - any conflict is reported as stale or contradictory readiness and routed to `/sp.plan`
-     - if `tasks.md` contradicts `plan.md` `Implementation Readiness`, set the diagnostic verdict to `FAIL` and route to `/sp.plan`; use `BLOCKED` only when readiness is missing or cannot be safely evaluated, and `NEEDS_DECISION` only when a human product, risk, compliance, rollback, or scope choice is required
+     - route readiness findings with this if-then order:
+       - if `tasks.md` contradicts `plan.md` `Implementation Readiness`, set the diagnostic verdict to `FAIL` and route to `/sp.plan`
+       - if readiness is missing, stale, or cannot be safely evaluated from current documents, set `BLOCKED` and route to `/sp.plan` with the missing evidence
+       - if the readiness gap depends on human product, risk, compliance, rollback, or scope choice, set `NEEDS_DECISION` and route to `/sp.clarify` for a decision package before returning to `/sp.plan`
+       - otherwise report the conflict as stale or contradictory readiness and route to `/sp.plan`
    - Check task mode integrity:
      - every task or task group declares `Mode: doc` or `Mode: impl`, or missing mode is treated as `Mode: doc`
      - no `Mode: doc` task asks `/sp.implement` to write production code
@@ -164,6 +167,8 @@ Execution flow:
    - Apply the soft issue boundary before PASS: only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as warnings. Test/build/check failure, route error, acceptance break, critical trace break, open `Blocker`, or high-impact `Risk` without required fields blocks PASS.
    - Treat implementation evidence as audit input, not final release evidence. Worker or `/sp.implement` self-reports must be checked against current files, current task state, and rerunnable checks when feasible before they support diagnostic PASS.
    - Apply oscillation protection: if the same failure signature has already appeared twice at the same layer, or the same workset is bouncing between two layers without new evidence, return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
+   - When repeated failures or upward fallback are detected, read `specs/<feature>/memory/fallback-log.md` if it exists. If the current finding matches a recent failure signature and no new evidence changed the route, report `BLOCKED` or `NEEDS_DECISION` instead of re-auditing the same loop.
+   - If analysis discovers a new repeated-failure route, append or propose a concise fallback-log entry with workset or anchor, command, failure signature, failed evidence, attempted routes, next recommended route, and this run's timestamp or run label.
    - If the evidence shows the current layer is the wrong place to continue, do not keep auditing lower-level files. Record the source layer, target layer, reason, and exact next `/sp.*` step.
 5. Record the result.
    - Create or update `specs/<feature>/analysis.md`.
@@ -207,7 +212,7 @@ Execution flow:
 - Do not mark PASS when an oversized workset must be promoted or split before reliable automation can continue.
 - Do not mark PASS by prose alone when critical error signals are increasing. Record why they increased, whether they are acceptable warnings or blockers, and the next safe `/sp.*` route.
 - Use mechanical evidence when available: active feature path exists, required source docs have no blocking placeholders, critical trace/source links resolve, relevant checks have current results, and open blockers/high risks are not explained away by prose.
-- In headless or non-interactive runs, return `NEEDS_DECISION` or `BLOCKED` instead of faking approval when the result depends on human risk acceptance, disputed split, compliance/data decision, irreversible action, or hard-gate override. End the output with `SP_EXIT_CODE: 1` as a machine-readable blocker marker; if the host supports process exit control, also terminate with a non-zero exit status so automated runners cannot treat the diagnostic as a successful PASS.
+- In headless or non-interactive runs, do not invent human approval. Return `NEEDS_DECISION` or `BLOCKED` when the result depends on human risk acceptance, disputed split, compliance/data decision, irreversible action, or hard-gate override. End the output with `SP_EXIT_CODE: 1` as a machine-readable blocker marker; if the host supports process exit control, also terminate with a non-zero exit status so automated runners cannot treat the diagnostic as a successful PASS.
 - Before returning `BLOCKED` in headless automation, include a failure-site report with changed files, failed command/check result, current judgment, why automatic recovery is unsafe, and next `/sp.*` route.
 - When human input is needed, explain the background, impact, 2-4 viable options, tradeoffs, recommendation, and next `/sp.*` route in plain language.
 - Do not treat reminder dimensions as open items by themselves. Create or require `OPEN-*` / `RISK-*` entries only when current feature evidence shows a real unresolved issue.
@@ -251,4 +256,4 @@ Execution flow:
 - If `PASS`, the document/readiness/task-packet/evidence set is diagnostically ready for the relevant next step; use `/sp.gate` when a stage-entry decision is required.
 - If `FAIL`, point to the exact `sp.*` step that must be revisited.
 - If `BLOCKED`, include the failure-site report and the exact next `/sp.*` route.
-- If `NEEDS_DECISION`, explain the background, impact, options, recommendation, and next `/sp.*` route.
+- If `NEEDS_DECISION`, route to `/sp.clarify` to generate or complete the decision package unless a current package and human-selected decision record already exists. Explain the background, impact, 2-4 options, recommendation, and next `/sp.*` route; do not treat the model recommendation as the final decision.

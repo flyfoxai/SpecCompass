@@ -28,15 +28,17 @@
   <rect x="58" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
   <rect x="58" y="128" width="505" height="48" rx="22" fill="#17483d"/>
   <text x="82" y="159" class="group">1. 明确意图</text>
-  <text x="86" y="208" class="cmd">/sp.constitution</text>
-  <text x="226" y="208" class="text">项目原则、工程约束、治理规则</text>
-  <text x="86" y="246" class="cmd">/sp.specify</text>
-  <text x="226" y="246" class="text">功能目标、范围、需求、冲突检查</text>
-  <text x="86" y="284" class="cmd">/sp.clarify</text>
-  <text x="226" y="284" class="text">意图不能安全推断时，向用户确认关键决策</text>
-  <text x="86" y="322" class="cmd">/sp.checklist</text>
-  <text x="226" y="322" class="text">面向需求和复核的质量检查清单</text>
-  <text x="86" y="360" class="note">产出：稳定意图、待决问题、验收方向</text>
+  <text x="86" y="200" class="cmd">/sp.constitution</text>
+  <text x="226" y="200" class="text">项目原则、工程约束、治理规则</text>
+  <text x="86" y="234" class="cmd">/sp.prd</text>
+  <text x="226" y="234" class="text">可选产品发现草稿，先于稳定规格</text>
+  <text x="86" y="268" class="cmd">/sp.specify</text>
+  <text x="226" y="268" class="text">功能目标、范围、需求、冲突检查</text>
+  <text x="86" y="302" class="cmd">/sp.clarify</text>
+  <text x="226" y="302" class="text">意图不能安全推断时，向用户确认关键决策</text>
+  <text x="86" y="336" class="cmd">/sp.checklist</text>
+  <text x="226" y="336" class="text">面向需求和复核的质量检查清单</text>
+  <text x="86" y="366" class="note">产出：稳定意图、待决问题、验收方向</text>
 
   <rect x="617" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
   <rect x="617" y="128" width="505" height="48" rx="22" fill="#245f52"/>

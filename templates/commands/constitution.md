@@ -52,7 +52,14 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Outline
 
-Goal: Establish or refresh the project constitution for the layered `sp` workflow, and keep project-level routing memory aligned with the resulting governance.
+Goal: Establish or refresh the long-term project constitution for the layered `sp` workflow, and keep project-level routing memory aligned with the resulting governance.
+
+Command boundary:
+- `/sp.constitution` owns project-wide governance: durable principles, engineering discipline, phase boundaries, validation requirements, risk gates, memory rules, and human-decision rules.
+- `/sp.constitution` does not own feature PRD discovery. Do not create product scenarios, screen lists, flow branches, capability maps, feature scope, or implementation plans here.
+- `/sp.prd` may discover governance-like material while exploring a product or feature. Treat that material as `Constitution Candidate` until this command confirms, merges, rewrites, or promotes it.
+- `Constitution Candidates` in `.specify/memory/constitution.md` are the primary landing zone for governance candidates. `prd.md` may keep source notes or handoff summaries, but do not re-extract the same candidate repeatedly from a full PRD.
+- Existing formal constitution rules outrank PRD drafts and constitution candidates. If a PRD draft conflicts with a formal rule, route to `/sp.clarify` or require explicit human decision before changing the formal rule.
 
 Global rules:
 - Stay within documentation work only.
@@ -69,6 +76,8 @@ Execution flow:
    - Read the current README and any existing constitution or team principles.
    - Read the layered workflow rules and command spec if they already exist.
    - Read `.specify/memory/project-index.md` and `.specify/memory/active-context.md` when present.
+   - Read existing `Constitution Candidates` in `.specify/memory/constitution.md`.
+   - If the active feature has `specs/<feature>/prd.md`, do not read the full PRD by default. Search for `Constitution Candidates`, `Handoff To Constitution`, or explicit governance-candidate anchors first, then read only those nearby sections when the candidate table is missing, stale, or explicitly points back to PRD source notes.
 2. Write or refresh `.specify/memory/constitution.md`.
    - State that this project uses a layered, documentation-first workflow.
    - Make the documentation-first boundary explicit: implementation is allowed only as a downstream, bounded phase after `plan.md` records `Implementation Readiness` and `tasks.md` produces executable `Mode: impl` task packets.
@@ -84,6 +93,11 @@ Execution flow:
    - Include risk acceptance rules: the model cannot self-approve conditional risk acceptance; open risks require owner, impact scope, rollback/degrade path, close condition, revisit anchor, and explicit human decision when work proceeds despite risk.
    - Include evidence rules: high-impact implementation changes use `Impact-Radius Plan` before changes and `Impact-Radius Evidence` after verification; both can happen in one execution turn, but the plan must precede the change and evidence must follow actual verification; keep these notes in task output, task notes, phase output, or gate/analyze reports rather than production code comments; PASS requires fresh current-run or current-source evidence, not memory alone, and mechanical evidence overrides prose confidence.
    - Include headless rules: non-interactive runs may carry soft issues forward, but manual decisions, hard gates, risk acceptance, disputed splits, compliance/data risk, or irreversible actions must return `NEEDS_DECISION` or `BLOCKED` instead of faking approval.
+   - Preserve and normalize `Constitution Candidates`: merge duplicates, keep their ID/source feature/source tag/candidate rule/impact/status/next route, and do not promote them to formal rules without explicit confirmation or strong project-wide evidence.
+   - Use only these candidate status values: `proposed`, `under-review`, `promoted`, `rejected`, `merged`.
+   - Apply the candidate strength threshold: keep a governance candidate only when it may recur across features or affects safety, compliance, irreversible action, real money/data risk, long-term engineering discipline, validation gates, or human-decision rules. Single-feature local risks, local TODOs, and ordinary requirement tradeoffs belong in PRD, feature memory, or `open-items.md`.
+   - If a candidate is promoted, record the promotion reason and update or close the candidate instead of leaving contradictory duplicate text.
+   - Keep the active `Constitution Candidates` list concise. Once a candidate is `promoted`, `merged`, or `rejected`, remove it from the active candidate table or archive it outside the active table after recording the decision summary, so processed candidates do not keep consuming future context.
 3. Refresh project-level routing memory so the constitution and routing agree.
    - Update `.specify/memory/project-index.md`
    - Update `.specify/memory/feature-map.md`

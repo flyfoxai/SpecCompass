@@ -15,6 +15,8 @@
 - Layer 1: business clarification
 - Layer 2: delivery design
 
+`sp.prd` may run before these layers when the user only has an immature product idea. It stores upstream discovery in `specs/<feature>/prd.md`, but stable requirements still have to pass through `sp.specify`.
+
 ### Unified Clarify Entry
 
 `sp.clarify` handles `CF-SPEC`, `CF-FLOW`, and `CF-UI` as a single clarification system.
@@ -57,10 +59,11 @@ Less useful for very small tools with only a few pages and simple rules.
 2. `docs/reference/sp-context-memory-architecture.md`
 3. `.specify/memory/constitution.md`
 4. `.specify/memory/project-index.md`
-5. Start the first feature with `sp.specify`
+5. If the product idea is still immature, optionally run `sp.prd`
+6. Start or stabilize the feature with `sp.specify`
 
 ## Codex Notes
 
 - User-facing commands use the unified `/sp.*` form, such as `/sp.specify`
-- Codex keeps upstream-style skill packages under `.agents/skills/sp-*/SKILL.md`; invoke `$sp-*`, run `/skills` and choose an `sp-*` skill, or ask in natural language when the task matches the skill description. Deprecated prompt/plugin command surfaces are not part of the current Codex path, and explicit invocation is recommended for deterministic SP workflow stages.
+- Codex keeps upstream-style skill packages under `.agents/skills/sp-*/SKILL.md`; invoke `$sp-*` such as `$sp-prd` or `$sp-specify`, run `/skills` and choose an `sp-*` skill, or ask in natural language when the task matches the skill description. Deprecated prompt/plugin command surfaces are not part of the current Codex path, and explicit invocation is recommended for deterministic SP workflow stages.
 - Claude exposes direct project slash commands from `.claude/commands/sp.*.md`

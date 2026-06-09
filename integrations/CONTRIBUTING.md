@@ -111,7 +111,7 @@ provides:
 }
 ```
 
-3. **Open a pull request** with:
+1. **Open a pull request** with:
    - Your catalog entry
    - Link to your integration repository
    - Confirmation that `integration.yml` is valid

@@ -1,7 +1,12 @@
+import json
 import stat
+from pathlib import Path
 
 from specify_cli import merge_json_files
 from specify_cli import handle_vscode_settings
+
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # --- Dimension 2: Polite Deep Merge Strategy ---
 
@@ -188,3 +193,25 @@ def test_handle_vscode_settings_preserves_mode_on_atomic_write(tmp_path):
 
     after_mode = stat.S_IMODE(dest_file.stat().st_mode)
     assert after_mode == before_mode
+
+
+def test_vscode_template_recommends_core_sp_prompt_files():
+    """The shipped VS Code settings template should expose all core SP prompts."""
+    template_file = PROJECT_ROOT / "templates" / "vscode-settings.json"
+    settings = json.loads(template_file.read_text(encoding="utf-8"))
+    recommendations = settings["chat.promptFilesRecommendations"]
+
+    for command in (
+        "sp.constitution",
+        "sp.prd",
+        "sp.specify",
+        "sp.clarify",
+        "sp.flow",
+        "sp.ui",
+        "sp.plan",
+        "sp.tasks",
+        "sp.implement",
+        "sp.analyze",
+        "sp.gate",
+    ):
+        assert recommendations[command] is True

@@ -65,7 +65,7 @@ Global rules:
 - Stay within documentation work only.
 - Reuse existing project context and active feature state.
 - Do not write production code.
-- Treat `/sp.specify` as the requirement intake and PRD-like refinement point. Do not add or suggest a separate `/sp.prd` command.
+- Treat `/sp.specify` as the stable requirement intake and baseline specification point. `/sp.prd` may exist as an optional upstream discovery step for unclear 0-to-1 needs, but `prd.md` is only an upstream draft; do not treat it as stable fact unless confirmed content is carried into `spec.md`.
 - If `.specify/memory/project-index.md` exists, read it first and use it as the project routing entry.
 - If `.specify/memory/active-context.md` exists, use it to pick the current smallest useful read set.
 - If `specs/<feature>/memory/index.md` exists, read it first and use it as the feature routing entry.
@@ -74,6 +74,7 @@ Global rules:
 - User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Use stable searchable coordinates for important anchors when they first become clear; do not invent coordinates for unclear objects.
 - Put real unresolved questions, todos, risks, blockers, rollback advice, and close conditions in `memory/open-items.md`.
+- Do not stabilize `[src:ai-proposed]`, `[uncertain:assumed]`, or `[uncertain:proposed]` PRD material into `spec.md` without explicit user confirmation. Keep it as candidate/open item or route to `/sp.clarify`.
 
 Execution flow:
 
@@ -86,12 +87,14 @@ Execution flow:
    - `.specify/memory/project-index.md` when present
    - `.specify/memory/feature-map.md` and `.specify/memory/active-context.md` when present
    - `specs/<feature>/memory/index.md` when present
+   - `specs/<feature>/prd.md` when it exists and the current work needs upstream intent, candidate requirements, rejected ideas, open questions, or Handoff To Specify
    - the user request, active notes, and any existing feature docs relevant to this feature
 3. Produce or refresh `specs/<feature>/spec.md`.
    - Remove the `SP_STAGE_SEED: spec` marker once the file contains real feature-specific requirements.
    - Capture business objective, target roles, in-scope items, out-of-scope items, success criteria, and any stable assumptions that must remain visible.
    - Keep the document requirement-focused and business-focused.
    - Separate user goals from solution ideas when both appear in the input.
+   - When using `prd.md`, carry only `[src:user]`, `[src:user-confirmed]`, or otherwise explicitly confirmed material into stable requirements. Do not treat `[src:ai-proposed]`, `[uncertain:assumed]`, or `[uncertain:proposed]` as stable facts.
    - Check requirement conflicts before stabilizing text:
      - conflicting user intent
      - contradictory acceptance criteria
@@ -113,6 +116,7 @@ Execution flow:
    - Confirm scope boundaries and non-goals are visible.
    - Confirm unresolved areas remain marked instead of being silently converted into decisions.
    - Confirm any non-trivial unresolved item has owner or revisit condition, impact, affected docs or anchor, and close condition.
+   - Confirm no unconfirmed `[src:ai-proposed]`, `[uncertain:assumed]`, or `[uncertain:proposed]` PRD material entered `spec.md` as stable requirement text.
 
 ## Output
 
@@ -128,6 +132,7 @@ Execution flow:
 - Do not write code, architecture, database, API, framework, or deployment design.
 - Do not leave `SP_STAGE_SEED: spec` in a completed `spec.md`; that marker means the file is still an initialization scaffold.
 - Do not silently convert assumptions into fixed decisions.
+- Do not promote AI-proposed PRD material into stable specification text without user confirmation.
 - Do not merge incompatible requirements to make the spec look complete.
 - Do not let `/sp.clarify` become the hidden entry point for new features. New feature intake belongs in `/sp.specify`; `/sp.clarify` only resolves ambiguity or records the decision to route back.
 - Expand into source documents only for the current target area.
