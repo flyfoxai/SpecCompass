@@ -109,6 +109,13 @@ Global rules:
 - For `Implementation Regression Gate`, treat `/sp.implement` evidence as audit input, not release evidence. Rerun or independently check critical tests/build/lint/typecheck/manual verification when feasible before PASS.
 - For `Implementation Regression Gate`, block PASS when high-risk boundary `CODE` trace or acceptance-critical `TEST` trace is missing without an open item, or when a normal trace warning has crossed the stage unresolved.
 - Apply the soft issue boundary before PASS or CONDITIONAL: only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as warnings. Test/build/check failure, route error, acceptance break, critical trace break, open `Blocker`, or high-impact `Risk` without required fields blocks PASS.
+- Apply Blocker Closeout Mode before PASS or CONDITIONAL when blocker cleanup is requested or when open `Blocker` / high-impact `Risk` items exist:
+  - Treat `specs/<feature>/memory/open-items.md` as the single source of truth. `gate.md` may include a `Blocker Closeout` section, but it is only the gate decision's report projection.
+  - Consume current `/sp.analyze` closeout diagnostics when available; otherwise check the decisive blocker evidence directly without doing a full analysis rerun.
+  - Per-item closeout states are limited to `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`.
+  - Remaining `OPEN` items map to `FAIL` when repairable by a normal upstream command, `BLOCKED` when safe automatic progress is impossible, or `NEEDS_DECISION` when a human choice is required.
+  - `DEFERRED_WITH_OWNER` can support `CONDITIONAL` only when explicit acceptance/defer evidence, owner, impact scope, rollback/degrade path, close condition, and revisit anchor are present.
+  - Progress percentages, status briefs, or broad prose cannot replace blocker-by-blocker closeout evidence.
 - Route upgraded issues with this if-then order:
   - if the upgraded issue is a repairable evidence, consistency, task-packet, or verification gap, return `FAIL` and route to `/sp.analyze`, `/sp.tasks`, or `/sp.plan` as the nearest owner
   - if the upgraded issue is missing scope, acceptance, flow, UI behavior, or user intent, return `BLOCKED` or `NEEDS_DECISION` and route to `/sp.clarify`
@@ -162,6 +169,7 @@ Global rules:
   - Include `Verdict`: `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION`.
   - Include `Evidence`: source documents or memory entries that justify the verdict.
   - For Implementation Readiness Gate, cite `plan.md` `Implementation Readiness` as the source of truth instead of restating a separate readiness conclusion.
+  - Include `Blocker Closeout` when blocker cleanup is requested or when unresolved blockers/high risks affect the decision.
   - Include `Blocking Items`: relevant `OPEN-*`, `RISK-*`, blocker, or `None`.
   - Include `Error Signals`: current blocker/risk/validation/stale-memory/trace-break summary and whether critical signals are reducing, unchanged, or increasing when prior evidence exists.
   - Include `Accepted Risks`: accepted or deferred risks with owner, impact scope, rollback/degrade path, close condition, and revisit anchor, or `None`.
@@ -176,6 +184,8 @@ Global rules:
 
 - Confirm the decision is explicit and evidence-based.
 - Confirm each blocker points to the exact `sp.*` step that must be revisited.
+- Confirm blocker closeout does not create a second persistent ledger beside `memory/open-items.md`.
+- Confirm every blocker/high-risk item relevant to this gate has one of `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`.
 - Confirm each upward fallback decision names the source layer, target layer, and next `sp.*` step.
 - Confirm critical flow port-contract gaps and Flow-UI relation breaks are either closed with evidence or visible in `memory/open-items.md`.
 - Confirm no unchecked draft flow, UI, or plan fact is being used as PASS evidence.

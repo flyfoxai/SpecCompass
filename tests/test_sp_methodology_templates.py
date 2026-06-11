@@ -234,6 +234,32 @@ def test_risk_closure_requires_evidence_across_methodology_and_commands():
     assert "closing, deleting, or downgrading `Blocker`" in implement
 
 
+def test_blocker_closeout_uses_open_items_without_new_ledger():
+    """Blocker cleanup should be item-by-item closeout, not a progress summary or second ledger."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    implement = _command("implement")
+
+    for content, label in (
+        (methodology, "methodology"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+    ):
+        assert "Blocker Closeout" in content or "阻塞闭环模式" in content, label
+        assert "memory/open-items.md" in content, label
+        assert "single source of truth" in content or "唯一稳定事实源" in content or "唯一事实源" in content, label
+        for state in ("RESOLVED", "OPEN", "DEFERRED_WITH_OWNER", "INVALID_OR_STALE"):
+            assert state in content, f"{label} missing {state}"
+
+    assert "Do not create a second persistent blocker ledger" in analyze
+    assert "does not create a second persistent ledger" in gate
+    assert "progress percentages" in analyze
+    assert "Progress percentages" in gate
+    assert "does not own the full Blocker Closeout ledger" in implement
+    assert "route unresolved or cross-layer blocker closeout to `/sp.analyze`, `/sp.gate`, or `/sp.clarify`" in implement
+
+
 def test_headless_and_human_decision_rules_offer_safe_options():
     """Headless runs should fail safe, and human decisions should be asked in plain-language options."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")

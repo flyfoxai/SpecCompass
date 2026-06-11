@@ -45,6 +45,7 @@ The main methodology is documented in [SP Project Methodology](./docs/reference/
 - Keep context small but sufficient: route through project memory, feature memory, worksets, trace files, and directly related source docs before reading the whole repository.
 - Use stable anchors and searchable IDs for features, worksets, UI, APIs, risks, tests, and acceptance paths, so later agents can find related content without recomputing the whole project.
 - Track unresolved work explicitly in `memory/open-items.md`, including risks, blockers, decisions, owners, close conditions, and revisit points.
+- Use blocker closeout when clearing blockers: `open-items.md` remains the source of truth, while `/sp.analyze` and `/sp.gate` require item-by-item evidence instead of accepting progress summaries.
 - Use lightweight impact-radius checks before changing APIs, permissions, data, event flows, UI contracts, or core tests.
 - Treat `plan.md` `Implementation Readiness` as the single source of truth for code-stage entry. Other commands may consume, diagnose, or gate it, but should not invent a second readiness fact.
 - Separate documentation tasks from implementation tasks with `Mode: doc` and `Mode: impl`; `/sp.implement` may write code only for authorized `Mode: impl` tasks.
@@ -65,6 +66,7 @@ SpecCompass keeps the workflow readable for humans and predictable for agents:
 - `/sp.tasks` keeps implementation small. It consumes `Implementation Readiness` and creates `Mode: doc` or `Mode: impl` task packets with clear scope, expected evidence, `Allowed Write Set`, and required checks.
 - `/sp.implement` writes code only for selected `Mode: impl` tasks. It checks `Allowed Write Set`, required checks, trace anchors, and task context before editing, then records verification evidence.
 - `/sp.analyze` and `/sp.gate` close the loop: they detect drift, broken trace links, stale context, unresolved risks, readiness contradictions, weak task packets, and phase-readiness failures.
+- When blockers are being cleared, `/sp.analyze` produces a blocker closeout diagnosis and `/sp.gate` decides whether the remaining state is `PASS`, `CONDITIONAL`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
 - For multi-agent work, one coordinator assigns worksets, workers stay inside declared write boundaries, and analyze/gate reconcile outputs before the project moves on.
 
 The intended result is not heavier ceremony. The intended result is fewer dead ends: when the agent cannot proceed safely, it moves upward to the right phase, explains the situation, and asks for a decision instead of inventing one.
@@ -95,6 +97,7 @@ The intended result is not heavier ceremony. The intended result is fewer dead e
 - Context-budget rules that favor current worksets, direct dependencies, related tests, and trace links before broad repository reads.
 - Impact-radius discipline for high-risk changes, including APIs, permissions, data migrations, event flows, UI contracts, and core tests.
 - Stronger `/sp.analyze`, `/sp.gate`, and `/sp.implement` rules for evidence checks, risk closure, fallback routing, headless failure reports, and memory updates. `/sp.analyze` uses `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`; `/sp.gate` uses `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION`. `CONDITIONAL` is gate-only and means the next stage depends on named conditions that must be closed or explicitly accepted.
+- Blocker closeout discipline: blockers and high-risk items are closed one by one as `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`; progress percentages and broad status reports cannot replace close evidence.
 - Guardrails for unclear or conflicting requirements: ask for a decision, route back to the right `/sp.*` phase, and avoid guessing through business contradictions.
 - Better support for splitting complex domains before the model context becomes too large.
 - Lightweight multi-agent coordination: workset ownership, allowed write sets, shared-state serialization, stale-worker detection, and reconciliation checks.

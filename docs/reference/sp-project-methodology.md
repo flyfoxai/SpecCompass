@@ -1171,6 +1171,16 @@ SP 可以理解为一个闭环控制系统。
 
 trace warning 必须有升级路径。普通 trace 缺口初期可以作为 warning 推进，但必须写入任务证据、analysis 报告或 `memory/open-items.md`；同一 warning 跨阶段仍未处理，或开始影响验收、测试、发布、回滚、人工决策时，应升级为 blocker。高风险边界对象缺 CODE/TEST trace、trace 指向不存在文件、核心验收缺 TEST 证据时，不应长期停留在 warning。
 
+### 阻塞闭环模式：不能用进度汇报替代关闭
+
+当用户要求“解决阻塞点”“清理 blocker”“收口剩余问题”，或者 `/sp.analyze`、`/sp.gate` 发现 open blocker/high risk 时，SP 必须进入阻塞闭环模式。这个模式不是新命令，也不新增长期台账；`memory/open-items.md` 仍然是未决事项、风险、阻塞和决策的唯一稳定事实源。`analysis.md` 和 `gate.md` 可以生成 closeout report，但那只是报告投影，不能和 `open-items.md` 形成两套互相竞争的状态。
+
+逐项阻塞状态只允许使用这四类：`RESOLVED`、`OPEN`、`DEFERRED_WITH_OWNER`、`INVALID_OR_STALE`。`RESOLVED` 必须有当前验证证据、可追溯文档/代码变更或明确人工决策；`OPEN` 表示仍需修复、补证据或决策；`DEFERRED_WITH_OWNER` 必须有 owner、影响范围、回退或降级方案、关闭条件和回看点；`INVALID_OR_STALE` 必须说明为什么该阻塞已经不适用，以及用什么当前证据证明。
+
+命令 verdict 不新增枚举。`/sp.analyze` 仍只输出 `PASS`、`FAIL`、`BLOCKED`、`NEEDS_DECISION`；`/sp.gate` 仍只输出 `PASS`、`FAIL`、`CONDITIONAL`、`BLOCKED`、`NEEDS_DECISION`。逐项状态到 verdict 的映射规则是：仍有需要人工选择的 `OPEN` 项时，返回 `NEEDS_DECISION`；仍有当前层可修复的 `OPEN` 项时，通常返回 `FAIL` 并指向最近 owner 命令；仍有自动推进不安全的 `OPEN` 项时，返回 `BLOCKED`；High risk 的 `DEFERRED_WITH_OWNER` 如果没有明确接受、owner、关闭条件和回看点，不能 PASS；只有全部 `RESOLVED`、`INVALID_OR_STALE`，或低风险/已接受延期项具备完整跟踪条件时，才允许 PASS 或 gate 的 `CONDITIONAL`。
+
+closeout report 必须逐项列出阻塞 ID 或来源、当前证据、采取的动作或还缺的动作、验证结果、最终逐项状态、对应 `memory/open-items.md` 处理结果，以及下一步 `/sp.*` 路线。低风险局部事项可以轻量记录；影响验收、发布、回滚、安全、合规、数据、实现准入或人工决策的事项必须完整记录。进度百分比、口头简报、自然语言“已基本解决”、或“验证通过但台账还没清理”不能替代逐项 closeout。
+
 ### `/sp.gate`：阶段门禁，宁可降级通过也不能假通过
 
 `/sp.gate` 的目标是判断“是否可以进入下一阶段”，不是机械追求满分。

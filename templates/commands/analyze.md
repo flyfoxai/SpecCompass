@@ -165,6 +165,14 @@ Execution flow:
      - or at least three warning signals: 3+ roles, 4+ user paths, 5+ artifact categories across UI/API/data/permissions/events/migration/external systems, 12+ trace anchors, 8+ core docs needed for one workset, or implementation expected across 8+ major files or 4+ module boundaries
    - Report conflicts, stale memory, missing links, and weak spots explicitly.
    - Apply the soft issue boundary before PASS: only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as warnings. Test/build/check failure, route error, acceptance break, critical trace break, open `Blocker`, or high-impact `Risk` without required fields blocks PASS.
+   - Apply Blocker Closeout Mode when the user asks to solve/clear blockers, or when open `Blocker` / high-impact `Risk` items are discovered:
+     - Treat `specs/<feature>/memory/open-items.md` as the single source of truth for unresolved blockers, risks, decisions, and close conditions. Do not create a second persistent blocker ledger.
+     - Use a `Blocker Closeout` section in `analysis.md` as a report projection only.
+     - For each relevant item, record source ID or origin, current evidence, action taken or required action, verification result, final item state, open-items update, and next `/sp.*` route.
+     - Per-item states are limited to `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`.
+     - Do not mark diagnostic `PASS` from progress percentages, status summaries, or broad prose while any unresolved `OPEN` blocker remains.
+     - Map remaining `OPEN` items to `FAIL` when repairable at the current layer, `BLOCKED` when safe automatic progress is impossible, or `NEEDS_DECISION` when a human choice is required.
+     - High-risk `DEFERRED_WITH_OWNER` items cannot support `PASS` unless they have explicit acceptance or defer evidence, owner, impact scope, rollback/degrade path, close condition, and revisit anchor.
    - Treat implementation evidence as audit input, not final release evidence. Worker or `/sp.implement` self-reports must be checked against current files, current task state, and rerunnable checks when feasible before they support diagnostic PASS.
    - Apply oscillation protection: if the same failure signature has already appeared twice at the same layer, or the same workset is bouncing between two layers without new evidence, return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
    - When repeated failures or upward fallback are detected, read `specs/<feature>/memory/fallback-log.md` if it exists. If the current finding matches a recent failure signature and no new evidence changed the route, report `BLOCKED` or `NEEDS_DECISION` instead of re-auditing the same loop.
@@ -186,6 +194,7 @@ Execution flow:
   - Include `Verdict`: `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
   - If the analysis passes with low-risk warnings, write the formal `Verdict` as `PASS` and record the warnings separately. `PASS with warning` may be used only as prose in the report, not as the machine-readable verdict value.
   - Include evidence, findings, warnings, blockers, trace gaps, readiness/task-packet diagnostics, and the exact next `/sp.*` route when the verdict is not `PASS`.
+  - Include `Blocker Closeout` when blocker cleanup is requested or relevant open blockers/high risks are found. This section must be a projection from `memory/open-items.md`, not a new source of truth.
 - Refresh related feature memory entries under `specs/<feature>/memory/*` when findings change routing or stable context
 
 ## Key Rules
@@ -196,6 +205,8 @@ Execution flow:
 - A task-level `NEEDS_CONTEXT` result is diagnostic evidence, not an analyze verdict. Report it as a task-packet or planning gap with the exact `/sp.tasks`, `/sp.plan`, or human-decision route.
 - Do not mark PASS when major gaps, stale memory, or missing smoke checks remain.
 - Do not mark PASS when open `Blocker` items remain.
+- Do not treat blocker closeout as complete until each relevant item is `RESOLVED`, `INVALID_OR_STALE`, or explicitly accepted as `DEFERRED_WITH_OWNER` with owner, impact scope, rollback/degrade path, close condition, and revisit anchor.
+- Do not replace blocker closeout with a progress report, percentage, or natural-language summary. Close or route each blocker one by one.
 - Do not mark PASS when critical flow steps are missing node type, port contract coverage, failure path, or verification route unless the missing part is explicitly routed through `memory/open-items.md`.
 - Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
 - Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
