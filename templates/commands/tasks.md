@@ -89,6 +89,9 @@ Execution flow:
    - Missing mode defaults to `Mode: doc`; `/sp.implement` must not execute it as production code.
    - Generate `Mode: impl` tasks only for worksets that `plan.md` `Implementation Readiness` marks ready or conditionally ready with explicit close conditions.
    - `Mode: doc` tasks may modify specs, flow, UI, delivery docs, memory, trace, open-items, analysis, or gate outputs. They must not modify production code.
+   - If document-stage work discovers required `src/`, `scripts/`, config, generated-code, schema, test-asset, or fixture changes, create a next-stage `Mode: impl` code handoff packet instead of letting the doc task write or commit those files.
+   - A code handoff packet must name the target file or directory, reason, related `FLOW`/`UI`/`API`/`TABLE`/`PERM`/`EVENT`/`ACC` anchor, `Allowed Write Set`, `Required Checks`, expected verification, writeback target, and next `/sp.implement` or `/sp.plan` route.
+   - If unauthorized code artifacts already exist from exploratory document-stage work, do not stage them with document outcomes. Convert them into a code handoff packet, isolate them for the next implementation task, or ask for a cleanup decision when safe handling is unclear.
    - `Mode: impl` tasks must include enough task-packet fields to execute without hidden chat context:
      - `Readiness Source`: the `plan.md` `Implementation Readiness` workset row or condition being consumed
      - `Allowed Write Set`: files, directories, tests, configs, or docs the task may modify
@@ -103,12 +106,14 @@ Execution flow:
    - Preserve workset, acceptance, and trace anchors in task text when they already exist.
    - Add explicit documentation-memory follow-up tasks when task generation changes API contracts, table definitions, UI fields, event ordering, permissions, acceptance paths, risk status, or source-of-truth documents.
    - For tasks touching API contracts, UI fields, table/data structures, permissions, events, acceptance behavior, or tests, include enough trace/workset context for the implementer to perform an impact-radius check before editing.
+   - Treat data-linkage as a task trigger: when a data object, table, field, state, event, permission, persistence behavior, API contract, UI field, or test semantic changes, add direct-neighbor checks for the related flow node, UI surface, API, permission rule, side effect, acceptance path, tests, trace row, or open item.
    - For high-impact tasks, include a concise disturbance prediction so implementation does not discover direct neighbors too late:
      - affected anchors or source docs
      - expected adjacent UI/API/data/permission/event/acceptance/test surfaces
      - required verification or manual check path
      - memory/source-doc writeback target when the task changes stable facts or closes risks
    - If `memory/open-items.md` contains open `Todo`, `Risk`, or `Blocker` entries that affect task execution, include a task or dependency that resolves, accepts, or revisits each affected item.
+   - For broad blocker cleanup, split each affected blocker into the smallest solvable unit: an executable task, decision task, verification task, or memory/trace closeout task. Each split task should name the symptom/evidence, root layer, verification path, writeback target, and next route when it cannot be completed locally.
    - If implementation and review/human decision can be separated, create separate tasks instead of making an implementation task depend on an unavailable human decision. The implementation task closes after its own verification passes; the review or decision task remains open until the review or decision is actually recorded.
    - For tasks that need human decision, risk acceptance, split approval, or downgraded verification, write the task so the model can route to `/sp.clarify` for a decision package and ask in plain language with background, impact, 2-4 options, tradeoffs, recommendation, and next `/sp.*` route. Do not let a task treat the model recommendation as the final decision.
    - For tasks that modify existing code, include a bounded test-read expectation: directly related, failing, same-name, adjacent, or contract-bearing tests should be checked before implementation; indirect tests can start from signatures or failure output.

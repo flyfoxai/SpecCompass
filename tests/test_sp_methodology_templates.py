@@ -260,6 +260,37 @@ def test_blocker_closeout_uses_open_items_without_new_ledger():
     assert "route unresolved or cross-layer blocker closeout to `/sp.analyze`, `/sp.gate`, or `/sp.clarify`" in implement
 
 
+def test_complex_blockers_require_root_layer_and_smallest_solvable_unit():
+    """Complex blockers should be decomposed before execution or routed to human decision."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    analyze = _command("analyze")
+    gate = _command("gate")
+    implement = _command("implement")
+    tasks = _command("tasks")
+
+    for content, label in (
+        (methodology, "methodology"),
+        (command_spec, "command-spec"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+        (implement, "implement"),
+        (tasks, "tasks"),
+    ):
+        assert "root layer" in content.lower() or "根因层级" in content, label
+        assert "smallest solvable unit" in content.lower() or "最小可解决单元" in content, label
+        assert "/sp.clarify" in content, label
+
+    assert "memory/open-items.md" in methodology
+    assert "唯一稳定事实源" in methodology
+    assert "single stable truth source for blockers" in command_spec
+    assert "Blocker Breakdown" in command_spec
+    assert "do not grant PASS or CONDITIONAL" in gate
+    assert "instead of editing broadly" in implement
+
+
 def test_headless_and_human_decision_rules_offer_safe_options():
     """Headless runs should fail safe, and human decisions should be asked in plain-language options."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
@@ -735,6 +766,148 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "New or refreshed outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts" in memory_arch
     assert "Recommended relation verbs" in trace_index
     assert "UI screen, field, or action cannot trace" in open_items
+
+
+def test_document_stage_code_artifacts_require_mode_impl_handoff():
+    """Doc-stage closeout should not smuggle code artifacts into a document result."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    tasks = _command("tasks")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    implement = _command("implement")
+
+    for content, label in (
+        (methodology, "methodology"),
+        (command_spec, "command_spec"),
+        (tasks, "tasks"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+        (implement, "implement"),
+    ):
+        assert "Mode: impl" in content, label
+        assert "code handoff" in content or "代码包交接" in content or "实现交接包" in content, label
+        assert "Allowed Write Set" in content, label
+        assert "Required Checks" in content, label
+
+    for content, label in (
+        (methodology, "methodology"),
+        (command_spec, "command_spec"),
+        (tasks, "tasks"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+    ):
+        assert "unauthorized" in content or "未经授权" in content, label
+        assert "src/" in content, label
+        assert "scripts/" in content, label
+        assert "stage" in content or "commit" in content or "提交" in content, label
+
+
+def test_data_linkage_and_business_pass_constraints_are_enforced():
+    """Data/flow/UI/API/test linkage should constrain PASS decisions."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    tasks = _command("tasks")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    implement = _command("implement")
+
+    for content, label in (
+        (methodology, "methodology"),
+        (command_spec, "command_spec"),
+        (tasks, "tasks"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+        (implement, "implement"),
+    ):
+        assert "data-linkage" in content or "数据联动" in content, label
+        assert "direct neighbor" in content or "直接相邻" in content or "direct-neighbor" in content, label
+        assert "UI" in content and "API" in content and "permission" in content.lower(), label
+        assert "acceptance" in content.lower() or "验收" in content, label
+        assert "tests" in content.lower() or "测试" in content, label
+
+    for content, label in (
+        (methodology, "methodology"),
+        (command_spec, "command_spec"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+    ):
+        assert "command success" in content or "命令运行成功" in content, label
+        assert "exit code 0" in content or "退出 0" in content, label
+        assert "business PASS" in content or "业务 PASS" in content, label
+
+
+def test_side_entry_commands_preserve_fallback_and_export_safety():
+    """Side-entry helpers should not bypass SP routing, open-items, or PASS rules."""
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    bundle = _command("bundle")
+    checklist = _command("checklist")
+    taskstoissues = _command("taskstoissues")
+    constitution = _command("constitution")
+
+    for content, label in (
+        (bundle, "bundle"),
+        (checklist, "checklist"),
+        (taskstoissues, "taskstoissues"),
+        (constitution, "constitution"),
+        (command_spec, "command_spec"),
+    ):
+        assert "business PASS" in content, label
+
+    assert "direct-neighbor data-linkage" in bundle
+    assert "unchecked draft flow/UI/plan outputs" in bundle
+    assert "memory/open-items.md" in bundle
+
+    assert "high-impact ambiguity" in checklist
+    assert "Flow-UI/data-linkage gap" in checklist
+    assert "memory/open-items.md" in checklist
+    assert "NEEDS_DECISION" in checklist
+    assert "/sp.clarify" in checklist
+
+    assert "export-ready" in taskstoissues
+    assert "Mode: doc` or `Mode: impl" in taskstoissues
+    assert "allowed write" in taskstoissues.lower()
+    assert "required checks" in taskstoissues.lower()
+    assert "Do not export tasks" in taskstoissues
+    assert "NEEDS_DECISION" in taskstoissues
+
+    assert "direct-neighbor checks" in constitution
+    assert "human decision package" in constitution
+
+    assert "### `sp.taskstoissues`" in command_spec
+    assert "created issues do not prove business PASS" in command_spec
+
+
+def test_project_scaffold_carries_linkage_and_closeout_slots():
+    """Installed feature templates should have places to record linkage and closeout evidence."""
+    scaffold_tasks = (PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "tasks.md").read_text(
+        encoding="utf-8"
+    )
+    scaffold_analysis = (
+        PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "analysis.md"
+    ).read_text(encoding="utf-8")
+    scaffold_gate = (PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "gate.md").read_text(
+        encoding="utf-8"
+    )
+
+    for content, label in (
+        (scaffold_tasks, "scaffold_tasks"),
+        (scaffold_analysis, "scaffold_analysis"),
+        (scaffold_gate, "scaffold_gate"),
+    ):
+        assert "data-linkage" in content or "Data-Linkage" in content, label
+        assert "direct-neighbor" in content or "direct neighbor" in content, label
+        assert "code handoff" in content, label
+        assert "business PASS" in content, label
+
+    assert "Blocker Breakdown" in scaffold_analysis
+    assert "smallest solvable unit" in scaffold_gate.lower()
 
 
 def test_flow_ui_rules_avoid_deep_public_coordinates_by_default():

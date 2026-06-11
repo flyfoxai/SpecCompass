@@ -131,6 +131,10 @@ Execution flow:
      - `ui` type flow steps link to at least one UI coordinate or an explicit open item
      - screens and critical UI actions trace back to a flow step, business event, data object, permission, API contract, acceptance path, or open item
      - UI-created actions do not invent business events, state transitions, side effects, permissions, or validation rules that are absent from `spec.md`, clarifications, flows, API/data docs, or open items
+   - Check data-linkage constraints:
+     - data object, table, field, state, permission, event, or persistence changes identify directly related UI fields, API contracts, permission rules, emitted side effects, acceptance paths, tests, trace rows, or open items
+     - UI field, API parameter, permission behavior, or test-semantic changes identify the related flow node and data object
+     - missing direct-neighbor relations are repaired in trace/source docs, routed to `memory/open-items.md`, or reported as blockers when they affect acceptance, tests, release, rollback, permissions, data safety, or human decisions
    - Check orphan relation objects. UI, API, TABLE, CODE, ACC, TEST, EVENT, and PERM anchors that belong to a business capability should trace to a `FLOW` coordinate, source document, or explicit open item.
    - Check `CODE` and `TEST` trace at the lightweight level:
      - high-risk public API handlers, permission rules, data migrations, event boundaries, core UI actions, and acceptance-critical tests should have formal `CODE` or `TEST` trace rows/fields or a tracked open item
@@ -152,6 +156,10 @@ Execution flow:
      - If an open item cannot be traced through `Anchor` or `Affected Docs`, report it as a memory/trace break rather than guessing the missing link.
    - Report feature-memory fact gaps directly. Do not invent abstract quality levels; list the missing files, anchors, close conditions, stale entries, or unresolved items that block later automation.
    - Check whether recent failures are being handled at the wrong layer. Use observable signals: repeated failure on the same task/acceptance/file area, implementation touching spec boundaries, unresolved task dependencies, missing acceptance, or contradictions across spec/plan/tasks/source docs.
+   - Check document-stage code boundary:
+     - document-stage closeout must not depend on unauthorized `src/`, `scripts/`, config, generated-code, schema, test-asset, or fixture artifacts
+     - required code artifacts discovered during document work must appear as a next-stage `Mode: impl` code handoff packet with target file, reason, related anchor, `Allowed Write Set`, `Required Checks`, verification, writeback target, and next route
+     - command success, generated documents, or exit code 0 are not business PASS when business acceptance, trace, open-items, data-linkage, code/test evidence, or gate verdict is still missing
    - Check multi-agent merge integrity when worker handoffs, subagent reports, parallel task notes, temp branches, or worktree evidence are present:
      - every worker report names task/workset, allowed write set, files changed, inputs read, checks run, result, evidence, proposed shared-memory updates, open items, and merge notes
      - no worker changed `Forbidden Write Set`, coordinator-owned shared memory, trace, routing, broad status summaries, or global registry-like files without explicit permission
@@ -169,6 +177,8 @@ Execution flow:
      - Treat `specs/<feature>/memory/open-items.md` as the single source of truth for unresolved blockers, risks, decisions, and close conditions. Do not create a second persistent blocker ledger.
      - Use a `Blocker Closeout` section in `analysis.md` as a report projection only.
      - For each relevant item, record source ID or origin, current evidence, action taken or required action, verification result, final item state, open-items update, and next `/sp.*` route.
+     - For unresolved or repeatedly failing items, add a lightweight `Blocker Breakdown`: symptom, evidence, root layer (`prd`, `spec`, `clarify`, `flow`, `ui`, `plan`, `tasks`, `implement`, `verify`, `memory`, `external`, or `human-decision`), smallest solvable unit, repair strategy, verification, writeback target, and next route.
+     - If the item cannot be reduced to a smallest solvable unit, return `BLOCKED` or `NEEDS_DECISION` instead of continuing broad analysis. Route human choices to `/sp.clarify` or ask directly in plain language with background, impact, 2-4 options, recommendation, and next `/sp.*` route.
      - Per-item states are limited to `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`.
      - Do not mark diagnostic `PASS` from progress percentages, status summaries, or broad prose while any unresolved `OPEN` blocker remains.
      - Map remaining `OPEN` items to `FAIL` when repairable at the current layer, `BLOCKED` when safe automatic progress is impossible, or `NEEDS_DECISION` when a human choice is required.
@@ -207,10 +217,13 @@ Execution flow:
 - Do not mark PASS when open `Blocker` items remain.
 - Do not treat blocker closeout as complete until each relevant item is `RESOLVED`, `INVALID_OR_STALE`, or explicitly accepted as `DEFERRED_WITH_OWNER` with owner, impact scope, rollback/degrade path, close condition, and revisit anchor.
 - Do not replace blocker closeout with a progress report, percentage, or natural-language summary. Close or route each blocker one by one.
+- Do not keep large unresolved blockers as broad themes. Split them into smallest solvable units, or route to `/sp.clarify` / direct human decision when the split depends on product, risk, compliance, rollback, scope, or verification choice.
 - Do not mark PASS when critical flow steps are missing node type, port contract coverage, failure path, or verification route unless the missing part is explicitly routed through `memory/open-items.md`.
 - Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
 - Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
 - Do not mark PASS when `Mode: impl` tasks lack `Allowed Write Set`, `Required Checks`, task-packet effective defaults, or readiness from `plan.md`.
+- Do not mark PASS when document-stage closeout depends on unauthorized code artifacts instead of a `Mode: impl` code handoff packet.
+- Do not mark PASS when direct data-linkage relations among flow, UI, API, permissions, events, acceptance, tests, trace, and open items are missing and affect acceptance, tests, release, rollback, permissions, data safety, or human decisions.
 - Do not mark PASS when high-risk boundary `CODE` trace or acceptance-critical `TEST` trace is missing without a tracked open item, or when a normal trace warning has crossed the stage unresolved.
 - Do not mark PASS solely from worker or implementation prose. Use current files and rerunnable checks when feasible.
 - Do not let this run's post-verdict writeback prove this run's PASS. Routing, status, open-items, or memory updates made by `/sp.analyze` must be supported by current inputs, current checks, upstream source documents, current code/test evidence, or explicit human decisions.

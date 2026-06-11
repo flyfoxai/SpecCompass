@@ -29,6 +29,7 @@ Global rules:
 - User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Do not compress away open risks, blockers, stale memory, or validation gaps.
 - Manage context as an engineering budget: start from routing, stable context, gate, and open items; expand to flow or UI source docs only when the bundle needs that evidence.
+- Do not treat command success, generated documents, or exit code 0 as business PASS. The bundle is only a delivery input package; business PASS still depends on acceptance, trace, open-items, data-linkage, code/test evidence when in scope, and gate verdict.
 
 ## Purpose
 
@@ -48,6 +49,7 @@ Global rules:
 - Refresh active context and feature memory so later steps can route into the correct delivery work.
 - Include carry-forward `memory/open-items.md` entries that affect delivery planning, testing, rollback, permissions, data, or release decisions.
 - Preserve stable coordinates and trace anchors so `/sp.plan` can split worksets without re-reading every first-layer document.
+- Preserve direct-neighbor data-linkage constraints that affect UI, API, data, permission, acceptance, tests, rollback, release, or human decisions. If the relationship is unresolved, carry it forward as an open item instead of packaging it as stable context.
 - If the first-layer source set cannot be safely bundled, record the exact fallback target (`/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, or `/sp.gate`) instead of smoothing over the gap.
 
 ## Do Not
@@ -57,6 +59,7 @@ Global rules:
 - Do not hide remaining risks.
 - Do not duplicate large source documents verbatim.
 - Do not mark first-layer conclusions as stable when `gate.md`, trace, or open-items still shows a blocker.
+- Do not convert unchecked draft flow/UI/plan outputs into stable delivery input just because they are bundled.
 
 ## Output
 
@@ -71,6 +74,7 @@ Global rules:
 - Confirm unresolved items are clearly marked.
 - Confirm the bundle only reflects stable first-layer conclusions.
 - Confirm stale memory or unresolved blockers are carried forward with the exact next `sp.*` revisit step.
+- Confirm any unresolved direct-neighbor data-linkage, acceptance, permission, rollback, release, or human-decision gap is carried forward rather than hidden.
 
 ## Next
 

@@ -28,6 +28,14 @@ scripts:
 
 **Metaphor**: If your spec is code written in English, the checklist is its unit test suite. You're testing whether the requirements are well-written, complete, unambiguous, and ready for implementation - NOT whether the implementation works.
 
+## SP Boundary And Fallback Rules
+
+- Stay within requirements-quality work. `/sp.checklist` may expose ambiguity, conflict, missing coverage, or weak acceptance wording, but it must not rewrite stable requirements, flow, UI, plan, tasks, code, or memory as if the decision were already made.
+- A checklist item is not business PASS. Command success, generated checklist files, or exit code 0 only mean the checklist was produced; business PASS still depends on acceptance, trace, open-items, data-linkage, code/test evidence when in scope, and gate verdict.
+- If the checklist discovers a high-impact ambiguity, contradiction, missing acceptance path, Flow-UI/data-linkage gap, blocker, or human choice, record the issue in the checklist and route it to the closest owner command: `/sp.clarify`, `/sp.specify`, `/sp.flow`, `/sp.ui`, `/sp.plan`, `/sp.tasks`, `/sp.analyze`, or `/sp.gate`.
+- Put durable unresolved risks, blockers, or decision points in `memory/open-items.md` when the feature memory exists. Do not create a second checklist-only blocker ledger.
+- In headless or non-interactive runs, unresolved human-choice items must be reported as `NEEDS_DECISION` or `BLOCKED` with background, impact, 2-4 options, recommendation, and next `/sp.*` route; do not silently continue as if the recommended choice were accepted.
+
 ## User Input
 
 ```text

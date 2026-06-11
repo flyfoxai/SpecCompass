@@ -69,6 +69,7 @@ Global rules:
 - If `.specify/memory/active-context.md` exists, use it to pick the current smallest useful read set.
 - Expand to source documents only for the current target area.
 - If required inputs are missing or unstable, stop and report the gap explicitly.
+- Governance changes that affect phase boundaries, validation discipline, human-decision rules, data-linkage, direct-neighbor checks, risk acceptance, or business PASS criteria must include a human decision package unless they are already explicitly confirmed by the current constitution or project owner.
 
 Execution flow:
 
@@ -92,6 +93,8 @@ Execution flow:
    - Include open item rules: real questions, todos, risks, blockers, rollback advice, and close conditions belong in `memory/open-items.md`; do not initialize fake default `OPEN01` or `RISK01` rows.
    - Include risk acceptance rules: the model cannot self-approve conditional risk acceptance; open risks require owner, impact scope, rollback/degrade path, close condition, revisit anchor, and explicit human decision when work proceeds despite risk.
    - Include evidence rules: high-impact implementation changes use `Impact-Radius Plan` before changes and `Impact-Radius Evidence` after verification; both can happen in one execution turn, but the plan must precede the change and evidence must follow actual verification; keep these notes in task output, task notes, phase output, or gate/analyze reports rather than production code comments; PASS requires fresh current-run or current-source evidence, not memory alone, and mechanical evidence overrides prose confidence.
+   - Include business PASS rules: command success, generated documents, created issues, exit code 0, or refreshed memory do not equal business PASS. PASS still depends on acceptance, trace, open-items, data-linkage, current code/test or equivalent evidence when in scope, and gate verdict.
+   - Include data-linkage rules: when flow, UI, API, data, permission, acceptance, tests, rollback, release, or human-decision meaning changes, check direct neighbors first and route unresolved gaps to open-items or the owner command instead of inventing a stable relation.
    - Include headless rules: non-interactive runs may carry soft issues forward, but manual decisions, hard gates, risk acceptance, disputed splits, compliance/data risk, or irreversible actions must return `NEEDS_DECISION` or `BLOCKED` instead of faking approval.
    - Preserve and normalize `Constitution Candidates`: merge duplicates, keep their ID/source feature/source tag/candidate rule/impact/status/next route, and do not promote them to formal rules without explicit confirmation or strong project-wide evidence.
    - Use only these candidate status values: `proposed`, `under-review`, `promoted`, `rejected`, `merged`.
@@ -108,6 +111,7 @@ Execution flow:
    - Confirm the constitution clearly defines what is allowed and blocked in this stage.
    - Confirm cross-platform and cross-agent compatibility principles are stated.
    - Confirm routing memory no longer contradicts the constitution.
+   - Confirm any promoted governance change that affects human-decision rules, data-linkage, direct-neighbor checks, risk acceptance, or business PASS criteria has an explicit owner decision or source-backed reason.
 
 ## Output
 

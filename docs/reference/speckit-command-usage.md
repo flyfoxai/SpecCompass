@@ -23,7 +23,7 @@
 - 官方安装方式：`uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.16 --force`
 - 官方实测版本：`specify 0.8.16`
 - 官方 Codex 测试目录：`/Users/hula/Projects/ASK3/upstream-codex-official-v0.8.16`
-- SP 当前开发版本：`specify 0.10.2`
+- SP 当前开发版本：`specify 0.10.4`
 
 重要边界：
 

@@ -30,6 +30,7 @@ Global rules:
 - Keep screen, action, field, and acceptance anchors traceable. Put unresolved UI risks or blockers in `memory/open-items.md`.
 - Treat newly generated or refreshed UI outputs as draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent evidence. Draft UI facts may guide layout discussion, but they must not close risks, support PASS, or replace stable source facts.
 - Manage context as an engineering budget: start from routing, trace, flow, and open items; expand only to the screens and contracts involved in the current UI decision.
+- Treat data-linkage as a direct-neighbor constraint. When a UI field, action, screen state, permission, API parameter, validation rule, or test expectation changes business meaning, check the directly related flow node, data object, API contract, permission rule, acceptance path, trace entry, and open item before treating the UI as stable.
 
 ## Purpose
 
@@ -54,6 +55,7 @@ Global rules:
 - Preserve links from UI anchors to flow, API, data, permissions, and acceptance paths when those are relevant.
 - Mark non-trivial missing validation evidence with `@t0` only when it can be resolved through trace or open-items.
 - If the UI decision depends on unresolved scope, flow, permission, or acceptance behavior, fall back to `/sp.clarify`, `/sp.flow`, or `/sp.specify` instead of inventing the screen behavior.
+- If a direct-neighbor data-linkage gap affects acceptance, tests, release, rollback, permissions, data safety, or human decisions, register it in `memory/open-items.md` and route to `/sp.flow`, `/sp.specify`, `/sp.clarify`, `/sp.plan`, or `/sp.gate` rather than making the UI absorb the missing business rule.
 
 ## Do Not
 
@@ -80,6 +82,7 @@ Global rules:
 - Confirm screen responsibilities match the flow and clarified rules.
 - Confirm critical actions and field constraints are explicit.
 - Confirm every critical screen, action, and field has a flow, data, API, permission, acceptance, or open-item source.
+- Confirm direct-neighbor data-linkage checks are visible for any field, action, validation, permission, API parameter, screen state, or test expectation that changes business meaning.
 - Confirm UI actions do not create unapproved business events, state transitions, side effects, or validation rules.
 - Confirm UI IDs and ownership terms stay consistent across files.
 - Confirm draft assumptions are labeled or routed to `memory/open-items.md` instead of being promoted to stable memory.

@@ -22,6 +22,8 @@ Use these defaults unless a generated task explicitly overrides them.
 | Required Evidence | current command/check/manual-verification result, affected anchors, changed files, and remaining open items |
 | Gate / Evidence Expectation | record whether later `/sp.analyze`, `/sp.gate`, review, or human decision is required before the workset can advance |
 | Rollback / Degrade Handling | use the relevant risk/open item rollback or degradation note for high-risk tasks; state `not applicable` for low-risk local tasks |
+| Code Handoff Packet | when document-stage work discovers required `src/`, `scripts/`, config, generated-code, schema, test-asset, or fixture changes, record target, reason, related anchor, `Allowed Write Set`, `Required Checks`, expected verification, writeback target, and next route instead of committing those artifacts as document work |
+| Data-Linkage Check | when a task changes data, UI, API, permissions, events, acceptance, or tests, check direct-neighbor flow, data object, UI surface, API contract, permission rule, side effect, tests, trace row, and open item before closeout |
 
 ## Notes
 
@@ -32,6 +34,9 @@ Use these defaults unless a generated task explicitly overrides them.
 - Missing mode defaults to `Mode: doc`; `/sp.implement` must not execute it as production code.
 - High-risk boundary objects and acceptance-critical tests should use formal `CODE` and `TEST` trace entries or proposed updates. Ordinary internal helpers do not need anchors unless they become stable cross-document objects.
 - If `Allowed Write Set` is insufficient, do not expand it during implementation. Return `NEEDS_PLAN` for boundary/readiness problems, `NEEDS_TASKS` for incomplete task packet/split problems, or `NEEDS_CONTEXT` for missing required context that cannot be recovered from routed files.
+- Document-stage tasks must not stage or commit unauthorized `src/`, `scripts/`, config, generated-code, schema, test-asset, or fixture artifacts. Convert required code work into a next-stage `Mode: impl` code handoff packet.
+- Do not treat command success, generated documents, or exit code 0 as business PASS. Business PASS still requires acceptance, trace, open-item, data-linkage, code/test evidence when in scope, and gate verdict.
 - If a task carries non-trivial `@t0` or `@r0`, the corresponding detail should exist in `memory/open-items.md`.
+- If a blocker or broad cleanup task is too large to verify in one focused pass, split it into a smallest solvable unit with symptom, evidence, root layer, verification path, writeback target, and next route.
 - If a task is too broad to verify in one focused pass, split it before execution rather than relying on model memory.
 - Worker task packets and handoffs belong outside `memory/`, normally under `<feature>/workers/`. They are execution artifacts, not stable memory; memory recall should exclude them unless the coordinator is explicitly merging or auditing worker evidence.

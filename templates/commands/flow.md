@@ -30,6 +30,7 @@ Global rules:
 - Keep trace coordinates stable and searchable. Put unresolved flow risks or blockers in `memory/open-items.md`.
 - Treat newly generated or refreshed flow outputs as draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent evidence. Draft flow facts may guide discussion, but they must not close risks, support PASS, or replace stable source facts.
 - Manage context as an engineering budget: start from routing, spec, clarifications, and open items; expand only to the flow source documents needed for the current branch or state decision.
+- Treat data-linkage as a direct-neighbor constraint. When a flow step changes state, data, permission, event, persistence, side effect, or acceptance meaning, check the directly related UI contract, API/data contract, permission rule, test or verification path, trace entry, and open item before treating the flow as stable.
 
 ## Purpose
 
@@ -55,6 +56,7 @@ Global rules:
 - Mark non-trivial missing validation evidence with `@t0` only when it can be resolved through trace or open-items.
 - If one flow area is too large for one focused read set, recommend a workset split for `/sp.plan` instead of hiding complexity in one diagram.
 - If branch, state, or exception behavior cannot be resolved after bounded evidence review, fall back to `/sp.clarify` or `/sp.specify` instead of inventing the transition.
+- If a direct-neighbor data-linkage gap affects acceptance, tests, release, rollback, permissions, data safety, or human decisions, register it in `memory/open-items.md` and route to `/sp.clarify`, `/sp.specify`, `/sp.ui`, `/sp.plan`, or `/sp.gate` rather than smoothing it over in the flow diagram.
 
 ## Do Not
 
@@ -79,6 +81,7 @@ Global rules:
 - Confirm state transitions are consistent with the clarified business rules.
 - Confirm every critical flow step has node type and port contract coverage, or an explicit `OPEN-*` / `RISK-*` item.
 - Confirm every `ui` type step links to a UI contract or an open item, and every non-UI step has a trigger and verification route.
+- Confirm direct-neighbor data-linkage checks are visible for any step that changes state, data, permission, event, persistence, side effect, or acceptance meaning.
 - Confirm every Mermaid artifact matches the written description.
 - Confirm draft assumptions are labeled or routed to `memory/open-items.md` instead of being promoted to stable memory.
 - Confirm any open branch, state conflict, or unresolved exception is registered in `memory/open-items.md`.

@@ -228,6 +228,8 @@ Not every file is seeded up front by the template root. Some are created or expa
 - make the flow the main relation axis for business, UI, API, data, acceptance, tests, and code
 - give critical steps a lightweight port contract: input, precondition or permission, action, output or side effect, target state, failure path, and verification evidence
 - mark new or refreshed flow outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
+- check direct-neighbor data-linkage when flow changes affect state, data, permission, events, persistence, side effects, acceptance, tests, rollback, release, or human decisions
+- route unresolved flow/data-linkage gaps to `open-items.md` and the closest owner command instead of inventing transitions
 
 ### `sp.ui`
 
@@ -236,6 +238,8 @@ Not every file is seeded up front by the template root. Some are created or expa
 - bind screens, fields, and actions to flow steps, business events, data objects, permissions, API contracts, acceptance paths, or open items
 - avoid inventing business events, state transitions, permissions, side effects, or validation rules from UI convenience alone
 - mark new or refreshed UI outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
+- check direct-neighbor data-linkage when UI changes affect fields, actions, validation, permissions, API parameters, screen states, tests, acceptance, rollback, release, or human decisions
+- route unresolved UI business meaning to `sp.flow`, `sp.specify`, or `sp.clarify`; do not let UI absorb the missing business rule
 
 ### `sp.gate`
 
@@ -243,6 +247,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - support Business, Delivery, Implementation Readiness, and Implementation Regression gate modes
 - consume the latest `analysis.md` or equivalent diagnostics when present instead of recomputing all analysis by default
 - surface blockers, risks, stale information, trace gaps, readiness gaps, and verification gaps
+- refuse `PASS` or `CONDITIONAL` when a high-impact blocker is still too broad to execute or verify
 - return `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION` with evidence and the next `/sp.*` route
 - block unconditional PASS when critical flow port contracts are missing, Flow-UI relations are broken, unchecked draft flow/UI/plan facts are being used as stable evidence, implementation readiness is missing or contradicted, implementation task packets are incomplete, or implementation evidence cannot be independently checked when required
 - identify only pre-planning business complexity at the gate; delivery-level split signals remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze`
@@ -251,6 +256,8 @@ Not every file is seeded up front by the template root. Some are created or expa
 
 - compress the stable first-layer conclusions for the delivery layer
 - prepare the second layer to inherit the right facts instead of re-deriving them
+- carry forward open risks, blockers, stale memory, direct-neighbor data-linkage gaps, rollback/release constraints, and human-decision points instead of hiding them in a summary
+- never convert unchecked draft flow/UI/plan outputs into stable delivery input just because the bundle command succeeded
 
 ### `sp.plan`
 
@@ -268,6 +275,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - default missing mode to `Mode: doc`
 - create `Mode: impl` task packets only when readiness supports implementation
 - include `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and visible effective defaults for implementation tasks
+- split broad blocker cleanup into the smallest executable task, decision task, verification task, or memory/trace closeout task
 - keep task boundaries aligned with the workset split
 
 ### `sp.implement`
@@ -275,6 +283,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - execute only selected `Mode: impl` tasks with sufficient task-packet fields
 - confirm `plan.md` readiness, `Allowed Write Set`, `Required Checks`, trace anchors, open items, and effective defaults before editing
 - refuse to auto-expand write boundaries; return `NEEDS_PLAN` for wrong code/workset boundaries, `NEEDS_TASKS` for incomplete task packets, and `NEEDS_CONTEXT` for missing required context that cannot be recovered from routed files
+- reduce blocker, repeated-failure, or broad "solve blockers" requests to one smallest solvable unit before editing; route upward or to human decision when that cannot be done safely
 - preserve CODE/TEST trace discipline for high-risk boundaries and acceptance-critical tests
 - perform lightweight reference scans before deleting, moving, or renaming code, tests, routes, schemas, permissions, migrations, events, or public UI/API objects
 - record verification evidence, task state, proposed trace updates, and open-item changes before claiming completion
@@ -283,6 +292,15 @@ Not every file is seeded up front by the template root. Some are created or expa
 
 - generate focused quality checklists for requirements, design, implementation readiness, or review contexts
 - keep checklist items tied to source documents and acceptance expectations
+- treat checklist output as requirement-quality evidence, not business PASS
+- route high-impact ambiguity, conflict, missing acceptance, Flow-UI/data-linkage gaps, blockers, or human choices to `sp.clarify`, `sp.specify`, `sp.flow`, `sp.ui`, `sp.plan`, `sp.tasks`, `sp.analyze`, or `sp.gate` instead of resolving them inside the checklist
+
+### `sp.taskstoissues`
+
+- act only as an issue-export helper; it is not a required SP stage step and must not repair planning or implementation gaps
+- export only tasks that preserve the SP task contract: `Mode`, source anchor or no-trace reason, workset or owner, dependencies, allowed write set when relevant, required checks, open-item or blocker status, and next route when incomplete
+- stop before creating issues when the GitHub remote is ambiguous, selected tasks are incomplete, open blockers affect export, feature routing is stale, or a human decision is required
+- created issues do not prove business PASS; they only prove task export happened
 
 ### `sp.analyze`
 
@@ -291,6 +309,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - diagnose `Implementation Readiness`, task mode integrity, implementation task packets, CODE/TEST trace, trace warning escalation, and implementation evidence without replacing `plan.md` as the readiness source
 - fail explicitly when memory is stale, coverage is weak, smoke checks are missing, task packets are incomplete, or high-risk trace/evidence gaps are untracked
 - detect Flow-UI relation breaks, orphan UI/API/data/CODE/TEST anchors, missing port-contract fields, and unchecked draft facts being promoted to stable memory
+- decompose unresolved or repeatedly failing blockers by root layer and smallest solvable unit before recommending implementation or gate PASS
 
 ## 9. Read-Order Contract
 
@@ -320,8 +339,11 @@ All current `sp` commands should preserve these rules unless a later product dec
 - do not redo full-project reading when a smaller routed read set is enough
 - do not auto-expand `Allowed Write Set`; route wrong boundaries to `NEEDS_PLAN`, incomplete packets to `NEEDS_TASKS`, and unrecoverable missing context to `NEEDS_CONTEXT`
 - do not turn ordinary local uncertainty into a user decision request before checking the bounded evidence
+- do not continue broad execution when a blocker cannot be reduced to a smallest solvable unit
 - do not mark a blocker or high-impact risk as PASS without owner, impact, rollback or degrade path, and close condition
 - do not treat implementation self-reports as release evidence without rerunnable checks or explicit alternative evidence when checks cannot run
+- do not treat command success, generated documents, or exit code 0 as business PASS; business PASS still requires acceptance, trace, open-item, data-linkage, code/test evidence, and gate verdict
+- do not stage or commit unauthorized `src/`, `scripts/`, config, generated-code, schema, or test assets during document-stage closeout; turn required code work into a `Mode: impl` code handoff packet instead
 
 ## 11. Coordinates, Status, And Open Items
 
@@ -360,6 +382,10 @@ Critical flow steps should carry a lightweight port contract:
 
 UI is a projection of flow and data, not an independent source of business behavior. A screen, field, or action should be tied to a flow step, business event, data object, permission, API contract, acceptance path, or open item. If UI work discovers a new business event, state transition, validation rule, or side effect, the correct route is back to `sp.flow`, `sp.specify`, or `sp.clarify`.
 
+Data linkage is a first-class impact trigger. When a data object, table, field, state, event, permission, or persistence meaning changes, check the directly related UI fields, API contracts, permission rules, emitted side effects, acceptance paths, tests, and trace/open item entries. When UI fields, API parameters, permission behavior, or test semantics change, check the related flow node and data object. Keep this to direct neighbors by default; do not turn it into multi-hop graph maintenance unless evidence requires it.
+
+Relationship verbs carry constraints. Use stable verbs such as `guards`, `persists_to`, `reads`, `writes`, `emits`, `verifies`, `depends_on`, and `blocks` when they affect impact radius. Missing relations should be repaired in trace/source docs, routed to `open-items.md`, or treated as blockers when they affect acceptance, tests, release, rollback, permissions, data safety, or human decisions.
+
 Outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts until checked by `sp.analyze`, `sp.gate`, or equivalent current evidence. Draft facts may guide the next discussion, but they must not close risks, update stable trace conclusions, support PASS, or become the sole implementation basis.
 
 When `tasks.md` does not exist yet, equivalent current evidence is a bounded draft-safety check: the output has source backing, did not overwrite stable memory, did not close risks, did not support PASS, and has trace/open-item routing or remains labeled as draft. This check does not replace full `sp.analyze`, `sp.gate`, or `plan.md` `Implementation Readiness`.
@@ -380,6 +406,21 @@ This rule gives SP two benefits:
 Known structural errors still fail validation, for example missing `workflow.id`, invalid step type, invalid semantic version, or malformed `steps`.
 
 Keep todo, risk, blocker, rollback, impact, owner, and close-condition details in `memory/open-items.md`. Keep lookup chains in `memory/trace-index.md`.
+
+For unresolved, high-impact, broad, or repeatedly failing blockers, commands
+should use a lightweight `Blocker Breakdown` before executing or passing a
+gate. The minimum fields are symptom, current evidence, root layer, smallest
+solvable unit, repair strategy, verification, writeback target, and next
+`/sp.*` route. Root layer should use the existing workflow layers: `prd`,
+`spec`, `clarify`, `flow`, `ui`, `plan`, `tasks`, `implement`, `verify`,
+`memory`, `external`, or `human-decision`.
+
+`memory/open-items.md` remains the single stable truth source for blockers.
+`analysis.md`, `gate.md`, task notes, or command output may include blocker
+breakdowns and closeout reports, but those are report projections, not a second
+persistent blocker ledger. Low-risk local warnings do not need the full
+breakdown unless they begin to affect scope, acceptance, release, rollback,
+security, implementation confidence, or human decision.
 
 Keep cross-command fallback attempts in `specs/<feature>/memory/fallback-log.md`
 when repeated failures or upward routes occur. The fallback log is not a new

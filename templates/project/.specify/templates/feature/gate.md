@@ -23,6 +23,13 @@
 | --- | --- | --- |
 | _Add a real gate check after review._ |  |  |
 
+Standard checks to consider when in scope:
+
+- acceptance, trace, open-items, data-linkage, code/test evidence, and gate mode evidence before business PASS
+- direct-neighbor relations across flow, UI, API, data, permissions, events, acceptance, tests, trace, and open items
+- document-stage closeout did not stage or commit unauthorized `src/`, `scripts/`, config, generated-code, schema, test-asset, or fixture artifacts
+- required code artifacts discovered during document work are represented as next-stage `Mode: impl` code handoff packets
+
 Suggested gate modes:
 
 - `Business Gate`: scope, clarification, flow, UI, and acceptance stability.
@@ -40,6 +47,10 @@ Suggested gate modes:
 - Do not pass an Implementation Readiness Gate if `Mode: impl` tasks lack `Allowed Write Set`, `Required Checks`, effective defaults, or trace anchors/no-trace reason.
 - Do not pass an Implementation Regression Gate from `/sp.implement` prose alone when tests, build, lint, typecheck, or critical manual checks are available to rerun or independently verify.
 - Do not pass when high-risk boundary `CODE` trace or acceptance-critical `TEST` trace is missing without an open item, or when a normal trace warning has crossed the stage unresolved.
+- Do not pass when command success, generated documents, or exit code 0 are the only evidence. They are tool evidence, not business PASS.
+- Do not pass when direct-neighbor data-linkage gaps affect acceptance, tests, release, rollback, permissions, data safety, or human decisions.
+- Do not pass when document-stage work depends on unauthorized code artifacts instead of a `Mode: impl` code handoff packet.
+- Do not pass when a broad blocker has no smallest solvable unit, owner route, verification path, or human decision route.
 
 ## Accepted Risks
 
@@ -52,6 +63,7 @@ Suggested gate modes:
 - Prefer one-level fallback: flow or UI gap -> `/sp.flow` or `/sp.ui`; business ambiguity -> `/sp.clarify`; scope conflict -> `/sp.specify`.
 - For implementation readiness gaps, prefer `/sp.plan` when boundaries/readiness are wrong and `/sp.tasks` when task packets are incomplete.
 - For stale diagnostics, prefer `/sp.analyze` before recomputing the whole gate.
+- For blockers that cannot be split safely, return `BLOCKED` or `NEEDS_DECISION` and route to `/sp.clarify` or a direct human decision package with background, impact, 2-4 options, recommendation, and next `/sp.*` route.
 
 ## Next Step
 

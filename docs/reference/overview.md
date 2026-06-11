@@ -38,6 +38,7 @@ SP adds lightweight memory, traceability, open-items, and context-budget practic
 
 - [SP project methodology](sp-project-methodology.md)
 - [SP PRD methodology](SP-PRD命令方法论设计.md)
+- [SP complex blocker closeout methodology](SP复杂阻塞根因拆解与闭环处理方法论.md)
 - [CodeGraph memory research](codegraph-memory-research.md)
 - [SP next-step improvement plan](SP项目下一步完善工作计划.md)
 
