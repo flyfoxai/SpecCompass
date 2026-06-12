@@ -114,13 +114,17 @@ Global rules:
 - Apply the soft issue boundary before PASS or CONDITIONAL: only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as warnings. Test/build/check failure, route error, acceptance break, critical trace break, open `Blocker`, or high-impact `Risk` without required fields blocks PASS.
 - Apply Blocker Closeout Mode before PASS or CONDITIONAL when blocker cleanup is requested or when open `Blocker` / high-impact `Risk` items exist:
   - Treat `specs/<feature>/memory/open-items.md` as the single source of truth. `gate.md` may include a `Blocker Closeout` section, but it is only the gate decision's report projection.
+  - Treat `specs/<feature>/memory/trace-index.md` as relation/history lookup only. If trace and open-items disagree about current blocker or decision state, use open-items as current-state truth and require trace refresh as a writeback item.
   - Consume current `/sp.analyze` closeout diagnostics when available; otherwise check the decisive blocker evidence directly without doing a full analysis rerun.
-  - Confirm unresolved or repeatedly failing items have a lightweight `Blocker Breakdown`: symptom, evidence, root layer, smallest solvable unit, repair strategy, verification, writeback target, and next route.
+  - Confirm unresolved or repeatedly failing items have a lightweight `Blocker Breakdown`: `Blocker ID`, `Failure Signature`, symptom, evidence, root layer, `Disconfirming Evidence` when retrying, smallest solvable unit, repair strategy, verification, `Writeback Target`, and next route.
+  - Confirm `Root Layer` and `Next Route` are consistent. If they are not, require the reason and risk before allowing `CONDITIONAL`; otherwise return `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
   - If a blocker remains too broad to execute or verify, do not grant PASS or CONDITIONAL. Return `FAIL` when it can be repaired by a normal upstream command, `BLOCKED` when safe automatic progress is impossible, or `NEEDS_DECISION` when human choice is required.
   - Per-item closeout states are limited to `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`.
   - Remaining `OPEN` items map to `FAIL` when repairable by a normal upstream command, `BLOCKED` when safe automatic progress is impossible, or `NEEDS_DECISION` when a human choice is required.
-  - `DEFERRED_WITH_OWNER` can support `CONDITIONAL` only when explicit acceptance/defer evidence, owner, impact scope, rollback/degrade path, close condition, and revisit anchor are present.
+  - `DEFERRED_WITH_OWNER` can support `CONDITIONAL` only when explicit acceptance/defer evidence, real owner, impact scope, rollback/degrade path, close condition, and revisit anchor are present.
   - Progress percentages, status briefs, or broad prose cannot replace blocker-by-blocker closeout evidence.
+  - If any `Writeback Target` from blocker closeout is incomplete, do not grant PASS. Either finish the writeback or keep a `memory/open-items.md` blocker that names written targets, missing targets, reason, and next route.
+  - If unresolved `NEEDS_DECISION` freeze exists for the same blocker, do not grant PASS or advance the stage. A model recommendation is not enough; the human-selected decision must be written back to the source doc, task, or `memory/open-items.md`.
 - Route upgraded issues with this if-then order:
   - if the upgraded issue is a repairable evidence, consistency, task-packet, or verification gap, return `FAIL` and route to `/sp.analyze`, `/sp.tasks`, or `/sp.plan` as the nearest owner
   - if the upgraded issue is missing scope, acceptance, flow, UI behavior, or user intent, return `BLOCKED` or `NEEDS_DECISION` and route to `/sp.clarify`
@@ -129,6 +133,7 @@ Global rules:
 - Apply oscillation protection: if the same failure signature has already appeared twice at the same layer, or the same workset is bouncing between two layers without new evidence, return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
 - Use `specs/<feature>/memory/fallback-log.md` when present to detect cross-command loops. If the same workset or anchor has already bounced through the recommended fallback route without new evidence, do not grant PASS or repeat the same route; return `BLOCKED` or `NEEDS_DECISION` with the failure chain and options.
 - When the gate sends work upward because of repeated failure, append or propose a fallback-log entry with workset or anchor, command, failure signature, failed evidence, attempted routes, next recommended route, and this run's timestamp or run label.
+  Promote repeated, stage-blocking, decision-bound, data/permission/security/release/rollback, or worktree-cleanup fallback entries or `promote-candidate` notes into `memory/open-items.md`; if the signature was already promoted, cite the existing open item ID instead of creating a duplicate, otherwise mark the fallback-log entry as `promoted` with the open item ID.
 - When multi-agent work occurred, verify coordinator closeout before PASS or CONDITIONAL: all worker handoffs are present, intentionally deferred, or marked stale/abandoned with task state reopened; write-set violations are resolved; shared memory/task/trace/routing updates were merged serially; global registry-like changes were handled by one owner; and merged-state checks ran where worker outputs can interact.
 - Identify only business-layer complexity that is already visible before delivery planning: independent user goals, 3+ roles, 4+ user paths, external systems, separate release/compliance constraints, or blockers that prevent stable scope. Do not decide API/table/event/migration-based promotion at gate; leave those delivery-layer signals for `sp.plan` or `sp.analyze`.
 - Treat gate complexity as a pre-planning business signal only. Delivery-level split signals such as API, table, event, migration, code-boundary, or test-boundary complexity remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze` using the shared complex-part threshold.
@@ -194,6 +199,8 @@ Global rules:
 - Confirm blocker closeout does not create a second persistent ledger beside `memory/open-items.md`.
 - Confirm every blocker/high-risk item relevant to this gate has one of `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`.
 - Confirm each upward fallback decision names the source layer, target layer, and next `sp.*` step.
+- Confirm blocker writeback is complete. If not, the gate result cannot be PASS and must leave a writeback-incomplete open item.
+- Confirm no unresolved `NEEDS_DECISION` freeze remains without a human-selected decision record written back to source docs, tasks, or `memory/open-items.md`.
 - Confirm critical flow port-contract gaps and Flow-UI relation breaks are either closed with evidence or visible in `memory/open-items.md`.
 - Confirm data-linkage gaps across flow, UI, API, data, permissions, events, acceptance, tests, trace, and open items are closed, tracked, or blocking with a next route.
 - Confirm document-stage outputs did not stage/commit unauthorized code artifacts, and any required code artifacts are represented as `Mode: impl` handoff packets.

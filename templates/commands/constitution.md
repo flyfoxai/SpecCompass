@@ -88,6 +88,8 @@ Execution flow:
    - Preserve compatibility with upstream Spec Kit mechanism where practical.
    - Include context control rules: choose the smallest sufficient read set, include related flow/UI/API/data/permissions/tests/risks when they affect the task, and refresh memory after stable facts change.
    - Include fallback rules: after bounded evidence-based attempts, move up one layer instead of guessing; inspect unstable implementation changes before fallback; use `sp.clarify` as a non-linear clarification route when confusion comes from unclear scope, conflicting docs, missing acceptance, or unclear user intent, then write the clarified result back before continuing.
+   - Include complex blocker rules: diagnose root layer before fallback, split broad blockers into the smallest solvable unit, require `Blocker ID`, stable failure signature, disconfirming evidence before repeated attempts, verification path, and writeback target for high-risk or repeated blockers.
+   - Include decision-freeze rules: ask humans only after bounded rule/source/test diagnosis shows a true macro choice; when `NEEDS_DECISION` is reached, downstream work for the same blocker freezes until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`.
    - Include complexity split rules: split signals are raised during `sp.plan`, explained in plain language, and confirmed by the user before creating sub-features or sub-projects.
    - Include coordinate and status rules: stable anchors are not rewritten for status; `@t0` marks missing validation evidence; `@r0` marks open risk; status `1` is usually implicit and should not be written everywhere; mutable status tags belong in tasks, memory, or phase reports, not source-of-truth specification text, production code comments, or test names.
    - Include open item rules: real questions, todos, risks, blockers, rollback advice, and close conditions belong in `memory/open-items.md`; do not initialize fake default `OPEN01` or `RISK01` rows.
@@ -96,6 +98,7 @@ Execution flow:
    - Include business PASS rules: command success, generated documents, created issues, exit code 0, or refreshed memory do not equal business PASS. PASS still depends on acceptance, trace, open-items, data-linkage, current code/test or equivalent evidence when in scope, and gate verdict.
    - Include data-linkage rules: when flow, UI, API, data, permission, acceptance, tests, rollback, release, or human-decision meaning changes, check direct neighbors first and route unresolved gaps to open-items or the owner command instead of inventing a stable relation.
    - Include headless rules: non-interactive runs may carry soft issues forward, but manual decisions, hard gates, risk acceptance, disputed splits, compliance/data risk, or irreversible actions must return `NEEDS_DECISION` or `BLOCKED` instead of faking approval.
+   - Include blocker truth-source rules: current blocker, risk, decision, and close-condition state belongs in `memory/open-items.md`; `trace-index.md` is relation/history lookup, and fallback-log only prevents repeated loops unless promoted into open-items.
    - Preserve and normalize `Constitution Candidates`: merge duplicates, keep their ID/source feature/source tag/candidate rule/impact/status/next route, and do not promote them to formal rules without explicit confirmation or strong project-wide evidence.
    - Use only these candidate status values: `proposed`, `under-review`, `promoted`, `rejected`, `merged`.
    - Apply the candidate strength threshold: keep a governance candidate only when it may recur across features or affects safety, compliance, irreversible action, real money/data risk, long-term engineering discipline, validation gates, or human-decision rules. Single-feature local risks, local TODOs, and ordinary requirement tradeoffs belong in PRD, feature memory, or `open-items.md`.
@@ -112,6 +115,7 @@ Execution flow:
    - Confirm cross-platform and cross-agent compatibility principles are stated.
    - Confirm routing memory no longer contradicts the constitution.
    - Confirm any promoted governance change that affects human-decision rules, data-linkage, direct-neighbor checks, risk acceptance, or business PASS criteria has an explicit owner decision or source-backed reason.
+   - Confirm blocker/root-cause governance covers root-cause-first routing, smallest solvable units, decision freeze, and writeback completeness.
 
 ## Output
 
@@ -127,6 +131,7 @@ Execution flow:
 - Do not start writing feature documents here.
 - Do not define production code standards here.
 - Do not leave stage boundaries ambiguous.
+- Do not let the constitution imply that models may bypass unresolved `NEEDS_DECISION`, risk acceptance, destructive cleanup, or incompatible requirements by continuing lower-layer implementation.
 
 ## Post-Execution Checks
 

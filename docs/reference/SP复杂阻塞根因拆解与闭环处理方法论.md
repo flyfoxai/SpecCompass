@@ -44,11 +44,16 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 | `tasks` | 任务过大、不可执行、缺 Allowed Write Set、缺 Required Checks | `/sp.tasks` |
 | `implement` | 局部代码错误、实现偏差、测试失败、引用未修复 | `/sp.implement` |
 | `verify` | 测试语义、构建命令、验收证据、环境检查不稳定 | `/sp.analyze` 或 `/sp.gate` |
+| `data` | 数据模型、schema、迁移顺序、fixture 数据形状、数据兼容或初始化状态不清 | `/sp.plan`、`/sp.flow` 或 `/sp.clarify` |
 | `memory` | open item、trace、状态、历史证据或 fallback-log 不一致 | `/sp.analyze` |
 | `external` | 外部服务、依赖、权限、环境、第三方限制 | `/sp.clarify` 或记录外部阻塞 |
 | `human-decision` | 只能由人决定的产品、风险、合规、拆分或降级选择 | `/sp.clarify` |
 
 判断规则：优先修正最上游的真实根因。不能用下游代码 hack 解决上游业务矛盾，也不能用测试改弱来掩盖需求或架构问题。
+
+`Root Layer` 和 `Next Route` 必须一致。默认按上表路由；如果需要偏离，必须写明理由和风险。禁止把 `clarify`、`human-decision`、`external` 或需要风险接受的问题直接路由到 `/sp.implement`。
+
+fixture 边界要分清：fixture 的数据形状、schema、迁移兼容、初始化策略属于 `data`；fixture 脚本语法、测试本地搭建、导入路径或执行命令错误属于 `implement`。如果脚本错误只是数据契约变更的症状，优先按 `data` 处理。
 
 ## 4. Blocker Breakdown
 
@@ -61,15 +66,19 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 | `Evidence` | 当前失败命令、文件、文档冲突、缺失字段或人工输入 |
 | `Root Layer` | 使用固定根因层级之一 |
 | `Root Cause Hypothesis` | 当前最可信的根因假设 |
-| `Disconfirming Evidence` | 已排除的错误方向或失败尝试 |
+| `Disconfirming Evidence` | 已排除的错误方向或失败尝试；第二次同类尝试前必填 |
 | `Project Constraint` | 违反了哪个 SP 规则、项目目标、验收或架构边界 |
-| `Smallest Solvable Unit` | 下一步能独立完成并验证的最小问题 |
+| `Smallest Solvable Unit` | 下一步能独立完成并验证的最小问题，必须能用一个明确验证动作证明 |
 | `Repair Strategy` | 推荐处理方式，不超过一个主路线 |
 | `Verification` | 如何证明该子问题解决 |
 | `Writeback Target` | 需要更新的任务、open item、trace、source doc 或 gate |
 | `Next Route` | 精确到一个 `/sp.*` 命令或人工决策 |
 
 如果不能填写 `Smallest Solvable Unit`，说明问题还没有拆到可执行粒度，不能进入实现。
+
+`Smallest Solvable Unit` 的上限是一次可控闭环：一个业务验收点、一个 flow 分支、一个边界对象、一个失败命令，或一个明确的人工决策。它不能写成“修完所有测试”“清理全部工作树”“解决整个模块”。
+
+低风险、单层级、证据充分的简单 blocker 可以走轻量路径，只填写 `Symptom`、`Evidence`、`Smallest Solvable Unit`、`Verification` 和 `Next Route`。只要问题跨层、涉及人工决策、涉及数据/权限/发布风险、触碰 Allowed Write Set 边界，或同类失败出现第二次，就必须使用完整 `Blocker Breakdown`。
 
 ## 5. 问题拆分规则
 
@@ -83,7 +92,7 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 - 按错误类型拆：需求冲突、代码错误、测试资产缺失、环境问题、数据迁移风险分开处理。
 - 按决策类型拆：模型能修复的问题和必须人工选择的问题分开。
 
-不推荐的拆法：
+不允许作为复杂阻塞收口依据的拆法：
 
 - “先把所有测试修完”。
 - “清理所有 dirty worktree”。
@@ -130,6 +139,8 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 - 未验证改动：不能作为完成证据。
 - 用户已有改动：不能擅自删除或覆盖。
 
+“稳定有效改动”必须有验证证据支持。没有通过的验证命令、人工确认、文档一致性证据或明确 gate 证据时，默认归类为未验证改动，不能作为完成依据，也不能用于关闭 blocker。
+
 ## 8. 人工决策边界
 
 以下问题不能由模型擅自 PASS：
@@ -152,17 +163,48 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 - 推荐：模型推荐哪一个，为什么。
 - 下一步：用户选定后走哪个 `/sp.*` 命令。
 
+进入 `NEEDS_DECISION` 后，同一 `Blocker ID` 下游命令必须冻结。除非用户已经选择方案并回写 source doc、open item 或任务，否则 `/sp.plan`、`/sp.tasks`、`/sp.implement`、`/sp.analyze` 和 `/sp.gate` 只能引用该待决项，不能绕过它继续推进。
+
+冻结状态应稳定写入 `memory/open-items.md` 或对应 source doc/task，最少包含：`Blocker ID`、`Failure Signature`、`Root Layer`、`Pending Decision`、`Frozen Scope`、`Allowed Reads`、`Disallowed Actions`、`Decision Package Link`、`Writeback Target`、`Next Route`。模型建议不能替代 `human-selected` 决策记录。
+
 ## 9. 防震荡机制
 
 同一问题不能在多个命令间无限循环。
+
+失败签名必须可复查。推荐格式：
+
+```text
+<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>
+```
+
+例如：
+
+```text
+verify::pnpm test::tests/unit/project-smoke.test.ts::missing-fixture
+memory::/sp.gate::memory/open-items.md::stale-status
+```
+
+如果没有文件路径，使用 `feature/workset/anchor`；如果没有命令，使用触发该失败的 `/sp.*` route。模型不能只靠改写自然语言来把同一个失败当成新问题。
 
 规则：
 
 - 同一失败签名同层级最多两次尝试。
 - 第二次尝试前必须写出差异诊断：第一假设、反证、新假设、新验证方式。
+- 第二次尝试前如果 `Disconfirming Evidence` 为空，必须停止进入 `BLOCKED`，不能继续执行。
 - 第二次仍失败，必须停止自动推进，进入 `BLOCKED` 或 `NEEDS_DECISION`。
 - 发生跨命令 fallback 时，应记录或提议更新 `memory/fallback-log.md`。
 - fallback-log 只防止重复循环，不替代 `open-items.md`、`trace-index.md` 或验证证据。
+
+fallback-log 的提权规则：
+
+- `/sp.tasks` 和 `/sp.implement` 只能追加 fallback-log 条目或写 `promote-candidate: <Failure Signature>`，不能直接创建、合并、关闭或提权 `memory/open-items.md` blocker。
+- 只有 `/sp.analyze` 和 `/sp.gate` 可以把 fallback-log 条目提升为 `memory/open-items.md` blocker。
+- 同一失败签名在同一 workset 出现两次，必须由 `/sp.analyze` 或 `/sp.gate` 提权为 `memory/open-items.md` blocker。
+- fallback 已经阻断阶段准入，必须由 `/sp.analyze` 或 `/sp.gate` 提权为 `memory/open-items.md` blocker。
+- fallback 涉及人工决策、数据迁移、权限、安全、发布、回滚或工作树清理，必须由 `/sp.analyze` 或 `/sp.gate` 提权为 `memory/open-items.md` blocker。
+- 如果该失败签名已经提权，不能新建重复 open item；应引用 existing open item ID，并把 fallback-log 标注为 `promoted`。
+
+跨命令 handoff 必须带上来源命令、`Blocker ID`、失败签名、已排除假设、当前 `Root Layer`、目标 `Next Route` 和 `Writeback Target`。否则目标命令容易重复已经失败的路径。
 
 ## 10. 收口标准
 
@@ -176,11 +218,13 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 - 稳定事实已经回写。
 - 剩余风险如果未关闭，必须有 owner、影响范围、回滚或降级路径、关闭条件和 revisit anchor。
 
+回写必须完整。`Writeback Target` 中列出的目标要么全部更新成功，要么在 `memory/open-items.md` 保留“回写未完成”的 blocker，说明已写目标、未写目标、原因和下一步 route。不能在部分回写后声称 blocker 已关闭。
+
 `RESOLVED` 表示已验证解决。
 
 `OPEN` 表示仍阻塞或仍需处理。
 
-`DEFERRED_WITH_OWNER` 表示明确接受延期，且有 owner、影响、关闭条件、回滚/降级和 revisit anchor。
+`DEFERRED_WITH_OWNER` 表示明确接受延期，且有 owner、影响、关闭条件、回滚/降级和 revisit anchor。owner 不能是“模型”或“自动流程”；revisit anchor 必须能定位到具体 open item、任务、issue、日期或外部 owner 记录。
 
 `INVALID_OR_STALE` 表示证据显示该 blocker 已不适用，且说明为什么。
 
@@ -192,8 +236,11 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 
 - 检查 blocker 是否已经有 `Blocker Breakdown`。
 - 判断根因层级是否合理。
+- 校验 `Root Layer` 和 `Next Route` 是否一致。
+- 发现同一失败签名重复时，要求补齐 `Disconfirming Evidence`。
 - 标出错误处理方向。
 - 对无法收口的问题给出最小可解决单元和下一步 route。
+- 负责把满足条件的 fallback-log 或 `promote-candidate` 提权到 `memory/open-items.md`；如果已经提权，只引用 existing open item ID。
 - 不直接替代 `/sp.gate` 做阶段决策。
 
 ### `/sp.gate`
@@ -204,6 +251,9 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 - 大 blocker 没拆成可执行子项时不能 PASS 或 CONDITIONAL。
 - 剩余 `OPEN` blocker 必须映射为 `FAIL`、`BLOCKED` 或 `NEEDS_DECISION`。
 - `CONDITIONAL` 只能用于有 owner、影响、回滚/降级、关闭条件和 revisit anchor 的延期项。
+- `Writeback Target` 未完整回写时不能 PASS。
+- `CONDITIONAL` 必须引用可查锚点，不能只写“后续处理”“下次迭代”。
+- 负责在阶段准入前把阻断性的 fallback-log 或 `promote-candidate` 提权到 `memory/open-items.md`；如果已经提权，只引用 existing open item ID。
 
 ### `/sp.implement`
 
@@ -213,6 +263,8 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 - 第一次失败后必须做差异诊断。
 - 第二次同类失败后停止，不继续硬冲。
 - 如果发现根因在上游，必须返回对应 route。
+- 只能追加 fallback-log 或 `promote-candidate`，不能直接提权、关闭或合并 `memory/open-items.md` blocker。
+- 遇到 `NEEDS_DECISION`、越界写入、缺 Allowed Write Set 或缺 Required Checks 时必须停止，不能用技术 hack 绕过。
 
 ### `/sp.tasks`
 
@@ -221,6 +273,8 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 - 大 blocker 必须拆成独立任务、决策任务、验证任务或归档任务。
 - 任务必须说明验证方式和写回目标。
 - 需要人工决策的任务不能伪装成实现任务。
+- 任务包必须继承来源 `Blocker ID`、失败签名、已排除假设和 Allowed Write Set。
+- 只能把 repeated fallback 写成任务、fallback-log 或 `promote-candidate`，不能直接提权、关闭或合并 `memory/open-items.md` blocker。
 
 ### `/sp.plan`
 
@@ -228,6 +282,7 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 
 - 当 blocker 来自代码边界、workset、运行命令、实现准入或架构路线时，由 `/sp.plan` 修正。
 - `/sp.plan` 不应直接生成实现任务，只负责让 `/sp.tasks` 有足够依据生成任务。
+- 对复杂 blocker 必须记录 `Blocker ID`、`Failure Signature`、`Root Layer`、`Next Route`、`Writeback Target` 和 `NEEDS_DECISION` 冻结要求。
 
 ### `/sp.clarify`
 
@@ -235,6 +290,7 @@ SP 处理复杂问题时应采用闭环控制，而不是线性执行。
 
 - 当根因是用户意图、风险接受、业务取舍、合规、回滚或拆分争议时，输出决策包。
 - 用户决策后，必须写回对应 source doc、open item 或任务。
+- 未决策前必须保持 `NEEDS_DECISION` 冻结状态，不能让下游命令继续推进同一 blocker。
 
 ## 12. 推荐输出模板
 
@@ -249,8 +305,8 @@ Root-Cause Summary:
 - Wrong direction to avoid:
 
 Blocker Breakdown:
-| ID | Symptom | Evidence | Root Layer | Smallest Solvable Unit | Strategy | Verification | Next Route |
-|---|---|---|---|---|---|---|---|
+| ID | Failure Signature | Symptom | Evidence | Root Layer | Disconfirming Evidence | Smallest Solvable Unit | Strategy | Verification | Next Route |
+|---|---|---|---|---|---|---|---|---|---|
 
 Decision Needed:
 - Background:
@@ -264,6 +320,17 @@ Writeback:
 - tasks:
 - trace:
 - fallback-log:
+
+Handoff:
+- Source command:
+- Target command:
+- Blocker ID:
+- Failure Signature:
+- Root Layer:
+- Next Route:
+- Writeback Target:
+- Excluded hypotheses:
+- Pending decision:
 ```
 
 如果没有人工决策，删除 `Decision Needed` 部分。

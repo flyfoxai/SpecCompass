@@ -27,6 +27,12 @@ provides:
       replaces: "sp.plan"
 
     - type: "command"
+      name: "sp.clarify"
+      file: "commands/sp.clarify.md"
+      description: "Lean clarify - resolve blocking human decisions and write them back"
+      replaces: "sp.clarify"
+
+    - type: "command"
       name: "sp.tasks"
       file: "commands/sp.tasks.md"
       description: "Lean tasks - create tasks.md from plan and spec"

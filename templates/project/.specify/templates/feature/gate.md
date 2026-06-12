@@ -41,6 +41,7 @@ Suggested gate modes:
 
 - Record only explicit blockers.
 - If there are no blockers, state that clearly.
+- Treat `memory/open-items.md` as current-state truth for blockers, risks, decisions, and close conditions. Treat `memory/trace-index.md` as relation/history lookup; refresh trace when it disagrees with open-items.
 - Register any blocker that affects scope, release, rollback, safety, data, permissions, or acceptance in `memory/open-items.md`.
 - Do not pass the gate while a blocking `@r0` or unresolved high-impact `@t0` remains without owner, impact, rollback or degrade path, and close condition.
 - Do not pass an Implementation Readiness Gate if `plan.md` `Implementation Readiness` is missing, stale, or contradicted by open blockers, missing runtime commands, missing code/test mapping, or incomplete workset code boundaries.
@@ -51,6 +52,9 @@ Suggested gate modes:
 - Do not pass when direct-neighbor data-linkage gaps affect acceptance, tests, release, rollback, permissions, data safety, or human decisions.
 - Do not pass when document-stage work depends on unauthorized code artifacts instead of a `Mode: impl` code handoff packet.
 - Do not pass when a broad blocker has no smallest solvable unit, owner route, verification path, or human decision route.
+- Do not pass when blocker closeout has incomplete `Writeback Target` updates; either finish writeback or keep a writeback-incomplete blocker in `memory/open-items.md`.
+- Do not pass or advance the stage while a same-blocker `NEEDS_DECISION` freeze remains unresolved. The human-selected decision must be written back to the source doc, task, or `memory/open-items.md`; a model recommendation is not enough.
+- Promote blocking fallback-log or `promote-candidate` entries only here or in `/sp.analyze`. If the same failure signature was already promoted, cite the existing open item ID instead of creating a duplicate.
 
 ## Accepted Risks
 

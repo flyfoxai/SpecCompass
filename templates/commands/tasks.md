@@ -113,9 +113,14 @@ Execution flow:
      - required verification or manual check path
      - memory/source-doc writeback target when the task changes stable facts or closes risks
    - If `memory/open-items.md` contains open `Todo`, `Risk`, or `Blocker` entries that affect task execution, include a task or dependency that resolves, accepts, or revisits each affected item.
-   - For broad blocker cleanup, split each affected blocker into the smallest solvable unit: an executable task, decision task, verification task, or memory/trace closeout task. Each split task should name the symptom/evidence, root layer, verification path, writeback target, and next route when it cannot be completed locally.
+   - For broad blocker cleanup, split each affected blocker into the smallest solvable unit: an executable task, decision task, verification task, or memory/trace closeout task. Each split task should name `Blocker ID`, `Failure Signature`, symptom/evidence, `Root Layer`, `Disconfirming Evidence` when retrying, verification path, `Writeback Target`, and next route when it cannot be completed locally.
+   - Use this `Failure Signature` shape when possible: `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`. Keep it stable enough for `/sp.analyze` and `/sp.gate` to detect repeated loops.
+   - Keep `Root Layer` and next route consistent. If a task routes away from the root layer's normal owner, write the reason and risk instead of turning every blocker into implementation work.
+   - If a blocker task cannot name the smallest solvable unit, verification path, or writeback target, do not generate a local implementation task. Route to `/sp.analyze`, `/sp.plan`, `/sp.clarify`, or `/sp.gate` as the owner command.
+   - If a blocker comes from a `fallback-log` repeated signature, create a task, fallback-log note, or `promote-candidate: <Failure Signature>` for `/sp.analyze` or `/sp.gate` to promote. Do not directly create, merge, close, or promote `memory/open-items.md` blocker state from `/sp.tasks`.
    - If implementation and review/human decision can be separated, create separate tasks instead of making an implementation task depend on an unavailable human decision. The implementation task closes after its own verification passes; the review or decision task remains open until the review or decision is actually recorded.
    - For tasks that need human decision, risk acceptance, split approval, or downgraded verification, write the task so the model can route to `/sp.clarify` for a decision package and ask in plain language with background, impact, 2-4 options, tradeoffs, recommendation, and next `/sp.*` route. Do not let a task treat the model recommendation as the final decision.
+   - If an item is in `NEEDS_DECISION`, freeze downstream tasks for the same `Blocker ID` until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`.
    - For tasks that modify existing code, include a bounded test-read expectation: directly related, failing, same-name, adjacent, or contract-bearing tests should be checked before implementation; indirect tests can start from signatures or failure output.
    - If a workset is too large by the project methodology's complex-part signals, create a split/promote task instead of generating oversized implementation tasks. Use the same threshold as `sp.plan`: any hard signal, or at least three warning signals.
    - Treat near-threshold split signals as an observation band, not an automatic block: create a task or note that records the candidate split, risk, and revisit point. Only require a decision task when there is a confirmed split dispute, hard trigger, repeated failure, irreversible risk, risk acceptance, compliance/data decision, or explicit user request for split approval.
@@ -144,6 +149,8 @@ Execution flow:
    - Confirm no task requires a hidden context set larger than its workset can safely hold.
    - Confirm every `Mode: impl` task has a readiness source, `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, effective defaults, and gate/evidence expectation visible in the task packet.
    - Confirm no `Mode: impl` task was generated from a workset that lacks `plan.md` `Implementation Readiness`.
+   - Confirm blocker-derived tasks include `Blocker ID`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, and `Writeback Target`.
+   - Confirm unresolved `NEEDS_DECISION` items are not converted into executable implementation tasks before the human-selected decision is written back.
 
 ## Output
 
@@ -169,6 +176,8 @@ Execution flow:
 - Do not create high-impact tasks without naming the expected direct disturbance surface and verification path.
 - Do not keep generating local tasks when the next safe step is to revisit an upstream `sp.*` command.
 - Do not auto-expand `Allowed Write Set` during task generation to make an implementation task look executable. Route boundary gaps to `NEEDS_PLAN`; route incomplete packets to `NEEDS_TASKS`.
+- Do not treat fallback-log, task notes, or model recommendations as stable blocker truth. Current blocker state belongs in `memory/open-items.md`; trace-index is relation/history lookup.
+- Do not generate a blocker cleanup task that lacks `Blocker ID`, `Failure Signature`, `Root Layer`, verification path, and `Writeback Target`.
 
 ## Post-Execution Checks
 

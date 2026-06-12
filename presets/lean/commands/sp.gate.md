@@ -26,6 +26,12 @@ $ARGUMENTS
    - For Implementation Regression, treat `/sp.implement` evidence as audit input and prefer current rerunnable tests/build/lint/typecheck/manual verification before `PASS`.
    - Do not pass when high-risk boundary `CODE` trace or acceptance-critical `TEST` trace is missing without an open item, or when an unresolved trace warning now affects acceptance, tests, release, rollback, or human decisions.
    - `PASS with warning` is not a valid gate verdict. Use `PASS` with warnings recorded separately, or `CONDITIONAL` when the next stage depends on a named condition.
+   - Treat `memory/open-items.md` as current-state truth for blockers, risks, decisions, and close conditions. Treat trace as relation/history lookup.
+   - For unresolved, high-risk, or repeated blockers, require `Blocker ID`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, smallest solvable unit, verification path, `Writeback Target`, and next route. Use `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>` when possible.
+   - Keep `Root Layer` and next route consistent; include `data` as a valid root layer for schema, migration, fixture data shape, compatibility, data contract, or initialization issues.
+   - Do not pass when blocker writeback is incomplete. Either finish the `Writeback Target` updates or keep a writeback-incomplete blocker in `memory/open-items.md`.
+   - Do not pass or advance the stage while a same-blocker `NEEDS_DECISION` freeze remains unresolved. The human-selected decision must be written back; a model recommendation is not enough.
+   - Promote repeated, stage-blocking, decision-bound, data/permission/security/release/rollback, worktree-cleanup fallback-log entries, or `promote-candidate` notes into `memory/open-items.md`; if already promoted, cite the existing open item ID instead of duplicating it, otherwise mark the fallback entry as `promoted`.
 
 4. If the verdict is not `PASS`, include blocking items, options when human input is required, recommendation, and the exact next `/sp.*` route.
 

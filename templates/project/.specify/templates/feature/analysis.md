@@ -24,6 +24,7 @@
 
 ## Blocking Actions
 
+- Treat `memory/open-items.md` as the current-state truth source for blockers, risks, decisions, and close conditions. Treat `memory/trace-index.md` as relation/history lookup; if they disagree, use open-items until trace is refreshed.
 - List the exact `/sp.*` step to revisit when the verdict is not `PASS`.
 - Treat stale memory, missing trace links, unowned blockers, missing smoke checks, and unresolved high-impact risks as evidence for `FAIL`, `BLOCKED`, or `NEEDS_DECISION` depending on whether repair is local, automatic progress is unsafe, or human choice is required.
 - Treat missing `plan.md` `Implementation Readiness` for implementation tasks as a `/sp.plan` fallback.
@@ -40,6 +41,12 @@
 
 Use this section only for unresolved, high-impact, broad, or repeatedly failing blockers. Keep `memory/open-items.md` as the stable truth source; this section is a report projection.
 
-| ID | Symptom | Evidence | Root Layer | Smallest Solvable Unit | Strategy | Verification | Writeback Target | Next Route |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| _Add after real analysis evidence exists._ |  |  |  |  |  |  |  |  |
+| Blocker ID | Failure Signature | Symptom | Evidence | Root Layer | Disconfirming Evidence | Smallest Solvable Unit | Strategy | Verification | Writeback Target | Next Route |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| _Add after real analysis evidence exists._ |  |  |  |  |  |  |  |  |  |  |
+
+Use failure signatures like `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`. Valid root layers include `prd`, `spec`, `clarify`, `flow`, `ui`, `data`, `plan`, `tasks`, `implement`, `verify`, `memory`, `external`, and `human-decision`. Before a second same-signature attempt, fill `Disconfirming Evidence` with the concrete output, file, check, or document evidence that changed the hypothesis.
+
+If blocker routing reaches `NEEDS_DECISION`, downstream work for the same blocker remains frozen until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`. If a `Writeback Target` is incomplete, keep a writeback-incomplete blocker in `memory/open-items.md` instead of claiming PASS.
+
+Only `/sp.analyze` and `/sp.gate` promote fallback-log or `promote-candidate` entries into `memory/open-items.md`. If the same failure signature was already promoted, cite the existing open item ID instead of creating a duplicate.

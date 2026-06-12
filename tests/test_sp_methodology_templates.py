@@ -934,3 +934,166 @@ def test_flow_ui_rules_avoid_deep_public_coordinates_by_default():
     assert "unless a recurring cross-document object truly needs promotion" in flow
     assert "unless a recurring cross-document object truly needs promotion" in ui
     assert "should not appear as stable public coordinates unless" in analyze
+
+
+def test_blocker_root_cause_loop_control_and_decision_freeze_are_enforced():
+    """Complex blocker handling should be executable, not only described in the methodology doc."""
+    methodology = (PROJECT_ROOT / "docs" / "reference" / "SP复杂阻塞根因拆解与闭环处理方法论.md").read_text(
+        encoding="utf-8"
+    )
+    analyze = _command("analyze")
+    gate = _command("gate")
+    plan = _command("plan")
+    implement = _command("implement")
+    tasks = _command("tasks")
+    clarify = _command("clarify")
+    constitution = _command("constitution")
+    scaffold_analysis = (
+        PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "analysis.md"
+    ).read_text(encoding="utf-8")
+    scaffold_gate = (PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "gate.md").read_text(
+        encoding="utf-8"
+    )
+    scaffold_tasks = (PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "tasks.md").read_text(
+        encoding="utf-8"
+    )
+    scaffold_constitution = (PROJECT_MEMORY_DIR / "constitution.md").read_text(encoding="utf-8")
+    lean_plan = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.plan.md").read_text(encoding="utf-8")
+    lean_clarify = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.clarify.md").read_text(encoding="utf-8")
+    lean_analyze = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.analyze.md").read_text(encoding="utf-8")
+    lean_gate = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.gate.md").read_text(encoding="utf-8")
+    lean_tasks = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.tasks.md").read_text(encoding="utf-8")
+    lean_implement = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.implement.md").read_text(encoding="utf-8")
+
+    blocker_packet_files = {
+        "methodology": methodology,
+        "analyze": analyze,
+        "gate": gate,
+        "plan": plan,
+        "implement": implement,
+        "tasks": tasks,
+        "scaffold_analysis": scaffold_analysis,
+        "scaffold_tasks": scaffold_tasks,
+        "lean_plan": lean_plan,
+        "lean_analyze": lean_analyze,
+        "lean_gate": lean_gate,
+        "lean_tasks": lean_tasks,
+        "lean_implement": lean_implement,
+    }
+    for label, content in blocker_packet_files.items():
+        for field in ("Blocker ID", "Failure Signature", "Root Layer", "Disconfirming Evidence", "Writeback Target"):
+            assert field in content, f"{label} missing {field}"
+        assert "smallest solvable unit" in content.lower() or "Smallest Solvable Unit" in content, label
+
+    for label, content in (
+        ("methodology", methodology),
+        ("analyze", analyze),
+        ("plan", plan),
+        ("implement", implement),
+        ("scaffold_analysis", scaffold_analysis),
+        ("scaffold_tasks", scaffold_tasks),
+        ("lean_analyze", lean_analyze),
+        ("lean_gate", lean_gate),
+        ("lean_tasks", lean_tasks),
+        ("lean_implement", lean_implement),
+    ):
+        assert "<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>" in content, label
+        assert "`data`" in content or "data" in content, label
+
+    for label, content in (
+        ("analyze", analyze),
+        ("gate", gate),
+        ("implement", implement),
+        ("lean_analyze", lean_analyze),
+        ("lean_gate", lean_gate),
+        ("lean_implement", lean_implement),
+    ):
+        assert "fallback-log" in content, label
+        assert "memory/open-items.md" in content, label
+
+    for label, content in (
+        ("analyze", analyze),
+        ("gate", gate),
+        ("lean_analyze", lean_analyze),
+        ("lean_gate", lean_gate),
+    ):
+        assert "promoted" in content, label
+
+    for label, content in (
+        ("analyze", analyze),
+        ("gate", gate),
+        ("scaffold_analysis", scaffold_analysis),
+        ("scaffold_gate", scaffold_gate),
+        ("lean_analyze", lean_analyze),
+        ("lean_gate", lean_gate),
+    ):
+        assert "open-items" in content, label
+        assert "trace" in content, label
+        assert "relation/history" in content or "relation/history lookup" in content, label
+
+    for label, content in (
+        ("methodology", methodology),
+        ("analyze", analyze),
+        ("gate", gate),
+        ("plan", plan),
+        ("implement", implement),
+        ("tasks", tasks),
+        ("clarify", clarify),
+        ("constitution", constitution),
+        ("scaffold_analysis", scaffold_analysis),
+        ("scaffold_gate", scaffold_gate),
+        ("scaffold_tasks", scaffold_tasks),
+        ("scaffold_constitution", scaffold_constitution),
+        ("lean_plan", lean_plan),
+        ("lean_clarify", lean_clarify),
+        ("lean_analyze", lean_analyze),
+        ("lean_gate", lean_gate),
+        ("lean_tasks", lean_tasks),
+        ("lean_implement", lean_implement),
+    ):
+        assert "NEEDS_DECISION" in content, label
+        assert "written back" in content or "writeback" in content or "回写" in content, label
+        assert "human-selected" in content or "用户已经选择" in content or "人" in content, label
+
+    for label, content in (
+        ("plan", plan),
+        ("lean_plan", lean_plan),
+    ):
+        assert "Failure Signature" in content, label
+        assert "Root Layer" in content, label
+        assert "Next Route" in content, label
+        assert "Writeback Target" in content, label
+        assert "NEEDS_DECISION" in content, label
+
+    for label, content in (
+        ("tasks", tasks),
+        ("implement", implement),
+        ("scaffold_tasks", scaffold_tasks),
+        ("lean_tasks", lean_tasks),
+        ("lean_implement", lean_implement),
+    ):
+        assert "promote-candidate" in content or "append fallback-log" in content, label
+        assert "do not directly" in content.lower(), label
+
+    for label, content in (
+        ("analyze", analyze),
+        ("gate", gate),
+        ("scaffold_analysis", scaffold_analysis),
+        ("scaffold_gate", scaffold_gate),
+        ("lean_analyze", lean_analyze),
+        ("lean_gate", lean_gate),
+    ):
+        assert "already promoted" in content or "existing open item" in content, label
+
+    assert "fixture 数据形状" in methodology
+    assert "fixture/script syntax" in lean_implement or "fixture/script syntax" in implement
+    assert "sp.clarify" in (PROJECT_ROOT / "presets" / "lean" / "preset.yml").read_text(encoding="utf-8")
+
+    for label, content in (
+        ("gate", gate),
+        ("scaffold_gate", scaffold_gate),
+        ("lean_gate", lean_gate),
+    ):
+        assert "Writeback Target" in content or "writeback" in content, label
+        assert "PASS" in content, label
+        assert "Do not pass" in content or "do not grant PASS" in content, label

@@ -23,5 +23,10 @@ $ARGUMENTS
    - Each `Mode: impl` task includes readiness source, `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, gate/evidence expectation, and compressed effective defaults for `Forbidden Write Set`, `Fallback Route`, `Writeback Rule`, `Required Evidence`, and rollback/degrade handling
    - Use formal `CODE` and `TEST` trace only for high-risk boundary objects and acceptance-critical tests; ordinary internal helpers do not require anchors
    - If the write boundary is missing, return `NEEDS_PLAN`; if task packet fields are incomplete, return `NEEDS_TASKS`; if required context is missing and cannot be recovered from routed files, return `NEEDS_CONTEXT`
+   - For blocker-derived tasks, include `Blocker ID`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, smallest solvable unit, verification path, `Writeback Target`, and next route
+   - Use failure signatures like `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>` and keep `Root Layer` consistent with the next route; include `data` as a valid root layer for schema, migration, fixture data shape, compatibility, data contract, or initialization issues
+   - If a blocker task cannot name its smallest solvable unit, verification path, or writeback target, route to `/sp.analyze`, `/sp.plan`, `/sp.clarify`, or `/sp.gate` instead of generating implementation work
+   - If a task is blocked by `NEEDS_DECISION`, do not make it executable until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`
+   - If repeated fallback is visible, append or propose `fallback-log` or `promote-candidate: <Failure Signature>` for `/sp.analyze` or `/sp.gate`; do not directly create, merge, close, or promote `memory/open-items.md` blocker state from `/sp.tasks`
 
 Do not write production code in this command.

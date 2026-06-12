@@ -123,6 +123,16 @@ Execution flow:
      - `Implementation Readiness`: the single source of truth for whether each workset can produce `Mode: impl` tasks
    - Keep `Code Mapping` at module, directory, boundary-object, or key-file level unless a high-risk public API, permission rule, data migration, event boundary, or core acceptance test already needs a stable `CODE` or `TEST` anchor. Do not invent function-level trace before implementation evidence exists.
    - When implementation readiness is blocked, record the exact reason and fallback route: `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.bundle`, `/sp.plan`, `/sp.tasks`, or human macro decision.
+   - For complex blockers that affect code boundaries, worksets, runtime commands, implementation readiness, or architecture route, record a planner-owned blocker handoff instead of leaving a broad note:
+     - `Blocker ID`
+     - `Failure Signature` using `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`
+     - `Root Layer`
+     - `Disconfirming Evidence` when retrying
+     - smallest solvable unit
+     - `Next Route`
+     - `Writeback Target`
+   - If a planning blocker reaches `NEEDS_DECISION`, freeze downstream work for the same `Blocker ID` until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`. A model recommendation is not enough.
+   - If planning sees a repeated fallback signature, append or propose a `fallback-log` entry or `promote-candidate: <Failure Signature>` for `/sp.analyze` or `/sp.gate` to promote. Do not directly create, merge, close, or promote `memory/open-items.md` blocker state from `/sp.plan`.
 4. Refresh workset and routing memory.
    - Create or update `specs/<feature>/plan.md`
    - Create or update `specs/<feature>/memory/worksets/index.md`

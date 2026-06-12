@@ -26,6 +26,12 @@ $ARGUMENTS
    - Check high-risk boundary `CODE` trace and acceptance-critical `TEST` trace, or a tracked open item explaining the gap.
    - Treat implementation evidence as audit input; rerunnable tests/build/lint/typecheck/manual checks should be current or have an explicit alternative evidence note.
    - Ordinary trace warnings may proceed only when recorded in task evidence, analysis, or open-items; unresolved cross-stage warnings or warnings affecting acceptance, tests, release, rollback, or human decisions become blockers.
+   - Treat `memory/open-items.md` as current-state truth for blockers, risks, decisions, and close conditions. Treat trace as relation/history lookup.
+   - For unresolved, high-risk, or repeated blockers, include `Blocker ID`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence`, smallest solvable unit, verification path, `Writeback Target`, and next route. Use `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>` when possible.
+   - Keep `Root Layer` and next route consistent. Include `data` as a valid root layer for schema, migration, fixture data shape, compatibility, data contract, or initialization issues.
+   - Before a second same-signature attempt, require concrete `Disconfirming Evidence`. If missing, return `BLOCKED` instead of repeating the route.
+   - Promote repeated, stage-blocking, decision-bound, data/permission/security/release/rollback, worktree-cleanup fallback-log entries, or `promote-candidate` notes into `memory/open-items.md`; if already promoted, cite the existing open item ID instead of duplicating it, otherwise mark the fallback entry as `promoted`.
+   - If `NEEDS_DECISION` is diagnosed, downstream work for the same blocker remains frozen until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`.
 
 4. If the verdict is not `PASS`, include the exact next `/sp.*` route and whether the fix belongs in `/sp.plan`, `/sp.tasks`, `/sp.implement`, `/sp.analyze`, `/sp.gate`, or a human decision.
 

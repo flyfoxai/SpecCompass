@@ -22,6 +22,12 @@ $ARGUMENTS
    - Preserve or propose `CODE` / `TEST` trace for high-risk boundary objects and acceptance-critical tests
    - Before delete, move, or rename, perform a lightweight reference scan using trace, search, imports/calls/routes/tests as applicable
    - If safe removal needs compatibility, tombstone, or soft-delete behavior, record an open item with owner or next route, cleanup trigger, verification requirement, and affected trace
+   - For blockers or repeated failures, reduce the issue to `Blocker ID`, `Failure Signature`, symptom/evidence, `Root Layer`, `Disconfirming Evidence` when retrying, smallest solvable unit, repair strategy, verification path, `Writeback Target`, and next route before editing
+   - Use failure signatures like `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`; include `data` as a valid root layer for schema, migration, fixture data shape, compatibility, data contract, or initialization issues
+   - Keep `Root Layer` and next route consistent. Route upstream data/schema/planning problems to `/sp.plan` or `/sp.flow`, data compatibility or initialization choices to `/sp.clarify`, human choices to `/sp.clarify`, and only local fixture/script syntax or code/test errors to `/sp.implement`
+   - Before a second same-signature attempt, require concrete `Disconfirming Evidence`. If missing, return `BLOCKED` instead of retrying from memory
+   - For repeated, stage-blocking, decision-bound, data/permission/security/release/rollback, or worktree-cleanup fallback-log entries, append fallback-log or `promote-candidate: <Failure Signature>` for `/sp.analyze` or `/sp.gate`; do not directly create, merge, close, or promote `memory/open-items.md` blocker state from `/sp.implement`
+   - If `NEEDS_DECISION` is reached, freeze downstream work for the same blocker until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`
    - Complete each task before moving to the next
    - Mark completed tasks by changing `- [ ]` to `- [x]` in `<feature_directory>/tasks.md`
    - Halt on failure and report the issue
