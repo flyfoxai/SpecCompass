@@ -88,6 +88,19 @@ Default sequence:
 
 This avoids whole-project re-scans when the task only touches one feature or one workset.
 
+For code-continuation work, the same rule applies before source reading:
+
+1. feature memory and workset memory
+2. `trace-index.md` and `open-items.md`
+3. the task packet `Read Set`
+4. directly named source and test files
+5. direct dependencies, failing checks, or reverse-trace evidence only when needed
+
+This is a routing rule, not a permission to skip verification. If the task
+changes public behavior, contracts, data, permissions, events, routes,
+acceptance, or critical tests, the direct affected checks still need current
+evidence.
+
 ## 5. Stable Context vs Open Items
 
 The memory layer separates stable facts from unstable questions on purpose.
@@ -181,7 +194,38 @@ Each workset should make four things obvious:
 - what the minimum read set is
 - what counts as done for that slice
 
-## 7. Freshness and Stale Detection
+## 7. Code Delta And Review Memory
+
+The memory layer should help reviewers avoid full re-reading after code work.
+
+For implementation tasks that modify existing code, task packets should expose
+the minimum continuation fields:
+
+- `Read Set`
+- `Dependencies Checked`
+- `Reverse Trace Checked`
+- `Expected Delta`
+- `Delta Summary`
+- `Proposed Updates`
+
+`Delta Summary` is not stable memory by itself. It is an execution closeout note
+that helps `/sp.analyze`, `/sp.gate`, a human reviewer, or a coordinator start
+from the actual change. Stable facts from the delta should be written back only
+when source docs, trace, open-items, task state, or feature memory truly changed.
+
+Recommended review order after implementation is:
+
+1. `Delta Summary`
+2. current diff
+3. selected task packet
+4. direct trace/open-items
+5. necessary source code and tests
+
+This keeps review bounded while still checking the actual evidence. If the delta
+summary does not match the diff or required checks, trust the current files and
+verification output, not the summary.
+
+## 8. Freshness and Stale Detection
 
 The memory system only saves tokens if it stays fresh enough to trust for routing.
 
@@ -202,7 +246,7 @@ If the command cannot repair the stale route locally, it should fall back upward
 
 Ask the user only when the missing decision is genuinely macro-level: business scope, priority, success criteria, destructive change, compliance, data risk, or long-term tradeoff. Ordinary uncertainty should first be resolved by reading the bounded source set.
 
-## 8. Clarification Propagation
+## 9. Clarification Propagation
 
 `sp.clarify` is not just a Q and A record.
 
@@ -217,7 +261,7 @@ Once a clarification becomes stable, the correct order is:
 
 If propagation is incomplete, the affected memory must be treated as stale.
 
-## 9. No-Reinfer Rule
+## 10. No-Reinfer Rule
 
 The memory architecture exists to stop repeated inference on already-settled topics.
 
@@ -232,7 +276,7 @@ Re-inference is justified only when:
 
 If a command does re-derive something, it should write the refreshed conclusion back into memory before finishing.
 
-## 10. Template Seed vs Runtime Expansion
+## 11. Template Seed vs Runtime Expansion
 
 The template project seeds the memory system, but it does not fully populate every feature-level file up front.
 
@@ -246,7 +290,7 @@ This is expected. A partially seeded tree is not a bug by itself.
 
 The real quality bar is whether the commands keep the memory layer synchronized as work progresses.
 
-## 11. Minimum Read-Set Goal
+## 12. Minimum Read-Set Goal
 
 The whole architecture is aimed at shrinking default context.
 
@@ -258,7 +302,7 @@ A healthy run should usually be able to answer:
 
 If the system keeps forcing full rescans, then the memory layer exists on paper but is not doing its job.
 
-## 12. Complex Part Promotion
+## 13. Complex Part Promotion
 
 A large feature should not be forced through one oversized context window.
 
@@ -268,7 +312,7 @@ Soft warning signs include many roles, many user paths, too many concern types i
 
 Promotion is not automatic. If the scope is clear and the difficulty is mainly implementation detail, prefer smaller tasks and stronger tests before creating a separate sub-feature.
 
-## 13. Why This Reference Exists
+## 14. Why This Reference Exists
 
 This file gives the project template a stable explanation of the memory model that the overview docs can point to.
 

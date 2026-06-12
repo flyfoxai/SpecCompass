@@ -32,16 +32,13 @@ Workflows automate multi-step Spec-Driven Development processes into repeatable 
 
 [Workflows reference →](workflows.md)
 
-## SP Methodology References
+## SP Methodology Reference
 
-SP adds lightweight memory, traceability, open-items, and context-budget practices on top of the upstream Spec Kit mechanism. These references document the project-specific methodology and research notes used to keep those additions stable and low overhead.
+SP adds lightweight memory, traceability, open-items, context-budget, PRD, blocker closeout, code-continuation, and multi-agent practices on top of the upstream Spec Kit mechanism. User-facing methodology is consolidated into one reference so release docs stay focused and avoid stale split documents.
 
 - [SP project methodology](sp-project-methodology.md)
-- [SP PRD methodology](SP-PRD命令方法论设计.md)
-- [SP complex blocker closeout methodology](SP复杂阻塞根因拆解与闭环处理方法论.md)
-- [CodeGraph memory research](codegraph-memory-research.md)
-- [SP next-step improvement plan](SP项目下一步完善工作计划.md)
 
-Archived process records are kept separately so user-facing reference pages stay focused:
+Archived process records are kept separately and are not part of the user-facing release methodology:
 
 - [Gemini modular audit](archive/gemini-modular-audit.md)
+- [SP next-step improvement plan](archive/SP项目下一步完善工作计划.md)

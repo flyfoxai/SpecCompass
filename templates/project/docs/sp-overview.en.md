@@ -16,6 +16,8 @@ The current workflow is documentation-first, not documentation-only. Implementat
 - Unified clarify: `sp.clarify` handles high-impact spec, flow, and UI decisions.
 - Query-first memory: check project-level and feature-level memory before expanding source docs.
 - Worksets: split large features into local work areas.
+- Code continuation packets: implementation tasks name the smallest `Read Set`, direct dependency checks, reverse-trace needs, expected delta, `Delta Summary`, and proposed shared updates.
+- Delta-first review: after implementation, review `Delta Summary` and current diff before rereading wider source context.
 - Clarification propagation: once a decision changes, all affected docs and memory must be synced.
 
 ## Basic Flow
@@ -42,6 +44,14 @@ The current workflow is documentation-first, not documentation-only. Implementat
 - Codex uses skills as the stable entry point instead of project-local `/sp.*` slash commands: invoke `$sp-prd`, `$sp-specify`, `$sp-plan`, `$sp-tasks`, `$sp-analyze`, `$sp-implement`, `$sp-gate`, or `$sp-ui`; run `/skills` and choose the matching `sp-*` skill; or ask in natural language when the task matches the skill description.
 - Skills hosts keep upstream-style on-disk skill packages such as `sp-specify/SKILL.md`; in Codex, prefer explicit `$sp-*` or `/skills` invocation for deterministic SP workflow stages rather than expecting `/sp.*` slash commands.
 - The active installer writes host integration files into the target project, not into archived global prompt directories
+
+## Code Stage Discipline
+
+- `sp.plan` owns `Implementation Readiness`, code/test mapping, dependency surface, and reverse-trace expectations.
+- `sp.tasks` turns ready worksets into `Mode: impl` task packets with `Allowed Write Set`, `Required Checks`, `Read Set`, dependency checks, reverse-trace checks, expected delta, and proposed updates.
+- `sp.implement` starts from memory and the task packet, edits only the selected authorized task, and fills `Delta Summary` before claiming completion.
+- `sp.analyze` and `sp.gate` review implementation work delta-first: `Delta Summary`, current diff, task packet, trace/open-items, then necessary source code.
+- Multi-agent workers should keep shared memory read-only unless assigned as coordinator; proposed shared updates are merged serially.
 
 ## Read Next
 

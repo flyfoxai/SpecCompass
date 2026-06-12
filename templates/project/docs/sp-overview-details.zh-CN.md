@@ -36,6 +36,25 @@
 
 `sp.plan` 之后必须按局部业务闭环拆 workset，让模型只处理当前那一小块。
 
+### 受控代码阶段
+
+`sp` 是 documentation-first，不是 documentation-only。只有 `sp.plan` 写清 `Implementation Readiness`，并且 `sp.tasks` 生成已授权的 `Mode: impl` 任务包后，才进入代码实现。
+
+实现阶段不要一上来全仓读源码，应该先从 memory 和任务包续作：
+
+- 先读项目/feature memory、trace/open-items 和任务 `Read Set`
+- 确认 `Allowed Write Set`、`Required Checks`、依赖检查和反向 trace 预期
+- 只编辑当前任务允许范围
+- 收尾时写 `Delta Summary` 和 `Proposed Updates`，让复核从真实增量开始，而不是重新全量审计
+
+`sp.analyze` 和 `sp.gate` 对代码工作按增量优先复核：`Delta Summary`、当前 diff、任务包、trace/open-items，然后才读必要源码。删除、移动、重命名、公共行为、schema、权限、路由、事件或验收改动，必须有反向 trace/搜索证据，或者写入已跟踪 open item。
+
+### 多 Agent 交接
+
+并行开发时，由一个 coordinator 分配 workset，worker 只能在不重叠的 `Allowed Write Set` 内工作。memory、trace、tasks、analysis、gate、schema、route、中心注册表等共享 truth 文件，默认由 coordinator 串行合并，除非任务明确授权。
+
+worker 应提交 `Delta Summary`、已运行检查和 `Proposed Updates`；coordinator 先处理冲突，再让 `/sp.analyze` 或 `/sp.gate` 推进阶段。
+
 ### 澄清传播闭环
 
 澄清答案一旦稳定，就必须先更新 `Source Of Truth`，再同步 `Required Sync Files`，未同步完的 memory 要视为 stale。
@@ -64,6 +83,6 @@
 
 ## Codex 补充说明
 
-- 用户可见命令统一使用 `/sp.*`，例如 `/sp.specify`
+- 用户可见命令身份统一为 `sp.*`。
 - Codex 保持原版风格，把核心 skill 包安装到 `.agents/skills/sp-*/SKILL.md`；输入 `$sp-prd`、`$sp-specify` 这类 `$sp-*`，或运行 `/skills` 选择对应 `sp-*` skill。已废弃的 prompt/plugin 命令面不属于当前 Codex 路径。
 - Claude 通过 `.claude/commands/sp.*.md` 直接暴露项目斜杠命令

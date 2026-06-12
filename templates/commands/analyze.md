@@ -102,6 +102,7 @@ Execution flow:
      - failed checks
    - The panel is a routing and stability aid, not a heavy scoring system. State whether critical signals are reducing, unchanged, or increasing when prior evidence exists.
    - Use incremental review order before expanding to a full audit:
+     - if implementation evidence or worker handoff exists, review `Delta Summary` first, then current diff, then task packet, then trace/open-items, then necessary source code
      - recently changed tasks, anchors, source docs, trace rows, and open-items
      - open `Todo`, `Risk`, `Blocker`, `Decision`, `@t0`, `@r0`, stale, or unchecked items
      - direct dependencies, direct acceptance paths, direct tests, and directly related source docs for those changed or open items
@@ -122,6 +123,7 @@ Execution flow:
      - every task or task group declares `Mode: doc` or `Mode: impl`, or missing mode is treated as `Mode: doc`
      - no `Mode: doc` task asks `/sp.implement` to write production code
      - every `Mode: impl` task has `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and visible effective defaults
+     - high-risk or code-continuation `Mode: impl` tasks have `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or a clear no-applicable reason
      - incomplete implementation packets route to `NEEDS_TASKS`; missing or wrong code boundary routes to `NEEDS_PLAN`
      - if a task is in `NEEDS_CONTEXT` state, treat it as a task-packet gap: route to `/sp.tasks` when the missing context can be recovered from existing documents, route to `/sp.plan` when the missing context is a workset or code-boundary problem, or return `NEEDS_DECISION` when human input is required
    - Verify coverage of IDs, owners, states, screens, APIs, tables, permissions, and acceptance paths.
@@ -190,6 +192,8 @@ Execution flow:
      - High-risk `DEFERRED_WITH_OWNER` items cannot support `PASS` unless they have explicit acceptance or defer evidence, owner, impact scope, rollback/degrade path, close condition, and revisit anchor.
      - `/sp.analyze` may diagnose `NEEDS_DECISION`, but it cannot advance, close, or downgrade that decision without a human-selected decision record already written back to the source doc, task, or `memory/open-items.md`.
    - Treat implementation evidence as audit input, not final release evidence. Worker or `/sp.implement` self-reports must be checked against current files, current task state, and rerunnable checks when feasible before they support diagnostic PASS.
+   - Treat `Delta Summary` as the first implementation review surface, not as proof by itself. Confirm it against diff, selected task packet, direct trace/open-items, and necessary source/test evidence before it supports diagnostic PASS.
+   - Do not mark PASS when delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes lack `Reverse Trace Checked`, reverse-trace/search evidence, or a tracked open item.
    - Apply oscillation protection: if the same failure signature has already appeared twice at the same layer, or the same workset is bouncing between two layers without new evidence, return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
    - When repeated failures or upward fallback are detected, read `specs/<feature>/memory/fallback-log.md` if it exists. If the current finding matches a recent failure signature and no new evidence changed the route, report `BLOCKED` or `NEEDS_DECISION` instead of re-auditing the same loop.
    - If analysis discovers a new repeated-failure route, append or propose a concise fallback-log entry with workset or anchor, command, failure signature, failed evidence, attempted routes, next recommended route, and this run's timestamp or run label.
@@ -233,6 +237,7 @@ Execution flow:
 - Do not mark PASS when direct data-linkage relations among flow, UI, API, permissions, events, acceptance, tests, trace, and open items are missing and affect acceptance, tests, release, rollback, permissions, data safety, or human decisions.
 - Do not mark PASS when high-risk boundary `CODE` trace or acceptance-critical `TEST` trace is missing without a tracked open item, or when a normal trace warning has crossed the stage unresolved.
 - Do not mark PASS solely from worker or implementation prose. Use current files and rerunnable checks when feasible.
+- Do not mark PASS from a `Delta Summary` alone. It must match the current diff, task packet, direct trace/open-items, and required checks.
 - Do not let this run's post-verdict writeback prove this run's PASS. Routing, status, open-items, or memory updates made by `/sp.analyze` must be supported by current inputs, current checks, upstream source documents, current code/test evidence, or explicit human decisions.
 - Do not mark PASS when multi-agent work has unresolved worker handoffs, stale workers without a discard/defer decision, unmerged critical branches or reports, write-set overlap without closeout evidence, forbidden write violations, conflicting proposed memory updates, or missing merged-state verification.
 - Do not mark PASS when open `Risk` items affect acceptance, release, data, security, rollback, or implementation confidence unless the analysis records owner, explicit human acceptance/defer decision, revisit anchor or exact next `sp.*` step, trace registration, impact scope, rollback/degrade path, and close condition.

@@ -22,9 +22,12 @@ $ARGUMENTS
    - If `tasks.md` contradicts `plan.md` `Implementation Readiness`, set the diagnostic verdict to `FAIL` and route to `/sp.plan`; use `BLOCKED` for missing or unevaluable readiness, and `NEEDS_DECISION` when human choice is required.
    - Check every task or task group has `Mode: doc` or `Mode: impl`; missing mode defaults to `Mode: doc`.
    - Check every `Mode: impl` task has `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and visible effective defaults.
+   - Check high-risk or code-continuation `Mode: impl` tasks have `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or a clear no-applicable reason.
    - If a task is in `NEEDS_CONTEXT` state, treat it as a task-packet gap: route to `/sp.tasks` when existing documents can recover the missing context, to `/sp.plan` for workset or code-boundary gaps, or to `NEEDS_DECISION` when human input is required.
    - Check high-risk boundary `CODE` trace and acceptance-critical `TEST` trace, or a tracked open item explaining the gap.
    - Treat implementation evidence as audit input; rerunnable tests/build/lint/typecheck/manual checks should be current or have an explicit alternative evidence note.
+   - Review implementation evidence in this order when available: `Delta Summary`, current diff, task packet, trace/open-items, then necessary source code. Do not treat `Delta Summary` as proof unless it matches current evidence.
+   - Do not mark PASS when delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes lack `Reverse Trace Checked`, reverse-trace/search evidence, or a tracked open item.
    - Ordinary trace warnings may proceed only when recorded in task evidence, analysis, or open-items; unresolved cross-stage warnings or warnings affecting acceptance, tests, release, rollback, or human decisions become blockers.
    - Treat `memory/open-items.md` as current-state truth for blockers, risks, decisions, and close conditions. Treat trace as relation/history lookup.
    - For unresolved, high-risk, or repeated blockers, include `Blocker ID`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence`, smallest solvable unit, verification path, `Writeback Target`, and next route. Use `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>` when possible.

@@ -36,6 +36,25 @@ Memory does not replace source-of-truth docs. It handles routing, compression, a
 
 After `sp.plan`, the feature should be split into bounded local work areas so the model can stay focused.
 
+### Controlled Code Stage
+
+`sp` is documentation-first, not documentation-only. Code work begins only after `sp.plan` records `Implementation Readiness` and `sp.tasks` emits an authorized `Mode: impl` task packet.
+
+Implementation should continue from memory and the task packet before reading source code broadly:
+
+- start with project/feature memory, trace/open-items, and the task `Read Set`
+- confirm `Allowed Write Set`, `Required Checks`, dependency checks, and reverse-trace expectations
+- edit only the selected task boundary
+- close with `Delta Summary` and `Proposed Updates` so review starts from the actual change, not a full re-audit
+
+`sp.analyze` and `sp.gate` review code work delta-first: `Delta Summary`, current diff, task packet, trace/open-items, then necessary source code. Delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes require reverse-trace/search evidence or a tracked open item.
+
+### Multi-Agent Handoff
+
+For parallel work, one coordinator assigns worksets and workers stay inside non-overlapping `Allowed Write Set` boundaries. Shared truth files such as memory, trace, tasks, analysis, gate, schemas, routes, and central registries should be merged serially by the coordinator unless explicitly assigned.
+
+Workers should submit `Delta Summary`, checks run, and `Proposed Updates`; the coordinator reconciles conflicts before `/sp.analyze` or `/sp.gate` moves the project forward.
+
 ### Clarification Propagation Closure
 
 Once a clarification answer becomes stable, update the `Source Of Truth` first, then sync `Required Sync Files`, and treat unsynced memory as stale.
@@ -64,6 +83,6 @@ Less useful for very small tools with only a few pages and simple rules.
 
 ## Codex Notes
 
-- User-facing commands use the unified `/sp.*` form, such as `/sp.specify`
+- User-facing command names use the unified `sp.*` identity across hosts.
 - Codex keeps upstream-style skill packages under `.agents/skills/sp-*/SKILL.md`; invoke `$sp-*` such as `$sp-prd` or `$sp-specify`, run `/skills` and choose an `sp-*` skill, or ask in natural language when the task matches the skill description. Deprecated prompt/plugin command surfaces are not part of the current Codex path, and explicit invocation is recommended for deterministic SP workflow stages.
 - Claude exposes direct project slash commands from `.claude/commands/sp.*.md`

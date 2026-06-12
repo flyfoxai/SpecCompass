@@ -31,12 +31,6 @@
       href: reference/speckit-command-usage.md
     - name: SP Project Methodology
       href: reference/sp-project-methodology.md
-    - name: SP PRD Methodology
-      href: reference/SP-PRD命令方法论设计.md
-    - name: SP Complex Blocker Closeout
-      href: reference/SP复杂阻塞根因拆解与闭环处理方法论.md
-    - name: CodeGraph Memory Research
-      href: reference/codegraph-memory-research.md
 
 # Development workflows
 - name: Development

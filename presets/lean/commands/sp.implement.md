@@ -18,9 +18,12 @@ $ARGUMENTS
    - Execute only tasks marked `Mode: impl`; missing mode or `Mode: doc` is not a production-code task
    - If the user did not name a task, pick the next unblocked `Mode: impl` task under dependency order; do not execute every remaining task unless explicitly requested and each included task is ready
    - Before editing, confirm `plan.md` `Implementation Readiness`, `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and task-packet effective defaults
+   - For high-risk or code-continuation tasks, confirm `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or state why a field is not applicable
+   - Start from memory-first routing: feature memory, workset memory, trace/open-items, then direct source/test files named by the task or evidence
    - If `Allowed Write Set` is insufficient, do not auto-expand it; return `NEEDS_PLAN` for code-boundary problems, `NEEDS_TASKS` for incomplete task packets, `NEEDS_CONTEXT` for missing required context that cannot be recovered from routed files, or `NEEDS_DECISION` for human product/risk/compliance choices
    - Preserve or propose `CODE` / `TEST` trace for high-risk boundary objects and acceptance-critical tests
    - Before delete, move, or rename, perform a lightweight reference scan using trace, search, imports/calls/routes/tests as applicable
+   - Before delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes, record reverse-trace/search evidence or stop with the correct fallback route
    - If safe removal needs compatibility, tombstone, or soft-delete behavior, record an open item with owner or next route, cleanup trigger, verification requirement, and affected trace
    - For blockers or repeated failures, reduce the issue to `Blocker ID`, `Failure Signature`, symptom/evidence, `Root Layer`, `Disconfirming Evidence` when retrying, smallest solvable unit, repair strategy, verification path, `Writeback Target`, and next route before editing
    - Use failure signatures like `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`; include `data` as a valid root layer for schema, migration, fixture data shape, compatibility, data contract, or initialization issues
@@ -30,6 +33,7 @@ $ARGUMENTS
    - If `NEEDS_DECISION` is reached, freeze downstream work for the same blocker until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`
    - Complete each task before moving to the next
    - Mark completed tasks by changing `- [ ]` to `- [x]` in `<feature_directory>/tasks.md`
+   - Fill the task's `Delta Summary` before claiming completion: expected delta, files changed, anchors affected, dependency checks, reverse-trace result, checks run, proposed updates, and remaining gaps
    - Halt on failure and report the issue
 
 4. **Validate**: Verify selected tasks completed in this run and the implementation matches the relevant spec slice.

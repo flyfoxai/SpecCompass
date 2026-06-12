@@ -22,6 +22,12 @@ Use these defaults unless a generated task explicitly overrides them.
 | Required Evidence | current command/check/manual-verification result, affected anchors, changed files, and remaining open items |
 | Gate / Evidence Expectation | record whether later `/sp.analyze`, `/sp.gate`, review, or human decision is required before the workset can advance |
 | Rollback / Degrade Handling | use the relevant risk/open item rollback or degradation note for high-risk tasks; state `not applicable` for low-risk local tasks |
+| Read Set | start from feature memory, workset memory, trace/open-items, and directly named source docs/code/tests; expand only from direct evidence |
+| Dependencies Checked | direct imports, routes, contracts, schemas, permissions, events, tests, or workset neighbors checked before closeout |
+| Reverse Trace Checked | required search/reference evidence before delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes |
+| Expected Delta | concise intended change in behavior, contract, data, test, or internal structure |
+| Delta Summary | closeout note with expected delta, files changed, anchors affected, checks run, dependency/reverse-trace evidence, proposed updates, and remaining gaps |
+| Proposed Updates | shared-memory, trace, source-doc, task-state, or open-item changes to be merged by the coordinator when direct writeback is not allowed |
 | Code Handoff Packet | when document-stage work discovers required `src/`, `scripts/`, config, generated-code, schema, test-asset, or fixture changes, record target, reason, related anchor, `Allowed Write Set`, `Required Checks`, expected verification, writeback target, and next route instead of committing those artifacts as document work |
 | Data-Linkage Check | when a task changes data, UI, API, permissions, events, acceptance, or tests, check direct-neighbor flow, data object, UI surface, API contract, permission rule, side effect, tests, trace row, and open item before closeout |
 | Blocker Task Packet | for blocker-derived tasks, include `Blocker ID`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, smallest solvable unit, verification path, `Writeback Target`, and next route |

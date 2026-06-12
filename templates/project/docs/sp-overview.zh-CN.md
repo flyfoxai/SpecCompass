@@ -16,6 +16,8 @@
 - 统一澄清：`sp.clarify` 统一处理 spec、flow、ui 的高影响问题。
 - Query-First Memory：先查项目级和 feature 级 memory，再决定读哪些正文。
 - Workset：把大 feature 拆成局部工作面，减少上下文压力。
+- 代码续作任务包：实现任务要写清最小 `Read Set`、直接依赖检查、反向 trace 要求、预期增量、`Delta Summary` 和共享更新建议。
+- 增量优先复核：实现后先看 `Delta Summary` 和当前 diff，再决定是否扩大读取源码上下文。
 - 澄清传播闭环：结论变更后必须同步相关文档和 memory。
 
 ## 基本流程
@@ -42,6 +44,14 @@
 - Codex 的稳定入口是 skills：输入 `$` 或运行 `/skills`，选择 `sp-prd`、`sp-specify`、`sp-plan`、`sp-tasks`、`sp-analyze`、`sp-implement`、`sp-gate`、`sp-ui`。
 - skills 宿主的磁盘包保持原版风格，例如 `sp-specify/SKILL.md`；Codex 中应通过 skills UI 选择它们，不要期待 `/sp.*` 斜杠命令必然显示。
 - 当前安装器把宿主集成文件写入目标项目，而不是旧的全局 prompt 目录
+
+## 代码阶段纪律
+
+- `sp.plan` 负责 `Implementation Readiness`、代码/测试映射、依赖面和反向 trace 预期。
+- `sp.tasks` 把 ready 的 workset 转成 `Mode: impl` 任务包，写清 `Allowed Write Set`、`Required Checks`、`Read Set`、依赖检查、反向 trace 检查、预期增量和共享更新建议。
+- `sp.implement` 从 memory 和任务包开始，只编辑选中的已授权任务，并在声称完成前填写 `Delta Summary`。
+- `sp.analyze` 和 `sp.gate` 按增量优先复核：`Delta Summary`、当前 diff、任务包、trace/open-items，然后才读必要源码。
+- 多 agent worker 默认不直接改共享 memory，除非被指定为 coordinator；共享更新通过 `Proposed Updates` 串行合并。
 
 ## 下一步看哪里
 

@@ -68,6 +68,38 @@ These files are **never touched** by the upgrade—the template packages don't e
 
 The `specs/` directory is completely excluded from template packages and will never be modified during upgrades.
 
+### Migrating existing projects to code-continuation packets
+
+Projects created before the code-continuation rules do **not** need to be rebuilt. Keep existing `specs/`, source code, tests, and git history as they are. After upgrading the CLI and refreshing project files, apply the new fields only to future code-stage work where they matter.
+
+Use the normal project refresh command:
+
+```bash
+specify init --here --force --integration <your-agent>
+```
+
+Then update active implementation tasks when they are high-risk or continue existing code. A `Mode: impl` task packet should include:
+
+- `Read Set`: the smallest memory, source-doc, code, and test files to read before editing
+- `Dependencies Checked`: direct dependencies, routes, contracts, schemas, permissions, tests, or workset neighbors to check
+- `Reverse Trace Checked`: reference/search evidence before delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes
+- `Expected Delta`: the intended behavior, contract, data, test, or internal change
+- `Delta Summary`: the closeout note with files changed, anchors affected, checks run, remaining gaps, and evidence
+- `Proposed Updates`: shared-memory, trace, task-state, source-doc, or open-item updates proposed for coordinator closeout
+
+For low-risk local tasks, do not add boilerplate. Use an explicit reason instead, for example:
+
+```text
+N/A - low-risk local task; no delete/move/rename, public behavior, schema, permission, route, event, acceptance, or shared-registry change.
+```
+
+If fields are missing or empty, do not treat the task as ready by default:
+
+- Recoverable task-packet gap: route to `/sp.tasks`.
+- Missing code boundary, write set, dependency surface, or implementation readiness: route to `/sp.plan`.
+- Missing human product, risk, compliance, rollback, split, or scope choice: route to `/sp.clarify` or return `NEEDS_DECISION`.
+- Missing implementation context that cannot be recovered from routed files: return `NEEDS_CONTEXT` from the task or implementation layer.
+
 ### Update command
 
 Run this inside your project directory:

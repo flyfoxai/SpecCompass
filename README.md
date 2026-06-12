@@ -38,17 +38,20 @@ In practice, `Mode: doc` tasks are used for specification, flow, UI, planning, m
 
 SP treats AI development as an engineering control loop, not a one-shot prompt. The goal is to give the agent enough context to work accurately, but not so much that the context window becomes noisy or expensive.
 
-The main methodology is documented in [SP Project Methodology](./docs/reference/sp-project-methodology.md). Optional 0-to-1 product discovery is documented separately in [SP PRD Methodology](./docs/reference/SP-PRD命令方法论设计.md). In short:
+The main methodology is documented in [SP Project Methodology](./docs/reference/sp-project-methodology.md). Optional 0-to-1 product discovery, PRD handling, blocker closeout, code continuation, and multi-agent rules are consolidated there. In short:
 
 - Start from the trunk: clarify goals, scope, success criteria, constraints, and the active feature before expanding into implementation details.
 - Use optional `/sp.prd` only when product intent is still immature. It helps grow a PRD draft from strategic goals, positioning, users, scenarios, capability map, flow seeds, acceptance seeds, risks, and open questions, but `prd.md` is not a stable fact source.
 - Keep context small but sufficient: route through project memory, feature memory, worksets, trace files, and directly related source docs before reading the whole repository.
 - Use stable anchors and searchable IDs for features, worksets, UI, APIs, risks, tests, and acceptance paths, so later agents can find related content without recomputing the whole project.
+- Continue existing code from memory first: read feature/workset memory, trace/open-items, and the task `Read Set` before expanding to source files.
 - Track unresolved work explicitly in `memory/open-items.md`, including risks, blockers, decisions, owners, close conditions, and revisit points.
 - Use blocker closeout when clearing blockers: `open-items.md` remains the source of truth, while `/sp.analyze` and `/sp.gate` require item-by-item evidence instead of accepting progress summaries.
 - Use lightweight impact-radius checks before changing APIs, permissions, data, event flows, UI contracts, or core tests.
+- Use reverse-trace checks before delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes, so normal code is not damaged while fixing a local problem.
 - Treat `plan.md` `Implementation Readiness` as the single source of truth for code-stage entry. Other commands may consume, diagnose, or gate it, but should not invent a second readiness fact.
 - Separate documentation tasks from implementation tasks with `Mode: doc` and `Mode: impl`; `/sp.implement` may write code only for authorized `Mode: impl` tasks.
+- Review implementation deltas first: `Delta Summary`, current diff, task packet, trace/open-items, and only then necessary source code.
 - Let `/sp.analyze` find drift and `/sp.gate` decide phase readiness; do not let the model mark risky or unclear states as PASS without evidence.
 - Route failures upward instead of guessing: clarify requirements, repair specs, adjust plans, split oversized worksets, or ask the user for a decision with clear options.
 - Borrow CodeGraph-style ideas such as stable nodes, explicit relationships, and impact queries as lightweight methodology, without making a heavy code graph runtime a default dependency.
@@ -63,11 +66,11 @@ SpecCompass keeps the workflow readable for humans and predictable for agents:
 - `/sp.plan` defines the technical route, worksets, impact radius, agent boundaries, source layout, runtime commands, code/test mapping, and `Implementation Readiness` before code changes begin.
 - `/sp.flow` is the backbone. Business flows connect process nodes to UI screens, events, API calls, data objects, tests, and code anchors.
 - `/sp.ui` runs after flow: it collects the elements needed by each screen and turns process-bound elements into a coherent interface.
-- `/sp.tasks` keeps implementation small. It consumes `Implementation Readiness` and creates `Mode: doc` or `Mode: impl` task packets with clear scope, expected evidence, `Allowed Write Set`, and required checks.
-- `/sp.implement` writes code only for selected `Mode: impl` tasks. It checks `Allowed Write Set`, required checks, trace anchors, and task context before editing, then records verification evidence.
+- `/sp.tasks` keeps implementation small. It consumes `Implementation Readiness` and creates `Mode: doc` or `Mode: impl` task packets with clear scope, expected evidence, `Allowed Write Set`, `Required Checks`, `Read Set`, dependency checks, reverse-trace requirements, expected delta, and proposed shared updates.
+- `/sp.implement` writes code only for selected `Mode: impl` tasks. It checks `Allowed Write Set`, required checks, trace anchors, task context, dependency surface, and reverse-trace evidence before risky edits, then records verification evidence and a `Delta Summary`.
 - `/sp.analyze` and `/sp.gate` close the loop: they detect drift, broken trace links, stale context, unresolved risks, readiness contradictions, weak task packets, and phase-readiness failures.
 - When blockers are being cleared, `/sp.analyze` produces a blocker closeout diagnosis and `/sp.gate` decides whether the remaining state is `PASS`, `CONDITIONAL`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
-- For multi-agent work, one coordinator assigns worksets, workers stay inside declared write boundaries, and analyze/gate reconcile outputs before the project moves on.
+- For multi-agent work, one coordinator assigns worksets, workers stay inside declared write boundaries, workers submit `Delta Summary` and `Proposed Updates`, and analyze/gate reconcile outputs before the project moves on.
 
 The intended result is not heavier ceremony. The intended result is fewer dead ends: when the agent cannot proceed safely, it moves upward to the right phase, explains the situation, and asks for a decision instead of inventing one.
 
@@ -78,8 +81,9 @@ The intended result is not heavier ceremony. The intended result is fewer dead e
 - It prevents the agent from treating a broad feature as permission to edit the whole repository. Each implementation run should start from a selected `Mode: impl` task, an `Allowed Write Set`, and required checks.
 - It connects code changes back to requirement, flow, UI, API, data, test, and workset anchors, so later requirement changes can find affected files and later code changes can find related product context.
 - It reduces accidental deletion, rename, or cross-module edits by requiring impact-radius and reverse-trace checks before high-risk changes.
+- It supports safe continuation of existing work: the task packet names the smallest `Read Set`, direct dependencies to check, expected delta, and reverse-trace evidence, so a later model can resume without rereading the whole repository.
 - It keeps implementation small enough for the model to stay accurate: one task or task group at a time, with explicit dependencies and verification evidence.
-- It records what was verified, what failed, and which route should be used next. If implementation cannot proceed safely, it falls back to `/sp.tasks`, `/sp.plan`, `/sp.specify`, or `/sp.clarify` instead of guessing through the problem.
+- It records what changed through a `Delta Summary`: expected delta, files changed, anchors affected, dependency checks, reverse-trace result, checks run, proposed updates, and remaining gaps. If implementation cannot proceed safely, it falls back to `/sp.tasks`, `/sp.plan`, `/sp.specify`, or `/sp.clarify` instead of guessing through the problem.
 
 ## What SP Adds
 
@@ -93,6 +97,7 @@ The intended result is not heavier ceremony. The intended result is fewer dead e
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
 - Controlled code-stage handoff: `plan.md` owns `Implementation Readiness`; `tasks.md` emits `Mode: doc` or `Mode: impl` task packets; `/sp.implement` executes only authorized implementation tasks.
 - Bounded implementation safety: `Allowed Write Set`, `Required Checks`, effective defaults, delete/move/rename scans, and `CODE` / `TEST` trace rules for high-risk boundaries and acceptance-critical tests.
+- Code-continuation task packets: `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates` make resuming, reviewing, and coordinating implementation cheaper and safer.
 - Project memory for active context, feature map, hotspots, open items, and trace index, with rules for when to write back and when to avoid repeated checks.
 - Context-budget rules that favor current worksets, direct dependencies, related tests, and trace links before broad repository reads.
 - Impact-radius discipline for high-risk changes, including APIs, permissions, data migrations, event flows, UI contracts, and core tests.

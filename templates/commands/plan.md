@@ -118,6 +118,8 @@ Execution flow:
      - `Runtime Commands`: install, test, build, lint, typecheck, and local smoke commands when known
      - `Code Mapping`: workset/flow/UI/API/data/permission/event/acceptance anchors to module, directory, boundary object, or key-file level
      - `Test Mapping`: acceptance-critical tests, contract tests, UI interaction checks, or manual verification paths
+     - `Dependency Surface`: direct imports, routes, contracts, schemas, permissions, events, global registries, and related tests that implementation tasks must check before editing or closeout
+     - `Reverse Trace Expectation`: when delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes are allowed, name the required reverse lookup/search evidence
      - `Workset Code Boundary`: allowed code/test/config areas and forbidden/shared areas for implementation tasks
      - `Global Registry Risk`: package manifests, lockfiles, route registries, schemas, permission matrices, global config, cross-module contracts, migrations, event registries, or other shared files that require serialized ownership
      - `Implementation Readiness`: the single source of truth for whether each workset can produce `Mode: impl` tasks
@@ -148,6 +150,7 @@ Execution flow:
    - Confirm major delivery objects and relationships are visible.
    - Confirm routing memory points to the current primary workset.
    - Confirm `Implementation Readiness` is present in `plan.md` and is not contradicted by open blockers, missing code landing boundaries, missing validation commands, or missing source contracts.
+   - Confirm code-stage planning includes the dependency surface and reverse-trace expectation needed for `/sp.tasks` to generate bounded implementation packets without broad rereading.
 
 ## Output
 

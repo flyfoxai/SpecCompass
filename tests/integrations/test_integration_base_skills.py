@@ -224,6 +224,35 @@ class SkillsIntegrationTests:
         assert ".specify/memory/stable-context.md" not in implement_content
         assert ".specify/memory/worksets/" not in implement_content
 
+    def test_code_continuation_rules_are_rendered_into_skills(self, tmp_path):
+        """Generated implementation skills must preserve code-continuation safeguards."""
+        i = get_integration(self.KEY)
+        m = IntegrationManifest(self.KEY, tmp_path)
+        i.setup(tmp_path, m)
+
+        continuation_fields = (
+            "Read Set",
+            "Dependencies Checked",
+            "Reverse Trace Checked",
+            "Expected Delta",
+            "Delta Summary",
+            "Proposed Updates",
+        )
+
+        for command in ("tasks", "implement", "analyze", "gate"):
+            skill_file = i.skills_dest(tmp_path) / skill_directory_name(command) / "SKILL.md"
+            assert skill_file.exists(), f"{command} skill {skill_file} not created"
+            content = skill_file.read_text(encoding="utf-8")
+            for field in continuation_fields:
+                assert field in content, f"{command} skill missing {field}"
+
+        implement_content = (
+            i.skills_dest(tmp_path) / skill_directory_name("implement") / "SKILL.md"
+        ).read_text(encoding="utf-8")
+        assert "Memory-first continuation" in implement_content
+        assert "Reverse trace check" in implement_content
+        assert "coordinator closeout" in implement_content
+
     def test_companion_commands_use_user_facing_sp_dot_names(self, tmp_path):
         """Configured companion command dirs expose /sp.* files, not legacy names."""
         i = get_integration(self.KEY)

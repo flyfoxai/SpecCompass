@@ -973,6 +973,15 @@ SP 应把测试看成编码阶段的重要记忆入口。
 
 实现任务采用“全局默认 + 只写偏离”时，worker 必须看得到最终生效规则。task packet 应包含压缩后的 effective defaults，至少包括默认 Forbidden Write Set、Fallback Route、Writeback Rule 和 Required Evidence；或者指向一个很小、只读、稳定的 defaults 文件，并要求 worker 开始前读取。defaults 文件只读，不进入 worker 的 Allowed Write Set。不能只把默认规则写在方法论里，然后让 worker 靠记忆执行。
 
+代码续作和高风险实现任务必须把“续作上下文”写成可执行字段，而不是让后续模型重新全量理解项目。推荐固定字段是：`Read Set`、`Dependencies Checked`、`Reverse Trace Checked`、`Expected Delta`、`Delta Summary`、`Proposed Updates`。这些字段的作用是压缩上下文、控制影响面、降低误删误改风险，并让复核从增量证据开始。
+
+- `Read Set` 从 feature memory、workset memory、trace/open-items、source docs、直接代码和直接测试开始，不默认全仓重读。
+- `Dependencies Checked` 只要求先检查直接邻居，例如 imports、calls、routes、contracts、schemas、permissions、tests 和 workset trace 行；只有证据显示影响扩大时才继续展开。
+- `Reverse Trace Checked` 用于删除、移动、重命名、公共行为、schema、权限、路由、事件或验收改动前的反向引用和搜索证据。
+- `Expected Delta` 说明本任务预期改变什么，避免 worker 把任务扩大成顺手重构。
+- `Delta Summary` 是复核入口，不是 PASS 证据本身；`sp.analyze` 和 `sp.gate` 必须把它和当前 diff、任务包、trace/open-items、必要源码和验证结果对照。
+- `Proposed Updates` 是 worker 提交给 coordinator、`sp.analyze` 或 `sp.gate` 的共享状态更新建议，不等于 worker 可以直接改共享 truth 面。
+
 本项目采用以下代码阶段落地决策：
 
 - `CODE` 和 `TEST` 是正式 trace 类型或字段。高风险边界对象和验收关键测试必须登记或提出登记建议；普通内部 helper、私有函数、纯样式组件和局部 glue code 不强制登记。
@@ -1102,7 +1111,9 @@ SP 可以理解为一个闭环控制系统。
 
 复杂阻塞要走轻量根因闭环，而不是增加重流程。遇到阻塞、反复失败、无法收口或方向不确定时，先把问题定位到根因层级，再拆成可验证的小单元，再决定下一步命令。常用根因层级包括：`prd`、`spec`、`clarify`、`flow`、`ui`、`plan`、`tasks`、`implement`、`verify`、`memory`、`external`、`human-decision`。模型不能用下游代码 hack 解决上游业务矛盾，也不能用测试改弱来掩盖需求、计划或验证语义问题。
 
-每个仍未关闭的高影响 blocker 都应有最小 `Blocker Breakdown`：症状、当前证据、根因层级、最小可解决单元、推荐处理策略、验证方式、写回目标和下一步 `/sp.*` 路由。这个 breakdown 可以写在 `analysis.md`、`gate.md`、任务备注或输出报告中；`memory/open-items.md` 仍然是 blocker 的唯一稳定事实源，不新增第二套持久台账。普通低风险 warning 不需要套完整模板。
+每个仍未关闭的高影响 blocker 都应有最小 `Blocker Breakdown`：`Blocker ID`、`Failure Signature`、症状、当前证据、`Root Layer`、`Disconfirming Evidence`、`Smallest Solvable Unit`、推荐处理策略、验证方式、`Writeback Target` 和下一步 `/sp.*` 路由。这个 breakdown 可以写在 `analysis.md`、`gate.md`、任务备注或输出报告中；`memory/open-items.md` 仍然是 blocker 的唯一稳定事实源，不新增第二套持久台账。普通低风险 warning 不需要套完整模板。
+
+`Failure Signature` 应尽量稳定，推荐形态是 `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`。`Root Layer` 必须和下一步路线一致，常见值包括 `prd`、`spec`、`clarify`、`flow`、`ui`、`plan`、`tasks`、`implement`、`verify`、`memory`、`data`、`external` 和 `human-decision`。其中 `data` 用于 schema、migration、fixture 数据形状、兼容性、数据契约或初始化问题。重复处理同一失败签名前，必须补 `Disconfirming Evidence`，说明为什么上一轮判断被证据推翻；如果没有新证据，就不要重试，应转为 `BLOCKED`、`NEEDS_DECISION` 或回到正确 owner 命令。
 
 如果 blocker 太大，先拆分，不直接实现。优先按验收路径、业务流程节点、边界对象、错误类型和人工决策类型拆分；不要用“修完所有测试”“清理所有 dirty worktree”“统一解决所有权限问题”这类大包任务继续推进。拆分后的每个子问题必须能独立验证，或者明确需要人工选择。
 

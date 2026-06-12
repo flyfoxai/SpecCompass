@@ -150,6 +150,7 @@ In practical terms, each command should make the model do four things clearly:
 Every command should also preserve the SP stability rules:
 
 - use the smallest sufficient read set before expanding context
+- prefer memory-first continuation: project memory, feature memory, workset memory, trace/open-items, task `Read Set`, then direct source or test files
 - write real unresolved issues to `memory/open-items.md`
 - keep trace coordinates searchable and stable
 - fall back upward one layer after bounded local evidence shows the current layer cannot solve the issue
@@ -264,6 +265,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - organize delivery design outputs
 - split the feature into worksets
 - define Source Layout, Runtime Commands, Code Mapping, Test Mapping, and Workset Code Boundary when implementation may follow
+- define `Dependency Surface` and `Reverse Trace Expectation` when implementation may touch existing code, public behavior, schemas, permissions, routes, events, acceptance paths, or shared registries
 - maintain `Implementation Readiness` as the single source of truth for whether each workset may produce `Mode: impl` tasks
 - keep code mapping at module, directory, boundary-object, or key-file level unless high-risk public APIs, permissions, migrations, event boundaries, or acceptance-critical tests require stable CODE/TEST anchors
 - make later reading smaller and more local
@@ -275,6 +277,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - default missing mode to `Mode: doc`
 - create `Mode: impl` task packets only when readiness supports implementation
 - include `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and visible effective defaults for implementation tasks
+- include continuation fields for high-risk or code-continuation tasks: `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or a clear `N/A - <reason>` no-applicable reason; empty fields are not evidence
 - split broad blocker cleanup into the smallest executable task, decision task, verification task, or memory/trace closeout task
 - keep task boundaries aligned with the workset split
 
@@ -282,6 +285,9 @@ Not every file is seeded up front by the template root. Some are created or expa
 
 - execute only selected `Mode: impl` tasks with sufficient task-packet fields
 - confirm `plan.md` readiness, `Allowed Write Set`, `Required Checks`, trace anchors, open items, and effective defaults before editing
+- use memory-first routing before reading code broadly: feature memory, workset memory, trace/open-items, task `Read Set`, direct source/test files, then dependency expansion only when evidence requires it
+- check direct dependencies and reverse trace before risky code changes, especially delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes
+- fill a `Delta Summary` for code-continuation or high-risk tasks so reviewers can start from the actual change instead of rereading the whole feature
 - refuse to auto-expand write boundaries; return `NEEDS_PLAN` for wrong code/workset boundaries, `NEEDS_TASKS` for incomplete task packets, and `NEEDS_CONTEXT` for missing required context that cannot be recovered from routed files
 - reduce blocker, repeated-failure, or broad "solve blockers" requests to one smallest solvable unit before editing; route upward or to human decision when that cannot be done safely
 - preserve CODE/TEST trace discipline for high-risk boundaries and acceptance-critical tests
@@ -307,6 +313,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - test whether the whole document and implementation-evidence system is automation-ready
 - verify consistency across the routed source set
 - diagnose `Implementation Readiness`, task mode integrity, implementation task packets, CODE/TEST trace, trace warning escalation, and implementation evidence without replacing `plan.md` as the readiness source
+- review implementation evidence delta-first when available: `Delta Summary`, current diff, task packet, trace/open-items, then necessary source code
 - fail explicitly when memory is stale, coverage is weak, smoke checks are missing, task packets are incomplete, or high-risk trace/evidence gaps are untracked
 - detect Flow-UI relation breaks, orphan UI/API/data/CODE/TEST anchors, missing port-contract fields, and unchecked draft facts being promoted to stable memory
 - decompose unresolved or repeatedly failing blockers by root layer and smallest solvable unit before recommending implementation or gate PASS
@@ -337,6 +344,7 @@ All current `sp` commands should preserve these rules unless a later product dec
 - do not silently ignore stale routing
 - do not treat memory as a replacement for source-of-truth documents or current code/test evidence
 - do not redo full-project reading when a smaller routed read set is enough
+- do not force reviewers to rediscover implementation intent when `Delta Summary`, task packet, and direct trace evidence are available
 - do not auto-expand `Allowed Write Set`; route wrong boundaries to `NEEDS_PLAN`, incomplete packets to `NEEDS_TASKS`, and unrecoverable missing context to `NEEDS_CONTEXT`
 - do not turn ordinary local uncertainty into a user decision request before checking the bounded evidence
 - do not continue broad execution when a blocker cannot be reduced to a smallest solvable unit
@@ -428,7 +436,46 @@ truth source; it is a lightweight anti-oscillation ledger so later commands can
 recognize the same workset, failure signature, attempted routes, evidence, and
 next recommended step without rediscovering the loop.
 
-## 14. PASS / FAIL / BLOCKED Expectations
+## 14. Code Continuation And Delta Review Contract
+
+When implementation continues existing code, SP should reduce token waste by
+making the intended change and its direct impact explicit.
+
+`sp.plan` should name the code-stage `Dependency Surface` and `Reverse Trace
+Expectation` at module, directory, boundary-object, key-file, or shared-registry
+level. It should not try to build a full AST graph or function-level inventory
+unless a high-risk public boundary already needs a stable `CODE` or `TEST`
+anchor.
+
+`sp.tasks` should turn that planning context into a task packet. For high-risk
+or code-continuation `Mode: impl` tasks, the packet should include:
+
+- `Read Set`: the smallest memory, source-doc, code, and test files to read
+  before editing
+- `Dependencies Checked`: direct dependencies, imports, routes, contracts,
+  schemas, permissions, events, tests, or workset neighbors to check
+- `Reverse Trace Checked`: reference/search evidence required before delete,
+  move, rename, public behavior, schema, permission, route, event, or
+  acceptance changes
+- `Expected Delta`: the intended change in one concise statement
+- `Delta Summary`: the closeout note that records files changed, anchors
+  affected, checks run, dependency/reverse-trace evidence, proposed updates, and
+  remaining gaps
+- `Proposed Updates`: shared-memory, trace, source-doc, task-state, or open-item
+  updates that a worker proposes when direct writeback is not allowed
+
+`sp.implement` should consume this packet instead of rediscovering context from
+scratch. It starts from memory and the task `Read Set`, expands through direct
+dependencies or failing evidence, performs required reverse-trace checks before
+risky changes, and fills the `Delta Summary` before claiming completion.
+
+`sp.analyze` and `sp.gate` should review implementation work delta-first when
+evidence exists: `Delta Summary` -> current diff -> task packet ->
+trace/open-items -> necessary source code. The `Delta Summary` is a review
+surface, not proof by itself. It must match current files, current task state,
+direct trace/open-items, and required checks before it can support PASS.
+
+## 15. PASS / FAIL / BLOCKED Expectations
 
 `sp.analyze` and related review-style steps must remain evidence-based.
 
@@ -478,7 +525,7 @@ should explain the missing context in evidence and normally return `BLOCKED` or
 explicitly accepted before the downstream stage is suggested. `PASS with warning`
 is not a valid gate verdict.
 
-## 15. Why This Reference Exists
+## 16. Why This Reference Exists
 
 This file exists so overview documents can point to a stable explanation of the `sp` command contract without forcing readers to open every command template one by one.
 

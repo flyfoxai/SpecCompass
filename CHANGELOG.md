@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.6] - 2026-06-12
+
+### Changed
+
+- Documented the code-continuation migration path for existing projects: old `specs/` and source code stay unchanged, while future high-risk or continuation `Mode: impl` tasks should add `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`.
+- Clarified that empty continuation fields must either be completed or marked `N/A - <reason>`; missing packet context routes to `/sp.tasks`, missing code-boundary or dependency surface routes to `/sp.plan`, human choices route to `/sp.clarify`, and unrecoverable implementation context returns `NEEDS_CONTEXT`.
+- Consolidated user-facing methodology docs into `sp-project-methodology.md` and removed split research/methodology notes from the release docs.
+
 ## [0.7.3] - 2026-04-17
 
 ### Changed
@@ -1304,4 +1312,3 @@
 ### Changed
 
 - Update release.yml
-

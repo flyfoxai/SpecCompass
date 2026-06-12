@@ -938,9 +938,7 @@ def test_flow_ui_rules_avoid_deep_public_coordinates_by_default():
 
 def test_blocker_root_cause_loop_control_and_decision_freeze_are_enforced():
     """Complex blocker handling should be executable, not only described in the methodology doc."""
-    methodology = (PROJECT_ROOT / "docs" / "reference" / "SP复杂阻塞根因拆解与闭环处理方法论.md").read_text(
-        encoding="utf-8"
-    )
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     analyze = _command("analyze")
     gate = _command("gate")
     plan = _command("plan")
@@ -1097,3 +1095,205 @@ def test_blocker_root_cause_loop_control_and_decision_freeze_are_enforced():
         assert "Writeback Target" in content or "writeback" in content, label
         assert "PASS" in content, label
         assert "Do not pass" in content or "do not grant PASS" in content, label
+
+
+def test_code_continuation_task_packets_are_executable_and_reviewable():
+    """Code continuation rules should be present in main, lean, scaffold, and reference docs."""
+    tasks = _command("tasks")
+    implement = _command("implement")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    plan = _command("plan")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    memory_arch = (
+        PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-context-memory-architecture.md"
+    ).read_text(encoding="utf-8")
+    scaffold_tasks = (FEATURE_TEMPLATE_DIR / "tasks.md").read_text(encoding="utf-8")
+    lean_tasks = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.tasks.md").read_text(encoding="utf-8")
+    lean_implement = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.implement.md").read_text(
+        encoding="utf-8"
+    )
+    lean_analyze = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.analyze.md").read_text(encoding="utf-8")
+    lean_gate = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.gate.md").read_text(encoding="utf-8")
+
+    continuation_fields = (
+        "Read Set",
+        "Dependencies Checked",
+        "Reverse Trace Checked",
+        "Expected Delta",
+        "Delta Summary",
+        "Proposed Updates",
+    )
+
+    for content, label in (
+        (tasks, "tasks"),
+        (implement, "implement"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+        (command_spec, "command_spec"),
+        (methodology, "methodology"),
+        (memory_arch, "memory_arch"),
+        (scaffold_tasks, "scaffold_tasks"),
+        (lean_tasks, "lean_tasks"),
+        (lean_implement, "lean_implement"),
+        (lean_analyze, "lean_analyze"),
+        (lean_gate, "lean_gate"),
+    ):
+        for field in continuation_fields:
+            assert field in content, f"{label} missing {field}"
+
+    assert "Dependency Surface" in plan
+    assert "Reverse Trace Expectation" in plan
+    assert "Dependency Surface" in command_spec
+    assert "Reverse Trace Expectation" in command_spec
+    assert "memory-first continuation" in implement.lower()
+    assert "Memory-first continuation" in implement
+    assert "memory-first routing" in lean_implement
+    assert "source code only through direct dependencies" in implement
+    assert "expand only from direct evidence" in scaffold_tasks
+
+
+def test_delta_first_review_order_prevents_full_reaudit_by_default():
+    """Analyze/gate and README docs should review implementation deltas before broad source reads."""
+    readme_en = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    readme_zh = (PROJECT_ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+    overview_en = (PROJECT_ROOT / "templates" / "project" / "docs" / "sp-overview.en.md").read_text(encoding="utf-8")
+    overview_zh = (
+        PROJECT_ROOT / "templates" / "project" / "docs" / "sp-overview.zh-CN.md"
+    ).read_text(encoding="utf-8")
+    details_en = (
+        PROJECT_ROOT / "templates" / "project" / "docs" / "sp-overview-details.en.md"
+    ).read_text(encoding="utf-8")
+    details_zh = (
+        PROJECT_ROOT / "templates" / "project" / "docs" / "sp-overview-details.zh-CN.md"
+    ).read_text(encoding="utf-8")
+
+    for content, label in (
+        (_command("analyze"), "analyze"),
+        (_command("gate"), "gate"),
+        ((PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.analyze.md").read_text(encoding="utf-8"), "lean_analyze"),
+        ((PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.gate.md").read_text(encoding="utf-8"), "lean_gate"),
+    ):
+        assert "Delta Summary" in content, label
+        assert "current diff" in content, label
+        assert "task packet" in content, label
+        assert "trace/open-items" in content, label
+        assert "necessary source code" in content, label
+        assert "Delta Summary" in content and (
+            "not as proof" in content
+            or "not treat `Delta Summary` as proof" in content
+            or "Delta Summary` alone" in content
+        ), label
+
+    for content, label in (
+        (readme_en, "README.md"),
+        (readme_zh, "README.zh-CN.md"),
+        (overview_en, "sp-overview.en.md"),
+        (overview_zh, "sp-overview.zh-CN.md"),
+        (details_en, "sp-overview-details.en.md"),
+        (details_zh, "sp-overview-details.zh-CN.md"),
+    ):
+        assert "Delta Summary" in content, label
+        assert "diff" in content, label
+        assert "trace" in content, label
+        assert "Read Set" in content, label
+
+
+def test_reverse_trace_and_proposed_updates_support_safe_multi_agent_continuation():
+    """Implementation and worker handoff rules should avoid destructive edits and shared-state races."""
+    implement = _command("implement")
+    tasks = _command("tasks")
+    gate = _command("gate")
+    analyze = _command("analyze")
+    readme_en = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    readme_zh = (PROJECT_ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+
+    for content, label in (
+        (implement, "implement"),
+        (tasks, "tasks"),
+        (gate, "gate"),
+        (analyze, "analyze"),
+    ):
+        assert "delete, move, rename" in content, label
+        assert "public behavior" in content, label
+        assert "schema" in content, label
+        assert "permission" in content, label
+        assert "route" in content, label
+        assert "event" in content, label
+        assert "acceptance" in content, label
+        assert "reverse-trace" in content.lower() or "Reverse Trace" in content, label
+
+    assert "Proposed Updates" in implement
+    assert "coordinator closeout" in implement
+    assert "one coordinator assigns worksets" in readme_en
+    assert "workers submit `Delta Summary` and `Proposed Updates`" in readme_en
+    assert "coordinator 分配 workset" in readme_zh
+    assert "提交 `Delta Summary` 和 `Proposed Updates`" in readme_zh
+
+
+def test_code_continuation_missing_or_empty_fields_have_safe_routes():
+    """Empty continuation fields should not pass; missing context must route to the nearest owner."""
+    tasks = _command("tasks")
+    implement = _command("implement")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    lean_tasks = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.tasks.md").read_text(encoding="utf-8")
+    lean_implement = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.implement.md").read_text(
+        encoding="utf-8"
+    )
+    lean_analyze = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.analyze.md").read_text(encoding="utf-8")
+    lean_gate = (PROJECT_ROOT / "presets" / "lean" / "commands" / "sp.gate.md").read_text(encoding="utf-8")
+
+    for content, label in (
+        (tasks, "tasks"),
+        (command_spec, "command_spec"),
+        (lean_tasks, "lean_tasks"),
+    ):
+        assert "N/A - <reason>" in content, label
+        assert "Empty fields are not evidence" in content or "empty fields are not evidence" in content, label
+
+    assert "NEEDS_PLAN" in implement
+    assert "NEEDS_TASKS" in implement
+    assert "NEEDS_CONTEXT" in implement
+    assert "cannot be recovered from routed files" in implement
+    assert "NEEDS_CONTEXT" in lean_implement
+
+    assert "Missing continuation fields route to `/sp.tasks`" in gate
+    assert "missing the code-boundary or dependency surface" in gate
+    assert "route to `/sp.plan`" in gate
+    assert "route back to `/sp.tasks`" in lean_gate
+
+    assert "incomplete implementation packets route to `NEEDS_TASKS`" in analyze
+    assert "route to `/sp.tasks`" in analyze
+    assert "route to `/sp.plan`" in analyze
+    assert "NEEDS_CONTEXT` is not a diagnostic verdict" in analyze
+    assert "clear no-applicable reason" in lean_analyze
+
+
+def test_upgrade_docs_and_changelog_explain_code_continuation_migration():
+    """Old projects should get a safe migration path for code-continuation task packets."""
+    upgrade = (PROJECT_ROOT / "docs" / "upgrade.md").read_text(encoding="utf-8")
+    changelog = (PROJECT_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+
+    for content, label in ((upgrade, "upgrade"), (changelog, "changelog")):
+        assert "code-continuation" in content, label
+        assert "Read Set" in content, label
+        assert "Dependencies Checked" in content, label
+        assert "Reverse Trace Checked" in content, label
+        assert "Expected Delta" in content, label
+        assert "Delta Summary" in content, label
+        assert "Proposed Updates" in content, label
+
+    assert "do **not** need to be rebuilt" in upgrade
+    assert "N/A - low-risk local task" in upgrade
+    assert "route to `/sp.tasks`" in upgrade
+    assert "route to `/sp.plan`" in upgrade
+    assert "route to `/sp.clarify`" in upgrade
+    assert "NEEDS_DECISION" in upgrade
+    assert "NEEDS_CONTEXT" in upgrade
