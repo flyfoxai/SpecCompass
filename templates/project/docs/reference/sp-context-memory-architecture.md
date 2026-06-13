@@ -133,6 +133,18 @@ Not every item needs the same weight. Low or Medium `Question` and `Todo` items 
 
 Lightweight items still need enough location, status, and next-action detail for a later command to find and close them. Full field validation is required for `Risk`, `Blocker`, High severity items, and broader-impact items; local low-risk Question/Todo records can stay compact.
 
+`open-items.md` is the current-state source of truth for unresolved blockers, risks, decisions, and close conditions. Analysis reports, gate reports, fallback logs, task notes, worklogs, and model recommendations may discover or project blocker state, but they do not become a second ledger.
+
+When a command finds blocker signals scattered in `analysis.md`, `plan.md`, checklists, worklogs, runner output, or archived notes, it should do one of three things:
+
+- promote the signal into `open-items.md` when it is still real and stage-blocking
+- cite an existing open item when the same `Failure Signature` is already tracked
+- mark the signal stale or invalid with evidence when it no longer applies
+
+Use a stable blocker type when promoting or refreshing an entry: `INFO_GAP`, `SOURCE_AUTHORITY_GAP`, `UPSTREAM_DOC_GAP`, `CODE_TEST_ONLY`, `EXECUTION_INFRA`, `GENERIC_ARTIFACT`, `BUSINESS_DECISION`, `ROUTING_STALE`, or `SCOPE_CONFLICT`.
+
+Execution-infrastructure failures should normally stay in `fallback-log.md` or a failure-site report until they affect a required gate evidence path. If a required check cannot run because of wrapper, host, timeout, empty-response, exit-143, CLI, permission, or network failure, the gate cannot use the missing check as PASS evidence; promote or link the execution issue only when it blocks stage entry.
+
 ## 6. Trace Index and Worksets
 
 ### `trace-index.md`
@@ -233,18 +245,23 @@ Memory should be treated as stale when:
 
 - source documents changed but memory was not synced
 - project-level routing points to the wrong feature
+- project-level memory says no active feature while feature-level memory, specs, branch, or user target clearly indicates active work
 - trace links no longer match the current feature docs
 - a clarification changed but the downstream sync never finished
+- repeated blocker signals exist outside `open-items.md` without promotion, closure, or stale marking
 
 When stale memory is found, the command should:
 
 1. mark the stale area explicitly
 2. expand only the smallest relevant source set
 3. refresh the affected memory files before finishing
+4. if the stale route changes the active feature or owner command, stop broad execution and route to the owner command before continuing
 
 If the command cannot repair the stale route locally, it should fall back upward by one layer instead of guessing. Typical fallback is: workset route -> feature plan -> first-layer docs -> project constitution or user decision.
 
 Ask the user only when the missing decision is genuinely macro-level: business scope, priority, success criteria, destructive change, compliance, data risk, or long-term tradeoff. Ordinary uncertainty should first be resolved by reading the bounded source set.
+
+Batch retry protection also belongs to memory. `fallback-log.md` records repeated failure signatures, attempted routes, and next suggested routes; `open-items.md` records the promoted current blocker. When the same signature appears across many modules, commands should group it into one root blocker family instead of creating repetitive per-module tasks or rerunning the same batch without new evidence.
 
 ## 9. Clarification Propagation
 

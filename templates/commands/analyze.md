@@ -87,6 +87,7 @@ Execution flow:
    - Treat this as mechanical evidence only. It checks open-item fields, open blocker/risk visibility, trace links, and obvious `@t0` / `@r0` drift; it does not replace document analysis.
    - `ERROR` findings block PASS until fixed or routed upward with a clear next `/sp.*` step.
    - `WARN` findings do not automatically block PASS; confirm them against the current read set and record the decision when relevant.
+   - Treat stale routing as a memory health preflight, not a normal warning. If project memory says bootstrap/no active feature while current specs, branch, user target, or feature memory indicate active work, classify it as `ROUTING_STALE`, choose the freshest bounded route if safe, and record the memory refresh target. If multiple active candidates remain, return `BLOCKED` or `NEEDS_DECISION` before broad analysis.
 4. Perform the analysis pass.
    - Detect whether project-level routing is stale, contradictory, or incomplete before using it as the active-feature decision.
    - When routing is stale but a single feature-level route is clear, continue the analysis on that feature and record the stale project-level memory as a finding to refresh.
@@ -158,6 +159,19 @@ Execution flow:
      - If an open item cannot be traced through `Anchor` or `Affected Docs`, report it as a memory/trace break rather than guessing the missing link.
    - Report feature-memory fact gaps directly. Do not invent abstract quality levels; list the missing files, anchors, close conditions, stale entries, or unresolved items that block later automation.
    - Check whether recent failures are being handled at the wrong layer. Use observable signals: repeated failure on the same task/acceptance/file area, implementation touching spec boundaries, unresolved task dependencies, missing acceptance, or contradictions across spec/plan/tasks/source docs.
+   - Classify blockers before recommending retries or repairs:
+     - `INFO_GAP`: resolve by bounded reading, summarization, or writeback from existing docs.
+     - `SOURCE_AUTHORITY_GAP`: missing or stale PRD/user/legacy/external/source authority; route to source recovery or `/sp.specify` rebase instead of treating tests as a substitute.
+     - `UPSTREAM_DOC_GAP`: source docs, flow, UI, bundle, plan, or tasks are incomplete or contradictory; route to the owner command.
+     - `CODE_TEST_ONLY`: document inputs are sufficient, but evidence belongs to code/test/manual verification; require `Mode: impl` handoff rather than blocking document closeout.
+     - `EXECUTION_INFRA`: timeout, empty response, exit 143, wrapper, host, CLI, permission, or network failure; isolate in fallback-log/failure-site reporting and block PASS only when required evidence depends on it.
+     - `GENERIC_ARTIFACT`: flow/UI/delivery/task output is generic template language without concrete business behavior, source anchor, relation chain, or acceptance evidence; route to PRD/spec/flow/UI/plan and do not use it as PASS evidence.
+     - `BUSINESS_DECISION`: risk acceptance, scope tradeoff, compliance, security, tenant isolation, delete/recovery, audit, rollback, or verification downgrade; return `NEEDS_DECISION` and route to `/sp.clarify`.
+     - `ROUTING_STALE`: project memory, feature memory, workspace, or command target disagree; repair routing before continuing.
+     - `SCOPE_CONFLICT`: requirements or acceptance conflict; route to `/sp.clarify`, then `/sp.specify` or `/sp.plan`.
+   - For each real blocker, include `Blocker Type`, `Root Layer`, `Failure Signature`, smallest solvable unit, owner route, verification path, and `Writeback Target`. If one of these cannot be named, return `BLOCKED` or `NEEDS_DECISION` instead of recommending broad implementation.
+   - Promote scattered blocker signals from analysis, plan, checklists, worklogs, runner output, or stale status summaries into `memory/open-items.md` when they are still real and stage-blocking. If the same `Failure Signature` is already tracked, cite the existing open item; if it is stale, mark it `INVALID_OR_STALE` with evidence.
+   - Detect batch-run anti-loops. When the same `Failure Signature` appears across many modules, group it into one root blocker family and recommend the owner route once; do not propose repeated per-module reruns without new evidence.
    - Check document-stage code boundary:
      - document-stage closeout must not depend on unauthorized `src/`, `scripts/`, config, generated-code, schema, test-asset, or fixture artifacts
      - required code artifacts discovered during document work must appear as a next-stage `Mode: impl` code handoff packet with target file, reason, related anchor, `Allowed Write Set`, `Required Checks`, verification, writeback target, and next route
@@ -226,6 +240,11 @@ Execution flow:
 - A task-level `NEEDS_CONTEXT` result is diagnostic evidence, not an analyze verdict. Report it as a task-packet or planning gap with the exact `/sp.tasks`, `/sp.plan`, or human-decision route.
 - Do not mark PASS when major gaps, stale memory, or missing smoke checks remain.
 - Do not mark PASS when open `Blocker` items remain.
+- Do not mark PASS when a real blocker is unclassified, missing `Blocker Type`, missing owner route, or not written back/promoted/cited in `memory/open-items.md` when it affects stage entry.
+- Do not mark PASS when project/feature routing is stale and the active target cannot be safely reconciled from current memory and source documents.
+- Do not mark PASS when generic template artifacts are the only evidence for flow, UI, delivery, implementation readiness, or acceptance coverage.
+- Do not mark PASS when a required live check is blocked by `EXECUTION_INFRA`; isolate the execution issue, but do not turn the missing evidence into business PASS.
+- Do not mark PASS from broad batch reruns when the same failure signature is repeating without new disconfirming evidence or owner-route repair.
 - Do not treat blocker closeout as complete until each relevant item is `RESOLVED`, `INVALID_OR_STALE`, or explicitly accepted as `DEFERRED_WITH_OWNER` with owner, impact scope, rollback/degrade path, close condition, and revisit anchor.
 - Do not replace blocker closeout with a progress report, percentage, or natural-language summary. Close or route each blocker one by one.
 - Do not keep large unresolved blockers as broad themes. Split them into smallest solvable units, or route to `/sp.clarify` / direct human decision when the split depends on product, risk, compliance, rollback, scope, or verification choice.

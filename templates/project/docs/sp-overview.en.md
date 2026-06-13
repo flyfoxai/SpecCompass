@@ -48,6 +48,7 @@ The current workflow is documentation-first, not documentation-only. Implementat
 ## Code Stage Discipline
 
 - `sp.plan` owns `Implementation Readiness`, code/test mapping, dependency surface, and reverse-trace expectations.
+- `sp.flow` runs before `sp.ui`; first-time, high-risk, or large flow/UI changes should end as reviewable drafts with visible labels until the user confirms or selects a repair option.
 - `sp.tasks` turns ready worksets into `Mode: impl` task packets with `Allowed Write Set`, `Required Checks`, `Read Set`, dependency checks, reverse-trace checks, expected delta, and proposed updates.
 - `sp.implement` starts from memory and the task packet, edits only the selected authorized task, and fills `Delta Summary` before claiming completion.
 - `sp.analyze` and `sp.gate` review implementation work delta-first: `Delta Summary`, current diff, task packet, trace/open-items, then necessary source code.

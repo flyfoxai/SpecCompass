@@ -228,6 +228,22 @@ Not every file is seeded up front by the template root. Some are created or expa
 - connect major steps and decision points back to stable IDs
 - make the flow the main relation axis for business, UI, API, data, acceptance, tests, and code
 - give critical steps a lightweight port contract: input, precondition or permission, action, output or side effect, target state, failure path, and verification evidence
+- prefer renderable text diagrams such as Mermaid, PlantUML, or Graphviz over
+  bitmap images, and make rendered/exported flow visuals reviewable with visible
+  labels such as `FLOW A1`, `FLOW A1-3`, `DEC D2`, `ERR E1`, or `EXT X1`
+- close with a visual review prompt when text diagrams, previews, or exported
+  flow images exist: tell the user which files to review, which viewer to use,
+  and how to request changes by visible label before regenerating visuals
+- require user review before promotion for first-time flow generation, major
+  branch/state/permission/exception changes, 3 or more new flow nodes, explicit
+  review requests, or unclear user approval. Until confirmed, the flow remains a
+  draft and must not become stable memory, stable trace, gate PASS evidence, or
+  implementation readiness input
+- allow small text/label edits, concrete one-point user instructions, or
+  explicit `--auto` runs to skip review, but state why review was skipped, what
+  changed, and whether the result is still draft or ready for the next step
+- offer 2-3 options with impact, recommendation, and next command when multiple
+  flow repairs are reasonable; do not silently choose for the user
 - mark new or refreshed flow outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
 - check direct-neighbor data-linkage when flow changes affect state, data, permission, events, persistence, side effects, acceptance, tests, rollback, release, or human decisions
 - route unresolved flow/data-linkage gaps to `open-items.md` and the closest owner command instead of inventing transitions
@@ -235,8 +251,30 @@ Not every file is seeded up front by the template root. Some are created or expa
 ### `sp.ui`
 
 - define screen structure, user actions, and interface-level responsibilities
+- run after `sp.flow` and consume its flow contract. If the required flow output
+  is missing, route back to `sp.flow`; if the UI depends on an unconfirmed flow
+  draft, keep the UI draft or register an open item
 - connect screens back to clarified business intent
 - bind screens, fields, and actions to flow steps, business events, data objects, permissions, API contracts, acceptance paths, or open items
+- prefer structured UI documents, JSON Forms, HTML/CSS prototypes, or Storybook
+  stories over bitmap images, and make rendered/exported UI visuals reviewable
+  with visible labels such as `SCREEN S1`, `SECTION S1.2`, `FIELD F3`,
+  `ACTION A2`, or `STATE ST4`
+- close with a visual review prompt when UI documents, wireframes, JSON Forms
+  assets, prototypes, previews, or exported images exist: tell the user which
+  files to review, which viewer to use, and how to request changes by visible
+  label before regenerating visuals
+- require user review before promotion for first-time UI generation, major
+  screen/action/field/permission/data-binding changes, 3 or more new screens or
+  critical actions, explicit review requests, or unclear user approval. Until
+  confirmed, the UI remains a draft and must not become stable memory, stable
+  trace, gate PASS evidence, or implementation readiness input
+- allow small text/label edits, concrete one-point user instructions, or
+  explicit `--auto` runs to skip review, but state why review was skipped, what
+  changed, and whether the result is still draft or ready for the next step
+- offer 2-3 options with impact, recommendation, and next command when multiple
+  UI layouts, interaction models, or information architecture repairs are
+  reasonable; do not silently choose for the user
 - avoid inventing business events, state transitions, permissions, side effects, or validation rules from UI convenience alone
 - mark new or refreshed UI outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
 - check direct-neighbor data-linkage when UI changes affect fields, actions, validation, permissions, API parameters, screen states, tests, acceptance, rollback, release, or human decisions
@@ -352,6 +390,34 @@ All current `sp` commands should preserve these rules unless a later product dec
 - do not treat implementation self-reports as release evidence without rerunnable checks or explicit alternative evidence when checks cannot run
 - do not treat command success, generated documents, or exit code 0 as business PASS; business PASS still requires acceptance, trace, open-item, data-linkage, code/test evidence, and gate verdict
 - do not stage or commit unauthorized `src/`, `scripts/`, config, generated-code, schema, or test assets during document-stage closeout; turn required code work into a `Mode: impl` code handoff packet instead
+
+## 10.1 Blocker Triage Matrix
+
+Before retrying, broadening scope, or recommending implementation, commands must classify each real blocker. `memory/open-items.md` is the single stable truth source for blockers, risks, decisions, and close conditions; reports, fallback logs, task notes, and model recommendations are projections or candidate sources only.
+
+Use these blocker types:
+
+- `INFO_GAP`: the answer exists in current documents but needs bounded reading, summarization, or writeback.
+- `SOURCE_AUTHORITY_GAP`: PRD, user source, legacy authority, external authority, or source-of-truth evidence is missing, stale, or unavailable. Restore the source or route to `/sp.specify` for an explicit rebase; tests cannot replace source authority.
+- `UPSTREAM_DOC_GAP`: `spec.md`, flow, UI, bundle, plan, or tasks are incomplete or contradictory. Route to the owner command instead of coding around the gap.
+- `CODE_TEST_ONLY`: documentation is sufficient, but the remaining evidence can only be produced by code, tests, runtime checks, or manual verification. Create a `Mode: impl` handoff packet rather than blocking document closeout.
+- `EXECUTION_INFRA`: host, wrapper, timeout, empty response, exit 143, CLI, permission, or network failure. Isolate it in fallback-log or failure-site reporting. It blocks PASS only when required evidence depends on the failed execution.
+- `GENERIC_ARTIFACT`: output is template-like and lacks specific business behavior, source anchors, flow/UI/data/API relations, or acceptance evidence. Route back to PRD/spec/flow/UI/plan; it cannot support PASS.
+- `BUSINESS_DECISION`: security, tenant isolation, delete/recovery, audit, compliance, risk acceptance, scope tradeoff, or verification downgrade requires a human choice. Route to `/sp.clarify` for a Decision Package.
+- `ROUTING_STALE`: project memory, feature memory, current workspace, or command target disagree. Repair routing before continuing.
+- `SCOPE_CONFLICT`: requirements, goals, acceptance, or feature boundaries conflict. Route to `/sp.clarify`, then `/sp.specify` or `/sp.plan` as needed.
+
+Each blocker breakdown should include: `Blocker ID`, `Blocker Type`, `Failure Signature`, symptom/evidence, `Root Layer`, impact area, smallest solvable unit, owner route, verification path, `Writeback Target`, and human decision status when applicable.
+
+Document-stage and code-stage boundaries are mandatory:
+
+- Document-stage commands may update source docs, memory, trace, open-items, analysis, gate, and task packets. They must not commit unauthorized `src/`, `scripts`, config, schema, fixture, generated-code, or test-asset changes as document closeout.
+- If document-stage work discovers code or test assets that must be created, record a `Mode: impl` handoff with target file, reason, related anchor, `Allowed Write Set`, `Required Checks`, verification, writeback target, and next route.
+- A successful command, generated document, runner exit 0, progress percentage, or status brief is not business PASS. PASS requires current acceptance, trace, open-item, data-linkage, code/test evidence when applicable, and gate verdict.
+
+Batch retries must be circuit-broken. When the same `Failure Signature` appears across multiple modules or the same workset repeatedly bounces between layers, group it as one root blocker family, promote it to `memory/open-items.md` when stage-blocking, and stop broad reruns until the root owner route has new evidence.
+
+Historical references to old command names or archived upstream material are not automatically blockers. They block only when they affect active routing, user guidance, command invocation, generated artifacts, evidence interpretation, or current PASS/gate decisions.
 
 ## 11. Coordinates, Status, And Open Items
 

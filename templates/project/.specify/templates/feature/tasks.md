@@ -30,7 +30,7 @@ Use these defaults unless a generated task explicitly overrides them.
 | Proposed Updates | shared-memory, trace, source-doc, task-state, or open-item changes to be merged by the coordinator when direct writeback is not allowed |
 | Code Handoff Packet | when document-stage work discovers required `src/`, `scripts/`, config, generated-code, schema, test-asset, or fixture changes, record target, reason, related anchor, `Allowed Write Set`, `Required Checks`, expected verification, writeback target, and next route instead of committing those artifacts as document work |
 | Data-Linkage Check | when a task changes data, UI, API, permissions, events, acceptance, or tests, check direct-neighbor flow, data object, UI surface, API contract, permission rule, side effect, tests, trace row, and open item before closeout |
-| Blocker Task Packet | for blocker-derived tasks, include `Blocker ID`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, smallest solvable unit, verification path, `Writeback Target`, and next route |
+| Blocker Task Packet | for blocker-derived tasks, include `Blocker ID`, `Blocker Type`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, smallest solvable unit, verification path, `Writeback Target`, and next route |
 | Fallback Promotion Boundary | tasks may append fallback-log or `promote-candidate: <Failure Signature>` only; `/sp.analyze` or `/sp.gate` promotes into `memory/open-items.md` |
 
 ## Notes
@@ -46,6 +46,11 @@ Use these defaults unless a generated task explicitly overrides them.
 - Do not treat command success, generated documents, or exit code 0 as business PASS. Business PASS still requires acceptance, trace, open-item, data-linkage, code/test evidence when in scope, and gate verdict.
 - If a task carries non-trivial `@t0` or `@r0`, the corresponding detail should exist in `memory/open-items.md`.
 - If a blocker or broad cleanup task is too large to verify in one focused pass, split it into a smallest solvable unit with symptom, evidence, root layer, verification path, writeback target, and next route.
+- Classify blocker-derived tasks as `INFO_GAP`, `SOURCE_AUTHORITY_GAP`, `UPSTREAM_DOC_GAP`, `CODE_TEST_ONLY`, `EXECUTION_INFRA`, `GENERIC_ARTIFACT`, `BUSINESS_DECISION`, `ROUTING_STALE`, or `SCOPE_CONFLICT`.
+- `BUSINESS_DECISION` and unresolved `SCOPE_CONFLICT` items route to `/sp.clarify`; they are not executable implementation tasks until the human-selected decision is written back.
+- `EXECUTION_INFRA` items become feature tasks only when the task explicitly fixes runner, wrapper, host, CLI, permission, network, or tooling behavior with its own write boundary and checks.
+- `CODE_TEST_ONLY` items may become `Mode: impl` handoff packets only when `plan.md` readiness supports implementation.
+- Repeated failures across many modules should become one root-cause task or `promote-candidate`, not repetitive per-module tasks without new evidence.
 - Use failure signatures like `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>` for blocker-derived tasks. Valid root layers include `prd`, `spec`, `clarify`, `flow`, `ui`, `data`, `plan`, `tasks`, `implement`, `verify`, `memory`, `external`, and `human-decision`.
 - A task blocked by `NEEDS_DECISION` cannot become executable implementation work until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`.
 - Do not directly promote fallback-log entries into `memory/open-items.md` from task generation. Record `promote-candidate: <Failure Signature>` and let `/sp.analyze` or `/sp.gate` perform idempotent promotion.

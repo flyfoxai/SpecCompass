@@ -120,6 +120,12 @@ Execution flow:
      - memory/source-doc writeback target when the task changes stable facts or closes risks
    - If `memory/open-items.md` contains open `Todo`, `Risk`, or `Blocker` entries that affect task execution, include a task or dependency that resolves, accepts, or revisits each affected item.
    - For broad blocker cleanup, split each affected blocker into the smallest solvable unit: an executable task, decision task, verification task, or memory/trace closeout task. Each split task should name `Blocker ID`, `Failure Signature`, symptom/evidence, `Root Layer`, `Disconfirming Evidence` when retrying, verification path, `Writeback Target`, and next route when it cannot be completed locally.
+   - Classify blocker-derived tasks with `Blocker Type`: `INFO_GAP`, `SOURCE_AUTHORITY_GAP`, `UPSTREAM_DOC_GAP`, `CODE_TEST_ONLY`, `EXECUTION_INFRA`, `GENERIC_ARTIFACT`, `BUSINESS_DECISION`, `ROUTING_STALE`, or `SCOPE_CONFLICT`.
+   - Convert `INFO_GAP` into bounded reading/writeback tasks; convert `SOURCE_AUTHORITY_GAP` into source recovery or `/sp.specify` rebase tasks; convert `UPSTREAM_DOC_GAP`, `GENERIC_ARTIFACT`, `ROUTING_STALE`, and `SCOPE_CONFLICT` into owner-command tasks rather than implementation tasks.
+   - Convert `CODE_TEST_ONLY` into `Mode: impl` handoff only when `plan.md` `Implementation Readiness` supports it and the task can state target files, allowed write set, required checks, trace anchors, verification, writeback target, and next route.
+   - Do not convert `BUSINESS_DECISION` into executable implementation work before a human-selected decision is written back. Generate a `/sp.clarify` decision task with background, impact, 2-4 options, recommendation, and next route.
+   - Do not convert `EXECUTION_INFRA` into feature implementation work unless the task is explicitly a runner, wrapper, host, CLI, permission, or tooling fix with its own write boundary and checks.
+   - When the same `Failure Signature` appears across many modules, generate one root-cause analyze/gate/tasking item or `promote-candidate` instead of repetitive per-module tasks.
    - Use this `Failure Signature` shape when possible: `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`. Keep it stable enough for `/sp.analyze` and `/sp.gate` to detect repeated loops.
    - Keep `Root Layer` and next route consistent. If a task routes away from the root layer's normal owner, write the reason and risk instead of turning every blocker into implementation work.
    - If a blocker task cannot name the smallest solvable unit, verification path, or writeback target, do not generate a local implementation task. Route to `/sp.analyze`, `/sp.plan`, `/sp.clarify`, or `/sp.gate` as the owner command.
@@ -157,7 +163,9 @@ Execution flow:
    - Confirm every `Mode: impl` task has a readiness source, `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, effective defaults, and gate/evidence expectation visible in the task packet.
    - Confirm high-risk or code-continuation `Mode: impl` tasks include `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or an explicit `N/A - <reason>` when a field is not applicable. Empty fields are not evidence.
    - Confirm no `Mode: impl` task was generated from a workset that lacks `plan.md` `Implementation Readiness`.
-   - Confirm blocker-derived tasks include `Blocker ID`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, and `Writeback Target`.
+   - Confirm blocker-derived tasks include `Blocker ID`, `Blocker Type`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, and `Writeback Target`.
+   - Confirm `BUSINESS_DECISION` and unresolved `SCOPE_CONFLICT` items are routed to `/sp.clarify`, not hidden inside implementation work.
+   - Confirm `EXECUTION_INFRA` items are isolated from business feature tasks unless the task is explicitly about fixing execution infrastructure.
    - Confirm unresolved `NEEDS_DECISION` items are not converted into executable implementation tasks before the human-selected decision is written back.
 
 ## Output
@@ -186,7 +194,8 @@ Execution flow:
 - Do not keep generating local tasks when the next safe step is to revisit an upstream `sp.*` command.
 - Do not auto-expand `Allowed Write Set` during task generation to make an implementation task look executable. Route boundary gaps to `NEEDS_PLAN`; route incomplete packets to `NEEDS_TASKS`.
 - Do not treat fallback-log, task notes, or model recommendations as stable blocker truth. Current blocker state belongs in `memory/open-items.md`; trace-index is relation/history lookup.
-- Do not generate a blocker cleanup task that lacks `Blocker ID`, `Failure Signature`, `Root Layer`, verification path, and `Writeback Target`.
+- Do not generate a blocker cleanup task that lacks `Blocker ID`, `Blocker Type`, `Failure Signature`, `Root Layer`, verification path, and `Writeback Target`.
+- Do not generate repetitive per-module tasks for a shared root failure signature; group the root cause and route it once unless new evidence proves the modules need separate repairs.
 
 ## Post-Execution Checks
 

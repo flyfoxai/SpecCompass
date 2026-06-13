@@ -48,6 +48,7 @@
 ## 代码阶段纪律
 
 - `sp.plan` 负责 `Implementation Readiness`、代码/测试映射、依赖面和反向 trace 预期。
+- `sp.flow` 先于 `sp.ui`；首次生成、高风险或大批量 flow/UI 变化，应以带可见标签的可核对草稿收尾，等待用户确认或选择修复方案。
 - `sp.tasks` 把 ready 的 workset 转成 `Mode: impl` 任务包，写清 `Allowed Write Set`、`Required Checks`、`Read Set`、依赖检查、反向 trace 检查、预期增量和共享更新建议。
 - `sp.implement` 从 memory 和任务包开始，只编辑选中的已授权任务，并在声称完成前填写 `Delta Summary`。
 - `sp.analyze` 和 `sp.gate` 按增量优先复核：`Delta Summary`、当前 diff、任务包、trace/open-items，然后才读必要源码。

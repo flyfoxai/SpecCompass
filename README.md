@@ -65,7 +65,9 @@ SpecCompass keeps the workflow readable for humans and predictable for agents:
 - When intent is unclear, `/sp.clarify` asks focused questions with plain-language options and records the decision so later agents do not need to rediscover it.
 - `/sp.plan` defines the technical route, worksets, impact radius, agent boundaries, source layout, runtime commands, code/test mapping, and `Implementation Readiness` before code changes begin.
 - `/sp.flow` is the backbone. Business flows connect process nodes to UI screens, events, API calls, data objects, tests, and code anchors.
+- `/sp.flow` uses structured flow files and renderable diagrams for early review. First-time, high-risk, or large flow changes stay as drafts until the user confirms visible labels or chooses a repair option.
 - `/sp.ui` runs after flow: it collects the elements needed by each screen and turns process-bound elements into a coherent interface.
+- `/sp.ui` uses structured UI files, prototypes, or previews for review. UI that depends on an unconfirmed flow remains draft instead of becoming stable implementation input.
 - `/sp.tasks` keeps implementation small. It consumes `Implementation Readiness` and creates `Mode: doc` or `Mode: impl` task packets with clear scope, expected evidence, `Allowed Write Set`, `Required Checks`, `Read Set`, dependency checks, reverse-trace requirements, expected delta, and proposed shared updates.
 - `/sp.implement` writes code only for selected `Mode: impl` tasks. It checks `Allowed Write Set`, required checks, trace anchors, task context, dependency surface, and reverse-trace evidence before risky edits, then records verification evidence and a `Delta Summary`.
 - `/sp.analyze` and `/sp.gate` close the loop: they detect drift, broken trace links, stale context, unresolved risks, readiness contradictions, weak task packets, and phase-readiness failures.
@@ -189,8 +191,8 @@ If an older project already contains `.codex/prompts/sp.*`, `.codex/commands`, `
 | `/sp.specify` or `$sp-specify` in Codex | Create a feature specification: what to build and why |
 | `/sp.clarify` or `$sp-clarify` in Codex | Clarify unclear requirements and record decisions |
 | `/sp.plan` or `$sp-plan` in Codex | Create the technical plan, architecture choices, source layout, code/test mapping, and implementation readiness |
-| `/sp.flow` or `$sp-flow` in Codex | Create or refresh business flows, state flows, and sequence flows |
-| `/sp.ui` or `$sp-ui` in Codex | Create or refresh screens, screen maps, forms, and interaction notes |
+| `/sp.flow` or `$sp-flow` in Codex | Create or refresh business flows, state flows, renderable diagrams, and review labels |
+| `/sp.ui` or `$sp-ui` in Codex | Create or refresh screens, screen maps, forms, interaction notes, and reviewable UI previews |
 | `/sp.tasks` or `$sp-tasks` in Codex | Break the plan into `Mode: doc` or `Mode: impl` task packets with boundaries and checks |
 | `/sp.analyze` or `$sp-analyze` in Codex | Check consistency, readiness, task packets, trace, evidence, and drift across the feature |
 | `/sp.gate` or `$sp-gate` in Codex | Decide whether the current stage can safely move forward |

@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.7] - 2026-06-13
+
+### Changed
+
+- Added blocker triage and closure discipline to SP methodology and executable command templates: blockers now require stable types, root layer, owner route, writeback target, and stage-aware handoff before retries or PASS decisions.
+- Strengthened document-stage vs code-stage boundaries so document closeout can preserve required implementation work as `Mode: impl` handoff packets without committing unauthorized `src/`, `scripts`, config, schema, fixture, or test assets.
+- Added flow/UI review gates with structured diagrams or previews, visible labels, and user confirmation before draft flow/UI outputs can become stable trace, memory, gate evidence, or implementation readiness input.
+
 ## [0.10.6] - 2026-06-12
 
 ### Changed

@@ -51,6 +51,7 @@ Here are a few things you can do that will increase the likelihood of your pull 
 - Follow the project's coding conventions.
 - Write tests for new functionality.
 - Update documentation (`README.md`, `spec-driven.md`) if your changes affect user-facing features.
+- Follow the documentation language policy in `DEVELOPMENT.md` when adding or updating docs: user-facing docs should stay bilingual where practical and update both language versions in the same PR when the change affects installation, command entry points, capabilities, versions, or verification.
 - Keep your change as focused as possible. If there are multiple changes you would like to make that are not dependent upon each other, consider submitting them as separate pull requests.
 - Write a [good commit message](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 - Test your changes with the Spec-Driven Development workflow to ensure compatibility.

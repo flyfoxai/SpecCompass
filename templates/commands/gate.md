@@ -120,6 +120,10 @@ Global rules:
   - Treat `specs/<feature>/memory/open-items.md` as the single source of truth. `gate.md` may include a `Blocker Closeout` section, but it is only the gate decision's report projection.
   - Treat `specs/<feature>/memory/trace-index.md` as relation/history lookup only. If trace and open-items disagree about current blocker or decision state, use open-items as current-state truth and require trace refresh as a writeback item.
   - Consume current `/sp.analyze` closeout diagnostics when available; otherwise check the decisive blocker evidence directly without doing a full analysis rerun.
+  - Confirm each real blocker has a `Blocker Type`: `INFO_GAP`, `SOURCE_AUTHORITY_GAP`, `UPSTREAM_DOC_GAP`, `CODE_TEST_ONLY`, `EXECUTION_INFRA`, `GENERIC_ARTIFACT`, `BUSINESS_DECISION`, `ROUTING_STALE`, or `SCOPE_CONFLICT`.
+  - Treat `ROUTING_STALE`, unresolved `SOURCE_AUTHORITY_GAP`, unresolved `GENERIC_ARTIFACT`, unresolved `BUSINESS_DECISION`, and unresolved `SCOPE_CONFLICT` as hard blockers for PASS. Use `FAIL` when a normal upstream command can repair it, `BLOCKED` when safe automatic progress is impossible, and `NEEDS_DECISION` when human choice is required.
+  - Treat `CODE_TEST_ONLY` as a stage-boundary result: document gates may close only if the required code/test work is represented as a next-stage `Mode: impl` handoff with allowed write set, checks, trace anchor, writeback target, and next route.
+  - Treat `EXECUTION_INFRA` separately from business defects. It does not rewrite requirements, but PASS is forbidden when the failed execution is the required evidence for this gate.
   - Confirm unresolved or repeatedly failing items have a lightweight `Blocker Breakdown`: `Blocker ID`, `Failure Signature`, symptom, evidence, root layer, `Disconfirming Evidence` when retrying, smallest solvable unit, repair strategy, verification, `Writeback Target`, and next route.
   - Confirm `Root Layer` and `Next Route` are consistent. If they are not, require the reason and risk before allowing `CONDITIONAL`; otherwise return `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
   - If a blocker remains too broad to execute or verify, do not grant PASS or CONDITIONAL. Return `FAIL` when it can be repaired by a normal upstream command, `BLOCKED` when safe automatic progress is impossible, or `NEEDS_DECISION` when human choice is required.
@@ -164,6 +168,13 @@ Global rules:
 - Do not hide blockers behind optimistic language.
 - Do not mark PASS when major route decisions remain open.
 - Do not mark PASS when an open blocker remains.
+- Do not mark PASS when any stage-blocking issue lacks a blocker classification, owner route, smallest solvable unit, or writeback target.
+- Do not mark PASS when stale routing leaves the active feature, workset, or owner command ambiguous.
+- Do not mark PASS when source authority is missing and the gate relies on tests, generated summaries, or model confidence as a substitute.
+- Do not mark PASS when generic template artifacts are being used as evidence for specific business flow, UI, delivery, task, or acceptance behavior.
+- Do not mark PASS when a human decision is required but no human-selected decision record has been written back.
+- Do not mark PASS when execution infrastructure failure prevents required evidence from being produced. Record it as `EXECUTION_INFRA`, include the failure-site report, and return `BLOCKED` or `FAIL` as appropriate.
+- Do not mark PASS after broad/batch reruns when the same failure signature is repeating and the root blocker family has not been repaired or routed.
 - Do not mark PASS when a critical flow step is missing node type, port contract coverage, failure path, or verification route unless the gap is explicitly tracked in `memory/open-items.md` and the verdict is FAIL or CONDITIONAL with a safe next route.
 - Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
 - Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
@@ -202,6 +213,9 @@ Global rules:
 - Confirm the decision is explicit and evidence-based.
 - Confirm each blocker points to the exact `sp.*` step that must be revisited.
 - Confirm blocker closeout does not create a second persistent ledger beside `memory/open-items.md`.
+- Confirm each blocker has `Blocker Type`, `Root Layer`, `Failure Signature`, smallest solvable unit, owner route, verification path, and `Writeback Target`.
+- Confirm `CODE_TEST_ONLY` items discovered during document-stage work are represented as `Mode: impl` handoff packets instead of unauthorized code artifacts.
+- Confirm `EXECUTION_INFRA` items are isolated from business requirements and are promoted to open-items only when they block stage evidence.
 - Confirm every blocker/high-risk item relevant to this gate has one of `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`.
 - Confirm each upward fallback decision names the source layer, target layer, and next `sp.*` step.
 - Confirm blocker writeback is complete. If not, the gate result cannot be PASS and must leave a writeback-incomplete open item.

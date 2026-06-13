@@ -10,6 +10,12 @@ The toolkit supports multiple AI coding assistants, allowing teams to use their 
 
 ---
 
+## Documentation Language Policy
+
+When adding or updating documentation, follow the authoritative policy in `DEVELOPMENT.md`. In short: keep user-facing paired English/Chinese docs aligned where practical, default SP methodology/research notes to Chinese, default agent templates/skills/prompts to English, and preserve archive/history language unless extracting stable conclusions into a maintained document.
+
+---
+
 ## Integration Architecture
 
 Each AI agent is a self-contained **integration subpackage** under `src/specify_cli/integrations/<key>/`. The subpackage exposes a single class that declares all metadata and inherits setup/teardown logic from a base class. Built-in integrations are then instantiated and added to the global `INTEGRATION_REGISTRY` by `src/specify_cli/integrations/__init__.py` via `_register_builtins()`.

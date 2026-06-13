@@ -746,10 +746,23 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "input, precondition or permission, business action, output or side effect, target state, failure path" in flow
     assert "node type: `ui`, `system`, `external`, `scheduled`, `manual`, or `none_ui`" in flow
     assert "fields to collect, business facts to show, events allowed, permissions, and error states" in flow
+    assert "Treat visual review as a confirmation gate" in flow
+    assert "first-time flow generation" in flow
+    assert "3 or more new flow nodes" in flow
+    assert "the review gate may be skipped" in flow
+    assert "multiple reasonable repairs" in flow
+    assert "not present `/sp.ui` or `/sp.gate` as the" in flow
+    assert "immediate next step" in flow
 
     assert "Bind each screen to the flow step" in ui
     assert "Bind each critical UI action to an allowed business event or flow effect" in ui
     assert "must not invent business validation" in ui
+    assert "`/sp.ui` must consume `/sp.flow` outputs" in ui
+    assert "unconfirmed flow draft" in ui
+    assert "Treat visual review as a confirmation gate" in ui
+    assert "3 or more new screens or critical actions" in ui
+    assert "multiple reasonable layouts" in ui
+    assert "not present `/sp.gate` as the immediate next" in ui
 
     assert "Check Flow-UI relation integrity" in analyze
     assert "Check orphan relation objects" in analyze
@@ -762,6 +775,9 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "Treat unchecked `/sp.flow` and `/sp.ui` outputs as draft facts" in plan
     assert "Preserve `FLOW` as the main relation axis" in plan
 
+    assert "require user review before promotion for first-time flow generation" in command_spec
+    assert "run after `sp.flow` and consume its flow contract" in command_spec
+    assert "require user review before promotion for first-time UI generation" in command_spec
     assert "UI is a projection of flow" in command_spec
     assert "New or refreshed outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts" in memory_arch
     assert "Recommended relation verbs" in trace_index
@@ -1095,6 +1111,76 @@ def test_blocker_root_cause_loop_control_and_decision_freeze_are_enforced():
         assert "Writeback Target" in content or "writeback" in content, label
         assert "PASS" in content, label
         assert "Do not pass" in content or "do not grant PASS" in content, label
+
+
+def test_blocker_triage_matrix_prevents_stage_boundary_confusion():
+    """Blockers should be classified before retry, tasking, gate PASS, or human decision routing."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    memory_arch = (
+        PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-context-memory-architecture.md"
+    ).read_text(encoding="utf-8")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    tasks = _command("tasks")
+    scaffold_analysis = (
+        PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "analysis.md"
+    ).read_text(encoding="utf-8")
+    scaffold_gate = (PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "gate.md").read_text(
+        encoding="utf-8"
+    )
+    scaffold_tasks = (PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature" / "tasks.md").read_text(
+        encoding="utf-8"
+    )
+
+    triage_docs = {
+        "methodology": methodology,
+        "command_spec": command_spec,
+        "memory_arch": memory_arch,
+        "analyze": analyze,
+        "gate": gate,
+        "tasks": tasks,
+        "scaffold_analysis": scaffold_analysis,
+        "scaffold_gate": scaffold_gate,
+        "scaffold_tasks": scaffold_tasks,
+    }
+    for label, content in triage_docs.items():
+        for blocker_type in (
+            "INFO_GAP",
+            "SOURCE_AUTHORITY_GAP",
+            "UPSTREAM_DOC_GAP",
+            "CODE_TEST_ONLY",
+            "EXECUTION_INFRA",
+            "GENERIC_ARTIFACT",
+            "BUSINESS_DECISION",
+            "ROUTING_STALE",
+            "SCOPE_CONFLICT",
+        ):
+            assert blocker_type in content, f"{label} missing {blocker_type}"
+
+    for label, content in (
+        ("methodology", methodology),
+        ("command_spec", command_spec),
+        ("analyze", analyze),
+        ("gate", gate),
+        ("tasks", tasks),
+    ):
+        assert "Blocker Type" in content, label
+        assert "memory/open-items.md" in content, label
+        assert "Mode: impl" in content, label
+
+    assert "not business PASS" in command_spec
+    assert "not business PASS" in analyze
+    assert "command success" in scaffold_tasks and "business PASS" in scaffold_tasks
+    assert "broad/batch reruns" in gate
+    assert "root blocker family" in command_spec
+    assert "root blocker family" in scaffold_analysis
+    assert "stale routing" in analyze.lower()
+    assert "generic template artifacts" in gate.lower()
+    assert "required evidence depends" in command_spec
+    assert "not automatically blockers" in command_spec
 
 
 def test_code_continuation_task_packets_are_executable_and_reviewable():
