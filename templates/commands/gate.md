@@ -78,6 +78,14 @@ Global rules:
 - Read the latest `specs/<feature>/analysis.md` when present. Use it as diagnostic evidence; do not silently recompute the whole analysis unless the gate evidence is stale, contradictory, or missing.
 - Default to an incremental gate path: consume current `analysis.md`, verify decisive evidence, open blockers/risks, changed or stale items, and current checks needed for the gate mode. Expand into broader analyze-like checks only when analysis is missing, stale, contradictory, or too narrow to justify the gate decision.
 - Read the first-layer outputs needed for this gate decision. Expand further only when a gap, stale route, or contradiction requires evidence.
+
+## Stage Entry Preflight
+
+- Confirm routing identifies one active feature and the requested gate mode can be decided from current upstream evidence.
+- Confirm required gate inputs exist for the requested mode: source docs for Business Gate, bundle/plan/task evidence for Delivery or Implementation Readiness Gate, and current implementation/check evidence for Implementation Regression Gate.
+- Check whether user input changes requirements, acceptance, flow, UI, plan, tasks, implementation boundary, risk acceptance, or verification standard. If so, old gate evidence is stale; stop and route to the owner command before deciding PASS.
+- If `analysis.md` is missing, stale, contradictory, too narrow, or depends on unchecked draft facts, route to `/sp.analyze` unless the gate can decide a smaller current `FAIL`, `BLOCKED`, or `NEEDS_DECISION` directly.
+- If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not treat command success, generated docs, or exit code 0 as business PASS.
 - Use incremental review order before expanding to a full audit:
   - if implementation evidence or worker handoff exists, review `Delta Summary` first, then current diff, then task packet, then trace/open-items, then necessary source code
   - recently changed tasks, anchors, source docs, trace rows, and open-items
@@ -101,7 +109,11 @@ Global rules:
 - Use current `analysis.md` as the normal source for detailed flow/UI/trace diagnostics. Do not redo the full `/sp.analyze` relation audit by default.
 - Perform only a decisive evidence check by default: current verdict, unresolved blockers/high risks, stale analysis signals, failed checks, task/readiness contradictions, and direct evidence for the gate mode.
 - Expand into detailed FLOW node, Flow-UI, orphan anchor, or coordinate-depth checks only when `analysis.md` is missing, stale, contradicted by current evidence, or does not cover the gate's blocking question. In that fallback path, Verify Flow-UI relation integrity, critical flow port-contract gaps, and shallow public coordinates such as `FEATxx.WSxx.TYPExx` or `FEAT01.WS02.UI03`; deep local IDs such as `FLOW01.STEP04` or `UI03.BTN05` should not appear as stable public coordinates unless intentionally promoted. If this expansion is needed and cannot stay small, return the next `/sp.analyze` route instead of doing a full audit inside `/sp.gate`.
+- When checking Flow-UI evidence, also verify subject-scope integrity. Flow/UI artifacts must model the target business application, not SP, SpecCompass, Spec Kit, command execution, memory management, preflight, gate, task routing, or methodology stages. Wrong-subject artifacts are `SUBJECT_CONFUSION` blockers.
+- Verify Stage Readiness before using flow/UI artifacts as gate evidence: stable flow requires upstream `READY_FOR_FLOW`; stable UI requires upstream `READY_FOR_UI`; downstream planning evidence requires UI `READY_FOR_PLAN`. Missing, stale, mismatched, `SP_STAGE_SEED`, generic-template, `DRAFT_ONLY`, `NEEDS_CLARIFY`, `NEEDS_DECISION`, or `BLOCKED` readiness blocks PASS and routes to the owner command.
+- Block PASS when UI artifacts are unsupported Process Visualization UI: flow step progress views, state transition timelines, processing dashboards, workflow node activation panels, or flow diagrams used as UI without explicit `spec.md` requirements and business-role/data/permission/acceptance binding.
 - Treat unchecked outputs from `/sp.flow`, `/sp.ui`, and `/sp.plan` as draft facts. They may explain current direction but cannot support PASS, close a risk, or replace stable source evidence until analyzed or otherwise verified.
+- Block PASS when stable flow/UI evidence lacks source provenance such as `[SRC:SPEC-*]`, `[SRC:CLARIFY-*]`, `[SRC:FLOW-*]`, or an explicit `OPEN-*`. `[INFER:DRAFT]` and `Source: model-inferred` can support draft review only; they cannot support PASS, stage readiness, risk closure, trace closure, or implementation readiness.
 - Treat command success, generated documents, and exit code 0 as tool evidence only. They do not prove business PASS without acceptance, trace, open-item, data-linkage, code/test evidence, and a gate verdict.
 - Summarize the current error signals before deciding: open `Blocker`, high-impact open `Risk`, non-trivial `@t0`, `@r0`, unresolved references, stale memory, trace/acceptance breaks, blocking placeholders, and failed checks. This is a lightweight stability panel, not a heavy score.
 - Identify whether the current layer is the wrong place to continue. If safe progress requires moving upward to spec, plan, tasks, or human decision, record the fallback target and block unconditional PASS.
@@ -120,7 +132,8 @@ Global rules:
   - Treat `specs/<feature>/memory/open-items.md` as the single source of truth. `gate.md` may include a `Blocker Closeout` section, but it is only the gate decision's report projection.
   - Treat `specs/<feature>/memory/trace-index.md` as relation/history lookup only. If trace and open-items disagree about current blocker or decision state, use open-items as current-state truth and require trace refresh as a writeback item.
   - Consume current `/sp.analyze` closeout diagnostics when available; otherwise check the decisive blocker evidence directly without doing a full analysis rerun.
-  - Confirm each real blocker has a `Blocker Type`: `INFO_GAP`, `SOURCE_AUTHORITY_GAP`, `UPSTREAM_DOC_GAP`, `CODE_TEST_ONLY`, `EXECUTION_INFRA`, `GENERIC_ARTIFACT`, `BUSINESS_DECISION`, `ROUTING_STALE`, or `SCOPE_CONFLICT`.
+  - Confirm each real blocker has a `Blocker Type`: `INFO_GAP`, `SOURCE_AUTHORITY_GAP`, `UPSTREAM_DOC_GAP`, `CODE_TEST_ONLY`, `EXECUTION_INFRA`, `GENERIC_ARTIFACT`, `SUBJECT_CONFUSION`, `BUSINESS_DECISION`, `ROUTING_STALE`, or `SCOPE_CONFLICT`.
+  - Use `SUBJECT_CONFUSION` when flow/UI output models SP's own command interface, workflow stages, memory operations, routing, gates, or methodology mechanics instead of the target business application.
   - Treat `ROUTING_STALE`, unresolved `SOURCE_AUTHORITY_GAP`, unresolved `GENERIC_ARTIFACT`, unresolved `BUSINESS_DECISION`, and unresolved `SCOPE_CONFLICT` as hard blockers for PASS. Use `FAIL` when a normal upstream command can repair it, `BLOCKED` when safe automatic progress is impossible, and `NEEDS_DECISION` when human choice is required.
   - Treat `CODE_TEST_ONLY` as a stage-boundary result: document gates may close only if the required code/test work is represented as a next-stage `Mode: impl` handoff with allowed write set, checks, trace anchor, writeback target, and next route.
   - Treat `EXECUTION_INFRA` separately from business defects. It does not rewrite requirements, but PASS is forbidden when the failed execution is the required evidence for this gate.
@@ -172,12 +185,18 @@ Global rules:
 - Do not mark PASS when stale routing leaves the active feature, workset, or owner command ambiguous.
 - Do not mark PASS when source authority is missing and the gate relies on tests, generated summaries, or model confidence as a substitute.
 - Do not mark PASS when generic template artifacts are being used as evidence for specific business flow, UI, delivery, task, or acceptance behavior.
+- Do not mark PASS when required `Stage Readiness` is missing, stale, mismatched, or contradicted by current evidence.
+- Do not mark PASS when `/sp.flow` ran or produced stable flow facts without upstream `READY_FOR_FLOW`.
+- Do not mark PASS when `/sp.ui` ran or produced stable UI facts without upstream `READY_FOR_UI`.
 - Do not mark PASS when a human decision is required but no human-selected decision record has been written back.
 - Do not mark PASS when execution infrastructure failure prevents required evidence from being produced. Record it as `EXECUTION_INFRA`, include the failure-site report, and return `BLOCKED` or `FAIL` as appropriate.
 - Do not mark PASS after broad/batch reruns when the same failure signature is repeating and the root blocker family has not been repaired or routed.
 - Do not mark PASS when a critical flow step is missing node type, port contract coverage, failure path, or verification route unless the gap is explicitly tracked in `memory/open-items.md` and the verdict is FAIL or CONDITIONAL with a safe next route.
 - Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
+- Do not mark PASS when `ui/*` or `flows/*` artifacts contain `SUBJECT_CONFUSION`: screens, actions, fields, flow nodes, labels, or descriptions that model SP's own command interface, workflow stages, memory operations, routing, gates, or methodology mechanics instead of the target business application.
+- Do not mark PASS when UI/screens primarily visualize process, workflow, state progression, or flow diagrams instead of supporting target business operations, unless that product capability is explicitly required by `spec.md` and backed by flow, role, data, permission, and acceptance evidence.
 - Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
+- Do not mark PASS when `[INFER:DRAFT]` or `Source: model-inferred` is being used as stable flow/UI evidence, stage readiness evidence, risk closure, trace closure, or implementation readiness evidence.
 - Do not mark PASS when document-stage work committed or relies on unauthorized code artifacts instead of handing them off as `Mode: impl` work.
 - Do not mark PASS from command success, generated documents, status summaries, or exit code 0 when business evidence is still missing.
 - Do not let this run's post-verdict writeback prove this run's PASS. Gate updates to routing, status, open-items, or memory must be supported by current inputs, current checks, upstream source documents, current code/test evidence, current analysis, or explicit human decisions.

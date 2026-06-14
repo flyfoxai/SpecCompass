@@ -208,6 +208,10 @@ Not every file is seeded up front by the template root. Some are created or expa
 - create or refresh the baseline feature requirement document
 - register the feature in project routing
 - initialize the feature memory entry point
+- write or refresh a lightweight `Stage Readiness` block for the feature. It
+  may unlock `READY_FOR_FLOW` only when stable requirement evidence is enough
+  for business-flow design; otherwise use `NEEDS_CLARIFY`, `NEEDS_DECISION`,
+  `BLOCKED`, or `DRAFT_ONLY` and route to the owner command.
 
 ### `sp.clarify`
 
@@ -221,12 +225,32 @@ Not every file is seeded up front by the template root. Some are created or expa
 - record a `Decision Record` only after the user selects an option or gives a
   revised option; it must capture the selected choice, impact scope, writeback
   targets, close condition, revisit condition, and next command. The model recommendation is not the final decision.
+- update `Stage Readiness` only after the human-selected decision is written
+  back to the named source document, task, or memory file. A recommendation or
+  uncommitted chat answer must keep `NEEDS_DECISION`.
 
 ### `sp.flow`
 
+- require upstream `Stage Readiness: READY_FOR_FLOW` before generating stable
+  flow artifacts. Missing readiness, `SP_STAGE_SEED`, `NEEDS_CLARIFY`,
+  `NEEDS_DECISION`, `BLOCKED`, high-impact open items, generic templates, or a
+  stale/spec-conflicting source must stop the run and route to `/sp.specify` or
+  `/sp.clarify`.
 - express the business and state transitions clearly
 - connect major steps and decision points back to stable IDs
 - make the flow the main relation axis for business, UI, API, data, acceptance, tests, and code
+- decompose the flow top-down before diagramming: business goal, actors,
+  lifecycle states, mainline stages, decision points, exception/recovery paths,
+  non-UI/system/external steps, UI contracts, and verification evidence
+- use bounded model inference when the source is coarse but the business domain,
+  user role, business goal, and feature boundary are clear; inferred flow
+  details must be marked `Source: model-inferred` or linked to `OPEN-*`, remain
+  draft, and never create new business rules, permission boundaries,
+  compliance/data-retention rules, irreversible actions, settlement/pricing
+  rules, or acceptance downgrades
+- mark inferred flow rows with `Source: model-inferred` or `[INFER:DRAFT]`.
+  Inferred content cannot support `READY_FOR_UI`, stable trace, risk closure,
+  gate PASS, or implementation readiness until confirmed or checked.
 - give critical steps a lightweight port contract: input, precondition or permission, action, output or side effect, target state, failure path, and verification evidence
 - prefer renderable text diagrams such as Mermaid, PlantUML, or Graphviz over
   bitmap images, and make rendered/exported flow visuals reviewable with visible
@@ -242,19 +266,44 @@ Not every file is seeded up front by the template root. Some are created or expa
 - allow small text/label edits, concrete one-point user instructions, or
   explicit `--auto` runs to skip review, but state why review was skipped, what
   changed, and whether the result is still draft or ready for the next step
+- `--auto` may skip only the visual review gate; it must never skip subject
+  scope, business domain anchor, stage entry preflight, or subject-confusion
+  checks
 - offer 2-3 options with impact, recommendation, and next command when multiple
   flow repairs are reasonable; do not silently choose for the user
+- offer 2-3 options with impact, recommendation, and next command when coarse
+  input admits multiple valid flow patterns; do not silently choose a materially
+  different business process for the user
 - mark new or refreshed flow outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
 - check direct-neighbor data-linkage when flow changes affect state, data, permission, events, persistence, side effects, acceptance, tests, rollback, release, or human decisions
 - route unresolved flow/data-linkage gaps to `open-items.md` and the closest owner command instead of inventing transitions
+- finish by writing flow `Stage Readiness`: `READY_FOR_UI` only when required
+  flow facts, UI contracts, source provenance, visual-review status, and open
+  blockers are clean; otherwise use `DRAFT_ONLY`, `NEEDS_DECISION`, or
+  `BLOCKED` and do not present `/sp.ui` as the immediate next step.
 
 ### `sp.ui`
 
 - define screen structure, user actions, and interface-level responsibilities
-- run after `sp.flow` and consume its flow contract. If the required flow output
-  is missing, route back to `sp.flow`; if the UI depends on an unconfirmed flow
-  draft, keep the UI draft or register an open item
+- run after `sp.flow` and consume its flow contract. It requires flow
+  `Stage Readiness: READY_FOR_UI` before generating stable UI artifacts. If the
+  required flow output is missing, generic, stale, unconfirmed, or not
+  `READY_FOR_UI`, route back to `sp.flow`; if the UI depends on an unconfirmed
+  flow draft, keep the UI draft or register an open item
 - connect screens back to clarified business intent
+- decompose UI top-down before writing screen files: user roles, task entry
+  points, screen map, per-screen purpose, sections, fields, actions, states,
+  validation, permissions, feedback, error/recovery behavior, and verification
+  evidence
+- use bounded model inference when the flow contract and business domain are
+  clear but UI information is coarse; inferred UI details must be marked
+  `Source: model-inferred` or linked to `OPEN-*`, remain draft, and never create
+  new business events, permissions, validation rules, compliance/data-retention
+  behavior, irreversible actions, settlement/pricing behavior, or acceptance
+  downgrades
+- mark inferred UI rows with `Source: model-inferred` or `[INFER:DRAFT]`.
+  Inferred UI cannot support `READY_FOR_PLAN`, stable trace, risk closure,
+  gate PASS, or implementation readiness until confirmed or checked.
 - bind screens, fields, and actions to flow steps, business events, data objects, permissions, API contracts, acceptance paths, or open items
 - prefer structured UI documents, JSON Forms, HTML/CSS prototypes, or Storybook
   stories over bitmap images, and make rendered/exported UI visuals reviewable
@@ -272,11 +321,22 @@ Not every file is seeded up front by the template root. Some are created or expa
 - allow small text/label edits, concrete one-point user instructions, or
   explicit `--auto` runs to skip review, but state why review was skipped, what
   changed, and whether the result is still draft or ready for the next step
+- `--auto` may skip only the visual review gate; it must never skip subject
+  scope, business domain anchor, stage entry preflight, subject-confusion
+  checks, or Process Visualization UI checks
 - offer 2-3 options with impact, recommendation, and next command when multiple
   UI layouts, interaction models, or information architecture repairs are
   reasonable; do not silently choose for the user
+- offer 2-3 options with impact, recommendation, and next command when coarse
+  input admits multiple valid UI patterns; do not silently choose a materially
+  different interaction model for the user
 - avoid inventing business events, state transitions, permissions, side effects, or validation rules from UI convenience alone
 - mark new or refreshed UI outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
+- finish by writing UI `Stage Readiness`: `READY_FOR_PLAN` only when required
+  screens/actions/fields have flow provenance, draft inference is not promoted,
+  visual review is satisfied or safely skipped, and open blockers are clean;
+  otherwise use `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` and do not present
+  `/sp.gate` as the immediate next step.
 - check direct-neighbor data-linkage when UI changes affect fields, actions, validation, permissions, API parameters, screen states, tests, acceptance, rollback, release, or human decisions
 - route unresolved UI business meaning to `sp.flow`, `sp.specify`, or `sp.clarify`; do not let UI absorb the missing business rule
 
@@ -391,6 +451,41 @@ All current `sp` commands should preserve these rules unless a later product dec
 - do not treat command success, generated documents, or exit code 0 as business PASS; business PASS still requires acceptance, trace, open-item, data-linkage, code/test evidence, and gate verdict
 - do not stage or commit unauthorized `src/`, `scripts/`, config, generated-code, schema, or test assets during document-stage closeout; turn required code work into a `Mode: impl` code handoff packet instead
 
+## 10.0 Stage Entry Preflight
+
+Every downstream command must run a lightweight Stage Entry Preflight before broad reading, analysis, task generation, gate decisions, or implementation edits. This is not a workflow engine and must not rerun the whole upstream chain. It only decides whether the current command has enough current upstream evidence to continue safely.
+
+The preflight checks:
+
+- active feature routing is current enough to identify one target feature or workset
+- required upstream artifacts exist for the command
+- required artifacts are not obviously initialization scaffolds, generic templates, or draft-only outputs being used as stable facts
+- open blockers, high-impact risks, stale routing, and unresolved decisions do not block this command's correctness
+- user input does not introduce a requirement, scope, flow, UI, plan, task, or implementation-boundary change that belongs to an upstream owner
+
+If the current command cannot continue safely, stop early and report:
+
+- `Missing/Weak Artifact`
+- `Blocker Type`
+- `Root Layer`
+- `Owner Route`
+- `Why current command cannot continue`
+- `Next /sp.* route`
+- `Writeback Target`
+
+Requirement-change routing is mandatory:
+
+- product goal, user, positioning, PRD, or source-authority changes route to `/sp.prd` or `/sp.specify`
+- requirement, acceptance, business-rule, or scope changes route to `/sp.specify`
+- unclear intent, conflict, risk acceptance, verification downgrade, or irreversible tradeoff routes to `/sp.clarify`
+- flow, state, branch, permission, exception, or non-UI process changes route to `/sp.flow`
+- screen, action, field, data binding, or interaction changes route to `/sp.ui`
+- workset, code landing, runtime command, dependency surface, readiness, or architecture-boundary changes route to `/sp.plan`
+- task packet, split, allowed write set, required checks, or parallel boundary changes route to `/sp.tasks`
+- implementation that discovers upstream gaps must stop, preserve valid local evidence, and route to the upstream owner instead of guessing
+
+Low-risk wording changes may continue only when they do not alter stable business facts, trace, acceptance, flow, UI, planning, tasks, implementation boundaries, or gate evidence. Do not auto-create missing upstream documents from a downstream command just to satisfy preflight.
+
 ## 10.1 Blocker Triage Matrix
 
 Before retrying, broadening scope, or recommending implementation, commands must classify each real blocker. `memory/open-items.md` is the single stable truth source for blockers, risks, decisions, and close conditions; reports, fallback logs, task notes, and model recommendations are projections or candidate sources only.
@@ -403,6 +498,7 @@ Use these blocker types:
 - `CODE_TEST_ONLY`: documentation is sufficient, but the remaining evidence can only be produced by code, tests, runtime checks, or manual verification. Create a `Mode: impl` handoff packet rather than blocking document closeout.
 - `EXECUTION_INFRA`: host, wrapper, timeout, empty response, exit 143, CLI, permission, or network failure. Isolate it in fallback-log or failure-site reporting. It blocks PASS only when required evidence depends on the failed execution.
 - `GENERIC_ARTIFACT`: output is template-like and lacks specific business behavior, source anchors, flow/UI/data/API relations, or acceptance evidence. Route back to PRD/spec/flow/UI/plan; it cannot support PASS.
+- `SUBJECT_CONFUSION`: flow/UI output models SP commands, memory, preflight, gate, task routing, methodology stages, or process-display panels as the target business system. Stop generation, discard the affected draft, route to `/sp.flow` or `/sp.ui`, and require the next run to re-read `spec.md` and relevant source docs before regenerating.
 - `BUSINESS_DECISION`: security, tenant isolation, delete/recovery, audit, compliance, risk acceptance, scope tradeoff, or verification downgrade requires a human choice. Route to `/sp.clarify` for a Decision Package.
 - `ROUTING_STALE`: project memory, feature memory, current workspace, or command target disagree. Repair routing before continuing.
 - `SCOPE_CONFLICT`: requirements, goals, acceptance, or feature boundaries conflict. Route to `/sp.clarify`, then `/sp.specify` or `/sp.plan` as needed.

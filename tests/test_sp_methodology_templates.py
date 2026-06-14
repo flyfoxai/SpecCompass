@@ -9,6 +9,12 @@ FEATURE_MEMORY_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "temp
 FEATURE_TEMPLATE_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature"
 PROJECT_MEMORY_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "memory"
 METHODOLOGY_DOC = PROJECT_ROOT / "docs" / "reference" / "sp-project-methodology.md"
+BASH_PREREQ = PROJECT_ROOT / "scripts" / "bash" / "check-prerequisites.sh"
+POWERSHELL_PREREQ = PROJECT_ROOT / "scripts" / "powershell" / "check-prerequisites.ps1"
+TEMPLATE_BASH_PREREQ = PROJECT_ROOT / "templates" / "project" / "scripts" / "bash" / "check-prerequisites.sh"
+TEMPLATE_POWERSHELL_PREREQ = (
+    PROJECT_ROOT / "templates" / "project" / "scripts" / "powershell" / "check-prerequisites.ps1"
+)
 
 
 def _command(name: str) -> str:
@@ -745,11 +751,16 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
 
     assert "input, precondition or permission, business action, output or side effect, target state, failure path" in flow
     assert "node type: `ui`, `system`, `external`, `scheduled`, `manual`, or `none_ui`" in flow
-    assert "fields to collect, business facts to show, events allowed, permissions, and error states" in flow
+    assert "fields to collect, business facts to show, end-user actions allowed, permissions, and error states" in flow
+    assert "business domain anchor" in flow
+    assert "Put this anchor visibly near the top of `flows/index.md`" in flow
+    assert "not a workflow monitoring panel" in flow
+    assert "Wrong: \"Display flow progress" in flow
     assert "Treat visual review as a confirmation gate" in flow
     assert "first-time flow generation" in flow
     assert "3 or more new flow nodes" in flow
     assert "the review gate may be skipped" in flow
+    assert "`--auto` may skip only the visual review gate" in flow
     assert "multiple reasonable repairs" in flow
     assert "not present `/sp.ui` or `/sp.gate` as the" in flow
     assert "immediate next step" in flow
@@ -758,17 +769,31 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "Bind each critical UI action to an allowed business event or flow effect" in ui
     assert "must not invent business validation" in ui
     assert "`/sp.ui` must consume `/sp.flow` outputs" in ui
+    assert "Business UI vs Process Visualization UI" in ui
+    assert "target end users complete target business operations" in ui
+    assert "flow step progress bars" in ui
+    assert "state transition timelines" in ui
+    assert "unless `spec.md` explicitly requires" in ui
+    assert "business domain anchor" in ui
+    assert "Put this anchor visibly near the top of `ui/index.md`" in ui
     assert "unconfirmed flow draft" in ui
     assert "Treat visual review as a confirmation gate" in ui
     assert "3 or more new screens or critical actions" in ui
+    assert "`--auto` may skip only the visual review gate" in ui
     assert "multiple reasonable layouts" in ui
     assert "not present `/sp.gate` as the immediate next" in ui
 
     assert "Check Flow-UI relation integrity" in analyze
+    assert "Check subject-scope integrity" in analyze
+    assert "Check Process Visualization UI" in analyze
+    assert "SUBJECT_CONFUSION" in analyze
     assert "Check orphan relation objects" in analyze
     assert "Check draft facts" in analyze
 
     assert "Verify Flow-UI relation integrity" in gate
+    assert "subject-scope integrity" in gate
+    assert "SUBJECT_CONFUSION" in gate
+    assert "unsupported Process Visualization UI" in gate
     assert "cannot support PASS" in gate
     assert "critical flow port-contract gaps" in gate
 
@@ -782,6 +807,192 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "New or refreshed outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts" in memory_arch
     assert "Recommended relation verbs" in trace_index
     assert "UI screen, field, or action cannot trace" in open_items
+
+
+def test_flow_ui_coarse_inputs_use_bounded_inference_and_decision_options():
+    """Flow/UI should be rich enough for design while keeping inferred content draft and bounded."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    flow = _command("flow")
+    ui = _command("ui")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+
+    for content, label in (
+        (methodology, "methodology"),
+        (flow, "flow"),
+        (ui, "ui"),
+        (command_spec, "command_spec"),
+    ):
+        assert "Source: model-inferred" in content, label
+        assert "OPEN-*" in content, label
+        assert "2-3" in content, label
+        assert "recommendation" in content.lower() or "推荐方案" in content, label
+        assert "/sp.clarify" in content, label
+        assert "draft" in content.lower() or "草稿" in content, label
+        assert "acceptance downgrade" in content.lower() or "验收降级" in content, label
+        assert "irreversible" in content.lower() or "不可逆" in content, label
+
+    assert "Decompose the flow top-down before writing diagrams" in flow
+    assert "business goal, actors, lifecycle states, mainline stages, decision points" in flow
+    assert "If the source information is coarse" in flow
+    assert "Safe inferred details include common lifecycle stages" in flow
+    assert "Unsafe inferred details include new business rules" in flow
+    assert "not promoted to stable memory/trace" in flow
+    assert "not under-decomposed" in flow
+
+    assert "Decompose UI top-down before writing screen files" in ui
+    assert "user roles, task entry points, screen map" in ui
+    assert "If the flow contract and business domain are clear but UI information is coarse" in ui
+    assert "Safe inferred details include standard create/view/edit/review/result screens" in ui
+    assert "Unsafe inferred details include new business events" in ui
+    assert "not promoted to stable memory/trace" in ui
+    assert "not under-decomposed" in ui
+
+    assert "自上而下" in methodology
+    assert "受控推理" in methodology
+    assert "不能直接关闭风险" in methodology
+
+
+def test_stage_readiness_gates_flow_ui_and_blocks_inferred_pass():
+    """Flow/UI must consume explicit upstream readiness and keep inferred facts draft."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    specify = _command("specify")
+    clarify = _command("clarify")
+    flow = _command("flow")
+    ui = _command("ui")
+    analyze = _command("analyze")
+    gate = _command("gate")
+
+    for content, label in (
+        (methodology, "methodology"),
+        (command_spec, "command_spec"),
+        (analyze, "analyze"),
+        (gate, "gate"),
+    ):
+        assert "Stage Readiness" in content, label
+        assert "READY_FOR_FLOW" in content, label
+        assert "READY_FOR_UI" in content, label
+        assert "READY_FOR_PLAN" in content, label
+        assert "NEEDS_DECISION" in content, label
+        assert "DRAFT_ONLY" in content, label
+        assert "Source: model-inferred" in content, label
+        assert "[INFER:DRAFT]" in content, label
+
+    for content, label in (
+        (specify, "specify"),
+        (clarify, "clarify"),
+        (flow, "flow"),
+        (ui, "ui"),
+    ):
+        assert "Stage Readiness" in content, label
+        assert "NEEDS_DECISION" in content, label
+        assert "DRAFT_ONLY" in content, label
+        assert "Source: model-inferred" in content, label
+        assert "[INFER:DRAFT]" in content, label
+
+    assert "Status: READY_FOR_FLOW" in specify
+    assert "Status: NEEDS_CLARIFY" in specify
+    assert "Do not suggest `/sp.flow`" in specify
+
+    assert "human-selected `Decision Record`" in clarify
+    assert "A model recommendation" in clarify
+    assert "must not unlock `READY_FOR_FLOW`" in clarify
+
+    assert "Status: READY_FOR_FLOW" in flow
+    assert "stop before generating flow artifacts" in flow
+    assert "READY_FOR_UI" in flow
+    assert "Suggest `/sp.ui` or `/sp.gate` only when flow `Stage Readiness` is `READY_FOR_UI`" in flow
+    assert "[SRC:SPEC-*]" in flow
+    assert "do not qualify as stable provenance" in flow
+
+    assert "Status: READY_FOR_UI" in ui
+    assert "stop before generating stable UI artifacts" in ui
+    assert "READY_FOR_PLAN" in ui
+    assert "Suggest `/sp.gate` only when UI `Stage Readiness` is `READY_FOR_PLAN`" in ui
+    assert "[SRC:FLOW-*]" in ui
+    assert "do not qualify as stable provenance" in ui
+
+    for content, label in ((analyze, "analyze"), (gate, "gate")):
+        assert "Do not mark PASS when required `Stage Readiness` is missing" in content, label
+        assert "without upstream `READY_FOR_FLOW`" in content, label
+        assert "without upstream `READY_FOR_UI`" in content, label
+        assert "`Source: model-inferred` is used as stable evidence" in content or "Source: model-inferred` is being used as stable" in content, label
+    assert "不能静默选择" in methodology
+    assert "decompose the flow top-down" in command_spec
+    assert "use bounded model inference" in command_spec
+    assert "decompose UI top-down" in command_spec
+
+
+def test_stage_entry_preflight_routes_missing_or_changed_upstream_work():
+    """Downstream commands should stop early when prior SP stages are absent, weak, or invalidated."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    bash_prereq = BASH_PREREQ.read_text(encoding="utf-8")
+    powershell_prereq = POWERSHELL_PREREQ.read_text(encoding="utf-8")
+    template_bash_prereq = TEMPLATE_BASH_PREREQ.read_text(encoding="utf-8")
+    template_powershell_prereq = TEMPLATE_POWERSHELL_PREREQ.read_text(encoding="utf-8")
+
+    for command in ("bundle", "flow", "ui", "plan", "tasks", "analyze", "gate", "implement"):
+        content = _command(command)
+        assert "Stage Entry Preflight" in content, command
+        assert "Missing/Weak Artifact" in content, command
+        assert "Blocker Type" in content, command
+        assert "Root Layer" in content, command
+        assert "Owner Route" in content, command
+        assert "Why current command cannot continue" in content, command
+        assert "Next /sp.* route" in content, command
+        assert "Writeback Target" in content, command
+
+    analyze = _command("analyze")
+    ui = _command("ui")
+
+    assert "--require-flow" in analyze
+    assert "--require-ui" in analyze
+    assert "-RequireFlow" in analyze
+    assert "-RequireUi" in analyze
+    assert "--require-flow" in ui
+    assert "-RequireFlow" in ui
+
+    for content, label in ((bash_prereq, "bash"), (template_bash_prereq, "template_bash")):
+        assert "--require-flow" in content, label
+        assert "--require-ui" in content, label
+
+    for content, label in (
+        (powershell_prereq, "powershell"),
+        (template_powershell_prereq, "template_powershell"),
+    ):
+        assert "-RequireFlow" in content, label
+        assert "-RequireUi" in content, label
+
+    for content, label in (
+        (bash_prereq, "bash"),
+        (powershell_prereq, "powershell"),
+        (template_bash_prereq, "template_bash"),
+        (template_powershell_prereq, "template_powershell"),
+    ):
+        assert "Run /sp.flow first" in content, label
+        assert "Run /sp.ui first" in content, label
+        assert "flows/" in content, label
+        assert "ui/" in content, label
+
+    for content, label in ((methodology, "methodology"), (command_spec, "command_spec")):
+        assert "Stage Entry Preflight" in content or "阶段入口准入检查" in content, label
+        assert "SUBJECT_CONFUSION" in content, label
+        assert "--auto" in content, label
+        assert "/sp.prd" in content, label
+        assert "/sp.specify" in content, label
+        assert "/sp.clarify" in content, label
+        assert "/sp.flow" in content, label
+        assert "/sp.ui" in content, label
+        assert "/sp.plan" in content, label
+        assert "/sp.tasks" in content, label
+        assert "Do not auto-create missing upstream documents" in content or "不要自动生成缺失的上游文档" in content, label
 
 
 def test_document_stage_code_artifacts_require_mode_impl_handoff():
@@ -1383,3 +1594,118 @@ def test_upgrade_docs_and_changelog_explain_code_continuation_migration():
     assert "route to `/sp.clarify`" in upgrade
     assert "NEEDS_DECISION" in upgrade
     assert "NEEDS_CONTEXT" in upgrade
+
+
+def test_flow_ui_subject_scope_prevents_sp_mechanism_outputs():
+    """Flow/UI outputs should model the target product, not SP's own process."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    flow = _command("flow")
+    ui = _command("ui")
+
+    for content, label in ((flow, "flow"), (ui, "ui")):
+        assert "Subject Scope" in content, label
+        assert "target business application" in content, label
+        assert "operational context" in content, label
+        assert "subject-confusion" in content, label
+        assert "business domain" in content, label
+        assert "SUBJECT_CONFUSION" in content, label
+        assert "preflight" in content, label
+        assert "workset" in content, label
+        assert "`/sp.*`" in content, label
+        assert "discard the affected" in content, label
+        assert "Do not regenerate in the same run" in content, label
+        assert "hits `SUBJECT_CONFUSION` twice" in content, label
+
+    assert "must never produce flow diagrams" in flow
+    assert "SP's own command processing" in flow
+    assert "as business flow nodes" in flow
+    assert "Run a subject-confusion scan" in flow
+    assert "workflow monitoring panel" in flow
+    assert "process visualization" in flow
+
+    assert "must never produce UI designs" in ui
+    assert "SP's own command interface" in ui
+    assert "as screen subjects" in ui
+    assert "Run a subject-confusion scan" in ui
+    assert "Business UI means" in ui
+    assert "Process Visualization UI means" in ui
+    assert "flow step progress" in ui
+    assert "state transition timeline" in ui
+    assert "target business operations" in ui
+
+    assert "建模主体永远是目标业务系统" in methodology
+    assert "业务域" in methodology
+    assert "流程展示型 UI" in methodology
+    assert "SUBJECT_CONFUSION" in methodology
+    assert "不能成为业务流程节点、界面、字段、按钮、用户路径或图中标签" in methodology
+    assert "主体混淆" in methodology
+    assert "不要在同一轮里继续重生成" in methodology
+    assert "业务域锚点应作为可见内容" in methodology
+    assert "连续两次因为同一业务边界触发 `SUBJECT_CONFUSION`" in methodology
+    assert "`--auto` 只能跳过视觉确认" in methodology
+
+
+def test_flow_ui_subject_confusion_blocks_analyze_and_gate_pass():
+    """Analyze/Gate must hard-block wrong-subject or process-display UI artifacts."""
+    analyze = _command("analyze")
+    gate = _command("gate")
+
+    for content, label in ((analyze, "analyze"), (gate, "gate")):
+        assert "SUBJECT_CONFUSION" in content, label
+        assert "Do not mark PASS" in content or "Block PASS" in content, label
+        assert "target business application" in content, label
+        assert "workflow stages" in content, label
+        assert "flow step progress" in content, label
+        assert "state transition timeline" in content, label
+        assert "processing dashboard" in content, label
+        assert "business-role/data/permission/acceptance" in content, label
+
+
+def test_stage_next_prompts_require_human_confirmation_when_needed():
+    """Stage closeout prompts should stop for user review before unstable facts advance."""
+    prd = _command("prd")
+    specify = _command("specify")
+    plan = _command("plan")
+    tasks = _command("tasks")
+
+    assert "end with an explicit review prompt" in prd
+    assert "[src:ai-proposed]" in prd
+    assert "[uncertain:*]" in prd
+    assert "unconfirmed candidate requirements" in prd
+    assert "whether the next safe route is `/sp.clarify`" in prd
+
+    assert "If `Stage Readiness` is `READY_FOR_FLOW`, suggest `/sp.flow`" in specify
+    assert "do not suggest `/sp.flow`" in specify
+    assert "end with an explicit review prompt" in specify
+    assert "confirm, reject, or revise the named items" in specify
+
+    assert "workset split" in plan
+    assert "sub-feature promotion" in plan
+    assert "sub-project promotion" in plan
+    assert "do not suggest `/sp.tasks` as the immediate next step" in plan
+    assert "explicit confirmation prompt" in plan
+
+    assert "BUSINESS_DECISION" in tasks
+    assert "unresolved `SCOPE_CONFLICT`" in tasks
+    assert "do not suggest `/sp.implement` or `/sp.analyze`" in tasks
+    assert "route to `/sp.clarify`" in tasks
+
+
+def test_flow_ui_next_prompts_require_visual_review_before_downstream():
+    """Flow/UI should visibly prompt users to review diagrams or UI artifacts before promotion."""
+    flow = _command("flow")
+    ui = _command("ui")
+
+    assert "End with a visual review prompt" in flow
+    assert "flow visuals are ready for review" in flow
+    assert "which files to review" in flow
+    assert "which viewer to use" in flow
+    assert "FLOW A1-3 branch handling" in flow
+    assert "do not present `/sp.ui` or `/sp.gate`" in flow
+
+    assert "End with a visual review prompt" in ui
+    assert "UI visuals are ready for review" in ui
+    assert "which files to review" in ui
+    assert "which viewer to use" in ui
+    assert "ACTION A2 on SCREEN S1" in ui
+    assert "do not present `/sp.gate` as the immediate next" in ui

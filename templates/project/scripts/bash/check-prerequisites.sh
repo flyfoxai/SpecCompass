@@ -5,6 +5,8 @@ set -eu
 OUTPUT_JSON=0
 PATHS_ONLY=0
 REQUIRE_SPEC=0
+REQUIRE_FLOW=0
+REQUIRE_UI=0
 REQUIRE_BUNDLE=0
 REQUIRE_PLAN=0
 REQUIRE_TASKS=0
@@ -20,6 +22,12 @@ while [ "$#" -gt 0 ]; do
       ;;
     --require-spec)
       REQUIRE_SPEC=1
+      ;;
+    --require-flow)
+      REQUIRE_FLOW=1
+      ;;
+    --require-ui)
+      REQUIRE_UI=1
       ;;
     --require-bundle)
       REQUIRE_BUNDLE=1
@@ -80,6 +88,8 @@ SPEC_PATH=""
 BUNDLE_PATH=""
 PLAN_PATH=""
 TASKS_PATH=""
+FLOW_DIR=""
+UI_DIR=""
 
 if [ -n "$ACTIVE_FEATURE" ]; then
   FEATURE_DIR="specs/$ACTIVE_FEATURE"
@@ -87,6 +97,8 @@ if [ -n "$ACTIVE_FEATURE" ]; then
   BUNDLE_PATH="$FEATURE_DIR/bundle.md"
   PLAN_PATH="$FEATURE_DIR/plan.md"
   TASKS_PATH="$FEATURE_DIR/tasks.md"
+  FLOW_DIR="$FEATURE_DIR/flows"
+  UI_DIR="$FEATURE_DIR/ui"
 
   if [ ! -d "$FEATURE_DIR" ]; then
     ACTIVE_FEATURE=""
@@ -95,6 +107,8 @@ if [ -n "$ACTIVE_FEATURE" ]; then
     BUNDLE_PATH=""
     PLAN_PATH=""
     TASKS_PATH=""
+    FLOW_DIR=""
+    UI_DIR=""
   fi
 fi
 
@@ -113,8 +127,29 @@ require_path() {
   fi
 }
 
+require_non_empty_dir() {
+  label="$1"
+  path="$2"
+
+  if [ -z "$path" ] || [ ! -d "$path" ] || [ -z "$(find "$path" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]; then
+    if [ -n "$missing" ]; then
+      missing="$missing,$label"
+    else
+      missing="$label"
+    fi
+  fi
+}
+
 if [ -n "$ACTIVE_FEATURE" ] && [ "$REQUIRE_SPEC" -eq 1 ]; then
   require_path "spec" "$SPEC_PATH"
+fi
+
+if [ -n "$ACTIVE_FEATURE" ] && [ "$REQUIRE_FLOW" -eq 1 ]; then
+  require_non_empty_dir "flow" "$FLOW_DIR"
+fi
+
+if [ -n "$ACTIVE_FEATURE" ] && [ "$REQUIRE_UI" -eq 1 ]; then
+  require_non_empty_dir "ui" "$UI_DIR"
 fi
 
 if [ -n "$ACTIVE_FEATURE" ] && [ "$REQUIRE_BUNDLE" -eq 1 ]; then
@@ -144,6 +179,8 @@ if [ "$OUTPUT_JSON" -eq 1 ]; then
   printf '  "specPath": "%s",\n' "$(json_escape "$SPEC_PATH")"
   printf '  "bundlePath": "%s",\n' "$(json_escape "$BUNDLE_PATH")"
   printf '  "planPath": "%s",\n' "$(json_escape "$PLAN_PATH")"
+  printf '  "flowDir": "%s",\n' "$(json_escape "$FLOW_DIR")"
+  printf '  "uiDir": "%s",\n' "$(json_escape "$UI_DIR")"
   if [ "$INCLUDE_TASKS" -eq 1 ]; then
     printf '  "tasksPath": "%s",\n' "$(json_escape "$TASKS_PATH")"
   else
@@ -162,6 +199,8 @@ elif [ "$PATHS_ONLY" -eq 1 ]; then
   printf 'SPEC_PATH=%s\n' "$SPEC_PATH"
   printf 'BUNDLE_PATH=%s\n' "$BUNDLE_PATH"
   printf 'PLAN_PATH=%s\n' "$PLAN_PATH"
+  printf 'FLOW_DIR=%s\n' "$FLOW_DIR"
+  printf 'UI_DIR=%s\n' "$UI_DIR"
   if [ "$INCLUDE_TASKS" -eq 1 ]; then
     printf 'TASKS_PATH=%s\n' "$TASKS_PATH"
   fi
@@ -177,5 +216,11 @@ fi
 
 if [ -n "$missing" ]; then
   echo "Missing required stage outputs: $missing" >&2
+  case ",$missing," in
+    *,flow,*) echo "Run /sp.flow first to create the business flow documents in flows/." >&2 ;;
+  esac
+  case ",$missing," in
+    *,ui,*) echo "Run /sp.ui first to create the UI interaction documents in ui/." >&2 ;;
+  esac
   exit 1
 fi

@@ -98,6 +98,10 @@ Execution flow:
    - If the user changes the proposed option, record the user's revised choice rather than rewriting it as the original recommendation.
    - After the user chooses, write the selected decision back to the source doc, affected task, or `memory/open-items.md` named by the decision package. The `NEEDS_DECISION` freeze for the same `Blocker ID` is lifted only after this writeback is complete.
    - If writeback cannot be completed, keep the blocker open in `memory/open-items.md` with written targets, missing targets, reason, close condition, and next route. A recommendation or chat answer alone is not enough to resume downstream work.
+   - Update `Stage Readiness` only after the human-selected `Decision Record` is written back to every required source doc, affected task, or memory target.
+   - If the decision resolves flow-blocking ambiguity and all remaining requirement evidence is stable, set or preserve `READY_FOR_FLOW`; otherwise keep `NEEDS_CLARIFY`, `NEEDS_DECISION`, `BLOCKED`, or `DRAFT_ONLY` with the exact next owner route.
+   - A model recommendation, unselected option, or answer that has not been written back must not unlock `READY_FOR_FLOW`, `READY_FOR_UI`, `READY_FOR_PLAN`, gate PASS, stable trace, or implementation readiness.
+   - If the clarified area still depends on `Source: model-inferred`, `[INFER:DRAFT]`, `[src:ai-proposed]`, or other unconfirmed candidate material, keep the affected readiness as `DRAFT_ONLY`, `NEEDS_CLARIFY`, or `NEEDS_DECISION` instead of promoting it.
    - Update `spec.md` only where clarification stabilizes the baseline requirement.
    - Keep unresolved items visible instead of forcing closure.
    - For unresolved high-impact items, update `memory/open-items.md` with owner or revisit step, impact area, affected docs or trace anchor, and close condition.
@@ -114,6 +118,7 @@ Execution flow:
    - Confirm downstream files that depend on the clarification are named explicitly.
    - Confirm no unresolved business decision was silently converted into a stable assumption.
    - Confirm every resolved `NEEDS_DECISION` item has a human-selected decision record and completed writeback to the source doc, task, or `memory/open-items.md`.
+   - Confirm `Stage Readiness` was updated only when the human-selected decision record and writeback are complete; otherwise keep `NEEDS_DECISION` and route to `/sp.clarify`.
 
 ## Output
 
@@ -134,6 +139,7 @@ Execution flow:
 - Do not convert weak evidence into fixed decisions.
 - Do not convert a model recommendation into a final decision. Human choice is required before a decision can be recorded as stable.
 - Do not lift `NEEDS_DECISION` for a blocker until the human-selected decision is written back to the relevant source doc, task, or `memory/open-items.md`.
+- Do not promote downstream readiness from `/sp.clarify` unless the selected decision is written back and the target readiness criteria are explicitly satisfied.
 - Keep the clarification set focused on material downstream impact.
 - If two evidence-based clarification attempts cannot close the issue, fall back upward to `/sp.specify` or the relevant user macro decision instead of continuing to guess.
 

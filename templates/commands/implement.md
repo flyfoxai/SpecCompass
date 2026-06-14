@@ -53,7 +53,14 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 1. Run `{SCRIPT}` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").
 
-2. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
+2. **Stage Entry Preflight**:
+   - Confirm routing identifies one active feature/workset and the requested work can be mapped to a selected `Mode: impl` task.
+   - Confirm `tasks.md`, `plan.md`, `plan.md` `Implementation Readiness`, `Allowed Write Set`, `Required Checks`, and the selected task packet are present before editing.
+   - Check whether user input changes requirements, acceptance, flow, UI, architecture, workset boundary, task split, allowed write set, required checks, risk acceptance, or verification standard. If so, stop implementation and route to `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.plan`, or `/sp.tasks` as the owner.
+   - If implementation would need to invent missing source facts, code boundaries, task packet fields, runtime commands, human decisions, or validation downgrade, stop and report the upstream route instead of editing.
+   - If preflight fails, return `NEEDS_PLAN`, `NEEDS_TASKS`, `NEEDS_CONTEXT`, `BLOCKED`, or `NEEDS_DECISION` as appropriate, and include `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`.
+
+3. **Check checklists status** (if FEATURE_DIR/checklists/ exists):
    - Scan all checklist files in the checklists/ directory
    - For each checklist, count:
      - Total items: All lines matching `- [ ]` or `- [X]` or `- [x]`
@@ -82,9 +89,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 
    - **If all checklists are complete**:
      - Display the table showing all checklists passed
-     - Automatically proceed to step 3
+     - Automatically proceed to step 4
 
-3. Load and analyze the implementation context:
+4. Load and analyze the implementation context:
    - **REQUIRED**: Read tasks.md for the task list, then select only the requested `Mode: impl` task or task group for this run. If the user did not name a task, pick the next unblocked `Mode: impl` task that is ready under dependency order.
    - **REQUIRED**: Read plan.md for tech stack, architecture, and file structure
    - **REQUIRED**: Read `plan.md` `Implementation Readiness`; it is the single source of truth for whether a workset can enter implementation.
@@ -97,7 +104,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read quickstart.md for integration scenarios
    - **Memory-first continuation**: If the selected task continues existing code, start from feature memory, workset memory, `trace-index.md`, `open-items.md`, and the task's `Read Set`; expand to source code only through direct dependencies, failing checks, reverse-trace needs, or explicitly named source files.
 
-4. **Project Setup Verification**:
+5. **Project Setup Verification**:
    - Create or verify ignore files when project setup, tooling, detected technology, packaging, or generated-output paths changed, or when required ignore files are missing. Do not rewrite ignore files on every implementation run just to restate unchanged patterns.
 
    **Detection & Creation Logic**:
@@ -141,7 +148,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Terraform**: `.terraform/`, `*.tfstate*`, `*.tfvars`, `.terraform.lock.hcl`
    - **Kubernetes/k8s**: `*.secret.yaml`, `secrets/`, `.kube/`, `kubeconfig*`, `*.key`, `*.crt`
 
-5. Parse tasks.md structure and extract:
+6. Parse tasks.md structure and extract:
    - **Task phases**: Setup, Tests, Core, Integration, Polish
    - **Task dependencies**: Sequential vs parallel execution rules
    - **Task mode**: `Mode: impl` tasks are executable by this command; missing mode or `Mode: doc` tasks are not production-code tasks and must be routed back to `/sp.tasks` or executed by the appropriate document command.
@@ -153,7 +160,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - If `plan.md` does not mark the task's workset implementation-ready, stop and return `NEEDS_PLAN` or `NEEDS_DECISION` with the blocking readiness evidence and next route.
    - If required task context is missing and cannot be recovered from routed files, stop and return `NEEDS_CONTEXT` with the missing context, files checked, and next route.
 
-6. Execute implementation following the selected task plan:
+7. Execute implementation following the selected task plan:
    - **Selected-scope execution**: Execute only the selected `Mode: impl` task or task group for this run. Do not treat `/sp.implement` as permission to finish every task in `tasks.md` unless the user explicitly requested full remaining implementation and every included task is independently ready.
    - **Phase-by-phase execution**: Complete each selected phase before moving to the next
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together  

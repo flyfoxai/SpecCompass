@@ -9,6 +9,8 @@
 #
 # OPTIONS:
 #   --json              Output in JSON format
+#   --require-flow      Require flows/ to exist and contain at least one file
+#   --require-ui        Require ui/ to exist and contain at least one file
 #   --require-tasks     Require tasks.md to exist (for implementation phase)
 #   --include-tasks     Include tasks.md in AVAILABLE_DOCS list
 #   --paths-only        Only output path variables (no validation)
@@ -24,6 +26,8 @@ set -e
 # Parse command line arguments
 JSON_MODE=false
 REQUIRE_SPEC=false
+REQUIRE_FLOW=false
+REQUIRE_UI=false
 REQUIRE_BUNDLE=false
 REQUIRE_PLAN=false
 REQUIRE_TASKS=false
@@ -40,6 +44,12 @@ for arg in "$@"; do
             ;;
         --require-spec)
             REQUIRE_SPEC=true
+            ;;
+        --require-flow)
+            REQUIRE_FLOW=true
+            ;;
+        --require-ui)
+            REQUIRE_UI=true
             ;;
         --require-bundle)
             REQUIRE_BUNDLE=true
@@ -62,6 +72,8 @@ Consolidated prerequisite checking for Spec-Driven Development workflow.
 OPTIONS:
   --json              Output in JSON format
   --require-spec      Require spec.md to exist
+  --require-flow      Require flows/ to exist and contain at least one file
+  --require-ui        Require ui/ to exist and contain at least one file
   --require-bundle    Require bundle.md to exist
   --require-plan      Require plan.md to exist
   --require-tasks     Require tasks.md to exist (for implementation phase)
@@ -75,12 +87,15 @@ EXAMPLES:
   
   # Check planning prerequisites (bundle.md required)
   ./check-prerequisites.sh --json --require-bundle
-  
+
+  # Check UI prerequisites (spec.md and flows/ required)
+  ./check-prerequisites.sh --json --require-spec --require-flow
+
   # Check tasks prerequisites (plan.md required)
   ./check-prerequisites.sh --json --require-plan
-  
-  # Check analysis prerequisites (tasks.md required)
-  ./check-prerequisites.sh --json --require-tasks --include-tasks
+
+  # Check analysis prerequisites (full upstream document chain required)
+  ./check-prerequisites.sh --json --require-spec --require-flow --require-ui --require-bundle --require-plan --require-tasks --include-tasks
   
   # Get feature paths only (no validation)
   ./check-prerequisites.sh --paths-only
@@ -155,7 +170,7 @@ if [[ ! -d "$FEATURE_DIR" ]]; then
 fi
 
 EXPLICIT_REQUIREMENT=false
-if $REQUIRE_SPEC || $REQUIRE_BUNDLE || $REQUIRE_PLAN || $REQUIRE_TASKS; then
+if $REQUIRE_SPEC || $REQUIRE_FLOW || $REQUIRE_UI || $REQUIRE_BUNDLE || $REQUIRE_PLAN || $REQUIRE_TASKS; then
     EXPLICIT_REQUIREMENT=true
 fi
 
@@ -166,6 +181,18 @@ fi
 if $REQUIRE_SPEC && [[ ! -f "$FEATURE_SPEC" ]]; then
     echo "ERROR: spec.md not found in $FEATURE_DIR" >&2
     echo "Run /sp.specify first to create the feature specification." >&2
+    exit 1
+fi
+
+if $REQUIRE_FLOW && { [[ ! -d "$FEATURE_DIR/flows" ]] || [[ -z "$(find "$FEATURE_DIR/flows" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]]; }; then
+    echo "ERROR: flows/ not found or empty in $FEATURE_DIR" >&2
+    echo "Run /sp.flow first to create the business flow documents." >&2
+    exit 1
+fi
+
+if $REQUIRE_UI && { [[ ! -d "$FEATURE_DIR/ui" ]] || [[ -z "$(find "$FEATURE_DIR/ui" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]]; }; then
+    echo "ERROR: ui/ not found or empty in $FEATURE_DIR" >&2
+    echo "Run /sp.ui first to create the UI interaction documents." >&2
     exit 1
 fi
 
@@ -197,6 +224,14 @@ docs=()
 # Check contracts directory (only if it exists and has files)
 if [[ -d "$CONTRACTS_DIR" ]] && [[ -n "$(ls -A "$CONTRACTS_DIR" 2>/dev/null)" ]]; then
     docs+=("contracts/")
+fi
+
+if [[ -d "$FEATURE_DIR/flows" ]] && [[ -n "$(find "$FEATURE_DIR/flows" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]]; then
+    docs+=("flows/")
+fi
+
+if [[ -d "$FEATURE_DIR/ui" ]] && [[ -n "$(find "$FEATURE_DIR/ui" -maxdepth 1 -type f -print -quit 2>/dev/null)" ]]; then
+    docs+=("ui/")
 fi
 
 [[ -f "$QUICKSTART" ]] && docs+=("quickstart.md")
@@ -238,6 +273,8 @@ else
     check_file "$RESEARCH" "research.md"
     check_file "$DATA_MODEL" "data-model.md"
     check_dir "$CONTRACTS_DIR" "contracts/"
+    check_dir "$FEATURE_DIR/flows" "flows/"
+    check_dir "$FEATURE_DIR/ui" "ui/"
     check_file "$QUICKSTART" "quickstart.md"
     
     if $INCLUDE_TASKS; then

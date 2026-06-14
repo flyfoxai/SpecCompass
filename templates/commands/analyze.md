@@ -1,8 +1,8 @@
 ---
 description: Verify whether the full document system is strong enough for later automation.
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json --require-tasks --include-tasks
-  ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
+  sh: scripts/bash/check-prerequisites.sh --json --require-spec --require-flow --require-ui --require-bundle --require-plan --require-tasks --include-tasks
+  ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireSpec -RequireFlow -RequireUi -RequireBundle -RequirePlan -RequireTasks -IncludeTasks
 ---
 
 ## User Input
@@ -73,13 +73,19 @@ Global rules:
 Execution flow:
 
 1. Run `{SCRIPT}` from repo root once and parse the active feature routing and document availability.
-2. Initialize analysis context.
+2. Run Stage Entry Preflight before broad analysis.
+   - Confirm the active feature route is current enough to identify one target feature or workset.
+   - Confirm `spec.md`, `flows/*`, `ui/*`, `bundle.md`, `plan.md`, and `tasks.md` exist and are not only initialization scaffolds, generic templates, or unchecked draft facts being used as stable evidence.
+   - Confirm open blockers, high-impact risks, stale routing, and unresolved decisions do not already make the requested analysis impossible at this layer.
+   - If user input changes product goal, requirements, acceptance, flow, UI, workset, task packet, implementation boundary, risk acceptance, or verification standard, stop normal analysis and route to the upstream owner command before diagnosing downstream artifacts.
+   - If preflight fails, output `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Use `FAIL` for repairable upstream evidence gaps, `BLOCKED` when safe automatic progress is impossible, and `NEEDS_DECISION` when the missing input is a human choice. Do not auto-create missing upstream documents from `/sp.analyze`.
+3. Initialize analysis context.
    - Read project-level `.specify/memory/*` routing files first.
    - Reconcile project-level routing against `feature-map.md`, `specs/*/memory/index.md`, and the current workspace before deciding that no active feature exists.
    - Read feature-level `memory/*` routing files next.
    - Read the first-layer and second-layer core outputs needed to prove the current analysis question; expand further only when a gap, stale route, or contradiction requires evidence.
    - Keep a short internal read-set note for each finding: routing file, memory file, or source document that supports it. Output the read set only when it explains a failure, stale route, or requested audit detail.
-3. Run the lightweight memory check when available.
+4. Run the lightweight memory check when available.
    - Prefer the script matching the installed script family:
      - Bash: `.specify/scripts/bash/check-sp-memory.sh --json`
      - PowerShell: `.specify/scripts/powershell/check-sp-memory.ps1 -Json`
@@ -88,7 +94,7 @@ Execution flow:
    - `ERROR` findings block PASS until fixed or routed upward with a clear next `/sp.*` step.
    - `WARN` findings do not automatically block PASS; confirm them against the current read set and record the decision when relevant.
    - Treat stale routing as a memory health preflight, not a normal warning. If project memory says bootstrap/no active feature while current specs, branch, user target, or feature memory indicate active work, classify it as `ROUTING_STALE`, choose the freshest bounded route if safe, and record the memory refresh target. If multiple active candidates remain, return `BLOCKED` or `NEEDS_DECISION` before broad analysis.
-4. Perform the analysis pass.
+5. Perform the analysis pass.
    - Detect whether project-level routing is stale, contradictory, or incomplete before using it as the active-feature decision.
    - When routing is stale but a single feature-level route is clear, continue the analysis on that feature and record the stale project-level memory as a finding to refresh.
    - Build a lightweight error-signal panel before the final PASS/FAIL decision:
@@ -129,11 +135,23 @@ Execution flow:
      - if a task is in `NEEDS_CONTEXT` state, treat it as a task-packet gap: route to `/sp.tasks` when the missing context can be recovered from existing documents, route to `/sp.plan` when the missing context is a workset or code-boundary problem, or return `NEEDS_DECISION` when human input is required
    - Verify coverage of IDs, owners, states, screens, APIs, tables, permissions, and acceptance paths.
    - Check Flow-UI relation integrity:
+     - `sp.flow` artifacts that are treated as stable have upstream `Stage Readiness: READY_FOR_FLOW` from `spec.md` or feature memory
+     - `sp.ui` artifacts that are treated as stable have upstream flow `Stage Readiness: READY_FOR_UI` from `flows/index.md` or feature memory
+     - current UI artifacts that support downstream planning have UI `Stage Readiness: READY_FOR_PLAN`
+     - missing, stale, mismatched, generic-template, `SP_STAGE_SEED`, `DRAFT_ONLY`, `NEEDS_CLARIFY`, `NEEDS_DECISION`, or `BLOCKED` readiness prevents diagnostic PASS and routes to the owner command
      - critical flow steps have a node type: `ui`, `system`, `external`, `scheduled`, `manual`, or `none_ui`
      - critical flow steps have a lightweight port contract: input, precondition or permission, business action, output or side effect, target state, failure path, and verification or acceptance evidence
      - `ui` type flow steps link to at least one UI coordinate or an explicit open item
      - screens and critical UI actions trace back to a flow step, business event, data object, permission, API contract, acceptance path, or open item
      - UI-created actions do not invent business events, state transitions, side effects, permissions, or validation rules that are absent from `spec.md`, clarifications, flows, API/data docs, or open items
+   - Check subject-scope integrity:
+     - flow and UI artifacts model the target business application, not SP, SpecCompass, Spec Kit, command execution, memory management, preflight, gate, task routing, or methodology stages
+     - classify any wrong-subject flow/UI output as `SUBJECT_CONFUSION`, with `Root Layer` set to `flow` or `ui` and owner route `/sp.flow` or `/sp.ui` after mandatory `spec.md` re-read
+     - `SUBJECT_CONFUSION` is never a soft issue and must block diagnostic PASS because it is a direction error that propagates to downstream commands
+   - Check Process Visualization UI:
+     - UI screens must enable or inspect target business operations for target users; they must not primarily display workflow progress, flow step progress bars, state transition timelines, processing dashboards, workflow node activation panels, or flow diagrams as UI
+     - allow Process Visualization UI only when `spec.md` explicitly requires workflow monitoring, process audit, orchestration, or operational status viewing as a product feature, and only when it is bound to business roles, data, permissions, and acceptance paths
+     - classify unsupported Process Visualization UI as `SUBJECT_CONFUSION` or `GENERIC_ARTIFACT` and route to `/sp.ui` or `/sp.flow`
    - Check data-linkage constraints:
      - data object, table, field, state, permission, event, or persistence changes identify directly related UI fields, API contracts, permission rules, emitted side effects, acceptance paths, tests, trace rows, or open items
      - UI field, API parameter, permission behavior, or test-semantic changes identify the related flow node and data object
@@ -145,6 +163,7 @@ Execution flow:
      - trace rows pointing to missing files, renamed tests, or absent anchors are findings
      - normal trace warnings must be visible in task evidence, analysis, or `memory/open-items.md`; warnings that cross a stage unresolved or affect acceptance, tests, release, rollback, or human decisions become blockers
    - Check draft facts. Newly generated or refreshed outputs from `/sp.flow`, `/sp.ui`, or `/sp.plan` are draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent current evidence. Draft facts cannot close risks, update stable trace conclusions, support PASS, or act as the sole implementation basis.
+   - Check provenance of stable flow/UI facts. Stable flow nodes, decisions, events, UI contracts, screens, fields, actions, and states need source provenance such as `[SRC:SPEC-*]`, `[SRC:CLARIFY-*]`, `[SRC:FLOW-*]`, or an explicit `OPEN-*`. `[INFER:DRAFT]` and `Source: model-inferred` may appear only as draft proposal evidence and cannot support diagnostic PASS, readiness, risk closure, trace closure, or implementation readiness.
    - For early flow/UI work before `tasks.md` exists, equivalent current evidence means a bounded check that confirms the draft has source backing, did not rewrite stable memory, did not close risks, did not support PASS, and either has trace/open-item routing or stays labeled as draft. This is a draft-safety check, not a full implementation-readiness analysis.
    - Check coordinate depth. Main coordinates should stay at `FEATxx.WSxx.TYPExx`; deep micro IDs such as `FLOW01.STEP04`, `UI03.BTN05`, or `API02.FIELD03` should not appear as stable public coordinates unless a recurring cross-document object has been intentionally promoted.
    - Check feature memory link integrity:
@@ -166,6 +185,7 @@ Execution flow:
      - `CODE_TEST_ONLY`: document inputs are sufficient, but evidence belongs to code/test/manual verification; require `Mode: impl` handoff rather than blocking document closeout.
      - `EXECUTION_INFRA`: timeout, empty response, exit 143, wrapper, host, CLI, permission, or network failure; isolate in fallback-log/failure-site reporting and block PASS only when required evidence depends on it.
      - `GENERIC_ARTIFACT`: flow/UI/delivery/task output is generic template language without concrete business behavior, source anchor, relation chain, or acceptance evidence; route to PRD/spec/flow/UI/plan and do not use it as PASS evidence.
+     - `SUBJECT_CONFUSION`: flow/UI output models SP's own command interface, workflow stages, memory operations, routing, gates, or methodology mechanics instead of the target business application; route to `/sp.flow` or `/sp.ui` after re-reading `spec.md` and the relevant source documents.
      - `BUSINESS_DECISION`: risk acceptance, scope tradeoff, compliance, security, tenant isolation, delete/recovery, audit, rollback, or verification downgrade; return `NEEDS_DECISION` and route to `/sp.clarify`.
      - `ROUTING_STALE`: project memory, feature memory, workspace, or command target disagree; repair routing before continuing.
      - `SCOPE_CONFLICT`: requirements or acceptance conflict; route to `/sp.clarify`, then `/sp.specify` or `/sp.plan`.
@@ -213,11 +233,11 @@ Execution flow:
    - If analysis discovers a new repeated-failure route, append or propose a concise fallback-log entry with workset or anchor, command, failure signature, failed evidence, attempted routes, next recommended route, and this run's timestamp or run label.
    - Promote fallback-log entries or `promote-candidate` notes to `specs/<feature>/memory/open-items.md` when the same failure signature appears twice in the same workset, the fallback blocks stage entry, or the issue involves human decision, data migration, permissions, security, release, rollback, or worktree cleanup. If the signature was already promoted, cite the existing open item ID instead of creating a duplicate; otherwise mark the fallback-log entry as `promoted` and cite the open item ID so fallback-log does not become a second truth source.
    - If the evidence shows the current layer is the wrong place to continue, do not keep auditing lower-level files. Record the source layer, target layer, reason, and exact next `/sp.*` step.
-5. Record the result.
+6. Record the result.
    - Create or update `specs/<feature>/analysis.md`.
    - Refresh related feature memory entries under `specs/<feature>/memory/*` when findings change routing, stable context, open-item status, or trace links.
    - When an area is accepted as already completed and evidence remains current, record only the light-check result or cite the existing evidence. Do not rewrite broad memory just to repeat unchanged facts.
-6. Validate before finishing.
+7. Validate before finishing.
    - Confirm findings are evidence-based and traceable to current documents.
    - Confirm the diagnostic verdict is one of `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION` and is justified explicitly for analysis readiness only. This verdict does not replace `/sp.gate` stage-entry judgment.
    - Confirm missing required context is reported as `BLOCKED` with context details and the next `/sp.*` route, or `NEEDS_DECISION` when the missing context requires human choice. `NEEDS_CONTEXT` is an implementation/task fallback route, not a valid `/sp.analyze` verdict.
@@ -243,6 +263,10 @@ Execution flow:
 - Do not mark PASS when a real blocker is unclassified, missing `Blocker Type`, missing owner route, or not written back/promoted/cited in `memory/open-items.md` when it affects stage entry.
 - Do not mark PASS when project/feature routing is stale and the active target cannot be safely reconciled from current memory and source documents.
 - Do not mark PASS when generic template artifacts are the only evidence for flow, UI, delivery, implementation readiness, or acceptance coverage.
+- Do not mark PASS when required `Stage Readiness` is missing, stale, mismatched, or contradicted by current evidence.
+- Do not mark PASS when `/sp.flow` ran or produced stable flow facts without upstream `READY_FOR_FLOW`.
+- Do not mark PASS when `/sp.ui` ran or produced stable UI facts without upstream `READY_FOR_UI`.
+- Do not mark PASS when stable flow/UI facts lack source provenance, or when `[INFER:DRAFT]` / `Source: model-inferred` is used as stable evidence.
 - Do not mark PASS when a required live check is blocked by `EXECUTION_INFRA`; isolate the execution issue, but do not turn the missing evidence into business PASS.
 - Do not mark PASS from broad batch reruns when the same failure signature is repeating without new disconfirming evidence or owner-route repair.
 - Do not treat blocker closeout as complete until each relevant item is `RESOLVED`, `INVALID_OR_STALE`, or explicitly accepted as `DEFERRED_WITH_OWNER` with owner, impact scope, rollback/degrade path, close condition, and revisit anchor.
@@ -250,6 +274,8 @@ Execution flow:
 - Do not keep large unresolved blockers as broad themes. Split them into smallest solvable units, or route to `/sp.clarify` / direct human decision when the split depends on product, risk, compliance, rollback, scope, or verification choice.
 - Do not mark PASS when critical flow steps are missing node type, port contract coverage, failure path, or verification route unless the missing part is explicitly routed through `memory/open-items.md`.
 - Do not mark PASS when Flow-UI relation integrity is broken: `ui` type steps without UI coordinate or open item, orphan screens/actions without business source, UI actions inventing unsupported events or side effects, or acceptance paths without flow/UI/API/data/test evidence.
+- Do not mark PASS when flow or UI artifacts contain `SUBJECT_CONFUSION`: screens, actions, fields, flow nodes, labels, or descriptions that model SP's own command interface, workflow stages, memory operations, routing, gates, or methodology mechanics instead of the target business application.
+- Do not mark PASS when UI artifacts are unsupported Process Visualization UI: flow step progress views, state transition timelines, processing dashboards, workflow node activation panels, or flow diagrams used as UI without explicit product requirements and business-role/data/permission/acceptance binding.
 - Do not mark PASS when unchecked draft facts from `/sp.flow`, `/sp.ui`, or `/sp.plan` are being used as stable memory, risk-closure evidence, trace closure, or stage-entry evidence.
 - Do not mark PASS when `Mode: impl` tasks lack `Allowed Write Set`, `Required Checks`, task-packet effective defaults, or readiness from `plan.md`.
 - Do not mark PASS when document-stage closeout depends on unauthorized code artifacts instead of a `Mode: impl` code handoff packet.

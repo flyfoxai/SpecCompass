@@ -104,19 +104,28 @@ Execution flow:
    - If the input is clearly a new independent feature, do not absorb it into the current feature. Create or route a new feature through `/sp.specify`, or ask the user to choose between expanding the current feature and creating a new one.
    - When asking the user, use plain language: explain the background, future impact, 2-4 options, tradeoffs, recommendation, and next `/sp.*` route.
    - Mark unresolved items explicitly instead of guessing.
-4. Refresh routing and memory artifacts to keep later commands discoverable.
+4. Write or refresh the feature `Stage Readiness` block in `specs/<feature>/spec.md` or `specs/<feature>/memory/index.md`.
+   - Required fields: `Stage`, `Status`, `Based On`, `Unresolved Blockers`, `Needs Decision`, `Inferred/Draft Items`, `Next Allowed Stage`, and `Writeback Target`.
+   - Use `Status: READY_FOR_FLOW` only when stable requirement evidence defines the business goal, target users, feature scope, core acceptance, major constraints, and no unresolved flow-blocking ambiguity remains.
+   - Use `Status: NEEDS_CLARIFY` when the missing information can be resolved by focused clarification.
+   - Use `Status: NEEDS_DECISION` when the next safe step depends on human scope, risk, compliance, rollback, split, verification, or product-choice decision.
+   - Use `Status: BLOCKED` when safe automatic progress is impossible from current documents.
+   - Use `Status: DRAFT_ONLY` when the spec still depends on `Source: model-inferred`, `[INFER:DRAFT]`, `[src:ai-proposed]`, `[uncertain:assumed]`, or unconfirmed source material.
+   - Do not use command success, file existence, generated prose, or model confidence as readiness evidence.
+5. Refresh routing and memory artifacts to keep later commands discoverable.
    - Update `.specify/memory/feature-map.md`
    - Update `.specify/memory/active-context.md`
    - Create or update `specs/<feature>/memory/index.md`
    - Create or update `specs/<feature>/memory/stable-context.md`
    - Create or update `specs/<feature>/memory/open-items.md`
    - Initialize trace and workset memory only with evidence-backed anchors. Empty tables are valid when no stable anchors exist yet.
-5. Validate before finishing.
+6. Validate before finishing.
    - Confirm the document explains what and why, not production delivery details.
    - Confirm scope boundaries and non-goals are visible.
    - Confirm unresolved areas remain marked instead of being silently converted into decisions.
    - Confirm any non-trivial unresolved item has owner or revisit condition, impact, affected docs or anchor, and close condition.
    - Confirm no unconfirmed `[src:ai-proposed]`, `[uncertain:assumed]`, or `[uncertain:proposed]` PRD material entered `spec.md` as stable requirement text.
+   - Confirm `Stage Readiness` is present and that `READY_FOR_FLOW` is not set when flow-blocking ambiguity, conflict, draft inference, `SP_STAGE_SEED`, or high-impact open items remain.
 
 ## Output
 
@@ -139,6 +148,7 @@ Execution flow:
 - Prefer the freshest feature-level memory when project-level routing is stale.
 - Do not create placeholder risks or fake open items. `memory/open-items.md` may stay empty until evidence exists.
 - If feature creation cannot be resolved from user input, script output, or existing routing, stop and ask for the macro decision instead of guessing a feature name.
+- Do not suggest `/sp.flow` as the immediate next step unless `Stage Readiness` is `READY_FOR_FLOW`; otherwise suggest `/sp.clarify`, `/sp.specify`, or the exact owner route.
 
 ## Post-Execution Checks
 
@@ -174,4 +184,6 @@ Execution flow:
 
 ## Next
 
-- Suggest `/sp.clarify`.
+- If `Stage Readiness` is `READY_FOR_FLOW`, suggest `/sp.flow`.
+- If `Stage Readiness` is `DRAFT_ONLY`, `NEEDS_DECISION`, `BLOCKED`, or otherwise not ready, do not suggest `/sp.flow`; tell the user which blocker prevents flow work and suggest `/sp.clarify`, `/sp.specify`, or the exact owner route.
+- If `spec.md` or its upstream `prd.md` still contains `[src:ai-proposed]`, `[uncertain:*]`, `Source: model-inferred`, `[INFER:DRAFT]`, unconfirmed candidate requirements, or unresolved open items that affect scope, acceptance, roles, permissions, data meaning, or flow behavior, end with an explicit review prompt. Ask the user to confirm, reject, or revise the named items before they become stable requirements, and route to `/sp.clarify` when a human choice is required.

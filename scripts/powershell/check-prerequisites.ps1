@@ -9,6 +9,8 @@
 #
 # OPTIONS:
 #   -Json               Output in JSON format
+#   -RequireFlow        Require flows/ to exist and contain at least one file
+#   -RequireUi          Require ui/ to exist and contain at least one file
 #   -RequireTasks       Require tasks.md to exist (for implementation phase)
 #   -IncludeTasks       Include tasks.md in AVAILABLE_DOCS list
 #   -PathsOnly          Only output path variables (no validation)
@@ -18,6 +20,8 @@
 param(
     [switch]$Json,
     [switch]$RequireSpec,
+    [switch]$RequireFlow,
+    [switch]$RequireUi,
     [switch]$RequireBundle,
     [switch]$RequirePlan,
     [switch]$RequireTasks,
@@ -38,6 +42,8 @@ Consolidated prerequisite checking for Spec-Driven Development workflow.
 OPTIONS:
   -Json               Output in JSON format
   -RequireSpec        Require spec.md to exist
+  -RequireFlow        Require flows/ to exist and contain at least one file
+  -RequireUi          Require ui/ to exist and contain at least one file
   -RequireBundle      Require bundle.md to exist
   -RequirePlan        Require plan.md to exist
   -RequireTasks       Require tasks.md to exist (for implementation phase)
@@ -52,11 +58,14 @@ EXAMPLES:
   # Check planning prerequisites (bundle.md required)
   .\check-prerequisites.ps1 -Json -RequireBundle
 
+  # Check UI prerequisites (spec.md and flows/ required)
+  .\check-prerequisites.ps1 -Json -RequireSpec -RequireFlow
+
   # Check tasks prerequisites (plan.md required)
   .\check-prerequisites.ps1 -Json -RequirePlan
 
-  # Check analysis prerequisites (tasks.md required)
-  .\check-prerequisites.ps1 -Json -RequireTasks -IncludeTasks
+  # Check analysis prerequisites (full upstream document chain required)
+  .\check-prerequisites.ps1 -Json -RequireSpec -RequireFlow -RequireUi -RequireBundle -RequirePlan -RequireTasks -IncludeTasks
 
   # Get feature paths only (no validation)
   .\check-prerequisites.ps1 -PathsOnly
@@ -119,7 +128,7 @@ if (-not (Test-Path $paths.FEATURE_DIR -PathType Container)) {
     exit 0
 }
 
-$explicitRequirement = $RequireSpec -or $RequireBundle -or $RequirePlan -or $RequireTasks
+$explicitRequirement = $RequireSpec -or $RequireFlow -or $RequireUi -or $RequireBundle -or $RequirePlan -or $RequireTasks
 if (-not $explicitRequirement) {
     $RequirePlan = $true
 }
@@ -127,6 +136,20 @@ if (-not $explicitRequirement) {
 if ($RequireSpec -and -not (Test-Path $paths.FEATURE_SPEC -PathType Leaf)) {
     Write-Output "ERROR: spec.md not found in $($paths.FEATURE_DIR)"
     Write-Output "Run /sp.specify first to create the feature specification."
+    exit 1
+}
+
+$flowDir = Join-Path $paths.FEATURE_DIR 'flows'
+if ($RequireFlow -and (-not (Test-Path $flowDir -PathType Container) -or -not (Get-ChildItem -Path $flowDir -File -ErrorAction SilentlyContinue | Select-Object -First 1))) {
+    Write-Output "ERROR: flows/ not found or empty in $($paths.FEATURE_DIR)"
+    Write-Output "Run /sp.flow first to create the business flow documents."
+    exit 1
+}
+
+$uiDir = Join-Path $paths.FEATURE_DIR 'ui'
+if ($RequireUi -and (-not (Test-Path $uiDir -PathType Container) -or -not (Get-ChildItem -Path $uiDir -File -ErrorAction SilentlyContinue | Select-Object -First 1))) {
+    Write-Output "ERROR: ui/ not found or empty in $($paths.FEATURE_DIR)"
+    Write-Output "Run /sp.ui first to create the UI interaction documents."
     exit 1
 }
 
@@ -161,6 +184,14 @@ if ((Test-Path $paths.CONTRACTS_DIR) -and (Get-ChildItem -Path $paths.CONTRACTS_
     $docs += 'contracts/' 
 }
 
+if ((Test-Path $flowDir) -and (Get-ChildItem -Path $flowDir -File -ErrorAction SilentlyContinue | Select-Object -First 1)) {
+    $docs += 'flows/'
+}
+
+if ((Test-Path $uiDir) -and (Get-ChildItem -Path $uiDir -File -ErrorAction SilentlyContinue | Select-Object -First 1)) {
+    $docs += 'ui/'
+}
+
 if (Test-Path $paths.QUICKSTART) { $docs += 'quickstart.md' }
 
 # Include tasks.md if requested and it exists
@@ -188,6 +219,8 @@ if ($Json) {
     Test-FileExists -Path $paths.RESEARCH -Description 'research.md'
     Test-FileExists -Path $paths.DATA_MODEL -Description 'data-model.md'
     Test-DirHasFiles -Path $paths.CONTRACTS_DIR -Description 'contracts/'
+    Test-DirHasFiles -Path $flowDir -Description 'flows/'
+    Test-DirHasFiles -Path $uiDir -Description 'ui/'
     Test-FileExists -Path $paths.QUICKSTART -Description 'quickstart.md'
     
     if ($IncludeTasks) {

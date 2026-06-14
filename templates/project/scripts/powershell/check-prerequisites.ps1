@@ -1,7 +1,15 @@
+<#
+Usage: check-prerequisites.ps1 [-Json] [-PathsOnly] [-RequireSpec]
+    [-RequireFlow] [-RequireUi] [-RequireBundle] [-RequirePlan]
+    [-RequireTasks] [-IncludeTasks]
+#>
+
 param(
     [switch]$Json,
     [switch]$PathsOnly,
     [switch]$RequireSpec,
+    [switch]$RequireFlow,
+    [switch]$RequireUi,
     [switch]$RequireBundle,
     [switch]$RequirePlan,
     [switch]$RequireTasks,
@@ -54,6 +62,8 @@ $specPath = ""
 $bundlePath = ""
 $planPath = ""
 $tasksPath = ""
+$flowDir = ""
+$uiDir = ""
 
 if ($activeFeature) {
     $featureDir = Join-Path "specs" $activeFeature
@@ -61,6 +71,8 @@ if ($activeFeature) {
     $bundlePath = Join-Path $featureDir "bundle.md"
     $planPath = Join-Path $featureDir "plan.md"
     $tasksPath = Join-Path $featureDir "tasks.md"
+    $flowDir = Join-Path $featureDir "flows"
+    $uiDir = Join-Path $featureDir "ui"
 
     if (-not (Test-Path $featureDir -PathType Container)) {
         $activeFeature = $null
@@ -69,6 +81,8 @@ if ($activeFeature) {
         $bundlePath = ""
         $planPath = ""
         $tasksPath = ""
+        $flowDir = ""
+        $uiDir = ""
     }
 }
 
@@ -85,8 +99,32 @@ function Add-Missing {
     }
 }
 
+function Add-MissingDir {
+    param(
+        [string]$Label,
+        [string]$PathValue
+    )
+
+    $hasFile = $false
+    if (-not [string]::IsNullOrWhiteSpace($PathValue) -and (Test-Path $PathValue -PathType Container)) {
+        $hasFile = [bool](Get-ChildItem -Path $PathValue -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+    }
+
+    if (-not $hasFile) {
+        $missing.Add($Label)
+    }
+}
+
 if ($activeFeature -and $RequireSpec) {
     Add-Missing -Label "spec" -PathValue $specPath
+}
+
+if ($activeFeature -and $RequireFlow) {
+    Add-MissingDir -Label "flow" -PathValue $flowDir
+}
+
+if ($activeFeature -and $RequireUi) {
+    Add-MissingDir -Label "ui" -PathValue $uiDir
 }
 
 if ($activeFeature -and $RequireBundle) {
@@ -112,6 +150,8 @@ if ($Json) {
         specPath = $specPath
         bundlePath = $bundlePath
         planPath = $planPath
+        flowDir = $flowDir
+        uiDir = $uiDir
         tasksPath = if ($IncludeTasks) { $tasksPath } else { "" }
         nextStep = if ($activeFeature) { "" } else { "/sp.specify" }
         reason = if ($activeFeature) { "" } else { "no-active-feature" }
@@ -125,6 +165,8 @@ elseif ($PathsOnly) {
     Write-Output "SPEC_PATH=$specPath"
     Write-Output "BUNDLE_PATH=$bundlePath"
     Write-Output "PLAN_PATH=$planPath"
+    Write-Output "FLOW_DIR=$flowDir"
+    Write-Output "UI_DIR=$uiDir"
     if ($IncludeTasks) {
         Write-Output "TASKS_PATH=$tasksPath"
     }
@@ -140,5 +182,11 @@ else {
 }
 
 if ($missing.Count -gt 0) {
+    if ($missing -contains "flow") {
+        Write-Output "Run /sp.flow first to create the business flow documents in flows/."
+    }
+    if ($missing -contains "ui") {
+        Write-Output "Run /sp.ui first to create the UI interaction documents in ui/."
+    }
     throw "Missing required stage outputs: $($missing -join ',')"
 }

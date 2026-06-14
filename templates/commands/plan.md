@@ -76,7 +76,12 @@ Global rules:
 Execution flow:
 
 1. Run `{SCRIPT}` from repo root once and parse the returned JSON for current feature routing.
-2. Load the smallest useful planning context:
+2. Run Stage Entry Preflight before delivery planning.
+   - Confirm routing identifies one active feature and the required `bundle.md` is current enough for planning.
+   - Check whether user input changes product goal, requirements, acceptance, flow, UI, workset boundary, architecture boundary, or implementation-readiness expectations. Route upstream before planning if the change belongs to PRD/spec/clarify/flow/ui.
+   - Confirm upstream flow and UI contracts needed by the requested workset are present or explicitly tracked as open items. If delivery planning would have to invent flow state, UI behavior, data binding, permission, acceptance, or source facts, stop and route to `/sp.flow`, `/sp.ui`, `/sp.specify`, or `/sp.clarify`.
+   - If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not create implementation readiness from missing or generic upstream facts.
+3. Load the smallest useful planning context:
    - `.specify/memory/feature-map.md`
    - `specs/<feature>/memory/index.md`
    - `specs/<feature>/memory/stable-context.md`
@@ -84,7 +89,7 @@ Execution flow:
    - `specs/<feature>/memory/trace-index.md` when present
    - `specs/<feature>/bundle.md`
    - the constitution rules that constrain delivery design
-3. Produce or refresh the delivery design outputs.
+4. Produce or refresh the delivery design outputs.
    - Define the delivery design objects and workset structure.
    - Keep relationships among flows, screens, data, APIs, permissions, and acceptance explicit.
    - Treat unchecked `/sp.flow` and `/sp.ui` outputs as draft facts. They may guide planning, but any workset, API, data, permission, event, or acceptance decision that depends on an unchecked draft must cite the draft status and create or preserve an open item until `/sp.analyze`, `/sp.gate`, or equivalent evidence checks it.
@@ -135,17 +140,17 @@ Execution flow:
      - `Writeback Target`
    - If a planning blocker reaches `NEEDS_DECISION`, freeze downstream work for the same `Blocker ID` until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`. A model recommendation is not enough.
    - If planning sees a repeated fallback signature, append or propose a `fallback-log` entry or `promote-candidate: <Failure Signature>` for `/sp.analyze` or `/sp.gate` to promote. Do not directly create, merge, close, or promote `memory/open-items.md` blocker state from `/sp.plan`.
-4. Refresh workset and routing memory.
+5. Refresh workset and routing memory.
    - Create or update `specs/<feature>/plan.md`
    - Create or update `specs/<feature>/memory/worksets/index.md`
    - Create or update `specs/<feature>/memory/worksets/ws-*.md`
    - Refresh `specs/<feature>/memory/index.md`
    - Refresh `.specify/memory/feature-map.md` when workset routing changes materially
-5. Update agent-facing context if supported by the host.
+6. Update agent-facing context if supported by the host.
    - Use `__CONTEXT_FILE__` as the host-specific context file when it exists.
    - Run `{AGENT_SCRIPT}` when the environment supports agent context refresh.
    - Preserve manual additions and avoid overwriting unrelated context.
-6. Validate before finishing.
+7. Validate before finishing.
    - Confirm worksets are bounded and actionable.
    - Confirm major delivery objects and relationships are visible.
    - Confirm routing memory points to the current primary workset.
@@ -210,4 +215,5 @@ Execution flow:
 
 ## Next
 
-- Suggest `/sp.tasks`.
+- If the plan proposes a workset split, sub-feature promotion, sub-project promotion, near-threshold split decision, major ownership boundary, or implementation-readiness downgrade that needs human acceptance, do not suggest `/sp.tasks` as the immediate next step. End with an explicit confirmation prompt that names the proposed boundary, impact, 2-4 options when useful, recommendation, and the next route (`/sp.clarify`, `/sp.plan`, or the confirmed downstream step).
+- Suggest `/sp.tasks` only when workset boundaries, implementation readiness, allowed write sets, required checks, and any split/promotion decisions are confirmed or explicitly non-blocking.

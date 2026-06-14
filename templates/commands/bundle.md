@@ -40,6 +40,14 @@ Global rules:
 - Read `.specify/memory/active-context.md`, `specs/<feature>/memory/index.md`, `specs/<feature>/memory/stable-context.md`, and `specs/<feature>/memory/open-items.md`.
 - Read `specs/<feature>/spec.md`, `specs/<feature>/clarifications.md`, `specs/<feature>/flows/*`, `specs/<feature>/ui/*`, and `specs/<feature>/gate.md`.
 
+## Stage Entry Preflight
+
+- Confirm routing identifies one active feature and `spec.md` is current enough to package stable first-layer conclusions.
+- Check whether user input changes product goal, source authority, requirements, acceptance, scope, flow, UI, risk acceptance, or verification standard. If so, stop bundling and route to `/sp.prd`, `/sp.specify`, `/sp.clarify`, `/sp.flow`, or `/sp.ui` before creating or refreshing `bundle.md`.
+- Confirm first-layer outputs are not only generic templates, stale drafts, unconfirmed visual-review outputs, or unchecked draft facts being used as stable delivery input.
+- Confirm open blockers, high-impact risks, stale routing, and unresolved first-layer decisions are either explicitly carried forward or routed to their owner command before the bundle is treated as usable by `/sp.plan`.
+- If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not create a bundle that makes missing or contradictory first-layer facts look stable.
+
 ## Do
 
 - Summarize the stable feature context that the delivery layer needs.

@@ -162,6 +162,7 @@ Execution flow:
 
 ## Next
 
+- If the PRD contains `[src:ai-proposed]`, `[uncertain:*]`, unconfirmed candidate requirements, or unresolved decision packages, end with an explicit review prompt before suggesting downstream work. State which candidate items need confirmation, what impact they have, and whether the next safe route is `/sp.clarify` or another `/sp.prd` pass.
 - If enough intent is confirmed, suggest `/sp.specify`.
 - If major user choices remain unresolved, suggest `/sp.clarify`.
 - If governance candidates were collected, suggest `/sp.constitution`.

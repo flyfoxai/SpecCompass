@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.8] - 2026-06-14
+
+### Changed
+
+- Strengthened stage closeout prompts so PRD/spec/plan/tasks stop for explicit human review when AI-proposed, uncertain, split/promotion, business-decision, or scope-conflict items remain.
+- Added regression coverage for flow/UI visual review prompts and downstream-blocking confirmation gates.
+
 ## [0.10.7] - 2026-06-13
 
 ### Changed

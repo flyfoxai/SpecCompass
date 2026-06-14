@@ -73,14 +73,20 @@ Global rules:
 Execution flow:
 
 1. Run `{SCRIPT}` from repo root once and parse the active feature routing.
-2. Load the smallest useful task-generation context:
+2. Run Stage Entry Preflight before task generation.
+   - Confirm routing identifies one active feature/workset and `plan.md` is current enough to generate tasks.
+   - Confirm `plan.md` contains usable worksets and `Implementation Readiness` for any `Mode: impl` task that may be generated.
+   - Check whether user input changes product goal, requirements, acceptance, flow, UI, workset split, code boundary, allowed write set, required checks, or parallel boundary. Route to the owner command before generating tasks if the change belongs upstream.
+   - If task generation would need to invent readiness, code landing, runtime commands, allowed write sets, source facts, or human decisions, stop and route to `/sp.plan`, `/sp.flow`, `/sp.ui`, `/sp.specify`, or `/sp.clarify`.
+   - If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`.
+3. Load the smallest useful task-generation context:
    - `specs/<feature>/memory/index.md`
    - `specs/<feature>/memory/worksets/index.md`
    - `specs/<feature>/memory/open-items.md`
    - `specs/<feature>/memory/trace-index.md` when present
    - `specs/<feature>/plan.md`
    - `specs/<feature>/delivery/*`
-3. Generate or refresh `specs/<feature>/tasks.md`.
+4. Generate or refresh `specs/<feature>/tasks.md`.
    - Remove the `SP_STAGE_SEED: tasks` marker once tasks are generated from the active plan instead of the initialization scaffold.
    - Keep `tasks.md` upstream-shaped: phases, task IDs, dependencies, parallel markers, and concrete file paths should remain easy for implementation agents to execute.
    - Add SP metadata only where it improves execution: workset, acceptance, trace, open-item, and memory/source-doc writeback anchors.
@@ -146,13 +152,13 @@ Execution flow:
    - Add fallback metadata only to high-risk tasks: tasks touching external dependencies, contracts, migrations, permissions, `@r0`, acceptance gaps, release/rollback risk, or unresolved human/product decisions. Ordinary tasks should not carry fallback boilerplate.
    - For those high-risk tasks, include the fallback target, trigger condition, and writeback requirement in the task text.
    - If a task cannot be made executable without changing upstream documents, stop task expansion for that area and record the exact fallback target: `/sp.plan`, `/sp.bundle`, `/sp.flow`, `/sp.ui`, `/sp.clarify`, `/sp.specify`, or a human macro decision.
-4. Refresh memory if task grouping changes routing.
+5. Refresh memory if task grouping changes routing.
    - Refresh `specs/<feature>/memory/worksets/index.md`
    - Refresh `specs/<feature>/memory/worksets/ws-*.md` where needed
    - Refresh `specs/<feature>/memory/open-items.md` when tasks close, defer, split, or introduce unresolved work.
    - Refresh `specs/<feature>/memory/trace-index.md` when tasks add, remove, or rename stable anchors.
    - Refresh `specs/<feature>/memory/index.md`
-5. Validate before finishing.
+6. Validate before finishing.
    - Confirm every major task maps back to a workset or delivery artifact.
    - Confirm dependencies and acceptance hooks are explicit.
    - Confirm the active local work area can be discovered from memory.
@@ -231,4 +237,5 @@ Execution flow:
 
 ## Next
 
-- Suggest `/sp.analyze`.
+- If `BUSINESS_DECISION`, unresolved `SCOPE_CONFLICT`, unresolved `NEEDS_DECISION`, risk-acceptance, split-approval, verification-downgrade, or other human-review tasks exist, do not suggest `/sp.implement` or `/sp.analyze` as the immediate next step for those items. End with an explicit decision prompt and route to `/sp.clarify` or the named owner command before implementation.
+- Suggest `/sp.analyze` only when generated tasks are executable or reviewable without hidden human decisions, and every blocked item has a clear fallback route.
