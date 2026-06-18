@@ -41,6 +41,7 @@ Use the full form for any `Risk`, any `Blocker`, any `High` severity item, or an
 - Affected Docs: spec.md, plan.md, ui/screen-primary.md
 - Suggested Rollback: safe fallback, degradation, or "none needed"
 - Close Condition: evidence required to close the item
+- Close Evidence: blank while open; required when closing, resolving, accepting, deferring, downgrading, or invalidating a high-impact item
 - Last Refresh: YYYY-MM-DD
 - Status: Open | Monitoring | Closed
 ```
@@ -50,6 +51,7 @@ Use the full form for any `Risk`, any `Blocker`, any `High` severity item, or an
 - Create a block only when the current feature has real evidence of an unresolved question, todo, risk, or blocker.
 - Low/Medium `Question` or `Todo` items may stay short: `Type`, `Severity`, `Description`, and `Status` are enough unless the item affects scope, acceptance, release, rollback, security, or implementation confidence.
 - `Risk`, `Blocker`, and `High` severity items must use the full form with owner, impact, rollback/degradation, close condition, refresh date, and trace/source link.
+- Closing, resolving, accepting, deferring, downgrading, or invalidating a `Risk`, `Blocker`, `High` severity item, or broader-impact item requires `Close Evidence`: current verification, traceable source/code change, rollback/degrade evidence, or explicit human acceptance. Do not close these items from model prose alone.
 - Create a block when a `@t0` validation gap is not trivial: it affects scope, acceptance, release, rollback, human decision, follow-up work, or later implementation confidence.
 - Create a `Risk` or `Blocker` block when `@r0` appears in source documents, trace rows, tasks, or workset memory.
 - Create a block when a critical flow step lacks node type, port contract coverage, failure path, or verification evidence and the gap affects later planning, implementation, or acceptance.
@@ -60,7 +62,13 @@ Use the full form for any `Risk`, any `Blocker`, any `High` severity item, or an
 
 ## Reminder Dimensions
 
-Before deciding this file is empty, scan the current feature for unresolved issues in these dimensions:
+Use this checklist only during the first `/sp.analyze` pass, when there is no
+current `analysis.md` / gate evidence for this feature, or when the current
+change directly touches one of these dimensions. Do not rescan every empty
+`open-items.md` table during routine `/sp.gate` or `/sp.implement` continuation;
+cite the current analysis evidence instead.
+
+Before deciding this file is empty under those conditions, scan the current feature for unresolved issues in these dimensions:
 
 - Scope boundary and excluded behavior
 - Acceptance paths, edge cases, and failure paths
@@ -72,7 +80,9 @@ Before deciding this file is empty, scan the current feature for unresolved issu
 - Security, privacy, compliance, and sensitive data handling
 - Test evidence, smoke checks, and manual verification paths
 
-If no real unresolved issue is found, leave the items section empty. An empty items section is valid.
+If no real unresolved issue is found, leave the items section empty and cite the
+analysis/gate evidence that made the empty table acceptable. An empty items
+section is valid.
 
 ## Conditional Risk Requirements
 
@@ -84,4 +94,5 @@ An open risk may support a conditional decision only when the row records all of
 - Impact scope
 - Rollback or degradation path
 - Close condition
+- Close evidence when no longer open
 - Evidence that the risk does not require rewriting `spec.md`, `plan.md`, or `tasks.md` before the current stage can continue

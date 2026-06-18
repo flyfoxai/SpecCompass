@@ -76,7 +76,7 @@ Global rules:
 
 - Read `.specify/memory/project-index.md`, `specs/<feature>/memory/index.md`, and `specs/<feature>/memory/open-items.md`.
 - Read the latest `specs/<feature>/analysis.md` when present. Use it as diagnostic evidence; do not silently recompute the whole analysis unless the gate evidence is stale, contradictory, or missing.
-- Default to an incremental gate path: consume current `analysis.md`, verify decisive evidence, open blockers/risks, changed or stale items, and current checks needed for the gate mode. Expand into broader analyze-like checks only when analysis is missing, stale, contradictory, or too narrow to justify the gate decision.
+- Default to an incremental gate path: consume current `analysis.md`, reuse its `Memory Check Summary` when it is current, verify decisive evidence, open blockers/risks, changed or stale items, and current checks needed for the gate mode. Do not expand into broad analyze-like checks; if the missing evidence cannot be checked as one small decisive gate question, return the next `/sp.analyze` route.
 - Read the first-layer outputs needed for this gate decision. Expand further only when a gap, stale route, or contradiction requires evidence.
 
 ## Stage Entry Preflight
@@ -84,7 +84,8 @@ Global rules:
 - Confirm routing identifies one active feature and the requested gate mode can be decided from current upstream evidence.
 - Confirm required gate inputs exist for the requested mode: source docs for Business Gate, bundle/plan/task evidence for Delivery or Implementation Readiness Gate, and current implementation/check evidence for Implementation Regression Gate.
 - Check whether user input changes requirements, acceptance, flow, UI, plan, tasks, implementation boundary, risk acceptance, or verification standard. If so, old gate evidence is stale; stop and route to the owner command before deciding PASS.
-- If `analysis.md` is missing, stale, contradictory, too narrow, or depends on unchecked draft facts, route to `/sp.analyze` unless the gate can decide a smaller current `FAIL`, `BLOCKED`, or `NEEDS_DECISION` directly.
+- If `analysis.md` is missing, stale, contradictory, too narrow, lacks a current `Memory Check Summary`, or depends on unchecked draft facts, route to `/sp.analyze` unless the gate can decide a smaller current `FAIL`, `BLOCKED`, or `NEEDS_DECISION` directly.
+- Use a bounded evidence loop: decide one smallest gate question per round, record the decisive evidence or missing evidence, and stop with `BLOCKED` or `NEEDS_DECISION` when the same `Failure Signature` or `blocker-signature` repeats twice without new evidence, a smaller unit, or a changed owner route.
 - If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not treat command success, generated docs, or exit code 0 as business PASS.
 - Use incremental review order before expanding to a full audit:
   - if implementation evidence or worker handoff exists, review `Delta Summary` first, then current diff, then task packet, then trace/open-items, then necessary source code
@@ -94,13 +95,27 @@ Global rules:
 - Do not deep recheck a completed category or workset when current evidence exists, no direct upstream contract dependency changed, no open item reopened, and no mechanical check failed. Perform a light consistency check and cite the existing evidence instead.
 - Deep recheck completed areas only when directly related source docs, public API contracts, data structures, permissions, acceptance paths, critical test evidence, routing, direct upstream contract dependencies, or related risks changed, or when the user requests a full audit.
 - Treat incremental review as a document-read optimization, not a verification downgrade. If the current task directly changed or affected dependencies, public contracts, data, permissions, acceptance paths, or critical tests, require local affected test/check/manual verification evidence when feasible. Route only broader regression or locally infeasible checks to CI/full verification.
-- Run the lightweight memory check when available:
+- Reuse the latest `analysis.md` `Memory Check Summary` when it is current for the same feature/workset, gate mode, source snapshot/evidence signature label, and open-items state. The summary should include run_id or timestamp, gate modes covered, result status, `needsHumanReview`, ERROR/WARN counts, and decisive finding IDs. Run the lightweight memory check only when the summary is missing, stale, contradicted by current evidence, the requested gate mode is not covered, or needed to decide one whitelisted small gate question:
   - Bash: `.specify/scripts/bash/check-sp-memory.sh --json`
   - PowerShell: `.specify/scripts/powershell/check-sp-memory.ps1 -Json`
   - In command frontmatter, keep `scripts/...` because Specify CLI maps template script references into the installed project. In command body or manual model execution, `.specify/scripts/...` is the expected installed-project location. In a source checkout of this repository, `scripts/...` may be used only as a development fallback when `.specify/scripts/...` is absent.
-  - Use it as mechanical evidence for open-item fields, open blockers/risks, trace links, and obvious `@t0` / `@r0` drift.
+  - Use it as mechanical evidence for open-item fields, open blockers/risks, trace links, trace `Expand Docs` file liveness, obvious `@t0` / `@r0` drift, and obvious flow/ui subject-confusion control-plane terms.
   - `ERROR` findings block PASS until fixed or routed upward with a clear next `/sp.*` step.
   - `WARN` findings do not automatically block PASS; confirm them against the current read set and record the decision when relevant.
+  - If the lightweight memory check sets `needsHumanReview=true`, treat it as a machine-readable review hint. It does not auto-fail, but a headless or non-interactive gate must either cite a readable decision record or return `NEEDS_DECISION`/`BLOCKED` instead of granting PASS.
+
+## Gate Small-Check Whitelist
+
+`/sp.gate` may decide a small direct `FAIL`, `BLOCKED`, or `NEEDS_DECISION` without rerunning `/sp.analyze` only for:
+
+- routing correctness
+- open blocker or high-risk open-item existence
+- required `Stage Readiness` state
+- required `Evidence Signature` or source snapshot presence
+- required decision-record presence
+- direct evidence explicitly named by the current gate mode
+
+If the gate would need to rediscover Flow-UI relation integrity, orphan anchors, port contracts, source authority, implementation readiness, broad trace consistency, or semantic business correctness, return the next `/sp.analyze` or owner-command route instead of doing the audit inside `/sp.gate`.
 
 ## Do
 
@@ -108,12 +123,18 @@ Global rules:
 - Identify blocking gaps, conflicts, stale memory, and revisit steps.
 - Use current `analysis.md` as the normal source for detailed flow/UI/trace diagnostics. Do not redo the full `/sp.analyze` relation audit by default.
 - Perform only a decisive evidence check by default: current verdict, unresolved blockers/high risks, stale analysis signals, failed checks, task/readiness contradictions, and direct evidence for the gate mode.
-- Expand into detailed FLOW node, Flow-UI, orphan anchor, or coordinate-depth checks only when `analysis.md` is missing, stale, contradicted by current evidence, or does not cover the gate's blocking question. In that fallback path, Verify Flow-UI relation integrity, critical flow port-contract gaps, and shallow public coordinates such as `FEATxx.WSxx.TYPExx` or `FEAT01.WS02.UI03`; deep local IDs such as `FLOW01.STEP04` or `UI03.BTN05` should not appear as stable public coordinates unless intentionally promoted. If this expansion is needed and cannot stay small, return the next `/sp.analyze` route instead of doing a full audit inside `/sp.gate`.
+- Verify Flow-UI relation integrity only at the gate-decision level. If current `analysis.md` already shows critical flow port-contract gaps, broken Flow-UI links, unsupported Process Visualization UI, subject-scope integrity failures, or `SUBJECT_CONFUSION`, those findings cannot support PASS. If the gate would need to rediscover them from scratch, route to `/sp.analyze`.
+- Check detailed FLOW node, Flow-UI, orphan anchor, or coordinate-depth evidence only when it is the decisive gate question already covered by current `analysis.md`, or when one small direct check can decide `FAIL`, `BLOCKED`, or `NEEDS_DECISION`. If the gate would need to re-audit flow/UI relation integrity, port contracts, orphan anchors, coordinate depth, or broad trace consistency, return `/sp.analyze` instead of doing a full audit inside `/sp.gate`.
 - When checking Flow-UI evidence, also verify subject-scope integrity. Flow/UI artifacts must model the target business application, not SP, SpecCompass, Spec Kit, command execution, memory management, preflight, gate, task routing, or methodology stages. Wrong-subject artifacts are `SUBJECT_CONFUSION` blockers.
+- Keep coordinate-depth evidence shallow when it is decisive for the gate: stable public coordinates should look like `FEATxx.WSxx.TYPExx`; deep micro IDs such as `FLOW01.STEP04` or `UI03.BTN05` should not become stable public coordinates unless `/sp.analyze` has current evidence that a recurring cross-document object truly needs promotion.
 - Verify Stage Readiness before using flow/UI artifacts as gate evidence: stable flow requires upstream `READY_FOR_FLOW`; stable UI requires upstream `READY_FOR_UI`; downstream planning evidence requires UI `READY_FOR_PLAN`. Missing, stale, mismatched, `SP_STAGE_SEED`, generic-template, `DRAFT_ONLY`, `NEEDS_CLARIFY`, `NEEDS_DECISION`, or `BLOCKED` readiness blocks PASS and routes to the owner command.
+- Stage Readiness should include `Based On` plus `Source Snapshot` or `Evidence Signature`. Minimum signature fields are `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`. Do not use file mtime or raw hash as a hard gate. If the signature is missing, stale, or mismatched, block PASS only when the mismatch affects stage entry, PASS evidence, risk closure, trace closure, or implementation readiness; otherwise record it as a warning with a memory/source refresh route.
+- Block PASS when human-confirmed markers such as `[src:user-confirmed]`, `USER_CONFIRMED`, or `VERIFIED_BY_HUMAN` are used as evidence but have no nearby traceable decision record. Route to `/sp.clarify` or keep the item open.
 - Block PASS when UI artifacts are unsupported Process Visualization UI: flow step progress views, state transition timelines, processing dashboards, workflow node activation panels, or flow diagrams used as UI without explicit `spec.md` requirements and business-role/data/permission/acceptance binding.
 - Treat unchecked outputs from `/sp.flow`, `/sp.ui`, and `/sp.plan` as draft facts. They may explain current direction but cannot support PASS, close a risk, or replace stable source evidence until analyzed or otherwise verified.
 - Block PASS when stable flow/UI evidence lacks source provenance such as `[SRC:SPEC-*]`, `[SRC:CLARIFY-*]`, `[SRC:FLOW-*]`, or an explicit `OPEN-*`. `[INFER:DRAFT]` and `Source: model-inferred` can support draft review only; they cannot support PASS, stage readiness, risk closure, trace closure, or implementation readiness.
+- Draft-safety checks are not PASS evidence. A bounded check that a draft did not rewrite memory, close risks, or claim readiness may support continued drafting, but it must not be promoted into gate PASS, `Stage Readiness`, risk closure, or implementation readiness.
+- Treat `OWNER_REVIEW_REQUIRED_MISSING` from the lightweight memory check as a candidate warning. It becomes blocking only when current evidence shows the stage decision depends on high-risk scope, source rebase, governance, compliance, real money/data, irreversible action, or owner acceptance that has not been recorded. If the checker reports `needsHumanReview=true` and the gate cannot find a decision record, route to `/sp.clarify` in headless runs.
 - Treat command success, generated documents, and exit code 0 as tool evidence only. They do not prove business PASS without acceptance, trace, open-item, data-linkage, code/test evidence, and a gate verdict.
 - Summarize the current error signals before deciding: open `Blocker`, high-impact open `Risk`, non-trivial `@t0`, `@r0`, unresolved references, stale memory, trace/acceptance breaks, blocking placeholders, and failed checks. This is a lightweight stability panel, not a heavy score.
 - Identify whether the current layer is the wrong place to continue. If safe progress requires moving upward to spec, plan, tasks, or human decision, record the fallback target and block unconditional PASS.
@@ -131,6 +152,7 @@ Global rules:
 - Apply Blocker Closeout Mode before PASS or CONDITIONAL when blocker cleanup is requested or when open `Blocker` / high-impact `Risk` items exist:
   - Treat `specs/<feature>/memory/open-items.md` as the single source of truth. `gate.md` may include a `Blocker Closeout` section, but it is only the gate decision's report projection.
   - Treat `specs/<feature>/memory/trace-index.md` as relation/history lookup only. If trace and open-items disagree about current blocker or decision state, use open-items as current-state truth and require trace refresh as a writeback item.
+  - Block PASS when stable trace `Expand Docs` references missing local files. Missing trace targets are not proof that the object is gone; they require trace correction, source restoration, or a next-stage handoff/open item.
   - Consume current `/sp.analyze` closeout diagnostics when available; otherwise check the decisive blocker evidence directly without doing a full analysis rerun.
   - Confirm each real blocker has a `Blocker Type`: `INFO_GAP`, `SOURCE_AUTHORITY_GAP`, `UPSTREAM_DOC_GAP`, `CODE_TEST_ONLY`, `EXECUTION_INFRA`, `GENERIC_ARTIFACT`, `SUBJECT_CONFUSION`, `BUSINESS_DECISION`, `ROUTING_STALE`, or `SCOPE_CONFLICT`.
   - Use `SUBJECT_CONFUSION` when flow/UI output models SP's own command interface, workflow stages, memory operations, routing, gates, or methodology mechanics instead of the target business application.
@@ -155,7 +177,7 @@ Global rules:
 - Use `specs/<feature>/memory/fallback-log.md` when present to detect cross-command loops. If the same workset or anchor has already bounced through the recommended fallback route without new evidence, do not grant PASS or repeat the same route; return `BLOCKED` or `NEEDS_DECISION` with the failure chain and options.
 - When the gate sends work upward because of repeated failure, append or propose a fallback-log entry with workset or anchor, command, failure signature, failed evidence, attempted routes, next recommended route, and this run's timestamp or run label.
   Promote repeated, stage-blocking, decision-bound, data/permission/security/release/rollback, or worktree-cleanup fallback entries or `promote-candidate` notes into `memory/open-items.md`; if the signature was already promoted, cite the existing open item ID instead of creating a duplicate, otherwise mark the fallback-log entry as `promoted` with the open item ID.
-- When multi-agent work occurred, verify coordinator closeout before PASS or CONDITIONAL: all worker handoffs are present, intentionally deferred, or marked stale/abandoned with task state reopened; write-set violations are resolved; shared memory/task/trace/routing updates were merged serially; global registry-like changes were handled by one owner; and merged-state checks ran where worker outputs can interact.
+- When multi-agent work occurred, verify coordinator closeout before PASS or CONDITIONAL: all worker handoffs are present, intentionally deferred, or marked stale/abandoned with task state reopened; write-set violations are resolved; conflicting Proposed Updates targeting the same anchor, open-item, task, or registry field are identified and resolved; shared memory/task/trace/routing updates were merged serially; global registry-like changes were handled by one owner; and merged-state checks ran where worker outputs can interact.
 - Identify only business-layer complexity that is already visible before delivery planning: independent user goals, 3+ roles, 4+ user paths, external systems, separate release/compliance constraints, or blockers that prevent stable scope. Do not decide API/table/event/migration-based promotion at gate; leave those delivery-layer signals for `sp.plan` or `sp.analyze`.
 - Treat gate complexity as a pre-planning business signal only. Delivery-level split signals such as API, table, event, migration, code-boundary, or test-boundary complexity remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze` using the shared complex-part threshold.
 - Evaluate `specs/<feature>/memory/open-items.md` before deciding:
@@ -165,7 +187,7 @@ Global rules:
   - Any unresolved item prevents PASS when its answer would require rewriting `spec.md`, `plan.md`, or `tasks.md` before the current stage can continue.
   - `@r0` in any current read-set document must resolve to an open `Risk` or `Blocker` entry.
   - Non-trivial `@t0` must resolve to a `Question`, `Todo`, or `Risk` entry when it affects scope, acceptance, release, rollback, human decision, or follow-up work.
-  - Closing, deleting, or downgrading `Blocker`, high-impact `Risk`, or `@r0` must have current verification evidence, a traceable code/doc change, rollback/degrade path, or explicit human acceptance. If diff evidence is available, check that the state change and its evidence changed together.
+  - Closing, deleting, accepting, deferring, downgrading, or invalidating `Risk`, `Blocker`, High severity item, broader-impact item, or `@r0` must have `Close Evidence` in `memory/open-items.md`: current verification evidence, a traceable code/doc change, rollback/degrade path, or explicit human acceptance. If diff evidence is available, check that the state change and its evidence changed together.
 - Record a clear `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION` result with evidence.
 - Treat `/sp.gate` as the stage-entry decision point. It may use `/sp.analyze` diagnostics as evidence, but it must make its own `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION` judgment.
 - Do not fully redo `/sp.analyze` by default. Consume current analysis, verify decisive evidence, and make the stage decision. If analysis is missing or stale, return the next `/sp.analyze` route unless the gate can decide from smaller current evidence.
@@ -186,6 +208,7 @@ Global rules:
 - Do not mark PASS when source authority is missing and the gate relies on tests, generated summaries, or model confidence as a substitute.
 - Do not mark PASS when generic template artifacts are being used as evidence for specific business flow, UI, delivery, task, or acceptance behavior.
 - Do not mark PASS when required `Stage Readiness` is missing, stale, mismatched, or contradicted by current evidence.
+- Do not mark PASS when required `Stage Readiness` lacks a current `Source Snapshot` or `Evidence Signature` and the missing signature prevents proving stage entry, risk closure, trace closure, or implementation readiness.
 - Do not mark PASS when `/sp.flow` ran or produced stable flow facts without upstream `READY_FOR_FLOW`.
 - Do not mark PASS when `/sp.ui` ran or produced stable UI facts without upstream `READY_FOR_UI`.
 - Do not mark PASS when a human decision is required but no human-selected decision record has been written back.
@@ -199,8 +222,9 @@ Global rules:
 - Do not mark PASS when `[INFER:DRAFT]` or `Source: model-inferred` is being used as stable flow/UI evidence, stage readiness evidence, risk closure, trace closure, or implementation readiness evidence.
 - Do not mark PASS when document-stage work committed or relies on unauthorized code artifacts instead of handing them off as `Mode: impl` work.
 - Do not mark PASS from command success, generated documents, status summaries, or exit code 0 when business evidence is still missing.
+- Do not mark PASS from model prose, generated documents, command success, runner exit 0, or progress percentages. PASS needs current evidence appropriate to the gate mode, and high-impact blocker/risk closure needs `Close Evidence`.
 - Do not let this run's post-verdict writeback prove this run's PASS. Gate updates to routing, status, open-items, or memory must be supported by current inputs, current checks, upstream source documents, current code/test evidence, current analysis, or explicit human decisions.
-- Do not mark PASS after multi-agent work when worker handoffs are unresolved, a stale or abandoned worker has no discard/defer/reassign decision, a critical worker branch/report is unmerged, a forbidden write violation remains, shared memory or trace was edited by multiple workers without coordinator closeout, or merged-state verification is missing.
+- Do not mark PASS after multi-agent work when worker handoffs are unresolved, a stale or abandoned worker has no discard/defer/reassign decision, a critical worker branch/report is unmerged, a forbidden write violation remains, shared memory or trace was edited by multiple workers without coordinator closeout, conflicting Proposed Updates targeting the same object remain unresolved, or merged-state verification is missing.
 - Do not mark PASS solely because a risk is known. Known risk still needs owner, explicit human acceptance/defer decision, trace registration, impact scope, rollback/degrade path, close condition, and revisit anchor.
 - Do not mark PASS from `Delta Summary` alone. It must be checked against current diff, selected task packet, direct trace/open-items, and required verification evidence.
 - Do not mark PASS when a remaining open item would force `spec.md`, `plan.md`, or `tasks.md` to be rewritten before safe continuation.

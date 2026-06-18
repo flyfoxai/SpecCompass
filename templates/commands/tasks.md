@@ -155,7 +155,7 @@ Execution flow:
 5. Refresh memory if task grouping changes routing.
    - Refresh `specs/<feature>/memory/worksets/index.md`
    - Refresh `specs/<feature>/memory/worksets/ws-*.md` where needed
-   - Refresh `specs/<feature>/memory/open-items.md` when tasks close, defer, split, or introduce unresolved work.
+   - Refresh `specs/<feature>/memory/open-items.md` when task generation maps, defers, splits, or introduces unresolved work. Do not close blockers from `/sp.tasks`; closure requires implementation, evidence, or owner-command writeback.
    - Refresh `specs/<feature>/memory/trace-index.md` when tasks add, remove, or rename stable anchors.
    - Refresh `specs/<feature>/memory/index.md`
 6. Validate before finishing.
@@ -179,6 +179,8 @@ Execution flow:
 - Create or update `specs/<feature>/tasks.md`
 - Refresh `specs/<feature>/memory/worksets/index.md`
 - Refresh `specs/<feature>/memory/worksets/ws-*.md` where needed
+- Refresh `specs/<feature>/memory/open-items.md` if task generation maps, defers, splits, or introduces unresolved work
+- Refresh `specs/<feature>/memory/trace-index.md` if task generation adds, removes, or renames stable anchors
 - Refresh `specs/<feature>/memory/index.md`
 
 ## Key Rules

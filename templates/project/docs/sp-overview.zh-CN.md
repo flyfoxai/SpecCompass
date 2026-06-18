@@ -7,12 +7,12 @@
 
 当前流程是文档优先，但不是只做文档。只有 `plan.md` 写明 `Implementation Readiness`，`tasks.md` 生成可执行的 `Mode: impl` 任务包后，实现阶段才允许作为下游受控阶段进入。
 
-`sp.prd` 是可选命令。只有产品意图还不成熟、需要先做上游 PRD 发现时才使用；清楚的需求可以直接从 `sp.specify` 开始。
+`sp.prd` 是新 feature 的强制入口。清楚需求可以走精简 PRD，但仍然要先沉淀上游意图、来源标签和 PRD-to-spec outline readiness，再进入 `sp.specify`。
 
 ## 最核心的东西
 
 - 两层推进：先业务澄清，再交付设计。
-- 可选 PRD 发现：`sp.prd` 把早期产品意图整理成草稿，但 `prd.md` 不是稳定事实源。
+- 强制 PRD 入口：`sp.prd` 把产品意图整理成草稿并记录 outline readiness，但 `prd.md` 不是稳定事实源。
 - 统一澄清：`sp.clarify` 统一处理 spec、flow、ui 的高影响问题。
 - Query-First Memory：先查项目级和 feature 级 memory，再决定读哪些正文。
 - Workset：把大 feature 拆成局部工作面，减少上下文压力。
@@ -23,7 +23,7 @@
 ## 基本流程
 
 1. `sp.constitution`
-2. `[可选] sp.prd`
+2. `sp.prd`
 3. `sp.specify`
 4. `sp.clarify`
 5. `sp.flow`
@@ -48,10 +48,12 @@
 ## 代码阶段纪律
 
 - `sp.plan` 负责 `Implementation Readiness`、代码/测试映射、依赖面和反向 trace 预期。
+- `Stage Readiness` 应带 Evidence Signature：来源文件、关键锚点、open-item 状态、视觉/人工核对状态和当前检查证据。人工确认必须有可追溯决策记录。
 - `sp.flow` 先于 `sp.ui`；首次生成、高风险或大批量 flow/UI 变化，应以带可见标签的可核对草稿收尾，等待用户确认或选择修复方案。
 - `sp.tasks` 把 ready 的 workset 转成 `Mode: impl` 任务包，写清 `Allowed Write Set`、`Required Checks`、`Read Set`、依赖检查、反向 trace 检查、预期增量和共享更新建议。
 - `sp.implement` 从 memory 和任务包开始，只编辑选中的已授权任务，并在声称完成前填写 `Delta Summary`。
 - `sp.analyze` 和 `sp.gate` 按增量优先复核：`Delta Summary`、当前 diff、任务包、trace/open-items，然后才读必要源码。
+- 轻量脚本只检查结构和链接，不证明业务语义。真正能否进入下一阶段，仍由 analyze/gate 基于 source docs、证据和决策判断。
 - 多 agent worker 默认不直接改共享 memory，除非被指定为 coordinator；共享更新通过 `Proposed Updates` 串行合并。
 
 ## 下一步看哪里

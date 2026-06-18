@@ -153,7 +153,7 @@ if ($Json) {
         flowDir = $flowDir
         uiDir = $uiDir
         tasksPath = if ($IncludeTasks) { $tasksPath } else { "" }
-        nextStep = if ($activeFeature) { "" } else { "/sp.specify" }
+        nextStep = if ($activeFeature) { "" } else { "/sp.prd" }
         reason = if ($activeFeature) { "" } else { "no-active-feature" }
         missing = @($missing)
     } | ConvertTo-Json -Depth 3
@@ -177,7 +177,7 @@ else {
     if ($featureDir) {
         Write-Output "Feature directory: $featureDir"
     } else {
-        Write-Output "Next step: /sp.specify"
+        Write-Output "Next step: /sp.prd"
     }
 }
 

@@ -5,10 +5,22 @@ This guide will help you get started with Spec-Driven Development using Spec Kit
 > [!NOTE]
 > All automation scripts now provide both Bash (`.sh`) and PowerShell (`.ps1`) variants. The `specify` CLI auto-selects based on OS unless you pass `--script sh|ps`.
 
-## The 6-Step Process
+## The SpecCompass Process
 
 > [!TIP]
 > **Context Awareness**: Spec Kit commands automatically detect the active feature based on your current Git branch (e.g., `001-feature-name`). To switch between different specifications, simply switch Git branches.
+
+### Resume an Existing Project
+
+When you reopen an initialized project or return to an agent thread, start with
+`/sp.route`. It emits `speckit.route.v1` JSON and recommends the next `/sp.*`
+command without executing it.
+
+Use `/sp.route y` only when you want the agent to continue directly after the
+route check. The command template may dispatch the recommended command only
+when `continueAllowed` is true. `REPEATED_FALLBACK`, `fallback-log.md` loop
+evidence, human decisions, and unknown blockers stop automatic continuation and
+route to `/sp.clarify` or the named owner decision path.
 
 ### Step 1: Install Specify
 
@@ -43,15 +55,23 @@ For Codex, use the matching skill form:
 $sp-constitution This project follows a "Library-First" approach. All features must be implemented as standalone libraries first. We use TDD strictly. We prefer functional programming patterns.
 ```
 
-### Step 3: Create the Spec
+### Step 3: Capture PRD Intake
 
-**In the chat**, use `/sp.specify` on slash-command hosts, or `$sp-specify` / `/skills` / a matching natural-language request in Codex, to describe what you want to build. Focus on the **what** and **why**, not the tech stack.
+**In the chat**, use `/sp.prd` on slash-command hosts, or `$sp-prd` / `/skills` / a matching natural-language request in Codex, to capture the upstream product intent. Focus on the strategic goal, users, scope, source tags, and enough outline readiness for the next step. The PRD stage owns the lightweight `spec-outline.md`; do not run a separate required `sp.outline` step.
 
 ```markdown
-/sp.specify Build an application that can help me organize my photos in separate photo albums. Albums are grouped by date and can be re-organized by dragging and dropping on the main page. Albums are never in other nested albums. Within each album, photos are previewed in a tile-like interface.
+/sp.prd Build an application that can help me organize my photos in separate photo albums. Albums are grouped by date and can be re-organized by dragging and dropping on the main page. Albums are never in other nested albums. Within each album, photos are previewed in a tile-like interface.
 ```
 
-### Step 4: Refine the Spec
+### Step 4: Stabilize the Spec
+
+After PRD and outline readiness are available, use `/sp.specify` on slash-command hosts, or `$sp-specify` / `/skills` / a matching natural-language request in Codex. `/sp.specify` consumes `prd.md` and `spec-outline.md`; it should not restart from the original raw request.
+
+```markdown
+/sp.specify Use the current PRD and spec-outline readiness to create the stable feature specification.
+```
+
+### Step 5: Refine the Spec
 
 **In the chat**, use `/sp.clarify` on slash-command hosts, or `$sp-clarify` / `/skills` / a matching natural-language request in Codex, to identify and resolve ambiguities in your specification. You can provide specific focus areas as arguments.
 
@@ -59,7 +79,27 @@ $sp-constitution This project follows a "Library-First" approach. All features m
 /sp.clarify Focus on security and performance requirements.
 ```
 
-### Step 5: Create a Technical Implementation Plan
+### Step 6: Design Business Flow and UI
+
+Use `/sp.flow` to model the target business process, then `/sp.ui` to model the target product screens from that business flow. These commands should not draw the SP workflow itself.
+
+```markdown
+/sp.flow
+/sp.ui
+```
+
+Review the generated flow and UI artifacts before moving on.
+
+### Step 7: Gate and Bundle the Business Documents
+
+Use `/sp.gate` to check business-document readiness, then `/sp.bundle` to package the approved first-layer feature documents.
+
+```markdown
+/sp.gate
+/sp.bundle
+```
+
+### Step 8: Create a Technical Implementation Plan
 
 **In the chat**, use `/sp.plan` on slash-command hosts, or `$sp-plan` / `/skills` / a matching natural-language request in Codex, to provide your tech stack and architecture choices.
 
@@ -67,7 +107,7 @@ $sp-constitution This project follows a "Library-First" approach. All features m
 /sp.plan The application uses Vite with minimal number of libraries. Use vanilla HTML, CSS, and JavaScript as much as possible. Images are not uploaded anywhere and metadata is stored in a local SQLite database.
 ```
 
-### Step 6: Break Down and Implement
+### Step 9: Break Down and Implement
 
 **In the chat**, use `/sp.tasks` on slash-command hosts, or `$sp-tasks` / `/skills` / a matching natural-language request in Codex, to create an actionable task list.
 
@@ -102,9 +142,10 @@ Initialize the project's constitution to set ground rules:
 /sp.constitution Taskify is a "Security-First" application. All user inputs must be validated. We use a microservices architecture. Code must be fully documented.
 ```
 
-### Step 2: Define Requirements with `/sp.specify`
+### Step 2: Capture PRD with `/sp.prd`
 
-```text
+```markdown
+/sp.prd
 Develop Taskify, a team productivity platform. It should allow users to create projects, add team members,
 assign tasks, comment and move tasks between boards in Kanban style. In this initial phase for this feature,
 let's call it "Create Taskify," let's have multiple users but the users will be declared ahead of time, predefined.
@@ -114,7 +155,15 @@ different sample projects. Let's have the standard Kanban columns for the status
 first testing thing to ensure that our basic features are set up.
 ```
 
-### Step 3: Refine the Specification
+### Step 3: Stabilize the Specification
+
+Use `/sp.specify` only after the PRD stage has produced enough outline readiness:
+
+```bash
+/sp.specify Use the current Taskify PRD and spec-outline readiness to create the stable feature specification.
+```
+
+### Step 4: Refine the Specification
 
 Use the `/sp.clarify` command to interactively resolve any ambiguities in your specification. You can also provide specific details you want to ensure are included.
 
@@ -128,15 +177,25 @@ You can continue to refine the spec with more details using `/sp.clarify`:
 /sp.clarify When you first launch Taskify, it's going to give you a list of the five users to pick from. There will be no password required. When you click on a user, you go into the main view, which displays the list of projects. When you click on a project, you open the Kanban board for that project. You're going to see the columns. You'll be able to drag and drop cards back and forth between different columns. You will see any cards that are assigned to you, the currently logged in user, in a different color from all the other ones, so you can quickly see yours. You can edit any comments that you make, but you can't edit comments that other people made. You can delete any comments that you made, but you can't delete comments anybody else made.
 ```
 
-### Step 4: Validate the Spec
+### Step 5: Design Business Flow and UI
 
-Validate the specification checklist using the `/sp.checklist` command:
+Create the business process model first, then derive UI from that business flow:
 
 ```bash
-/sp.checklist
+/sp.flow
+/sp.ui
 ```
 
-### Step 5: Generate Technical Plan with `/sp.plan`
+Review the generated flow and UI diagrams or artifacts before continuing. If the diagrams show the SP command process instead of the Taskify business process, reject them and rerun the owner step.
+
+### Step 6: Gate and Bundle Business Documents
+
+```bash
+/sp.gate
+/sp.bundle
+```
+
+### Step 7: Generate Technical Plan with `/sp.plan`
 
 Be specific about your tech stack and technical requirements:
 
@@ -144,7 +203,7 @@ Be specific about your tech stack and technical requirements:
 /sp.plan We are going to generate this using .NET Aspire, using Postgres as the database. The frontend should use Blazor server with drag-and-drop task boards, real-time updates. There should be a REST API created with a projects API, tasks API, and a notifications API.
 ```
 
-### Step 6: Define Tasks
+### Step 8: Define Tasks
 
 Generate an actionable task list using the `/sp.tasks` command:
 
@@ -152,7 +211,7 @@ Generate an actionable task list using the `/sp.tasks` command:
 /sp.tasks
 ```
 
-### Step 7: Validate and Implement
+### Step 9: Validate and Implement
 
 Have your AI agent audit the implementation plan using `/sp.analyze`:
 

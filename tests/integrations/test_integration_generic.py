@@ -6,6 +6,7 @@ import pytest
 
 from specify_cli.command_names import command_filename_base
 from specify_cli.integrations import get_integration
+from specify_cli.integrations.generic import _split_raw_options
 from specify_cli.integrations.base import MarkdownIntegration
 from specify_cli.integrations.manifest import IntegrationManifest
 from .inventory_helpers import command_stems, shared_init_files
@@ -60,6 +61,32 @@ class TestGenericIntegration:
         m = IntegrationManifest("generic", tmp_path)
         with pytest.raises(ValueError, match="--commands-dir is required"):
             i.setup(tmp_path, m, parsed_options={"commands_dir": ""})
+
+    def test_raw_options_preserve_windows_commands_dir_backslashes(self, tmp_path):
+        """raw_options fallback should not eat Windows path backslashes on Windows."""
+        tokens = _split_raw_options(
+            r'--commands-dir "C:\Users\name\.agent\commands"',
+            windows=True,
+        )
+        assert tokens == [
+            "--commands-dir",
+            r"C:\Users\name\.agent\commands",
+        ]
+        assert _split_raw_options(
+            r"--commands-dir 'C:\Users\name\.agent\commands'",
+            windows=True,
+        ) == [
+            "--commands-dir",
+            r"C:\Users\name\.agent\commands",
+        ]
+
+        i = get_integration("generic")
+        commands_dir = i._resolve_commands_dir(
+            parsed_options={},
+            opts={"raw_options": r'--commands-dir "C:\Users\name\.agent\commands"'},
+        )
+
+        assert commands_dir == r"C:\Users\name\.agent\commands"
 
     def test_setup_writes_to_correct_directory(self, tmp_path):
         i = get_integration("generic")

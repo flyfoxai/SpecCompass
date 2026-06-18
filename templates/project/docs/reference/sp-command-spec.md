@@ -19,7 +19,7 @@ The current `sp` workflow is documentation-first, but it is no longer documentat
 The main stage chain is:
 
 1. `sp.constitution`
-2. `[optional] sp.prd`
+2. `sp.prd`
 3. `sp.specify`
 4. `sp.clarify`
 5. `sp.flow`
@@ -34,16 +34,18 @@ The main stage chain is:
 14. `sp.analyze`
 15. `sp.gate`
 
-`sp.prd` is an optional upstream discovery step. It may collect raw intent,
+`sp.prd` is the mandatory upstream requirement intake for every new feature,
+capability direction, and important requirement change. Simple requests may use
+a short PRD, but they must not skip the PRD stage. It may collect raw intent,
 strategic goals, product positioning, business goals, capability maps,
 candidate requirements, rejected ideas, open questions, and flow/UI/data/risk
 seeds, but it does not create stable requirements. Stable requirements still
 enter the workflow through `sp.specify` and `spec.md`.
 
-When `sp.prd` is used, requirement growth should be top-down and
-product-oriented: strategic goal, product positioning, business goals, target
-users, capability map, problem domains, scenarios, scope boundaries, main
-flows, key branches, acceptance seeds, risks, and then local details.
+Requirement growth in `sp.prd` should be top-down and product-oriented:
+strategic goal, product positioning, business goals, target users, capability
+map, problem domains, scenarios, scope boundaries, main flows, key branches,
+acceptance seeds, risks, and then local details.
 User-provided details may be kept, but they must attach to a parent strategic
 goal, capability, flow, UI surface, data object, or acceptance boundary; orphan
 details stay as candidates, seeds, or open items. The detail boundary is
@@ -51,6 +53,98 @@ details stay as candidates, seeds, or open items. The detail boundary is
 `prd.md` must not replace `sp.flow`, `sp.ui`, `sp.plan`, or `sp.tasks`, and
 should not default to full UI element inventories, state machines, APIs,
 database schemas, code paths, test commands, or implementation tasks.
+Lean PRD is allowed only when the user already provides a clear goal, users,
+scope, and basic acceptance intent. It must still keep strategic goal, target
+users, core scenarios, scope/non-goals, acceptance seeds, risks/open questions,
+and handoff. 0-to-1 ideas, unclear scope, multi-capability requests,
+governance impact, high risk, or source conflict require the full PRD shape.
+Lean PRD still has a minimum substance bar: one clear strategic goal, at least
+one target user or role, at least one bounded core scenario, explicit
+scope/non-goals, acceptance seeds, and at least one open question or risk when
+anything material remains uncertain. If those anchors are missing, use
+`NEEDS_PRD` or `NEEDS_CLARIFY` instead of treating the PRD as sufficient.
+
+`sp.prd` must end with PRD-to-spec outline readiness. If the PRD has clear
+strategic goal, users, scope, capability map, and source authority, create or
+refresh `specs/<feature>/spec-outline.md` with `READY_FOR_SPECIFY`. If the PRD
+still has key `[src:ai-proposed]`, `[uncertain:*]`, scope conflict, missing
+source authority, or unclear feature boundary, do not create a stable outline;
+append an `Outline Decision` to `prd.md` and route to `sp.clarify`, another
+`sp.prd` pass, source recovery, or feature split. If the feature directory is
+clear, also create or refresh a blocking `spec-outline.md` with the same
+`Outline Decision` so `sp.specify`, mechanical checks, and later agents read one
+predictable blocker entry point. If information is insufficient but the feature
+directory is clear, a blocking `spec-outline.md` is allowed, but its status must
+be only `NEEDS_PRD`, `NEEDS_CLARIFY`, `NEEDS_SOURCE`, `SPLIT_REQUIRED`,
+`NEEDS_DECISION`, or `BLOCKED`, never `READY_FOR_SPECIFY`.
+`spec-outline.md` is a lightweight bridge into `sp.specify`; it must not become
+flow, UI, API, database, plan, tasks, or implementation design. `sp.outline` or
+PRD-embedded outline logic must not replace `sp.specify`; it only decides
+whether `sp.specify` may start.
+`spec-outline.md` must include a lightweight `Source Authority Summary` listing
+stable sources, candidate-only sources, archived or missing sources, source
+rebase decisions, and what `sp.specify` may safely consume. Do not copy the full
+PRD or build a heavy source map in the outline.
+Before `sp.specify` consumes a `READY_FOR_SPECIFY` outline, it must check the
+outline's `Based On`, `Source Snapshot` or `Source Authority Summary`,
+`Status History`, `Outline Decision`, and `Handoff To Specify` against the
+current `prd.md`, source authority, feature boundary, and human decision
+records. Do not use file mtime or raw hashes as hard gates. Missing, stale, or
+mismatched outline evidence routes back to `sp.prd`, `sp.clarify`, source
+recovery, or feature split confirmation before `spec.md` is stabilized.
+Existing `spec-outline.md` status is not static. Each `sp.prd` refresh must
+re-read the current PRD, source evidence, and existing outline, then recompute
+readiness from current evidence. `NEEDS_PRD` may upgrade only after product
+intent is sufficient; `NEEDS_CLARIFY` only after the blocking decision is
+recorded; `NEEDS_SOURCE` only after source recovery or explicit user-approved
+rebase; `SPLIT_REQUIRED` only after the user confirms a single feature boundary
+or the split is created; `NEEDS_DECISION` only after the selected human decision
+is written back; `BLOCKED` only after the handoff explains how the blocker was
+resolved. `Outline Decision` owns readiness and next route;
+`Handoff To Specify` summarizes downstream input for `sp.specify`. They may
+reference each other, but must not contain conflicting next routes.
+
+`spec-outline.md` should keep a lightweight `Status History` only for status
+changes, blocker resolution, source rebase, feature split, or owner review.
+Each entry must include `timestamp/run-id`, `status`, `blocker-signature`,
+`next-route`, and `evidence-summary`. The `blocker-signature` should be a
+stable short phrase such as `missing-source:legacy-prd` or
+`scope-split:admin-vs-tenant`. If the same `blocker-signature`, same outline
+status, and same `next-route` repeat twice without new evidence, stop
+regenerating the same PRD/outline content and escalate to `BLOCKED` or
+`NEEDS_DECISION` with a plain-language decision package. New evidence means
+user confirmation, recovered source, explicit rebase decision, feature split
+result, risk/compliance/owner decision, or document evidence that can change
+readiness; rewording, template completion, and model re-summarization do not
+count. Route to `sp.clarify`, source recovery, owner decision, or feature split
+instead of spending more tokens on unchanged text.
+Repeated-blocker decision packages must be written back to a stable location.
+The default writeback target is `specs/<feature>/memory/open-items.md`; if the
+blocker is already recorded in `prd.md` or `spec-outline.md`, keep the same
+`blocker-signature` and next route there instead of creating a second thread.
+
+High-risk, 0-to-1 product direction, scope split, source rebase, governance
+candidate, real money/data, compliance, or irreversible-impact outlines need an
+explicit `Owner Review Required` prompt in `Outline Decision` or
+`Handoff To Specify` before downstream movement, even when the outline is
+otherwise `READY_FOR_SPECIFY`. The fixed fields are `Risk Type`,
+`Review Focus`, `Impact If Approved`, `Impact If Rejected`,
+`Recommended Choice`, and `Confirm To Proceed`.
+
+For `sp.specify`, treat work as new feature work when `spec.md` is missing,
+`spec.md` still contains `SP_STAGE_SEED: spec`, the user introduces a new
+capability direction, or the request changes business scope, target role,
+workflow, acceptance boundary, release scope, or source authority enough to
+invalidate the current spec. Minor edits inside a stable feature may reuse the
+current `spec.md`; important requirement changes must route through `sp.prd`.
+Minor edits are limited to local wording fixes, naming clarification, duplicate
+cleanup, or recording already confirmed detail when they do not change target
+users, business scope, core flow, acceptance boundary, source authority, risk
+level, data, permissions, compliance, or release scope. Important requirement
+changes include new capability direction, new role or permission, new business
+flow or branch, changed acceptance criteria, release scope change, source
+rebase, risk/compliance/real-money/real-data impact, or any change that
+invalidates current `spec.md` scope.
 
 `sp.prd` and `sp.constitution` have different goals. `sp.prd` owns product or
 feature discovery. `sp.constitution` owns durable project governance: long-term
@@ -258,14 +352,22 @@ Not every file is seeded up front by the template root. Some are created or expa
 - close with a visual review prompt when text diagrams, previews, or exported
   flow images exist: tell the user which files to review, which viewer to use,
   and how to request changes by visible label before regenerating visuals
-- require user review before promotion for first-time flow generation, major
-  branch/state/permission/exception changes, 3 or more new flow nodes, explicit
-  review requests, or unclear user approval. Until confirmed, the flow remains a
-  draft and must not become stable memory, stable trace, gate PASS evidence, or
-  implementation readiness input
-- allow small text/label edits, concrete one-point user instructions, or
-  explicit `--auto` runs to skip review, but state why review was skipped, what
-  changed, and whether the result is still draft or ready for the next step
+- classify flow visual review into three tiers before promotion:
+  **No confirmation required** for trivial label, copy, formatting, or docs-only
+  refreshes with no semantic, node, branch, state, permission, exception, or
+  downstream readiness impact; **Recommended confirmation** for small
+  non-critical additions or readability/layout changes with clear source
+  backing and no downstream readiness impact; **Required confirmation** for
+  first-time stable flow generation, major branch/state/permission/exception
+  changes, 3 or more new flow nodes, explicit review requests, unclear user
+  approval, model-inferred flow content that would be used beyond draft, or any
+  change affecting stable memory, stable trace, gate PASS evidence,
+  implementation readiness, or `READY_FOR_UI`
+- when confirmation is required and not satisfied, the flow remains a draft and
+  must not become stable memory, stable trace, gate PASS evidence, or
+  implementation readiness input. When confirmation is not required or skipped
+  by explicit `--auto`, state why, what changed, which tier would otherwise
+  apply, and whether the result is still draft or ready for the next step
 - `--auto` may skip only the visual review gate; it must never skip subject
   scope, business domain anchor, stage entry preflight, or subject-confusion
   checks
@@ -313,14 +415,24 @@ Not every file is seeded up front by the template root. Some are created or expa
   assets, prototypes, previews, or exported images exist: tell the user which
   files to review, which viewer to use, and how to request changes by visible
   label before regenerating visuals
-- require user review before promotion for first-time UI generation, major
-  screen/action/field/permission/data-binding changes, 3 or more new screens or
-  critical actions, explicit review requests, or unclear user approval. Until
-  confirmed, the UI remains a draft and must not become stable memory, stable
-  trace, gate PASS evidence, or implementation readiness input
-- allow small text/label edits, concrete one-point user instructions, or
-  explicit `--auto` runs to skip review, but state why review was skipped, what
-  changed, and whether the result is still draft or ready for the next step
+- classify UI visual review into three tiers before promotion:
+  **No confirmation required** for trivial copy, label, formatting, or docs-only
+  refreshes with no new or changed screens, actions, fields, states,
+  permissions, data binding, validation, or downstream readiness impact;
+  **Recommended confirmation** for small non-critical organization,
+  readability, or layout changes with clear flow/source backing and no critical
+  flow, data, permission, or acceptance-path impact; **Required confirmation**
+  for first-time stable UI generation, major screen/action/field/permission/data
+  binding changes, 3 or more new screens or critical actions, explicit review
+  requests, unclear user approval, Process Visualization UI risk,
+  model-inferred UI content that would be used beyond draft, or any change
+  affecting stable memory, stable trace, gate PASS evidence, implementation
+  readiness, or `READY_FOR_PLAN`
+- when confirmation is required and not satisfied, the UI remains a draft and
+  must not become stable memory, stable trace, gate PASS evidence, or
+  implementation readiness input. When confirmation is not required or skipped
+  by explicit `--auto`, state why, what changed, which tier would otherwise
+  apply, and whether the result is still draft or ready for the next step
 - `--auto` may skip only the visual review gate; it must never skip subject
   scope, business domain anchor, stage entry preflight, subject-confusion
   checks, or Process Visualization UI checks
@@ -411,6 +523,7 @@ Not every file is seeded up front by the template root. Some are created or expa
 - test whether the whole document and implementation-evidence system is automation-ready
 - verify consistency across the routed source set
 - diagnose `Implementation Readiness`, task mode integrity, implementation task packets, CODE/TEST trace, trace warning escalation, and implementation evidence without replacing `plan.md` as the readiness source
+- record a compact `Memory Check Summary` in `analysis.md` when the lightweight memory check runs, so `sp.gate` can reuse current mechanical evidence instead of rerunning it by default
 - review implementation evidence delta-first when available: `Delta Summary`, current diff, task packet, trace/open-items, then necessary source code
 - fail explicitly when memory is stale, coverage is weak, smoke checks are missing, task packets are incomplete, or high-risk trace/evidence gaps are untracked
 - detect Flow-UI relation breaks, orphan UI/API/data/CODE/TEST anchors, missing port-contract fields, and unchecked draft facts being promoted to stable memory
@@ -429,7 +542,9 @@ Default read order:
 
 If the project-level route is stale, the command should mark it stale and continue from the freshest feature-level evidence.
 
-If there is no reliable active feature, the command should stop with a clear next step, usually `/sp.specify`, instead of inventing a feature from a branch name or empty directory.
+If there is no reliable active feature, the command should stop with a clear next step, usually `/sp.prd` for a new feature or major product change. Only route to `/sp.specify` when a PRD and outline readiness already identify the feature boundary.
+
+For day-to-day resume, `sp.route` is the lightweight entry point. It emits `speckit.route.v1` JSON from explicit project state and only recommends the next `/sp.*` command by default. The route scripts must keep `autoExecute=false` and must not execute downstream commands. Only explicit `/sp.route y` may let the command template dispatch the next route, and only when `continueAllowed` is true. `NEEDS_DECISION`, `HUMAN_DECISION`, `UNKNOWN_BLOCKER`, `REPEATED_FALLBACK`, and `fallback-loop-detected` must stop automatic continuation and route to `/sp.clarify` or the owner decision path. Repeated loop evidence comes from `fallback-log.md`; do not re-dispatch the same failed route.
 
 ## 10. Boundary Rules
 
@@ -511,9 +626,52 @@ Document-stage and code-stage boundaries are mandatory:
 - If document-stage work discovers code or test assets that must be created, record a `Mode: impl` handoff with target file, reason, related anchor, `Allowed Write Set`, `Required Checks`, verification, writeback target, and next route.
 - A successful command, generated document, runner exit 0, progress percentage, or status brief is not business PASS. PASS requires current acceptance, trace, open-item, data-linkage, code/test evidence when applicable, and gate verdict.
 
-Batch retries must be circuit-broken. When the same `Failure Signature` appears across multiple modules or the same workset repeatedly bounces between layers, group it as one root blocker family, promote it to `memory/open-items.md` when stage-blocking, and stop broad reruns until the root owner route has new evidence.
+Batch retries must be circuit-broken. When the same `Failure Signature` appears across multiple modules or the same workset repeatedly bounces between layers, group it as one root blocker family, promote it to `memory/open-items.md` when stage-blocking, and stop broad reruns until the root owner route has new evidence. `memory/fallback-log.md` is bounded loop evidence, not a blocker ledger: keep at most 10 active entries, promote repeated or stage-blocking signatures to `open-items.md`, and keep only promoted/stale references after promotion.
 
 Historical references to old command names or archived upstream material are not automatically blockers. They block only when they affect active routing, user guidance, command invocation, generated artifacts, evidence interpretation, or current PASS/gate decisions.
+
+## 10.2 Bounded Evidence Loop And No Self-Pass
+
+SP commands must not use infinite loops or model-managed persistence as a success mechanism. The loop rule is bounded and evidence-based: each round handles one smallest solvable unit and must either produce new evidence, shrink the blocker, change the owner route, or stop.
+
+Each bounded round records only lightweight state:
+
+- workset or anchor
+- smallest current issue
+- new or current evidence
+- `Failure Signature` or `blocker-signature`
+- next owner route
+- whether `/sp.clarify` or direct human decision is required
+
+If the same `Failure Signature` or `blocker-signature` appears twice at the same layer without new evidence, a smaller unit, or a changed owner route, stop automatic progress and return `BLOCKED` or `NEEDS_DECISION`. Do not rerun the same command, regenerate the same artifact, or broaden edits to make the loop look productive.
+
+No Self-Pass is mandatory. A model statement, generated file, runner exit 0, progress percentage, or command success does not prove completion. Completion claims need current evidence appropriate to the phase:
+
+- code phase: test, lint, typecheck, build, runtime/manual verification, or a clear infeasible-check reason with next route
+- document phase: source authority, `Stage Readiness`, trace/data linkage, open-items, visual/human review status, and analyze/gate evidence
+- blocker closure: `memory/open-items.md` `Close Evidence`, such as current verification, traceable source/code change, rollback/degrade evidence, or explicit human acceptance
+
+Closing is stricter than creating. A `Risk`, `Blocker`, High severity item, or any item affecting scope, acceptance, release, rollback, security, privacy, permission, authentication, audit, compliance, data, migration, tenant isolation, RBAC, payment, billing, production, real money, real data, implementation confidence, irreversible action, owner decision, or human decision must not be marked `Closed`, `Resolved`, `Verified`, `Accepted`, `Deferred`, `Downgraded`, or `Invalid` unless `Close Evidence` is present. Without close evidence, keep the item open/monitoring or return `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
+
+Trace `Expand Docs` checks must locate the column by header, not by a fixed column index. If the trace table later adds owner, status, workset, or route columns before `Expand Docs`, mechanical checks must still validate the real `Expand Docs` cells and report missing local files as `TRACE_EXPAND_DOC_MISSING`.
+
+Flow/UI artifacts must model the target business system, not SP's own control plane. `sp.flow` should describe business roles, process nodes, data states, branches, and exceptions. `sp.ui` should describe business screens, fields, actions, feedback, and states. Do not present `/sp.*` commands, `trace-index.md`, `open-items.md`, gates, memory operations, `Allowed Write Set`, or `Required Checks` as the product flow/UI unless the target product is explicitly SP/SpecCompass/Spec Kit, an AI agent, developer tool, CLI, workflow tool, specification tool, or process tool. Even in that meta-product exception, the artifact must include visible source, business-domain, role, acceptance, coordinate, or trace anchors that prove the control-plane terms are part of the target product rather than a subject-confusion artifact.
+
+Mechanical subject-confusion checks should stay narrow. They should hard-fail only obvious SP control-plane markers such as `/sp.*`, `sp.*`, `memory/index.md`, `trace-index.md`, `open-items.md`, and `SUBJECT_CONFUSION` in flow/UI artifacts. The hard-fail has a narrow meta-product exception only when `spec.md` explicitly defines the target product as an SP/AI/developer/workflow/specification/process tool and the artifact also carries business-domain, role, source, acceptance, coordinate, or trace anchors. Terms such as `preflight`, `Allowed Write Set`, `Required Checks`, and `NEEDS_DECISION` can be legitimate product vocabulary in workflow, compliance, operations, or developer-tool products; treat them as contextual `/sp.analyze` or `/sp.gate` findings, not automatic mechanical errors.
+
+`Stage Readiness` should include lightweight `Based On` plus `Source Snapshot` or `Evidence Signature`. These fields identify the source docs, key anchors, open-item state, visual/human review, and analyze/gate evidence that the readiness relies on. Minimum `Evidence Signature` fields are: `Sources` (source files/docs), `Anchors` (key coordinates, trace, or business anchors), `Open Items` (open-items/blocker/risk state), `Visual/Human Review` (review status or explicit not-applicable reason), and `Checks` (current analyze/gate/test/script/validation evidence). Prefer the same field names and one bullet or YAML-like field per item so scripts and downstream commands can compare the signature without rereading every source document. Stage-specific fields may be added under a local section such as `Stage Specific`, but the five base fields should stay stable. Missing snapshot/signature means the readiness is not a stable downstream entry proof; route back to the owner command to refresh it before generating stable downstream artifacts. If the current evidence is visible and the gap is only formatting, the owner command may refresh the signature and continue. Do not use file mtime or raw file hash as a hard gate because Git operations, copying, formatting, and regeneration can create false stale signals. `check-sp-memory` reports a `READY_FOR_SPECIFY` outline without `Based On` plus `Source Snapshot`, `Source Authority Summary`, or `Evidence Signature` as `WARN`, not as semantic failure. `/sp.analyze` should warn on missing, stale, or mismatched signatures and provide the owner route. `/sp.gate` should block only when the mismatch affects stage entry, PASS evidence, risk closure, trace closure, or implementation readiness.
+
+Human confirmation markers must not be model self-certification. A model may write `PENDING_USER_CONFIRMATION`, `NEEDS_USER_CONFIRMATION`, or `NEEDS_DECISION`, but `[src:user-confirmed]`, `USER_CONFIRMED`, `VERIFIED_BY_HUMAN`, or equivalent confirmed status requires a traceable decision record such as `Decision Record`, `Decision ID`, `clarifications.md`, `clarify-log.md`, or an equivalent captured user choice. The lightweight script only checks nearby evidence, so `HUMAN_CONFIRMATION_EVIDENCE_MISSING` is a candidate `WARN` that can false-positive when the valid decision record is cross-file. `/sp.analyze` and `/sp.gate` must inspect referenced decision records before deciding whether the item is blocking. Without a valid record, route to `/sp.clarify` or keep the item open.
+
+When the lightweight checker emits JSON, `needsHumanReview=true` means at least one candidate human-review warning was found, such as a missing owner review block or an unbacked human-confirmation marker. This is machine-consumable routing evidence, not a new hard gate. Headless runners and downstream commands must either cite an existing decision record or route to `/sp.clarify`, `NEEDS_DECISION`, or `BLOCKED`; they must not silently treat human-review warnings as ordinary low-risk warnings.
+
+Mechanical checks are guardrails, not semantic proof. The lightweight memory check can warn on missing signature fields, broken trace/open-items links, unsupported human-confirmation markers, subject confusion, and obvious self-pass patterns. It cannot prove that the business behavior is correct; `/sp.analyze` and `/sp.gate` still need to inspect source docs, trace, open-items, code/test evidence, and human decisions before claiming PASS. To avoid duplicate work, `/sp.analyze` should record the current memory-check summary in `analysis.md`, and `/sp.gate` should reuse it when the feature, evidence signature/source snapshot, open-items state, and gate mode still match. The summary should include `run_id` or timestamp, feature/workset, gate modes covered, source snapshot or evidence signature label, open-items state, result status, `needsHumanReview`, ERROR/WARN counts, and decisive finding IDs. If the summary is missing or stale, route to `/sp.analyze` unless one small direct check can decide `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
+
+`/sp.gate` small direct checks are intentionally narrow. Gate may decide without rerunning `/sp.analyze` only for routing correctness, open blocker/risk existence, required `Stage Readiness` state, required `Evidence Signature`/source snapshot presence, existing decision-record presence, and direct evidence explicitly named by the current gate mode. Broad Flow-UI relation audits, orphan-anchor discovery, port-contract reconstruction, source-authority rebuilds, implementation-readiness reconstruction, or semantic business review belong to `/sp.analyze` or the owner command.
+
+Draft-safety checks are not downstream PASS. A bounded check that a draft flow/UI/plan has source backing, did not rewrite stable memory, did not close risks, and remains routed through trace/open-items can support continued drafting, but it cannot become `Stage Readiness`, gate PASS, risk closure, trace closure, or implementation-readiness evidence.
+
+High-risk `READY_FOR_SPECIFY` outlines should include an `Owner Review Required` block when they involve source rebase, governance, compliance, real money/data, irreversible action, risk acceptance, scope split, or other owner decisions. Mechanical checks may report missing owner review as `WARN` or candidate evidence only. `/sp.analyze` and `/sp.gate` decide whether it is actually blocking by reading the outline, PRD/source authority, current risks, and decision records.
 
 ## 11. Coordinates, Status, And Open Items
 
@@ -532,7 +690,7 @@ Status tags are short search signals, not full records:
 - non-trivial `@r0` must point to `memory/open-items.md`
 - non-trivial `@t0` should point to `memory/open-items.md`
 
-Low or Medium `Question` and `Todo` items may stay lightweight when they are local and do not affect scope, acceptance, release, rollback, security, or implementation confidence. `Risk`, `Blocker`, High severity items, and any broader-impact item must use the full `open-items.md` record with owner, impact, rollback or degradation path, close condition, refresh date, and trace/source link.
+Low or Medium `Question` and `Todo` items may stay lightweight when they are local and do not affect scope, acceptance, release, rollback, security, or implementation confidence. `Risk`, `Blocker`, High severity items, and any broader-impact item must use the full `open-items.md` record with owner, impact, rollback or degradation path, close condition, refresh date, trace/source link, and close evidence when no longer open.
 
 Lightweight does not mean invisible. A local low-risk `Question` or `Todo` still needs enough location, status, and next-action detail for a later command to find it. Full field validation applies to `Risk`, `Blocker`, High severity items, and any item that affects scope, acceptance, release, rollback, security, or implementation confidence.
 

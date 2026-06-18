@@ -143,7 +143,7 @@ When a command finds blocker signals scattered in `analysis.md`, `plan.md`, chec
 
 Use a stable blocker type when promoting or refreshing an entry: `INFO_GAP`, `SOURCE_AUTHORITY_GAP`, `UPSTREAM_DOC_GAP`, `CODE_TEST_ONLY`, `EXECUTION_INFRA`, `GENERIC_ARTIFACT`, `BUSINESS_DECISION`, `ROUTING_STALE`, or `SCOPE_CONFLICT`.
 
-Execution-infrastructure failures should normally stay in `fallback-log.md` or a failure-site report until they affect a required gate evidence path. If a required check cannot run because of wrapper, host, timeout, empty-response, exit-143, CLI, permission, or network failure, the gate cannot use the missing check as PASS evidence; promote or link the execution issue only when it blocks stage entry.
+Execution-infrastructure failures should normally stay in `fallback-log.md` or a failure-site report until they affect a required gate evidence path. If a required check cannot run because of wrapper, host, timeout, empty-response, exit-143, CLI, permission, or network failure, the gate cannot use the missing check as PASS evidence; promote or link the execution issue only when it blocks stage entry. `fallback-log.md` is bounded loop evidence: keep at most 10 active entries, promote repeated or stage-blocking signatures to `open-items.md`, and leave only a promoted/stale reference after promotion so it cannot become a second truth source.
 
 ## 6. Trace Index and Worksets
 
@@ -164,6 +164,8 @@ The file should support both forward tracing and reverse lookup.
 
 The trace index should stay a lookup table, not a risk ledger. It may include stable coordinates such as `FEAT01.WS02.API02`, source anchors, worksets, and expand docs. Risk state and todo details should point back through `open-items.md`.
 
+`Expand Docs` entries are live navigation targets, not decorative summaries. Local file paths in stable trace rows should exist inside the feature directory. If a path is missing, treat it as `TRACE_EXPAND_DOC_MISSING`: restore the source, correct the trace, demote the row back to draft/open item status, or hand it off to the next implementation package.
+
 For business features, flow should normally be the main relation axis. UI, API, TABLE, CODE, TEST, EVENT, PERM, and ACC entries should trace to a `FLOW` coordinate, a source document, or an explicit `open-items.md` entry. This does not mean every UI field becomes a flow node. It means important interface, data, and code objects should remain explainable from the business process they serve.
 
 Recommended relation fields are lightweight and searchable:
@@ -177,6 +179,8 @@ Recommended relation fields are lightweight and searchable:
 Critical flow steps should expose a lightweight port contract in the source flow document or trace notes: input, precondition or permission, business action, output or side effect, target state, failure path, and verification evidence. If any part is unknown and important, put it in `open-items.md`.
 
 New or refreshed outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts until checked by `sp.analyze`, `sp.gate`, or equivalent current evidence. Draft facts may route the next read set, but they must not close risks, rewrite stable context, or support PASS.
+
+Flow and UI outputs must describe the target business system, not SP's control plane. Lightweight checks should flag obvious control-plane leakage in `flows/*` and `ui/*`, including `/sp.*`, `memory/index.md`, `trace-index.md`, `open-items.md`, or `SUBJECT_CONFUSION`, as `SUBJECT_CONFUSION_CONTROL_PLANE_TERM`. Terms such as `preflight`, `Allowed Write Set`, `Required Checks`, and `NEEDS_DECISION` can be legitimate product vocabulary in workflow, compliance, operations, or developer-tool products and should be resolved by `/sp.analyze` or `/sp.gate`, not treated as automatic mechanical hard errors.
 
 Before `tasks.md` exists, equivalent current evidence means a bounded draft-safety check: source backing is visible, stable memory was not overwritten, risks were not closed, PASS was not claimed from the draft, and trace/open-item routing exists or the output remains explicitly draft.
 
@@ -261,7 +265,7 @@ If the command cannot repair the stale route locally, it should fall back upward
 
 Ask the user only when the missing decision is genuinely macro-level: business scope, priority, success criteria, destructive change, compliance, data risk, or long-term tradeoff. Ordinary uncertainty should first be resolved by reading the bounded source set.
 
-Batch retry protection also belongs to memory. `fallback-log.md` records repeated failure signatures, attempted routes, and next suggested routes; `open-items.md` records the promoted current blocker. When the same signature appears across many modules, commands should group it into one root blocker family instead of creating repetitive per-module tasks or rerunning the same batch without new evidence.
+Batch retry protection also belongs to memory. `fallback-log.md` records repeated failure signatures, attempted routes, and next suggested routes; `open-items.md` records the promoted current blocker. When the same signature appears across many modules, commands should group it into one root blocker family instead of creating repetitive per-module tasks or rerunning the same batch without new evidence. A current `analysis.md` should include a compact memory-check summary so `sp.gate` can consume the evidence instead of rerunning the same mechanical check by default.
 
 ## 9. Clarification Propagation
 

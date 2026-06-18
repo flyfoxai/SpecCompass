@@ -186,6 +186,9 @@ class IntegrationBase(ABC):
             )
             raise NotImplementedError(msg)
 
+        exec_args = exec_args.copy()
+        exec_args[0] = shutil.which(exec_args[0]) or exec_args[0]
+
         cwd = str(project_root) if project_root else None
 
         if stream:
@@ -529,15 +532,37 @@ class IntegrationBase(ABC):
             f"{self.CONTEXT_MARKER_END}\n"
         )
 
+        def append_section(existing: str) -> str:
+            if existing:
+                if not existing.endswith("\n"):
+                    existing += "\n"
+                return existing + "\n" + section
+            return section
+
+        def find_complete_section(existing: str) -> tuple[int, int] | None:
+            search_from = 0
+            while True:
+                start = existing.find(self.CONTEXT_MARKER_START, search_from)
+                if start == -1:
+                    return None
+                end = existing.find(self.CONTEXT_MARKER_END, start + len(self.CONTEXT_MARKER_START))
+                if end == -1:
+                    return None
+                nested_start = existing.find(
+                    self.CONTEXT_MARKER_START,
+                    start + len(self.CONTEXT_MARKER_START),
+                )
+                if nested_start != -1 and nested_start < end:
+                    search_from = nested_start
+                    continue
+                return start, end
+
         if ctx_path.exists():
             content = ctx_path.read_text(encoding="utf-8")
-            start_idx = content.find(self.CONTEXT_MARKER_START)
-            end_idx = content.find(
-                self.CONTEXT_MARKER_END,
-                start_idx if start_idx != -1 else 0,
-            )
+            complete_section = find_complete_section(content)
 
-            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+            if complete_section is not None:
+                start_idx, end_idx = complete_section
                 # Replace existing section (include the end marker + newline)
                 end_of_marker = end_idx + len(self.CONTEXT_MARKER_END)
                 # Consume trailing line ending (CRLF or LF)
@@ -546,25 +571,11 @@ class IntegrationBase(ABC):
                 if end_of_marker < len(content) and content[end_of_marker] == "\n":
                     end_of_marker += 1
                 new_content = content[:start_idx] + section + content[end_of_marker:]
-            elif start_idx != -1:
-                # Corrupted: start marker without end — replace from start through EOF
-                new_content = content[:start_idx] + section
-            elif end_idx != -1:
-                # Corrupted: end marker without start — replace BOF through end marker
-                end_of_marker = end_idx + len(self.CONTEXT_MARKER_END)
-                if end_of_marker < len(content) and content[end_of_marker] == "\r":
-                    end_of_marker += 1
-                if end_of_marker < len(content) and content[end_of_marker] == "\n":
-                    end_of_marker += 1
-                new_content = section + content[end_of_marker:]
             else:
-                # No markers found — append
-                if content:
-                    if not content.endswith("\n"):
-                        content += "\n"
-                    new_content = content + "\n" + section
-                else:
-                    new_content = section
+                # No complete marker pair found. Preserve the full user file,
+                # including any corrupted partial marker, and append a fresh
+                # managed section instead of truncating user-authored content.
+                new_content = append_section(content)
 
             # Ensure .mdc files have required YAML frontmatter
             if ctx_path.suffix == ".mdc":
@@ -1562,7 +1573,11 @@ class SkillsIntegration(IntegrationBase):
                 skill_name,
                 description,
                 f"templates/commands/{src_file.name}",
-                original_frontmatter=adjusted_frontmatter,
+                original_frontmatter=registrar._filter_skill_frontmatter_variants(
+                    adjusted_frontmatter,
+                    project_root,
+                    script_type,
+                ),
             )
             skill_content = (
                 registrar.render_frontmatter(skill_frontmatter) + "\n" + processed_body

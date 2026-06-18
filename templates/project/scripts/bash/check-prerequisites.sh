@@ -187,7 +187,7 @@ if [ "$OUTPUT_JSON" -eq 1 ]; then
     printf '  "tasksPath": "",\n'
   fi
   if [ -z "$ACTIVE_FEATURE" ]; then
-    printf '  "nextStep": "/sp.specify",\n'
+    printf '  "nextStep": "/sp.prd",\n'
     printf '  "reason": "no-active-feature",\n'
   fi
   printf '  "missing": [%s]\n' "$(printf '%s' "$missing" | awk -F',' 'BEGIN { first = 1 } { for (i = 1; i <= NF; i++) if ($i != "") { if (!first) printf ", "; printf "\"%s\"", $i; first = 0 } }')"
@@ -210,7 +210,7 @@ else
   if [ -n "$FEATURE_DIR" ]; then
     echo "Feature directory: $FEATURE_DIR"
   else
-    echo "Next step: /sp.specify"
+    echo "Next step: /sp.prd"
   fi
 fi
 

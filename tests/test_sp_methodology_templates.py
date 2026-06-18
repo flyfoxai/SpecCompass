@@ -2,6 +2,8 @@
 
 from pathlib import Path
 
+import yaml
+
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 COMMANDS_DIR = PROJECT_ROOT / "templates" / "commands"
@@ -55,7 +57,59 @@ def test_commands_use_user_facing_dot_form_for_sp_commands():
     """Templates should avoid legacy /sp-* slash form while allowing Codex $sp-* skills."""
     for command_file in COMMANDS_DIR.glob("*.md"):
         content = command_file.read_text(encoding="utf-8")
-        assert "/sp-" not in content, command_file.name
+        body = content.split("---", 2)[-1]
+        assert "/sp-" not in body, command_file.name
+
+
+def test_route_continue_resume_entry_is_documented():
+    """Usage docs should explain the single-command resume path and its stop rules."""
+    usage_docs = [
+        PROJECT_ROOT / "README.md",
+        PROJECT_ROOT / "README.zh-CN.md",
+        PROJECT_ROOT / "docs" / "quickstart.md",
+        PROJECT_ROOT / "docs" / "reference" / "sp-project-methodology.md",
+        PROJECT_ROOT / "docs" / "reference" / "speckit-command-usage.md",
+        PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md",
+        PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "speckit-command-usage.md",
+    ]
+
+    for path in usage_docs:
+        content = path.read_text(encoding="utf-8")
+        assert "/sp.route y" in content, path
+        assert "speckit.route.v1" in content, path
+        assert "continueAllowed" in content, path
+        assert "fallback-log.md" in content, path
+        assert "REPEATED_FALLBACK" in content, path
+        assert "/sp.clarify" in content, path
+
+    workflows = (PROJECT_ROOT / "docs" / "reference" / "workflows.md").read_text(encoding="utf-8")
+    assert "/sp.route y" in workflows
+    assert "resume entry" in workflows
+
+
+def test_prd_template_has_prerequisite_scripts_and_upstream_handoffs():
+    """PRD entry should validate prerequisites and hand off to the correct upstream owners."""
+    prd = _command("prd")
+
+    assert "scripts:" in prd
+    assert "check-prerequisites.sh --json" in prd
+    assert "check-prerequisites.ps1 -Json" in prd
+    assert "agent: sp.specify" in prd
+    assert "agent: sp.clarify" in prd
+    assert "agent: sp.constitution" in prd
+    assert "agent: sp.plan" not in prd
+
+
+def test_specify_and_clarify_handoffs_route_to_flow_not_plan():
+    """Specify/clarify should advance to business flow, not jump directly to delivery planning."""
+    for command in ("specify", "clarify"):
+        content = _command(command)
+        frontmatter = yaml.safe_load(content.split("---", 2)[1])
+        handoffs = frontmatter.get("handoffs", [])
+
+        agents = {item.get("agent") for item in handoffs if isinstance(item, dict)}
+        assert "sp.flow" in agents, command
+        assert "sp.plan" not in agents, command
 
 
 def test_memory_templates_keep_open_items_and_trace_responsibilities_separate():
@@ -68,6 +122,44 @@ def test_memory_templates_keep_open_items_and_trace_responsibilities_separate():
     assert "### OPEN-001" in open_items
     assert "Do not add risk or open-item status columns here" in trace_index
     assert "`memory/open-items.md` may point here" in trace_index
+
+
+def test_analyze_records_memory_summary_and_gate_reuses_it():
+    """Analyze should cache mechanical evidence so gate avoids duplicate broad checks."""
+    analyze = _command("analyze")
+    gate = _command("gate")
+
+    assert "Memory Check Summary" in analyze
+    assert "command used" in analyze
+    assert "feature/workset" in analyze
+    assert "needsHumanReview" in analyze
+    assert "gate modes covered" in analyze
+    assert "source snapshot or evidence signature label" in analyze
+    assert "open-items state" in analyze
+    assert "ERROR count" in analyze
+    assert "WARN count" in analyze
+
+    assert "Memory Check Summary" in gate
+    assert "Do not fully redo `/sp.analyze` by default" in gate
+    assert "Run the lightweight memory check only when the summary is missing" in gate
+    assert "return the next `/sp.analyze` route" in gate
+
+
+def test_tasks_template_includes_mode_and_task_packet_fields():
+    """The starter tasks template should reflect the current doc/impl packet contract."""
+    tasks_template = (PROJECT_ROOT / "templates" / "tasks-template.md").read_text(encoding="utf-8")
+
+    assert "## Format: `[ID] [Mode] [P?] [Story] Description`" in tasks_template
+    for field in (
+        "Mode: `doc`",
+        "Mode: `impl`",
+        "Allowed Write Set",
+        "Required Checks",
+        "Task Packet Defaults",
+        "Proposed Updates",
+        "Read Set",
+    ):
+        assert field in tasks_template
 
 
 def test_feature_templates_use_r0_as_open_risk_signal():
@@ -234,10 +326,19 @@ def test_risk_closure_requires_evidence_across_methodology_and_commands():
         assert "evidence" in content.lower() or "证据" in content, label
 
     assert "降级、删除或关闭 `Blocker`" in methodology
-    assert "Closing, deleting, or downgrading `Blocker`" in constitution
-    assert "Closing, deleting, or downgrading `Blocker`" in gate
-    assert "closed, deleted, or downgraded" in analyze
-    assert "closing, deleting, or downgrading `Blocker`" in implement
+    assert "Closing, deleting, accepting, deferring, downgrading, or invalidating `Blocker`" in constitution
+    assert "Closing, deleting, accepting, deferring, downgrading, or invalidating `Risk`, `Blocker`" in gate
+    assert "closed, deleted, accepted, deferred, downgraded, or invalidated" in analyze
+    assert "closing, deleting, accepting, deferring, downgrading, or invalidating `Risk`, `Blocker`" in implement
+    assert "Close Evidence" in constitution
+    assert "Close Evidence" in gate
+    assert "Close Evidence" in analyze
+    assert "Close Evidence" in implement
+    for content, label in ((methodology, "methodology"), (analyze, "analyze"), (gate, "gate"), (implement, "implement")):
+        assert "High severity" in content or "High` 严重级别" in content, label
+        assert "broader-impact" in content or "影响范围、验收、发布、回滚" in content, label
+        assert "@r0" in content, label
+    assert "隐私、权限、认证、审计、合规、数据、迁移、租户隔离、RBAC" in methodology
 
 
 def test_blocker_closeout_uses_open_items_without_new_ledger():
@@ -567,8 +668,8 @@ def test_gate_complexity_only_covers_pre_planning_business_signals():
     assert "delivery-level split signals remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze`" in command_spec
 
 
-def test_specify_owns_stable_requirement_conflicts_with_optional_prd_discovery():
-    """Optional /sp.prd discovery must not replace /sp.specify as the stable spec entry."""
+def test_prd_is_mandatory_upstream_intake_but_not_stable_spec_entry():
+    """Mandatory /sp.prd intake must not replace /sp.specify as the stable spec entry."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     constitution = (PROJECT_MEMORY_DIR / "constitution.md").read_text(encoding="utf-8")
     prd = _command("prd")
@@ -577,19 +678,65 @@ def test_specify_owns_stable_requirement_conflicts_with_optional_prd_discovery()
         encoding="utf-8"
     )
 
-    assert "`/sp.prd` 可以作为可选前置命令" in methodology
-    assert "不是强制入口，也不是稳定事实源" in methodology
+    assert "`/sp.prd` 是所有新 feature、能力方向和重要需求变更的强制上游入口" in methodology
+    assert "简单需求可以走精简 PRD，但不能跳过 PRD" in methodology
+    assert "精简 PRD 只适用于用户已经给出清楚目标、用户、范围和基本验收意图" in methodology
+    assert "Lean PRD 也不能只剩目录" in methodology
+    assert "至少要有一个清晰战略目标、一个目标用户或角色、一个有边界的核心场景" in methodology
+    assert "0 到 1 想法、范围不清、多能力方向、治理影响、高风险或 source 冲突必须走完整 PRD" in methodology
+    assert "不是稳定事实源" in methodology
     assert "自上而下的需求生长" in methodology
     assert "战略目标、产品定位、业务目标、目标用户和能力版图" in methodology
     assert "足够交给 `/sp.specify` 提炼稳定规格" in methodology
     assert "不能默认输出完整界面元素清单" in methodology
+    assert "PRD-to-spec outline readiness" in methodology
+    assert "specs/<feature>/spec-outline.md" in methodology
+    assert "`Source Authority Summary`" in methodology
+    assert "稳定 source、候选 source、归档或缺失 source" in methodology
+    assert "`/sp.specify` 可以安全消费哪些来源" in methodology
+    assert "`/sp.specify` 消费 outline 前必须做轻量 freshness/source snapshot 检查" in methodology
+    assert "不要用文件 `mtime` 或原始 hash 做硬门禁" in methodology
+    assert "还应同步创建或刷新阻断型 `specs/<feature>/spec-outline.md`" in methodology
+    assert "从单一入口读到当前阻断原因" in methodology
+    assert "READY_FOR_SPECIFY" in methodology
+    assert "Outline Decision" in methodology
+    assert "[uncertain:*]" in methodology
+    assert "范围冲突" in methodology
+    assert "source 缺失" in methodology
+    assert "NEEDS_PRD" in methodology
+    assert "NEEDS_CLARIFY" in methodology
+    assert "NEEDS_SOURCE" in methodology
+    assert "SPLIT_REQUIRED" in methodology
+    assert "`NEEDS_DECISION` 用于已经具备候选方向但必须由人工选择" in methodology
+    assert "人类选择写回 `prd.md`、`clarifications.md` 或 `spec-outline.md`" in methodology
+    assert "`/sp.outline` 或 PRD 内置 outline 逻辑不能替代 `/sp.specify`" in methodology
+    assert "每次 `/sp.prd` 刷新时都应重读当前 PRD、source 和已有 outline" in methodology
+    assert "`NEEDS_SOURCE` 才能解除" in methodology
+    assert "`Outline Decision` 只负责 readiness、blocker、next route" in methodology
+    assert "`Handoff To Specify` 只负责在 ready 时摘要 `/sp.specify` 应稳定化的输入" in methodology
+    assert "`Status History`" in methodology
+    assert "`timestamp/run-id`" in methodology
+    assert "`blocker-signature`" in methodology
+    assert "`evidence-summary`" in methodology
+    assert "`新证据` 只包括用户确认、source 恢复、明确 rebase 决策" in methodology
+    assert "同一 `blocker-signature`、同一 outline 状态、同一 `next-route` 连续两次刷新" in methodology
+    assert "升级为 `BLOCKED` 或 `NEEDS_DECISION`" in methodology
+    assert "重复 blocker 的决策包必须写回可复用的位置" in methodology
+    assert "默认写到 `specs/<feature>/memory/open-items.md`" in methodology
+    assert "`Owner Review Required`" in methodology
+    assert "`Risk Type`" in methodology
+    assert "`Confirm To Proceed`" in methodology
+    assert "轻量小改只限于" in methodology
+    assert "重要需求变更，必须回到 `/sp.prd`" in methodology
+    assert "高风险、0 到 1 新产品方向、范围拆分、source rebase、治理候选" in methodology
     assert "`/sp.constitution` 面向整个项目" in methodology
     assert "候选治理区" in methodology
     assert "不能直接修改正式 constitution 正文" in methodology
     assert "候选状态只使用固定枚举" in methodology
     assert "单 feature 局部风险" in methodology
-    assert "`sp.prd` may exist as an optional upstream discovery route" in constitution
-    assert "It is not a stable fact source" in constitution
+    assert "`sp.prd` is the mandatory upstream requirement intake" in constitution
+    assert "Simple requests may use a short PRD, but they must not skip PRD" in constitution
+    assert "PRD-to-spec outline readiness" in constitution
     assert "Constitution Candidates" in constitution
     assert "Candidates do not override formal constitution rules" in constitution
     assert "may only append or update the `Constitution Candidates` section" in constitution
@@ -597,6 +744,20 @@ def test_specify_owns_stable_requirement_conflicts_with_optional_prd_discovery()
     assert "Status values are fixed" in constitution
     assert "Keep the active candidate table concise" in constitution
     assert "stable requirement intake and baseline specification point" in specify
+    assert "`/sp.prd` is the mandatory upstream requirement intake" in specify
+    assert "Treat work as new feature work when `spec.md` is missing" in specify
+    assert "`spec.md` still contains `SP_STAGE_SEED: spec`" in specify
+    assert "new capability direction" in specify
+    assert "changes business scope, target role, workflow, acceptance boundary" in specify
+    assert "Minor edits are limited to local wording fixes" in specify
+    assert "Important requirement changes include new capability direction" in specify
+    assert "Route these to `/sp.prd`" in specify
+    assert "If `specs/<feature>/prd.md` is missing" in specify
+    assert "If `specs/<feature>/spec-outline.md` is missing or not `READY_FOR_SPECIFY`" in specify
+    assert "check its `Based On`, `Source Snapshot` or `Source Authority Summary`" in specify
+    assert "references stale PRD intent, missing/rebased sources, unresolved decisions" in specify
+    assert "SP_STATUS: NEEDS_PRD" in specify
+    assert "requires owner review" in specify
     assert "`prd.md` is only an upstream draft" in specify
     assert "Do not stabilize `[src:ai-proposed]`" in specify
     assert "Do not treat `[src:ai-proposed]`" in specify
@@ -604,9 +765,50 @@ def test_specify_owns_stable_requirement_conflicts_with_optional_prd_discovery()
     assert "# /sp.prd" in prd
     assert "hooks.before_prd" in prd
     assert "sp.constitution" in prd
-    assert "optional upstream discovery" in prd
+    assert "mandatory upstream requirement intake" in prd
     assert "not a stable fact source" in prd
     assert "top-down requirement growth" in prd
+    assert "Choose the PRD depth before writing" in prd
+    assert "Lean PRD" in prd
+    assert "Full PRD" in prd
+    assert "When unsure, prefer a lean PRD plus explicit open items" in prd
+    assert "Lean PRD still needs enough substance to stand on its own" in prd
+    assert "one clear strategic goal, at least one target user or role" in prd
+    assert "specs/<feature>/spec-outline.md" in prd
+    assert "`Source Authority Summary`" in prd
+    assert "stable sources, candidate-only sources, archived or missing sources" in prd
+    assert "what `/sp.specify` may safely consume" in prd
+    assert "blocking `spec-outline.md` with the same `Outline Decision`" in prd
+    assert "READY_FOR_SPECIFY" in prd
+    assert "Outline Decision" in prd
+    assert "[uncertain:*]" in prd
+    assert "scope conflict" in prd
+    assert "missing source authority" in prd
+    assert "NEEDS_PRD" in prd
+    assert "NEEDS_CLARIFY" in prd
+    assert "NEEDS_SOURCE" in prd
+    assert "SPLIT_REQUIRED" in prd
+    assert "NEEDS_DECISION" in prd
+    assert "never `READY_FOR_SPECIFY`" in prd
+    assert "/sp.outline" in prd
+    assert "must not replace `/sp.specify`" in prd
+    assert "Always read the existing `specs/<feature>/spec-outline.md` first" in prd
+    assert "`NEEDS_SOURCE` -> `READY_FOR_SPECIFY` only when the PRD cites the recovered source" in prd
+    assert "`SPLIT_REQUIRED` -> `READY_FOR_SPECIFY` only after the user confirms" in prd
+    assert "`NEEDS_DECISION` -> `READY_FOR_SPECIFY` only after the selected human decision is written back" in prd
+    assert "Maintain a lightweight `Status History`" in prd
+    assert "`timestamp/run-id`, `status`, `blocker-signature`, `next-route`, and `evidence-summary`" in prd
+    assert "stable short `blocker-signature`" in prd
+    assert "same `blocker-signature`, same outline status, and same `next-route`" in prd
+    assert "same `blocker-signature`, same outline status, and same `next-route`" in prd
+    assert "New evidence means only user confirmation, recovered source, explicit rebase decision" in prd
+    assert "Escalate to `BLOCKED` or `NEEDS_DECISION`" in prd
+    assert "write the decision package back into the current feature docs" in prd
+    assert "stable writeback target is `specs/<feature>/memory/open-items.md`" in prd
+    assert "explicit owner review prompt" in prd
+    assert "`Owner Review Required` prompt" in prd
+    assert "`Risk Type`, `Review Focus`, `Impact If Approved`, `Impact If Rejected`" in prd
+    assert "must not create a second conflicting decision" in prd
     assert "[src:ai-proposed]" in prd
     assert "SP_STATUS: NEEDS_DECISION" in prd
     assert "SP_EXIT_CODE: 1" in prd
@@ -616,12 +818,65 @@ def test_specify_owns_stable_requirement_conflicts_with_optional_prd_discovery()
     assert "Candidate status values are fixed" in prd
     assert "Do not rewrite formal constitution content" in prd
     assert "new independent business goal, role, workflow, acceptance boundary, release scope, or scope fork" in prd
-    assert "route to `/sp.specify`" in prd
+    assert "do not route directly to `/sp.specify`" in prd
     assert "route to `/sp.clarify`" in prd
     assert "unresolved product boundary or scope fork questions were not turned into guessed features" in prd
-    assert "requirement growth should be top-down" in command_spec
+    assert "Requirement growth in `sp.prd` should be top-down" in command_spec
     assert "strategic goal, product positioning, business goals" in command_spec
     assert "capability map" in command_spec
+    assert "Lean PRD is allowed only when the user already provides" in command_spec
+    assert "Lean PRD still has a minimum substance bar" in command_spec
+    assert "one clear strategic goal, at least" in command_spec
+    assert "0-to-1 ideas, unclear scope, multi-capability requests" in command_spec
+    assert "`sp.prd` is the mandatory upstream requirement intake" in command_spec
+    assert "Simple requests may use" in command_spec
+    assert "PRD-to-spec outline readiness" in command_spec
+    assert "`specs/<feature>/spec-outline.md` with `READY_FOR_SPECIFY`" in command_spec
+    assert "blocking `spec-outline.md` with the same" in command_spec
+    assert "predictable blocker entry point" in command_spec
+    assert "`Source Authority Summary`" in command_spec
+    assert "stable sources, candidate-only sources, archived or missing sources" in command_spec
+    assert "what `sp.specify` may safely consume" in command_spec
+    assert "Before `sp.specify` consumes a `READY_FOR_SPECIFY` outline" in command_spec
+    assert "Do not use file mtime or raw hashes as hard gates" in command_spec
+    assert "Outline Decision" in command_spec
+    assert "[uncertain:*]" in command_spec
+    assert "scope conflict" in command_spec
+    assert "missing" in command_spec and "source" in command_spec
+    assert "NEEDS_PRD" in command_spec
+    assert "NEEDS_CLARIFY" in command_spec
+    assert "NEEDS_SOURCE" in command_spec
+    assert "SPLIT_REQUIRED" in command_spec
+    assert "NEEDS_DECISION" in command_spec
+    assert "never `READY_FOR_SPECIFY`" in command_spec
+    assert "sp.outline" in command_spec
+    assert "must not replace `sp.specify`" in command_spec
+    assert "Existing `spec-outline.md` status is not static" in command_spec
+    assert "`NEEDS_SOURCE` only after source recovery" in command_spec
+    assert "`NEEDS_DECISION` only after the selected human decision" in command_spec
+    assert "`Outline Decision` owns readiness and next route" in command_spec
+    assert "`Handoff To Specify` summarizes downstream input" in command_spec
+    assert "lightweight `Status History`" in command_spec
+    assert "`timestamp/run-id`, `status`, `blocker-signature`" in command_spec
+    assert "New evidence means" in command_spec
+    assert "user confirmation" in command_spec
+    assert "explicit rebase decision" in command_spec
+    assert "same `blocker-signature`, same outline" in command_spec
+    assert "Repeated-blocker decision packages must be written back" in command_spec
+    assert "default writeback target is `specs/<feature>/memory/open-items.md`" in command_spec
+    assert "Trace `Expand Docs` checks must locate the column by header" in command_spec
+    assert "Flow/UI artifacts must model the target business system" in command_spec
+    assert "privacy, permission, authentication, audit, compliance, data, migration, tenant isolation, RBAC" in command_spec
+    assert "High-risk, 0-to-1 product direction, scope split, source rebase" in command_spec
+    assert "explicit `Owner Review Required` prompt" in command_spec
+    assert "`Risk Type`" in command_spec
+    assert "`Confirm To Proceed`" in command_spec
+    assert "For `sp.specify`, treat work as new feature work" in command_spec
+    assert "`spec.md` still contains `SP_STAGE_SEED: spec`" in command_spec
+    assert "Minor edits are limited to local wording fixes" in command_spec
+    assert "Important requirement" in command_spec
+    assert "new capability direction" in command_spec
+    assert "new role or permission" in command_spec
     assert "The detail boundary is" in command_spec
     assert "`ready for sp.specify`" in command_spec
     assert "`ready for implementation`" in command_spec
@@ -756,10 +1011,13 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "Put this anchor visibly near the top of `flows/index.md`" in flow
     assert "not a workflow monitoring panel" in flow
     assert "Wrong: \"Display flow progress" in flow
-    assert "Treat visual review as a confirmation gate" in flow
-    assert "first-time flow generation" in flow
+    assert "Classify visual review into three tiers" in flow
+    assert "**No confirmation required**" in flow
+    assert "**Recommended confirmation**" in flow
+    assert "**Required confirmation**" in flow
+    assert "first-time stable flow generation" in flow
     assert "3 or more new flow nodes" in flow
-    assert "the review gate may be skipped" in flow
+    assert "which tier would otherwise apply" in flow
     assert "`--auto` may skip only the visual review gate" in flow
     assert "multiple reasonable repairs" in flow
     assert "not present `/sp.ui` or `/sp.gate` as the" in flow
@@ -777,8 +1035,12 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "business domain anchor" in ui
     assert "Put this anchor visibly near the top of `ui/index.md`" in ui
     assert "unconfirmed flow draft" in ui
-    assert "Treat visual review as a confirmation gate" in ui
+    assert "Classify visual review into three tiers" in ui
+    assert "**No confirmation required**" in ui
+    assert "**Recommended confirmation**" in ui
+    assert "**Required confirmation**" in ui
     assert "3 or more new screens or critical actions" in ui
+    assert "Process Visualization UI risk" in ui
     assert "`--auto` may skip only the visual review gate" in ui
     assert "multiple reasonable layouts" in ui
     assert "not present `/sp.gate` as the immediate next" in ui
@@ -800,9 +1062,14 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "Treat unchecked `/sp.flow` and `/sp.ui` outputs as draft facts" in plan
     assert "Preserve `FLOW` as the main relation axis" in plan
 
-    assert "require user review before promotion for first-time flow generation" in command_spec
+    assert "classify flow visual review into three tiers before promotion" in command_spec
+    assert "**No confirmation required** for trivial label" in command_spec
+    assert "**Recommended confirmation** for small" in command_spec
+    assert "**Required confirmation** for" in command_spec
     assert "run after `sp.flow` and consume its flow contract" in command_spec
-    assert "require user review before promotion for first-time UI generation" in command_spec
+    assert "classify UI visual review into three tiers before promotion" in command_spec
+    assert "Process Visualization UI risk" in command_spec
+    assert "state why, what changed, which tier would otherwise" in command_spec
     assert "UI is a projection of flow" in command_spec
     assert "New or refreshed outputs from `sp.flow`, `sp.ui`, and `sp.plan` are draft facts" in memory_arch
     assert "Recommended relation verbs" in trace_index
@@ -881,6 +1148,8 @@ def test_stage_readiness_gates_flow_ui_and_blocks_inferred_pass():
         assert "DRAFT_ONLY" in content, label
         assert "Source: model-inferred" in content, label
         assert "[INFER:DRAFT]" in content, label
+        assert "Source Snapshot" in content, label
+        assert "Evidence Signature" in content, label
 
     for content, label in (
         (specify, "specify"),
@@ -893,8 +1162,11 @@ def test_stage_readiness_gates_flow_ui_and_blocks_inferred_pass():
         assert "DRAFT_ONLY" in content, label
         assert "Source: model-inferred" in content, label
         assert "[INFER:DRAFT]" in content, label
+        assert "Source Snapshot" in content, label
+        assert "Evidence Signature" in content, label
 
     assert "Status: READY_FOR_FLOW" in specify
+    assert "Do not use file mtime or raw hash as a hard gate" in specify
     assert "Status: NEEDS_CLARIFY" in specify
     assert "Do not suggest `/sp.flow`" in specify
 
@@ -903,6 +1175,8 @@ def test_stage_readiness_gates_flow_ui_and_blocks_inferred_pass():
     assert "must not unlock `READY_FOR_FLOW`" in clarify
 
     assert "Status: READY_FOR_FLOW" in flow
+    assert "treat the upstream readiness as not stable enough for stable flow generation" in flow
+    assert "only the signature formatting is missing" in flow
     assert "stop before generating flow artifacts" in flow
     assert "READY_FOR_UI" in flow
     assert "Suggest `/sp.ui` or `/sp.gate` only when flow `Stage Readiness` is `READY_FOR_UI`" in flow
@@ -910,6 +1184,8 @@ def test_stage_readiness_gates_flow_ui_and_blocks_inferred_pass():
     assert "do not qualify as stable provenance" in flow
 
     assert "Status: READY_FOR_UI" in ui
+    assert "treat the flow readiness as not stable enough for stable UI generation" in ui
+    assert "only the signature formatting is missing" in ui
     assert "stop before generating stable UI artifacts" in ui
     assert "READY_FOR_PLAN" in ui
     assert "Suggest `/sp.gate` only when UI `Stage Readiness` is `READY_FOR_PLAN`" in ui
@@ -920,11 +1196,18 @@ def test_stage_readiness_gates_flow_ui_and_blocks_inferred_pass():
         assert "Do not mark PASS when required `Stage Readiness` is missing" in content, label
         assert "without upstream `READY_FOR_FLOW`" in content, label
         assert "without upstream `READY_FOR_UI`" in content, label
+        assert "Source Snapshot" in content, label
+        assert "Evidence Signature" in content, label
         assert "`Source: model-inferred` is used as stable evidence" in content or "Source: model-inferred` is being used as stable" in content, label
     assert "不能静默选择" in methodology
+    assert "不要用文件 `mtime` 或原始 hash 当硬门禁" in methodology
+    assert "不能把它当作稳定准入凭证" in methodology
+    assert "缺口只是格式遗漏" in methodology
     assert "decompose the flow top-down" in command_spec
     assert "use bounded model inference" in command_spec
     assert "decompose UI top-down" in command_spec
+    assert "Missing snapshot/signature means the readiness is not a stable downstream entry proof" in command_spec
+    assert "Do not use file mtime or raw file hash as a hard gate" in command_spec
 
 
 def test_stage_entry_preflight_routes_missing_or_changed_upstream_work():
@@ -1531,6 +1814,18 @@ def test_reverse_trace_and_proposed_updates_support_safe_multi_agent_continuatio
     assert "提交 `Delta Summary` 和 `Proposed Updates`" in readme_zh
 
 
+def test_multi_agent_proposed_update_conflicts_block_analyze_and_gate_pass():
+    """Analyze/gate should catch conflicting worker updates before stage PASS."""
+    analyze = _command("analyze")
+    gate = _command("gate")
+
+    assert "conflicting Proposed Updates across multiple workers" in analyze
+    assert "same anchor, open-item ID, task state, or global registry field" in analyze
+    assert "semantic conflicts between proposed changes must be identified before PASS" in analyze
+    assert "conflicting Proposed Updates targeting the same anchor, open-item, task, or registry field" in gate
+    assert "conflicting Proposed Updates targeting the same object remain unresolved" in gate
+
+
 def test_code_continuation_missing_or_empty_fields_have_safe_routes():
     """Empty continuation fields should not pass; missing context must route to the nearest owner."""
     tasks = _command("tasks")
@@ -1599,6 +1894,9 @@ def test_upgrade_docs_and_changelog_explain_code_continuation_migration():
 def test_flow_ui_subject_scope_prevents_sp_mechanism_outputs():
     """Flow/UI outputs should model the target product, not SP's own process."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
     flow = _command("flow")
     ui = _command("ui")
 
@@ -1637,12 +1935,19 @@ def test_flow_ui_subject_scope_prevents_sp_mechanism_outputs():
     assert "业务域" in methodology
     assert "流程展示型 UI" in methodology
     assert "SUBJECT_CONFUSION" in methodology
+    assert "meta-product 场景保留窄例外" in methodology
+    assert "规格说明目标产品确实是开发者/工作流/规格工具" in methodology
+    assert "业务域、角色、source、验收、坐标或 trace 锚点" in methodology
+    assert "`preflight`、`Allowed Write Set`、`Required Checks`、`NEEDS_DECISION` 等词可能是目标业务系统里的合法文案" in methodology
     assert "不能成为业务流程节点、界面、字段、按钮、用户路径或图中标签" in methodology
     assert "主体混淆" in methodology
     assert "不要在同一轮里继续重生成" in methodology
     assert "业务域锚点应作为可见内容" in methodology
     assert "连续两次因为同一业务边界触发 `SUBJECT_CONFUSION`" in methodology
     assert "`--auto` 只能跳过视觉确认" in methodology
+    assert "The hard-fail has a narrow meta-product exception" in command_spec
+    assert "business-domain, role, source, acceptance, coordinate, or trace anchors" in command_spec
+    assert "Terms such as `preflight`, `Allowed Write Set`, `Required Checks`, and `NEEDS_DECISION`" in command_spec
 
 
 def test_flow_ui_subject_confusion_blocks_analyze_and_gate_pass():

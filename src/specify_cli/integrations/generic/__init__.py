@@ -7,11 +7,20 @@ integration with its own required option.
 
 from __future__ import annotations
 
+import os
+import shlex
 from pathlib import Path
 from typing import Any
 
 from ..base import IntegrationOption, MarkdownIntegration
 from ..manifest import IntegrationManifest
+
+
+def _split_raw_options(raw: str, *, windows: bool | None = None) -> list[str]:
+    """Split integration raw options without eating Windows backslashes."""
+    if windows is None:
+        windows = os.name == "nt"
+    return [token.strip("\"'") for token in shlex.split(raw, posix=not windows)]
 
 
 class GenericIntegration(MarkdownIntegration):
@@ -61,8 +70,7 @@ class GenericIntegration(MarkdownIntegration):
         # Fall back to raw_options (--integration-options="--commands-dir ...")
         raw = opts.get("raw_options")
         if raw:
-            import shlex
-            tokens = shlex.split(raw)
+            tokens = _split_raw_options(raw)
             for i, token in enumerate(tokens):
                 if token == "--commands-dir" and i + 1 < len(tokens):
                     return tokens[i + 1]

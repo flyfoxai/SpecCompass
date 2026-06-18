@@ -72,10 +72,21 @@ inputs:
     enum: ["full", "backend-only", "frontend-only"]
 
 steps:
+  - id: prd
+    command: sp.prd
+    input:
+      args: "{{ inputs.spec }}"
+
+  - id: review-prd-outline
+    type: gate
+    message: "Review PRD and embedded outline readiness before specifying."
+    options: [approve, reject]
+    on_reject: abort
+
   - id: specify
     command: sp.specify
     input:
-      args: "{{ inputs.spec }}"
+      args: "Use current prd.md and spec-outline.md readiness."
 
   - id: review
     type: gate
@@ -83,6 +94,11 @@ steps:
     options: [approve, reject]
     on_reject: abort
 ```
+
+For SpecCompass workflows, keep `/sp.prd` as the mandatory first command for
+new feature work. Only PRD should consume the raw `inputs.spec`; downstream
+commands should consume current feature documents, readiness, memory, and
+evidence.
 
 **Validation Checklist**:
 

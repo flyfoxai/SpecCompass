@@ -46,6 +46,8 @@ env/
 *.zip
 sdd-*/
 docs/dev
+docs/reference/archive/sp-prd-to-spec-outline-stage-research.zh-CN.md
+docs/reference/archive/sp-specify-gap-closeout-root-cause-analysis.zh-CN.md
 
 # Extension system
 .specify/extensions/.cache/

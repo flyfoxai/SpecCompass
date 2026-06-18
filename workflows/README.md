@@ -8,10 +8,21 @@ A workflow definition declares a sequence of steps. The engine executes them in 
 
 ```yaml
 steps:
+  - id: prd
+    command: sp.prd
+    input:
+      args: "{{ inputs.spec }}"
+
+  - id: review-prd-outline
+    type: gate
+    message: "Review PRD and embedded outline readiness before specifying."
+    options: [approve, reject]
+    on_reject: abort
+
   - id: specify
     command: sp.specify
     input:
-      args: "{{ inputs.spec }}"
+      args: "Use current prd.md and spec-outline.md readiness."
 
   - id: review
     type: gate
@@ -22,6 +33,11 @@ steps:
   - id: plan
     command: sp.plan
 ```
+
+For SpecCompass, `/sp.prd` is mandatory for new feature work. The outline
+readiness is produced inside the PRD stage as `specs/<feature>/spec-outline.md`;
+do not add a separate required `sp.outline` step, and do not pass the original
+`inputs.spec` as the source of truth to every downstream step.
 
 For detailed architecture and internals, see [ARCHITECTURE.md](ARCHITECTURE.md).
 
@@ -85,13 +101,24 @@ Workflows support 10 built-in step types:
 Invoke an installed Spec Kit command by name via the integration CLI:
 
 ```yaml
-- id: specify
-  command: sp.specify
+- id: prd
+  command: sp.prd
   input:
     args: "{{ inputs.spec }}"
   integration: claude        # Optional: override workflow default
   model: "claude-sonnet-4-20250514"   # Optional: override model
+
+- id: specify
+  command: sp.specify
+  input:
+    args: "Use current prd.md and spec-outline.md readiness."
+  integration: claude
 ```
+
+For the built-in SpecCompass workflow, only the PRD intake step should consume
+the raw `inputs.spec`. Downstream command steps should consume the current
+feature documents, readiness, memory, and evidence instead of replaying the
+original request.
 
 ### Prompt Steps
 
@@ -228,7 +255,7 @@ Workflow definitions use `{{ expression }}` syntax for dynamic values:
 args: "{{ inputs.spec }}"
 
 # Access previous step outputs
-args: "{{ steps.specify.output.file }}"
+args: "{{ steps.prd.output.file }}"
 
 # Comparisons
 condition: "{{ steps.run-tests.output.exit_code != 0 }}"

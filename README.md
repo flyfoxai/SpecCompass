@@ -38,15 +38,17 @@ In practice, `Mode: doc` tasks are used for specification, flow, UI, planning, m
 
 SP treats AI development as an engineering control loop, not a one-shot prompt. The goal is to give the agent enough context to work accurately, but not so much that the context window becomes noisy or expensive.
 
-The main methodology is documented in [SP Project Methodology](./docs/reference/sp-project-methodology.md). Optional 0-to-1 product discovery, PRD handling, blocker closeout, code continuation, and multi-agent rules are consolidated there. In short:
+The main methodology is documented in [SP Project Methodology](./docs/reference/sp-project-methodology.md). Mandatory 0-to-1 product intake, PRD handling, blocker closeout, code continuation, and multi-agent rules are consolidated there. In short:
 
 - Start from the trunk: clarify goals, scope, success criteria, constraints, and the active feature before expanding into implementation details.
-- Use optional `/sp.prd` only when product intent is still immature. It helps grow a PRD draft from strategic goals, positioning, users, scenarios, capability map, flow seeds, acceptance seeds, risks, and open questions, but `prd.md` is not a stable fact source.
+- Start new feature work with `/sp.prd`. It can be short for clear requests, but it must capture upstream intent, source tags, and PRD-to-spec outline readiness before `/sp.specify`; `prd.md` is not a stable fact source.
+- Resume existing work with `/sp.route` first. It emits `speckit.route.v1` JSON and only recommends the next command by default; use `/sp.route y` when you want the agent to continue only if `continueAllowed` is true.
 - Keep context small but sufficient: route through project memory, feature memory, worksets, trace files, and directly related source docs before reading the whole repository.
 - Use stable anchors and searchable IDs for features, worksets, UI, APIs, risks, tests, and acceptance paths, so later agents can find related content without recomputing the whole project.
 - Continue existing code from memory first: read feature/workset memory, trace/open-items, and the task `Read Set` before expanding to source files.
 - Track unresolved work explicitly in `memory/open-items.md`, including risks, blockers, decisions, owners, close conditions, and revisit points.
 - Use blocker closeout when clearing blockers: `open-items.md` remains the source of truth, while `/sp.analyze` and `/sp.gate` require item-by-item evidence instead of accepting progress summaries.
+- Make readiness checkable with lightweight evidence signatures: record source files, anchors, open-item state, visual/human review status, and current checks; human-confirmed facts need a traceable decision record, not model prose.
 - Use lightweight impact-radius checks before changing APIs, permissions, data, event flows, UI contracts, or core tests.
 - Use reverse-trace checks before delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes, so normal code is not damaged while fixing a local problem.
 - Treat `plan.md` `Implementation Readiness` as the single source of truth for code-stage entry. Other commands may consume, diagnose, or gate it, but should not invent a second readiness fact.
@@ -60,7 +62,8 @@ The main methodology is documented in [SP Project Methodology](./docs/reference/
 
 SpecCompass keeps the workflow readable for humans and predictable for agents:
 
-- Unclear 0-to-1 product ideas may start with optional `/sp.prd`. Clear requirements should go directly to `/sp.specify`.
+- New feature work starts with `/sp.prd`. Clear requirements use a lean PRD; unclear 0-to-1 ideas use a fuller interview-style PRD. `/sp.specify` consumes PRD and outline readiness instead of bypassing them.
+- Existing work should resume through `/sp.route`. The route script stays pure and emits `speckit.route.v1`; the command template may dispatch the next `/sp.*` command only from explicit `/sp.route y`, only when `continueAllowed` is true, and never through `REPEATED_FALLBACK`, human decisions, or unknown blockers recorded through `fallback-log.md`.
 - Stable requirements enter through `/sp.specify`. New or changed requirements are checked for conflicts instead of being silently merged into stale specs.
 - When intent is unclear, `/sp.clarify` asks focused questions with plain-language options and records the decision so later agents do not need to rediscover it.
 - `/sp.plan` defines the technical route, worksets, impact radius, agent boundaries, source layout, runtime commands, code/test mapping, and `Implementation Readiness` before code changes begin.
@@ -72,6 +75,7 @@ SpecCompass keeps the workflow readable for humans and predictable for agents:
 - `/sp.implement` writes code only for selected `Mode: impl` tasks. It checks `Allowed Write Set`, required checks, trace anchors, task context, dependency surface, and reverse-trace evidence before risky edits, then records verification evidence and a `Delta Summary`.
 - `/sp.analyze` and `/sp.gate` close the loop: they detect drift, broken trace links, stale context, unresolved risks, readiness contradictions, weak task packets, and phase-readiness failures.
 - When blockers are being cleared, `/sp.analyze` produces a blocker closeout diagnosis and `/sp.gate` decides whether the remaining state is `PASS`, `CONDITIONAL`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
+- Lightweight scripts can check structural evidence such as trace/open-item links, evidence-signature fields, and unsupported human-confirmation markers. They are guardrails, not business proof; analyze/gate still decide semantic readiness from source docs, tests, and decisions.
 - For multi-agent work, one coordinator assigns worksets, workers stay inside declared write boundaries, workers submit `Delta Summary` and `Proposed Updates`, and analyze/gate reconcile outputs before the project moves on.
 
 The intended result is not heavier ceremony. The intended result is fewer dead ends: when the agent cannot proceed safely, it moves upward to the right phase, explains the situation, and asks for a decision instead of inventing one.
@@ -91,9 +95,10 @@ The intended result is not heavier ceremony. The intended result is fewer dead e
 
 - Upstream-style `specify init`, templates, scripts, and agent integrations.
 - User-facing core commands use the `sp.*` namespace, for example `/sp.specify`, `/sp.plan`, and `/sp.analyze`.
+- `/sp.route` provides a safe resume entry. It reports the next command from explicit project state; `/sp.route y` may continue only when the route JSON allows it. `NEEDS_DECISION`, `HUMAN_DECISION`, `UNKNOWN_BLOCKER`, and `REPEATED_FALLBACK` route to `/sp.clarify` or the owner decision path instead of auto-continuing.
 - Codex uses skills as the stable entry point. It installs executable skills in `.agents/skills/sp-*/SKILL.md`; users can invoke them explicitly with `$sp-*` or `/skills`, and Codex may also invoke a matching skill from natural-language requests when the task matches the skill description.
 - Claude and markdown-style hosts expose direct slash commands such as `/sp.analyze` through their normal command directories.
-- Optional PRD discovery with `/sp.prd` for early product shaping. PRD output stays in `specs/<feature>/prd.md`, uses source tags such as `[src:user]` and `[src:ai-proposed]`, and hands confirmed intent to `/sp.specify` instead of bypassing it.
+- Mandatory PRD intake with `/sp.prd` for new feature work. PRD output stays in `specs/<feature>/prd.md`, uses source tags such as `[src:user]` and `[src:ai-proposed]`, writes PRD-to-spec outline readiness to `specs/<feature>/spec-outline.md`, and hands confirmed intent to `/sp.specify` instead of bypassing it.
 - Layered artifacts for flow, UI, delivery, memory, trace, open items, and gates.
 - Flow-first relationship management: business process nodes become the preferred link between requirements, UI, actions, API, data, tests, and code.
 - Stable coding and anchor rules for features, worksets, UI, APIs, risks, tests, and trace links, so the model can search and update related content without rereading everything.
@@ -159,6 +164,7 @@ In Codex, invoke SP skills explicitly by typing `$sp-<command>` or by running `/
 Common SP skills:
 
 ```text
+$sp-route
 $sp-specify
 $sp-prd
 $sp-plan
@@ -187,7 +193,8 @@ If an older project already contains `.codex/prompts/sp.*`, `.codex/commands`, `
 | Command | Purpose |
 | --- | --- |
 | `/sp.constitution` or `$sp-constitution` in Codex | Create or update project principles, engineering constraints, and governance rules |
-| `/sp.prd` or `$sp-prd` in Codex | Optional upstream PRD discovery for immature product ideas; produces draft intent for `/sp.specify` |
+| `/sp.route` or `$sp-route` in Codex | Inspect current project state and recommend the next safe `/sp.*` command; `/sp.route y` may continue only when `speckit.route.v1` has `continueAllowed: true` |
+| `/sp.prd` or `$sp-prd` in Codex | Mandatory upstream PRD intake for new feature work; produces draft intent and outline readiness for `/sp.specify` |
 | `/sp.specify` or `$sp-specify` in Codex | Create a feature specification: what to build and why |
 | `/sp.clarify` or `$sp-clarify` in Codex | Clarify unclear requirements and record decisions |
 | `/sp.plan` or `$sp-plan` in Codex | Create the technical plan, architecture choices, source layout, code/test mapping, and implementation readiness |

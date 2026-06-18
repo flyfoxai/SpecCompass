@@ -5,9 +5,9 @@
   "workflows": {
     "speckit": {
       "id": "speckit",
-      "name": "Full SDD Cycle",
-      "description": "Runs specify \u2192 plan \u2192 tasks \u2192 implement with review gates",
-      "author": "GitHub",
+      "name": "SpecCompass Full Cycle",
+      "description": "Runs PRD-first SP flow: prd with embedded outline readiness \u2192 specify \u2192 flow \u2192 ui \u2192 gate \u2192 bundle \u2192 plan \u2192 tasks \u2192 analyze \u2192 gate \u2192 implement \u2192 analyze \u2192 gate",
+      "author": "SpecCompass",
       "version": "1.0.0",
       "url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/workflows/speckit/workflow.yml",
       "tags": ["sdd", "full-cycle"]

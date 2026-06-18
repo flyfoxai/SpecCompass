@@ -494,7 +494,7 @@ class TestCommandStep:
         assert result.error is not None
 
     def test_dispatch_with_mock_cli(self, tmp_path, monkeypatch):
-        """When the CLI is installed, dispatch invokes the command by name."""
+        """When the CLI is installed, dispatch invokes the resolved executable."""
         from unittest.mock import patch, MagicMock
         from specify_cli.workflows.steps.command import CommandStep
         from specify_cli.workflows.base import StepContext, StepStatus
@@ -530,7 +530,7 @@ class TestCommandStep:
         assert result.output["exit_code"] == 0
         # Verify the CLI was called with -p and the integration invocation
         call_args = mock_run.call_args
-        assert call_args[0][0][0] == "claude"
+        assert call_args[0][0][0] == "/usr/local/bin/claude"
         assert call_args[0][0][1] == "-p"
         # CLI dispatch uses the canonical user-facing command form.
         assert "/sp.specify login" in call_args[0][0][2]
@@ -1644,6 +1644,52 @@ class TestWorkflowRegistry:
 
 class TestWorkflowCatalog:
     """Test WorkflowCatalog catalog resolution."""
+
+    def test_bundled_speckit_workflow_is_prd_first(self):
+        """Built-in SpecCompass workflow must not regress to the upstream old chain."""
+        repo_root = Path(__file__).parent.parent
+        workflow_path = repo_root / "workflows" / "speckit" / "workflow.yml"
+        data = yaml.safe_load(workflow_path.read_text(encoding="utf-8"))
+
+        steps = data["steps"]
+        command_steps = [
+            step
+            for step in steps
+            if step.get("command")
+        ]
+        commands = [step["command"] for step in command_steps]
+
+        assert commands[0] == "sp.prd"
+        assert "sp.outline" not in commands
+        assert commands.index("sp.prd") < commands.index("sp.specify")
+        assert commands.index("sp.specify") < commands.index("sp.flow")
+        assert commands.index("sp.flow") < commands.index("sp.ui")
+        assert commands.index("sp.ui") < commands.index("sp.bundle")
+        assert commands.index("sp.bundle") < commands.index("sp.plan")
+        assert commands.index("sp.plan") < commands.index("sp.tasks")
+        assert commands.index("sp.tasks") < commands.index("sp.implement")
+        assert command_steps[-2]["command"] == "sp.analyze"
+        assert command_steps[-1]["command"] == "sp.gate"
+
+        downstream_args = [
+            step.get("input", {}).get("args", "")
+            for step in command_steps
+            if step["id"] != "prd"
+        ]
+        assert all("{{ inputs.spec }}" not in args for args in downstream_args)
+
+    def test_bundled_speckit_catalog_describes_prd_first_workflow(self):
+        """Catalog metadata should not advertise the old specify-plan-tasks chain."""
+        repo_root = Path(__file__).parent.parent
+        catalog_path = repo_root / "workflows" / "catalog.json"
+        data = json.loads(catalog_path.read_text(encoding="utf-8"))
+        entry = data["workflows"]["speckit"]
+
+        assert entry["name"] == "SpecCompass Full Cycle"
+        assert "PRD-first" in entry["description"]
+        assert "embedded outline readiness" in entry["description"]
+        assert "implement → analyze → gate" in entry["description"]
+        assert "specify → plan → tasks → implement" not in entry["description"]
 
     def test_default_catalog_urls_use_open_specs_fork(self, project_dir):
         """Runtime catalog defaults should fetch SP catalogs, not upstream spec-kit."""

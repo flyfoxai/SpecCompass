@@ -118,12 +118,12 @@ if (-not (Test-Path $paths.FEATURE_DIR -PathType Container)) {
             activeFeature    = ""
             featureDir       = ""
             missing          = @("feature")
-            nextStep         = "/sp.specify"
+            nextStep         = "/sp.prd"
             reason           = "no-active-feature"
         } | ConvertTo-Json -Compress
     } else {
         Write-Output "No active feature found."
-        Write-Output "Next step: /sp.specify"
+        Write-Output "Next step: /sp.prd"
     }
     exit 0
 }
@@ -135,7 +135,7 @@ if (-not $explicitRequirement) {
 
 if ($RequireSpec -and -not (Test-Path $paths.FEATURE_SPEC -PathType Leaf)) {
     Write-Output "ERROR: spec.md not found in $($paths.FEATURE_DIR)"
-    Write-Output "Run /sp.specify first to create the feature specification."
+    Write-Output "Run /sp.prd first to create or refresh upstream intake, then /sp.specify to create the feature specification."
     exit 1
 }
 

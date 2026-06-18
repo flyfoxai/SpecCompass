@@ -23,7 +23,7 @@
 - 官方安装方式：`uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.16 --force`
 - 官方实测版本：`specify 0.8.16`
 - 官方 Codex 测试目录：`/Users/hula/Projects/ASK3/upstream-codex-official-v0.8.16`
-- SP 当前开发版本：`specify 0.10.8`
+- SP 当前开发版本：`specify 0.10.9`
 
 重要边界：
 
@@ -103,6 +103,7 @@ SP 对应用户可见命令目标：
 
 ```text
 /sp.constitution
+/sp.route
 /sp.specify
 /sp.clarify
 /sp.plan
@@ -117,6 +118,35 @@ SP 对应用户可见命令目标：
 - 原版多数 agent 使用 `/speckit.*` slash 命令。
 - 原版 Codex skills 模式官方写法是 `$speckit-*`，不是普通 `/speckit.*`。
 - SP 的目标是宿主入口一致：slash-command 宿主使用 `/sp.*`；Codex 使用 skills，输入 `$`、运行 `/skills` 后选择 `sp-*`，或提出匹配 skill description 的自然语言请求。
+
+### 3.1 SP 恢复入口：/sp.route
+
+日常进入一个已有项目后，推荐先运行：
+
+```text
+/sp.route
+```
+
+它只建议下一步，不自动执行。输出是 `speckit.route.v1` JSON，其中
+`autoExecute` 固定为 `false`，并包含 `next`、`reason`、`missing`、
+`blockers`、`continueAllowed`、`blockerType`、`blockerRoute` 等字段。
+
+如果希望 agent 在安全时直接衔接下一步，显式运行：
+
+```text
+/sp.route y
+```
+
+此时仍由 route 脚本只产出 JSON；是否继续由命令模板和宿主 agent 判断。
+只有 `continueAllowed: true` 且不是人工决策、未知阻塞或重复 fallback 时，
+agent 才可以随后执行推荐的 `/sp.*` 命令。
+
+停止规则：
+
+- `NEEDS_DECISION`、`HUMAN_DECISION`、`UNKNOWN_BLOCKER`：进入 `/sp.clarify`，生成或补齐人工决策包。
+- `BLOCKED` + `UPSTREAM_DOC_GAP`：如果 `blockerRoute` 是具体 owner route，例如 `/sp.flow`，可以继续到该 owner 命令补文档。
+- `REPEATED_FALLBACK` 或 `fallback-loop-detected`：说明 `memory/fallback-log.md` 已记录同一失败签名重复出现，不能继续重跑同一路线；应进入 `/sp.clarify` 或 owner 决策。
+- 普通缺失阶段：如 `NEEDS_PRD`、`NEEDS_SPECIFY`、`NEEDS_FLOW`、`NEEDS_UI`、`NEEDS_BUNDLE`、`NEEDS_PLAN`、`NEEDS_TASKS`，可在 `continueAllowed: true` 时继续到对应命令。
 
 ## 4. 顶层 CLI 命令
 
@@ -286,7 +316,7 @@ SP 当前结论：
 SP 对应要求：
 
 - 不应把普通分支名如 `main`、`master` 误判成已有 feature。
-- 如果没有 active feature，应明确返回没有 active feature，并提示先运行 `/sp.specify`。
+- 如果没有 active feature，应明确返回没有 active feature，并提示先运行 `/sp.prd`，再由 outline readiness 进入 `/sp.specify`。
 - 如果 feature 文档不存在，后续命令不能继续猜路径，应回到 `/sp.specify` 或 `/sp.clarify`。
 
 ## 8. Integration 机制
@@ -439,8 +469,16 @@ specify workflow catalog add <url> --name <name>
 specify -> review-spec gate -> plan -> review-plan gate -> tasks -> implement
 ```
 
+这只是上游 Spec Kit 的基础形态，不是当前 SpecCompass 的完整主链路。
+当前 SpecCompass 内置 `speckit` workflow 必须先运行 `/sp.prd`，并由
+`/sp.prd` 内置的 PRD-to-spec outline readiness 决定是否能进入
+`/sp.specify`。不要把 `sp.outline` 当成独立必跑命令；outline 是
+`/sp.prd` 的轻量衔接产物，不能替代 `/sp.specify`。
+
 SP 对应增强：
 
+- SP workflow 应按 PRD-first 链路组织：`/sp.prd` -> `/sp.specify` -> `/sp.flow` -> `/sp.ui` -> `/sp.gate` -> `/sp.bundle` -> `/sp.plan` -> `/sp.tasks` -> `/sp.analyze` -> `/sp.gate` -> `/sp.implement`。
+- 后续命令应消费当前 feature 的文档、memory、readiness 和 evidence，不应继续把最初的 `inputs.spec` 当成每一步的事实源。
 - SP 可以在 workflow 中加入 `/sp.analyze`、`/sp.gate`、memory 检查、风险闭环、headless 失败报告。
 - 但 workflow 的基本恢复、暂停、状态管理应尽量沿用原版机制。
 

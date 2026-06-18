@@ -1135,7 +1135,7 @@ DEFAULT_SKILLS_DIR = ".agents/skills"
 NATIVE_SKILLS_AGENTS = {"codex", "kimi"}
 SKILL_DESCRIPTIONS = {
     "specify": "Create or update feature specifications from natural language descriptions.",
-    "prd": "Shape an optional upstream PRD draft before stable feature specification.",
+    "prd": "Shape mandatory upstream PRD intake and outline readiness before stable feature specification.",
     "plan": "Generate technical implementation plans from feature specifications.",
     "tasks": "Break down implementation plans into actionable task lists.",
     "implement": "Execute selected Mode: impl tasks from the task breakdown to build the feature safely.",
@@ -1712,7 +1712,7 @@ def init(
     steps_lines.append(f"{step_num}. Start using {usage_label} with your AI agent:")
 
     steps_lines.append(f"   {step_num}.1 [cyan]{_display_cmd('constitution')}[/] - Establish project principles")
-    steps_lines.append(f"   {step_num}.2 [cyan]{_display_cmd('prd')}[/] [bright_black](optional)[/bright_black] - Shape unclear product intent before specification")
+    steps_lines.append(f"   {step_num}.2 [cyan]{_display_cmd('prd')}[/] - Capture upstream product intent and outline readiness before specification")
     steps_lines.append(f"   {step_num}.3 [cyan]{_display_cmd('specify')}[/] - Create baseline specification")
     steps_lines.append(f"   {step_num}.4 [cyan]{_display_cmd('plan')}[/] - Create implementation plan")
     steps_lines.append(f"   {step_num}.5 [cyan]{_display_cmd('tasks')}[/] - Generate actionable tasks")

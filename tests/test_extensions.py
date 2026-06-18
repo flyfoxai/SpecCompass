@@ -4058,8 +4058,9 @@ class TestExtensionRemoveCLI:
                 app, ["extension", "remove", "test-ext"], input="n\n", catch_exceptions=False
             )
 
-        assert "1 command" in result.output
-        assert "1 commands" not in result.output
+        clean_output = strip_ansi(result.output)
+        assert "1 command" in clean_output
+        assert "1 commands" not in clean_output
 
     def test_remove_confirmation_plural_commands(self, tmp_path, extension_dir):
         """Confirmation prompt should say '2 commands' (plural) when two commands registered."""
@@ -4081,4 +4082,5 @@ class TestExtensionRemoveCLI:
                 app, ["extension", "remove", "test-ext"], input="n\n", catch_exceptions=False
             )
 
-        assert "2 commands" in result.output
+        clean_output = strip_ansi(result.output)
+        assert "2 commands" in clean_output

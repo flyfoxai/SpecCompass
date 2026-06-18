@@ -57,8 +57,11 @@ Global rules:
 - Treat newly generated or refreshed flow outputs as draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent evidence. Draft flow facts may guide discussion, but they must not close risks, support PASS, or replace stable source facts.
 - Manage context as an engineering budget: start from routing, spec, clarifications, and open items; expand only to the flow source documents needed for the current branch or state decision.
 - Treat data-linkage as a direct-neighbor constraint. When a flow step changes state, data, permission, event, persistence, side effect, or acceptance meaning, check the directly related UI contract, API/data contract, permission rule, test or verification path, trace entry, and open item before treating the flow as stable.
-- Treat visual review as a confirmation gate when this is first-time flow generation, a major branch/state/permission/exception change, 3 or more new flow nodes, an explicit review request, or when user approval of the direction is unclear. In those cases, end with a draft result and ask the user to confirm or request changes by visible label before promoting it to stable memory, stable trace, gate PASS evidence, or implementation readiness input.
-- For small label/text edits, concrete one-point user instructions, or explicit `--auto` runs, the review gate may be skipped. State why it was skipped, what changed, and whether the result is still draft or ready for the next step.
+- Classify visual review into three tiers before promoting flow artifacts:
+  - **No confirmation required**: trivial label, copy, formatting, or docs-only refresh; no new or changed flow semantics; no new nodes, branches, states, permissions, exceptions, or downstream readiness impact; and no visual artifact requires a direction choice. Record why confirmation was not required.
+  - **Recommended confirmation**: small non-critical additions or readability/layout changes, including 1-2 non-critical nodes, branches, or labels, where source backing is clear and downstream readiness is not affected. The run may continue as a draft or with a warning, but must state what the user should review by visible label.
+  - **Required confirmation**: first-time stable flow generation, major branch/state/permission/exception changes, 3 or more new flow nodes, explicit review requests, unclear user approval of the direction, model-inferred flow content that would be used beyond draft, or any change affecting stable memory, stable trace, gate PASS evidence, implementation readiness, or `READY_FOR_UI`. In those cases, end with a draft result and ask the user to confirm or request changes by visible label before promotion.
+- For explicit `--auto` runs, only the visual review gate may be skipped. State why it was skipped, what changed, which tier would otherwise apply, and whether the result is still draft or ready for the next step.
 - `--auto` may skip only the visual review gate; it must never skip Subject Scope, business domain anchor, Stage Entry Preflight, or subject-confusion checks.
 
 ## Purpose
@@ -78,7 +81,9 @@ Global rules:
 ## Stage Entry Preflight
 
 - Confirm routing identifies one active feature and `spec.md` is current enough to define flow facts.
-- Confirm upstream `Stage Readiness` is present in `spec.md` or `specs/<feature>/memory/index.md` and has `Status: READY_FOR_FLOW`.
+- Confirm upstream `Stage Readiness` is present in `spec.md` or `specs/<feature>/memory/index.md`, has `Status: READY_FOR_FLOW`, and includes a usable `Based On` plus `Source Snapshot` or `Evidence Signature`.
+- Confirm the upstream `Source Snapshot` or `Evidence Signature` includes at least `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`. Missing fields are warnings for `/sp.analyze`, but they block stable flow generation when they prevent proving stage entry, risk closure, trace closure, or downstream readiness.
+- If `Source Snapshot` or `Evidence Signature` is absent, treat the upstream readiness as not stable enough for stable flow generation. Route back to `/sp.specify` or the command that owns the readiness to refresh it; if all source evidence is visible and only the signature formatting is missing, refresh the readiness in that owner stage before continuing.
 - If upstream readiness is missing, `SP_STAGE_SEED`, `NEEDS_CLARIFY`, `NEEDS_DECISION`, `BLOCKED`, `DRAFT_ONLY`, stale, contradicted by high-impact `memory/open-items.md`, or based only on `Source: model-inferred` / `[INFER:DRAFT]`, stop before generating flow artifacts and route to `/sp.specify` or `/sp.clarify`.
 - Confirm the business domain before generating flow nodes: state the target business domain, product, user role, and feature being modeled. If this cannot be stated from `spec.md`, stop with `Blocker Type: SUBJECT_CONFUSION` or `UPSTREAM_DOC_GAP` and route to `/sp.specify` or `/sp.clarify`.
 - Confirm the active flow request is for the target business product, not SP, SpecCompass, Spec Kit, command execution, memory management, preflight, gate, task routing, or methodology visualization. If the requested or inferred flow subject is the SP mechanism itself, stop with `Blocker Type: SUBJECT_CONFUSION`.
@@ -140,7 +145,7 @@ Global rules:
 - Refresh `specs/<feature>/memory/stable-context.md` only when source-backed or checked flow facts changed, or when routing changed. Draft inferences stay in `flows/*` or `memory/open-items.md`.
 - Refresh `specs/<feature>/memory/trace-index.md` only when stable trace links changed. Draft links stay in `flows/*` or `memory/open-items.md` until checked.
 - Refresh `specs/<feature>/memory/index.md` if routing changes
-- Write or refresh flow `Stage Readiness` in `specs/<feature>/flows/index.md` or `specs/<feature>/memory/index.md`: use `READY_FOR_UI` only when the source-backed flow, port contracts, UI contracts, provenance, visual-review status, and open blockers are clean; otherwise use `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` with the next owner route.
+- Write or refresh flow `Stage Readiness` in `specs/<feature>/flows/index.md` or `specs/<feature>/memory/index.md`: include `Stage`, `Status`, `Based On`, `Source Snapshot` or `Evidence Signature`, `Unresolved Blockers`, `Needs Decision`, `Inferred/Draft Items`, `Next Allowed Stage`, and `Writeback Target`. The signature must include `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`. Use `READY_FOR_UI` only when the source-backed flow, port contracts, UI contracts, provenance, visual-review status, and open blockers are clean; otherwise use `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` with the next owner route.
 
 ## Check Before Finish
 
@@ -155,7 +160,7 @@ Global rules:
 - Confirm every Mermaid artifact matches the written description.
 - Confirm flow visuals or renderable Mermaid files show human-review labels and
   that each label maps back to a structured source row or anchor.
-- Run a subject-confusion scan: confirm no flow node, actor, event, state, decision, diagram label, or written flow description uses `/sp.*`, `spec.md`, `memory/index.md`, `trace-index.md`, `open-items.md`, `preflight`, `workset`, `gate`, or SP command names as business content. If found, stop, discard the affected flow content, and return a `SUBJECT_CONFUSION` blocker with the exact `specs/<feature>/spec.md` read target and next `/sp.flow` route. Do not regenerate in the same run.
+- Run a subject-confusion scan: confirm no flow node, actor, event, state, decision, diagram label, or written flow description uses `/sp.*`, `sp.*`, `memory/index.md`, `trace-index.md`, `open-items.md`, or `SUBJECT_CONFUSION` as business content. Treat broader terms such as `preflight`, `Allowed Write Set`, `Required Checks`, or `NEEDS_DECISION` as contextual analyze/gate findings, not automatic mechanical failures. If clear control-plane content is found, stop, discard the affected flow content, and return a `SUBJECT_CONFUSION` blocker with the exact `specs/<feature>/spec.md` read target and next `/sp.flow` route. Do not regenerate in the same run.
 - Confirm draft assumptions are labeled or routed to `memory/open-items.md` instead of being promoted to stable memory.
 - Confirm any open branch, state conflict, or unresolved exception is registered in `memory/open-items.md`.
 - Confirm whether the visual review gate was required, skipped, or already satisfied. If required and not satisfied, confirm the flow remains a draft and is not promoted to stable memory or stable trace.

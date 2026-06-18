@@ -40,6 +40,22 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert not (tmp_path / ".codex" / "commands" / "speckit.analyze.md").exists()
         assert not (tmp_path / ".codex" / "prompts" / "speckit.analyze.md").exists()
 
+    def test_codex_installs_route_skill_as_thin_script_wrapper(self, tmp_path):
+        from specify_cli.integrations import get_integration
+        from specify_cli.integrations.manifest import IntegrationManifest
+
+        integration = get_integration("codex")
+        manifest = IntegrationManifest("codex", tmp_path)
+        integration.setup(tmp_path, manifest, script_type="sh")
+
+        skill_file = tmp_path / ".agents" / "skills" / "sp-route" / "SKILL.md"
+        assert skill_file.exists()
+        content = skill_file.read_text(encoding="utf-8")
+        assert "name: sp-route" in content
+        assert "sp-route.sh --json" in content
+        assert "deterministic" in content
+        assert "Do not auto-execute" in content
+
     def test_codex_setup_removes_obsolete_project_local_codex_surfaces(self, tmp_path):
         from specify_cli.integrations import get_integration
         from specify_cli.integrations.manifest import IntegrationManifest

@@ -142,6 +142,25 @@ class SkillsIntegrationTests:
             assert fm["metadata"]["author"] == "github-spec-kit"
             assert "source" in fm["metadata"]
 
+    def test_skill_frontmatter_respects_selected_script_type(self, tmp_path):
+        """Skills should preserve only the explicitly selected script variant."""
+        i = get_integration(self.KEY)
+        m = IntegrationManifest(self.KEY, tmp_path)
+        i.setup(tmp_path, m, script_type="ps")
+
+        plan_file = i.skills_dest(tmp_path) / skill_directory_name("plan") / "SKILL.md"
+        assert plan_file.exists(), f"Plan skill {plan_file} not created"
+        content = plan_file.read_text(encoding="utf-8")
+        parts = content.split("---", 2)
+        fm = yaml.safe_load(parts[1])
+
+        assert fm["scripts"] == {
+            "ps": ".specify/scripts/powershell/check-prerequisites.ps1 -Json -RequireBundle"
+        }
+        assert fm["agent_scripts"] == {
+            "ps": f".specify/scripts/powershell/update-agent-context.ps1 -AgentType {self.KEY}"
+        }
+
     def test_skill_uses_template_descriptions(self, tmp_path):
         """SKILL.md should use the original template description for ZIP parity."""
         i = get_integration(self.KEY)

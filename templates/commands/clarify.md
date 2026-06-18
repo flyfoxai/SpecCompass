@@ -1,9 +1,10 @@
 ---
 description: Resolve high-impact business clarification questions for the active feature.
 handoffs:
-  - label: Build Delivery Plan
-    agent: sp.plan
-    prompt: Organize delivery design outputs and worksets for the active feature.
+  - label: Build Business Flow
+    agent: sp.flow
+    prompt: Design the stabilized business flow for the active feature.
+    send: true
 scripts:
   sh: scripts/bash/check-prerequisites.sh --json --require-spec
   ps: scripts/powershell/check-prerequisites.ps1 -Json -RequireSpec
@@ -99,6 +100,8 @@ Execution flow:
    - After the user chooses, write the selected decision back to the source doc, affected task, or `memory/open-items.md` named by the decision package. The `NEEDS_DECISION` freeze for the same `Blocker ID` is lifted only after this writeback is complete.
    - If writeback cannot be completed, keep the blocker open in `memory/open-items.md` with written targets, missing targets, reason, close condition, and next route. A recommendation or chat answer alone is not enough to resume downstream work.
    - Update `Stage Readiness` only after the human-selected `Decision Record` is written back to every required source doc, affected task, or memory target.
+   - Any refreshed `Stage Readiness` must include `Based On` plus `Source Snapshot` or `Evidence Signature`, naming the source docs, decision record, affected anchors, open-item state, visual/human review status, and current checks that the readiness now relies on. Minimum fields: `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`. Do not use file mtime or raw hash as a hard gate.
+   - Only write `[src:user-confirmed]`, `USER_CONFIRMED`, `VERIFIED_BY_HUMAN`, or equivalent confirmed markers after the user's selected choice has been captured in a traceable decision record. Model recommendations stay as pending decisions until the user selects or revises them.
    - If the decision resolves flow-blocking ambiguity and all remaining requirement evidence is stable, set or preserve `READY_FOR_FLOW`; otherwise keep `NEEDS_CLARIFY`, `NEEDS_DECISION`, `BLOCKED`, or `DRAFT_ONLY` with the exact next owner route.
    - A model recommendation, unselected option, or answer that has not been written back must not unlock `READY_FOR_FLOW`, `READY_FOR_UI`, `READY_FOR_PLAN`, gate PASS, stable trace, or implementation readiness.
    - If the clarified area still depends on `Source: model-inferred`, `[INFER:DRAFT]`, `[src:ai-proposed]`, or other unconfirmed candidate material, keep the affected readiness as `DRAFT_ONLY`, `NEEDS_CLARIFY`, or `NEEDS_DECISION` instead of promoting it.

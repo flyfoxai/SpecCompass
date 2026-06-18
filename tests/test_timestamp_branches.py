@@ -219,7 +219,7 @@ def test_feature_primary_workset_prefers_main_journey_over_alphabetical_order(tm
 
 @requires_bash
 def test_bash_check_prerequisites_reports_no_active_feature_as_state(tmp_path: Path):
-    """Fresh installs should route to /sp.specify instead of failing with a feature-dir error."""
+    """Fresh installs should route to /sp.prd instead of failing with a feature-dir error."""
     scripts_dir = tmp_path / "scripts" / "bash"
     scripts_dir.mkdir(parents=True)
     shutil.copy(COMMON_SH, scripts_dir / "common.sh")
@@ -242,7 +242,7 @@ def test_bash_check_prerequisites_reports_no_active_feature_as_state(tmp_path: P
     assert payload["featureDir"] == ""
     assert payload["FEATURE_DIR"] == ""
     assert payload["missing"] == ["feature"]
-    assert payload["nextStep"] == "/sp.specify"
+    assert payload["nextStep"] == "/sp.prd"
     assert payload["reason"] == "no-active-feature"
 
 
@@ -254,7 +254,8 @@ def test_check_prerequisites_user_hints_use_slash_sp_commands():
     for content in (bash_content, powershell_content):
         assert "Run sp." not in content
         assert "Run /speckit." not in content
-        assert "Run /sp.specify first" in content
+        assert "Run /sp.prd first" in content
+        assert "then /sp.specify" in content
         assert "Run /sp.plan first" in content
         assert "Run /sp.tasks first" in content
 
@@ -331,7 +332,7 @@ def test_powershell_check_prerequisites_reports_no_active_feature_as_state(tmp_p
     assert payload["featureDir"] == ""
     assert payload["FEATURE_DIR"] == ""
     assert payload["missing"] == ["feature"]
-    assert payload["nextStep"] == "/sp.specify"
+    assert payload["nextStep"] == "/sp.prd"
     assert payload["reason"] == "no-active-feature"
 
 

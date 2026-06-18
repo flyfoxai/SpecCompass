@@ -155,16 +155,16 @@ if [[ ! -d "$FEATURE_DIR" ]]; then
             jq -cn \
                 --arg repo_root "$REPO_ROOT" \
                 --arg branch "$CURRENT_BRANCH" \
-                --arg next_step "/sp.specify" \
+                --arg next_step "/sp.prd" \
                 --arg reason "no-active-feature" \
                 '{REPO_ROOT:$repo_root,BRANCH:$branch,FEATURE_DIR:"",AVAILABLE_DOCS:[],hasActiveFeature:false,activeFeature:"",featureDir:"",missing:["feature"],nextStep:$next_step,reason:$reason}'
         else
-            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"","AVAILABLE_DOCS":[],"hasActiveFeature":false,"activeFeature":"","featureDir":"","missing":["feature"],"nextStep":"/sp.specify","reason":"no-active-feature"}\n' \
+            printf '{"REPO_ROOT":"%s","BRANCH":"%s","FEATURE_DIR":"","AVAILABLE_DOCS":[],"hasActiveFeature":false,"activeFeature":"","featureDir":"","missing":["feature"],"nextStep":"/sp.prd","reason":"no-active-feature"}\n' \
                 "$(json_escape "$REPO_ROOT")" "$(json_escape "$CURRENT_BRANCH")"
         fi
     else
         echo "No active feature found."
-        echo "Next step: /sp.specify"
+        echo "Next step: /sp.prd"
     fi
     exit 0
 fi
@@ -180,7 +180,7 @@ fi
 
 if $REQUIRE_SPEC && [[ ! -f "$FEATURE_SPEC" ]]; then
     echo "ERROR: spec.md not found in $FEATURE_DIR" >&2
-    echo "Run /sp.specify first to create the feature specification." >&2
+    echo "Run /sp.prd first to create or refresh upstream intake, then /sp.specify to create the feature specification." >&2
     exit 1
 fi
 

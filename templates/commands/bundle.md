@@ -44,9 +44,9 @@ Global rules:
 
 - Confirm routing identifies one active feature and `spec.md` is current enough to package stable first-layer conclusions.
 - Check whether user input changes product goal, source authority, requirements, acceptance, scope, flow, UI, risk acceptance, or verification standard. If so, stop bundling and route to `/sp.prd`, `/sp.specify`, `/sp.clarify`, `/sp.flow`, or `/sp.ui` before creating or refreshing `bundle.md`.
-- Confirm first-layer outputs are not only generic templates, stale drafts, unconfirmed visual-review outputs, or unchecked draft facts being used as stable delivery input.
+- Confirm first-layer outputs are not only generic templates (for example still containing `SP_STAGE_SEED`), `DRAFT_ONLY` outputs, stale drafts, unconfirmed visual-review outputs, or unchecked draft facts being used as stable delivery input.
 - Confirm open blockers, high-impact risks, stale routing, and unresolved first-layer decisions are either explicitly carried forward or routed to their owner command before the bundle is treated as usable by `/sp.plan`.
-- If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not create a bundle that makes missing or contradictory first-layer facts look stable.
+- If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not create a bundle that makes missing or contradictory first-layer facts look stable. In headless or non-interactive runs, end the output with `SP_EXIT_CODE: 1`; if the host supports process exit control, also terminate with a non-zero exit status so automated runners cannot treat bundle preflight failure as success.
 
 ## Do
 

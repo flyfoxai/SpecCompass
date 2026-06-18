@@ -404,8 +404,12 @@ class CommandRegistrar:
         scripts: dict[str, Any],
         agent_scripts: dict[str, Any],
         project_root: Path,
+        script_type: str | None = None,
     ) -> str | None:
         """Choose the script variant a generated skill should preserve/use."""
+        if script_type in {"sh", "ps"}:
+            return script_type
+
         try:
             from . import load_init_options
         except ImportError:
@@ -441,7 +445,10 @@ class CommandRegistrar:
 
     @classmethod
     def _filter_skill_frontmatter_variants(
-        cls, frontmatter: dict[str, Any], project_root: Path
+        cls,
+        frontmatter: dict[str, Any],
+        project_root: Path,
+        script_type: str | None = None,
     ) -> dict[str, Any]:
         """Keep only the selected script variant in preserved skill frontmatter."""
         scripts = frontmatter.get("scripts", {}) or {}
@@ -452,7 +459,7 @@ class CommandRegistrar:
             agent_scripts = {}
 
         script_variant = cls._select_skill_script_variant(
-            scripts, agent_scripts, project_root
+            scripts, agent_scripts, project_root, script_type
         )
         if script_variant is None:
             return frontmatter

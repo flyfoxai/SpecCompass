@@ -30,6 +30,23 @@ specify workflow resume <run_id>
 
 Resumes a paused or failed workflow run from the exact step where it stopped. Useful after responding to a gate step or fixing an issue that caused a failure.
 
+## Resume an Agent Session
+
+For day-to-day agent sessions outside a persisted workflow run, use
+`/sp.route y` as the resume entry. The route command reads the current
+feature state, emits `speckit.route.v1` JSON, and lets the command template
+dispatch only the next safe `/sp.*` command. The route script itself does not
+execute downstream commands.
+
+`/sp.route y` stops instead of dispatching when the route requires a
+human decision, has an unknown blocker, or detects a repeated fallback loop
+from `memory/fallback-log.md`. In those cases the next step is usually
+`/sp.clarify` or the owner route named by the blocker.
+
+Use `specify workflow resume <run_id>` when the work is already inside a YAML
+workflow run. Use `/sp.route y` when you reopen a project or agent thread
+and want one command to resume from current project evidence.
+
 ## Workflow Status
 
 ```bash
@@ -125,16 +142,18 @@ Catalogs are resolved in this order (first match wins):
 
 ## Workflow Definition
 
-Workflows are defined in YAML files. Here is the built-in **Full SDD Cycle** workflow that ships with Spec Kit:
+Workflows are defined in YAML files. SpecCompass keeps the upstream workflow
+engine, but its bundled `speckit` workflow is PRD-first. New feature work must
+not bypass `/sp.prd` or its embedded outline-readiness check.
 
 ```yaml
 schema_version: "1.0"
 workflow:
   id: "speckit"
-  name: "Full SDD Cycle"
+  name: "SpecCompass Full Cycle"
   version: "1.0.0"
-  author: "GitHub"
-  description: "Runs specify → plan → tasks → implement with review gates"
+  author: "SpecCompass"
+  description: "Runs PRD-first SP flow"
 
 requires:
   speckit_version: ">=0.7.2"
@@ -156,23 +175,59 @@ inputs:
     enum: ["full", "backend-only", "frontend-only"]
 
 steps:
-  - id: specify
-    command: sp.specify
+  - id: prd
+    command: sp.prd
     integration: "{{ inputs.integration }}"
     input:
       args: "{{ inputs.spec }}"
 
-  - id: review-spec
+  - id: review-prd-outline
     type: gate
-    message: "Review the generated spec before planning."
+    message: "Review PRD and embedded spec-outline readiness before stabilizing the spec."
     options: [approve, reject]
     on_reject: abort
+
+  - id: specify
+    command: sp.specify
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Use the current feature prd.md and spec-outline.md."
+
+  - id: review-spec
+    type: gate
+    message: "Review the generated spec before business flow design."
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: flow
+    command: sp.flow
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Use current spec.md. Model the target business flow only."
+
+  - id: ui
+    command: sp.ui
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Use current spec.md and flows/*. Model the target business UI only."
+
+  - id: gate-business
+    command: sp.gate
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Decide business-document readiness from current docs, memory, and evidence."
+
+  - id: bundle
+    command: sp.bundle
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Bundle the current approved first-layer feature documents."
 
   - id: plan
     command: sp.plan
     integration: "{{ inputs.integration }}"
     input:
-      args: "{{ inputs.spec }}"
+      args: "Use the current bundle, spec, flow, UI, memory, and scope={{ inputs.scope }}."
 
   - id: review-plan
     type: gate
@@ -184,26 +239,66 @@ steps:
     command: sp.tasks
     integration: "{{ inputs.integration }}"
     input:
-      args: "{{ inputs.spec }}"
+      args: "Use current plan.md Implementation Readiness and worksets."
+
+  - id: analyze-pre-implement
+    command: sp.analyze
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Analyze current plan/tasks/readiness before implementation."
+
+  - id: gate-pre-implement
+    command: sp.gate
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Decide whether bounded Mode: impl work is allowed."
 
   - id: implement
     command: sp.implement
     integration: "{{ inputs.integration }}"
     input:
-      args: "{{ inputs.spec }}"
+      args: "Implement only selected authorized Mode: impl task packets."
+
+  - id: analyze-final
+    command: sp.analyze
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Analyze the implementation delta, verification evidence, trace updates, and remaining gaps."
+
+  - id: gate-final
+    command: sp.gate
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Make the final gate decision from current analysis, checks, open-items, trace, and implementation evidence."
 ```
+
+Only the `prd` step consumes the raw `inputs.spec`. Downstream stages consume
+current feature documents, readiness, memory, and evidence. `sp.outline` is not
+a separate required workflow step; outline readiness is produced inside
+`sp.prd` as `specs/<feature>/spec-outline.md`.
 
 This produces the following execution flow:
 
 ```mermaid
 flowchart TB
-    A["specify<br/>(command)"] --> B{"review-spec<br/>(gate)"}
-    B -- approve --> C["plan<br/>(command)"]
-    B -- reject --> X1["⏹ Abort"]
-    C --> D{"review-plan<br/>(gate)"}
-    D -- approve --> E["tasks<br/>(command)"]
-    D -- reject --> X2["⏹ Abort"]
-    E --> F["implement<br/>(command)"]
+    A["prd<br/>(command)"] --> B{"review-prd-outline<br/>(gate)"}
+    B -- approve --> C["specify<br/>(command)"]
+    B -- reject --> X1["Abort"]
+    C --> D{"review-spec<br/>(gate)"}
+    D -- approve --> E["flow<br/>(command)"]
+    D -- reject --> X2["Abort"]
+    E --> F["ui<br/>(command)"]
+    F --> G["gate-business<br/>(command)"]
+    G --> H["bundle<br/>(command)"]
+    H --> I["plan<br/>(command)"]
+    I --> J{"review-plan<br/>(gate)"}
+    J -- approve --> K["tasks<br/>(command)"]
+    J -- reject --> X3["Abort"]
+    K --> L["analyze-pre-implement<br/>(command)"]
+    L --> M["gate-pre-implement<br/>(command)"]
+    M --> N["implement<br/>(command)"]
+    N --> O["analyze-final<br/>(command)"]
+    O --> P["gate-final<br/>(command)"]
 
     style A fill:#49a,color:#fff
     style B fill:#a94,color:#fff
@@ -211,8 +306,19 @@ flowchart TB
     style D fill:#a94,color:#fff
     style E fill:#49a,color:#fff
     style F fill:#49a,color:#fff
+    style G fill:#49a,color:#fff
+    style H fill:#49a,color:#fff
+    style I fill:#49a,color:#fff
+    style J fill:#a94,color:#fff
+    style K fill:#49a,color:#fff
+    style L fill:#49a,color:#fff
+    style M fill:#49a,color:#fff
+    style N fill:#49a,color:#fff
+    style O fill:#49a,color:#fff
+    style P fill:#49a,color:#fff
     style X1 fill:#999,color:#fff
     style X2 fill:#999,color:#fff
+    style X3 fill:#999,color:#fff
 ```
 
 Run it with:

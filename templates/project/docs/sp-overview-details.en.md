@@ -15,7 +15,7 @@
 - Layer 1: business clarification
 - Layer 2: delivery design
 
-`sp.prd` may run before these layers when the user only has an immature product idea. It stores upstream discovery in `specs/<feature>/prd.md`, but stable requirements still have to pass through `sp.specify`.
+`sp.prd` runs before these layers for new feature work. It stores upstream discovery in `specs/<feature>/prd.md` and records PRD-to-spec outline readiness in `specs/<feature>/spec-outline.md`, but stable requirements still have to pass through `sp.specify`.
 
 ### Unified Clarify Entry
 
@@ -49,6 +49,8 @@ Implementation should continue from memory and the task packet before reading so
 
 `sp.analyze` and `sp.gate` review code work delta-first: `Delta Summary`, current diff, task packet, trace/open-items, then necessary source code. Delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes require reverse-trace/search evidence or a tracked open item.
 
+Readiness evidence should stay lightweight but checkable. Use an `Evidence Signature` with source files/docs, anchors, open-item status, visual/human review status, and current checks. A human-confirmed fact needs a traceable decision record; model prose alone is not confirmation. Mechanical checks catch missing structure and broken links, while `sp.analyze` and `sp.gate` still decide semantic readiness.
+
 ### Multi-Agent Handoff
 
 For parallel work, one coordinator assigns worksets and workers stay inside non-overlapping `Allowed Write Set` boundaries. Shared truth files such as memory, trace, tasks, analysis, gate, schemas, routes, and central registries should be merged serially by the coordinator unless explicitly assigned.
@@ -78,8 +80,8 @@ Less useful for very small tools with only a few pages and simple rules.
 2. `docs/reference/sp-context-memory-architecture.md`
 3. `.specify/memory/constitution.md`
 4. `.specify/memory/project-index.md`
-5. If the product idea is still immature, optionally run `sp.prd`
-6. Start or stabilize the feature with `sp.specify`
+5. Run `sp.prd` for the target feature; use a lean PRD for clear requests and a fuller interview-style PRD for immature ideas
+6. Start or stabilize the feature with `sp.specify` only after PRD-to-spec outline readiness is available
 
 ## Codex Notes
 

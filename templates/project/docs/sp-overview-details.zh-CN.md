@@ -15,7 +15,7 @@
 - 第一层：业务澄清文档
 - 第二层：交付设计文档
 
-当用户只有不成熟的产品想法时，可以在两层推进前先运行 `sp.prd`。它把上游发现放到 `specs/<feature>/prd.md`，但稳定需求仍然必须经过 `sp.specify`。
+新 feature 进入两层推进前必须先运行 `sp.prd`。它把上游发现放到 `specs/<feature>/prd.md`，并把 PRD-to-spec outline readiness 写入 `specs/<feature>/spec-outline.md`，但稳定需求仍然必须经过 `sp.specify`。
 
 ### 统一澄清入口
 
@@ -49,6 +49,8 @@
 
 `sp.analyze` 和 `sp.gate` 对代码工作按增量优先复核：`Delta Summary`、当前 diff、任务包、trace/open-items，然后才读必要源码。删除、移动、重命名、公共行为、schema、权限、路由、事件或验收改动，必须有反向 trace/搜索证据，或者写入已跟踪 open item。
 
+readiness 证据要轻量，但必须可检查。`Evidence Signature` 至少写清来源文件或 source docs、关键锚点、open-item 状态、视觉/人工核对状态和当前检查证据。人工确认必须能追到决策记录，不能只靠模型一句话。机械检查负责发现结构缺失和断链，业务语义是否真的 ready 仍由 `sp.analyze` 和 `sp.gate` 判断。
+
 ### 多 Agent 交接
 
 并行开发时，由一个 coordinator 分配 workset，worker 只能在不重叠的 `Allowed Write Set` 内工作。memory、trace、tasks、analysis、gate、schema、route、中心注册表等共享 truth 文件，默认由 coordinator 串行合并，除非任务明确授权。
@@ -78,8 +80,8 @@ worker 应提交 `Delta Summary`、已运行检查和 `Proposed Updates`；coord
 2. `docs/reference/sp-context-memory-architecture.md`
 3. `.specify/memory/constitution.md`
 4. `.specify/memory/project-index.md`
-5. 如果产品想法还不成熟，可以先运行可选 `sp.prd`
-6. 用 `sp.specify` 开始或稳定第一个 feature
+5. 对目标 feature 运行 `sp.prd`；清楚需求走精简 PRD，模糊想法走访谈式 PRD
+6. 只有 PRD-to-spec outline readiness 可用后，才用 `sp.specify` 开始或稳定 feature
 
 ## Codex 补充说明
 

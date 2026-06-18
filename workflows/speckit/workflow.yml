@@ -1,10 +1,10 @@
 schema_version: "1.0"
 workflow:
   id: "speckit"
-  name: "Full SDD Cycle"
+  name: "SpecCompass Full Cycle"
   version: "1.0.0"
-  author: "GitHub"
-  description: "Runs specify → plan → tasks → implement with review gates"
+  author: "SpecCompass"
+  description: "Runs PRD-first SP flow: prd with embedded outline readiness → specify → flow → ui → gate → bundle → plan → tasks → analyze → gate → implement → analyze → gate"
 
 requires:
   speckit_version: ">=0.7.2"
@@ -26,23 +26,71 @@ inputs:
     enum: ["full", "backend-only", "frontend-only"]
 
 steps:
-  - id: specify
-    command: sp.specify
+  - id: prd
+    command: sp.prd
     integration: "{{ inputs.integration }}"
     input:
       args: "{{ inputs.spec }}"
 
-  - id: review-spec
+  - id: review-prd-outline
     type: gate
-    message: "Review the generated spec before planning."
+    message: "Review PRD and embedded spec-outline readiness before stabilizing the spec."
     options: [approve, reject]
     on_reject: abort
+
+  - id: specify
+    command: sp.specify
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Use the current feature prd.md and spec-outline.md. Do not bypass PRD or embedded outline readiness, and do not treat the original workflow input as the stable source of truth."
+
+  - id: review-spec
+    type: gate
+    message: "Review the generated spec before business flow design."
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: flow
+    command: sp.flow
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Use the current feature spec.md and readiness evidence. Model the target business flow only, not the SP command workflow."
+
+  - id: review-flow
+    type: gate
+    message: "Review the business flow artifacts and diagrams before UI design."
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: ui
+    command: sp.ui
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Use the current feature spec.md and flows/*. Model the target business UI only, not the SP command workflow."
+
+  - id: review-ui
+    type: gate
+    message: "Review the UI artifacts or previews before the business-document gate."
+    options: [approve, reject]
+    on_reject: abort
+
+  - id: gate-business
+    command: sp.gate
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Decide business-document readiness from current spec, flow, UI, memory, open-items, and visual or human review evidence before bundle."
+
+  - id: bundle
+    command: sp.bundle
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Bundle the current approved first-layer feature documents. Do not invent missing PRD, spec, flow, UI, source, or gate evidence."
 
   - id: plan
     command: sp.plan
     integration: "{{ inputs.integration }}"
     input:
-      args: "{{ inputs.spec }}"
+      args: "Use the current bundle, spec, flow, UI, memory, and scope={{ inputs.scope }}. Produce implementation readiness and code/test mapping only from current readiness evidence."
 
   - id: review-plan
     type: gate
@@ -54,10 +102,34 @@ steps:
     command: sp.tasks
     integration: "{{ inputs.integration }}"
     input:
-      args: "{{ inputs.spec }}"
+      args: "Use the current plan.md Implementation Readiness and worksets. Generate Mode: doc or Mode: impl task packets with allowed write sets and checks."
+
+  - id: analyze-pre-implement
+    command: sp.analyze
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Analyze current plan/tasks/readiness before implementation. Reuse current memory and evidence; do not redo upstream stages unless a blocker requires routing back."
+
+  - id: gate-pre-implement
+    command: sp.gate
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Decide whether current tasks and Implementation Readiness allow bounded Mode: impl work. If not, return the owner route instead of proceeding."
 
   - id: implement
     command: sp.implement
     integration: "{{ inputs.integration }}"
     input:
-      args: "{{ inputs.spec }}"
+      args: "Implement only selected authorized Mode: impl task packets. Respect Allowed Write Set, Required Checks, trace anchors, and Delta Summary."
+
+  - id: analyze-final
+    command: sp.analyze
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Analyze the implementation delta, verification evidence, trace updates, and remaining gaps."
+
+  - id: gate-final
+    command: sp.gate
+    integration: "{{ inputs.integration }}"
+    input:
+      args: "Make the final gate decision from current analysis, checks, open-items, trace, and implementation evidence."

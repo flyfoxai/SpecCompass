@@ -57,6 +57,7 @@ Goal: Establish or refresh the long-term project constitution for the layered `s
 Command boundary:
 - `/sp.constitution` owns project-wide governance: durable principles, engineering discipline, phase boundaries, validation requirements, risk gates, memory rules, and human-decision rules.
 - `/sp.constitution` does not own feature PRD discovery. Do not create product scenarios, screen lists, flow branches, capability maps, feature scope, or implementation plans here.
+- `/sp.prd` is mandatory for new feature work, capability directions, and important requirement changes. Simple requests may use a short PRD, but they must not skip the PRD intake.
 - `/sp.prd` may discover governance-like material while exploring a product or feature. Treat that material as `Constitution Candidate` until this command confirms, merges, rewrites, or promotes it.
 - `Constitution Candidates` in `.specify/memory/constitution.md` are the primary landing zone for governance candidates. `prd.md` may keep source notes or handoff summaries, but do not re-extract the same candidate repeatedly from a full PRD.
 - Existing formal constitution rules outrank PRD drafts and constitution candidates. If a PRD draft conflicts with a formal rule, route to `/sp.clarify` or require explicit human decision before changing the formal rule.
@@ -83,6 +84,7 @@ Execution flow:
    - State that this project uses a layered, documentation-first workflow.
    - Make the documentation-first boundary explicit: implementation is allowed only as a downstream, bounded phase after `plan.md` records `Implementation Readiness` and `tasks.md` produces executable `Mode: impl` task packets.
    - State that flow assets use Mermaid and UI documentation uses Markdown plus JSON Forms.
+   - State that `sp.prd` is the mandatory upstream requirement intake and must end with PRD-to-spec outline readiness before `sp.specify` stabilizes requirements.
    - State that second-layer work and implementation-stage work start only after the relevant gate/readiness evidence passes.
    - State that the controlled implementation chain is `sp.plan -> sp.tasks -> sp.implement -> sp.analyze -> sp.gate`.
    - Preserve compatibility with upstream Spec Kit mechanism where practical.
