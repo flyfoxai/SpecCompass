@@ -53,9 +53,13 @@ Readiness evidence should stay lightweight but checkable. Use an `Evidence Signa
 
 ### Multi-Agent Handoff
 
+Multi-agent execution is a controlled optimization, not the default. The safe baseline is single-agent sequential work; use `[P]` or worker delegation only when the task boundary is clear, write sets are disjoint, dependencies are satisfied, and checks are explicit.
+
 For parallel work, one coordinator assigns worksets and workers stay inside non-overlapping `Allowed Write Set` boundaries. Shared truth files such as memory, trace, tasks, analysis, gate, schemas, routes, and central registries should be merged serially by the coordinator unless explicitly assigned.
 
 Workers should submit `Delta Summary`, checks run, and `Proposed Updates`; the coordinator reconciles conflicts before `/sp.analyze` or `/sp.gate` moves the project forward.
+
+If a worker times out, returns empty output, lacks evidence, edits out of bounds, conflicts with another worker, depends on a rejected/stale worker, or touches unauthorized shared/global files, freeze the batch. The coordinator must classify worker states, keep verifiable evidence, discard or defer unverifiable work, and fall back to single-agent sequential recovery. A multi-agent batch without a fallback report cannot support analyze/gate PASS.
 
 ### Clarification Propagation Closure
 

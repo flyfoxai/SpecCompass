@@ -80,7 +80,7 @@ SpecCompass keeps the workflow readable for humans and predictable for agents:
 - `/sp.analyze` and `/sp.gate` close the loop: they detect drift, broken trace links, stale context, unresolved risks, readiness contradictions, weak task packets, and phase-readiness failures.
 - When blockers are being cleared, `/sp.analyze` produces a blocker closeout diagnosis and `/sp.gate` decides whether the remaining state is `PASS`, `CONDITIONAL`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
 - Lightweight scripts can check structural evidence such as trace/open-item links, evidence-signature fields, and unsupported human-confirmation markers. They are guardrails, not business proof; analyze/gate still decide semantic readiness from source docs, tests, and decisions.
-- For multi-agent work, one coordinator assigns worksets, workers stay inside declared write boundaries, workers submit `Delta Summary` and `Proposed Updates`, and analyze/gate reconcile outputs before the project moves on.
+- For controlled multi-agent work, one coordinator assigns eligible worksets, workers stay inside declared write boundaries, workers submit `Delta Summary` and `Proposed Updates`, failures fall back to single-agent recovery, and analyze/gate reconcile outputs before the project moves on.
 
 The intended result is not heavier ceremony. The intended result is fewer dead ends: when the agent cannot proceed safely, it moves upward to the right phase, explains the situation, and asks for a decision instead of inventing one.
 
@@ -118,7 +118,7 @@ The intended result is not heavier ceremony. The intended result is fewer dead e
 - Blocker closeout discipline: blockers and high-risk items are closed one by one as `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`; progress percentages and broad status reports cannot replace close evidence.
 - Guardrails for unclear or conflicting requirements: ask for a decision, route back to the right `/sp.*` phase, and avoid guessing through business contradictions.
 - Better support for splitting complex domains before the model context becomes too large.
-- Lightweight multi-agent coordination: workset ownership, allowed write sets, shared-state serialization, stale-worker detection, and reconciliation checks.
+- Controlled multi-agent coordination: use parallel workers only where cost/benefit is clear, write sets are isolated, shared state is serialized, and stale, failed, unverifiable, or out-of-bounds results can fall back to single-agent recovery.
 
 ## Install
 

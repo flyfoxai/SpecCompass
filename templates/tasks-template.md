@@ -15,7 +15,7 @@ description: "Task list template for feature implementation"
 ## Format: `[ID] [Mode] [P?] [Story] Description`
 
 - **[Mode]**: `doc` for documentation/memory work, `impl` for bounded code work
-- **[P]**: Can run in parallel (different files, no dependencies)
+- **[P]**: Controlled parallel candidate only when files are different, dependencies are satisfied, write sets are disjoint, required checks are explicit, and no shared truth or global registry-like file is worker-owned
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
 - `Mode: impl` tasks must include or reference a task packet with `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and the expected verification path
@@ -26,6 +26,10 @@ description: "Task list template for feature implementation"
 - Mode: `impl` tasks must carry a bounded task packet before code changes begin.
 - Each implementation task packet should include `Read Set`, `Allowed Write Set`, `Required Checks`, `Proposed Updates`, trace anchors or an explicit no-trace reason, and the verification path.
 - If a required field is missing, route back to `/sp.tasks` or `/sp.plan` instead of guessing the write boundary.
+- Multi-agent task packets use the canonical hard gates, worker handoff fields, worker status enum, dependency closure, fallback report fields, shared truth files, and global registry-like files defined in `sp-command-spec.md` §10.3.
+- Do not mark a task `[P]` when write-set parsing is uncertain, checks are missing, dependencies are ambiguous, or the task touches package manifests, lockfiles, route registries, shared constants, schemas, permissions, migrations, global config, cross-module contracts, event bus registries, or core type definitions without a serialized closeout owner.
+- When multi-agent execution is used, add a coordinator closeout task that reviews worker handoffs, compares actual files changed to allowed write sets, merges proposed shared updates serially, runs merged-state checks, and records a fallback report if any worker is stale, failed, unverifiable, or out of bounds.
+- Fallback recovery must isolate or clean unverified and unauthorized worker diffs from the accepted recovery path before continuing. Do not use destructive cleanup in a user workspace without explicit approval; route unsafe cleanup to `BLOCKED` or `NEEDS_DECISION`.
 
 ## Path Conventions
 
@@ -59,7 +63,7 @@ description: "Task list template for feature implementation"
 
 - [ ] T001 [doc] Create task/memory scaffolding per implementation plan
 - [ ] T002 [impl] Initialize [language] project with [framework] dependencies
-- [ ] T003 [impl] [P] Configure linting and formatting tools
+- [ ] T003 [impl] Configure linting and formatting tools
 
 ---
 
@@ -72,13 +76,13 @@ description: "Task list template for feature implementation"
 Examples of foundational tasks (adjust based on your project):
 
 - [ ] T004 [impl] Setup database schema and migrations framework
-- [ ] T005 [impl] [P] Implement authentication/authorization framework
-- [ ] T006 [impl] [P] Setup API routing and middleware structure
+- [ ] T005 [impl] Implement authentication/authorization framework
+- [ ] T006 [impl] Setup API routing and middleware structure
 - [ ] T007 [impl] Create base models/entities that all stories depend on
 - [ ] T008 [impl] Configure error handling and logging infrastructure
 - [ ] T009 [impl] Setup environment configuration management
 
-**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+**Checkpoint**: Foundation ready - user story implementation can now begin in controlled parallel only where `[P]` hard gates pass
 
 ---
 
@@ -93,13 +97,23 @@ Examples of foundational tasks (adjust based on your project):
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
 - [ ] T010 [doc] [P] [US1] Record acceptance/test anchors in docs/tests/[name].md
+  - Allowed Write Set: `docs/tests/[name].md`
+  - Required Checks: manual cross-check against `spec.md` and acceptance anchors
 - [ ] T011 [impl] [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
+  - Allowed Write Set: `tests/contract/test_[name].py`
+  - Required Checks: `pytest tests/contract/test_[name].py`
 - [ ] T012 [impl] [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
+  - Allowed Write Set: `tests/integration/test_[name].py`
+  - Required Checks: `pytest tests/integration/test_[name].py`
 
 ### Implementation for User Story 1
 
 - [ ] T013 [impl] [P] [US1] Create [Entity1] model in src/models/[entity1].py
+  - Allowed Write Set: `src/models/[entity1].py`
+  - Required Checks: `pytest tests/test_[entity1].py`
 - [ ] T014 [impl] [P] [US1] Create [Entity2] model in src/models/[entity2].py
+  - Allowed Write Set: `src/models/[entity2].py`
+  - Required Checks: `pytest tests/test_[entity2].py`
 - [ ] T015 [impl] [US1] Implement [Service] in src/services/[service].py (depends on T013, T014)
 - [ ] T016 [impl] [US1] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T017 [impl] [US1] Add validation and error handling
@@ -118,11 +132,17 @@ Examples of foundational tasks (adjust based on your project):
 ### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
 
 - [ ] T019 [impl] [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
+  - Allowed Write Set: `tests/contract/test_[name].py`
+  - Required Checks: `pytest tests/contract/test_[name].py`
 - [ ] T020 [impl] [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
+  - Allowed Write Set: `tests/integration/test_[name].py`
+  - Required Checks: `pytest tests/integration/test_[name].py`
 
 ### Implementation for User Story 2
 
 - [ ] T021 [impl] [P] [US2] Create [Entity] model in src/models/[entity].py
+  - Allowed Write Set: `src/models/[entity].py`
+  - Required Checks: `pytest tests/test_[entity].py`
 - [ ] T022 [impl] [US2] Implement [Service] in src/services/[service].py
 - [ ] T023 [impl] [US2] Implement [endpoint/feature] in src/[location]/[file].py
 - [ ] T024 [impl] [US2] Integrate with User Story 1 components (if needed)
@@ -140,11 +160,17 @@ Examples of foundational tasks (adjust based on your project):
 ### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
 
 - [ ] T025 [impl] [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
+  - Allowed Write Set: `tests/contract/test_[name].py`
+  - Required Checks: `pytest tests/contract/test_[name].py`
 - [ ] T026 [impl] [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
+  - Allowed Write Set: `tests/integration/test_[name].py`
+  - Required Checks: `pytest tests/integration/test_[name].py`
 
 ### Implementation for User Story 3
 
 - [ ] T027 [impl] [P] [US3] Create [Entity] model in src/models/[entity].py
+  - Allowed Write Set: `src/models/[entity].py`
+  - Required Checks: `pytest tests/test_[entity].py`
 - [ ] T028 [impl] [US3] Implement [Service] in src/services/[service].py
 - [ ] T029 [impl] [US3] Implement [endpoint/feature] in src/[location]/[file].py
 
@@ -160,10 +186,14 @@ Examples of foundational tasks (adjust based on your project):
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] TXXX [doc] [P] Documentation updates in docs/
+- [ ] TXXX [doc] [P] Update usage notes in docs/[area].md
+  - Allowed Write Set: `docs/[area].md`
+  - Required Checks: manual review of `docs/[area].md` against source anchors
 - [ ] TXXX [impl] Code cleanup and refactoring
 - [ ] TXXX [impl] Performance optimization across all stories
-- [ ] TXXX [impl] [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX [impl] [P] Additional unit tests for [component] in tests/unit/test_[component].py
+  - Allowed Write Set: `tests/unit/test_[component].py`
+  - Required Checks: `pytest tests/unit/test_[component].py`
 - [ ] TXXX [impl] Security hardening
 - [ ] TXXX [impl] Run quickstart.md validation
 
@@ -196,12 +226,12 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Parallel Opportunities
 
-- All Setup tasks marked [P] can run in parallel
-- All Foundational tasks marked [P] can run in parallel (within Phase 2)
-- Once Foundational phase completes, all user stories can start in parallel (if team capacity allows)
-- All tests for a user story marked [P] can run in parallel
-- Models within a story marked [P] can run in parallel
-- Different user stories can be worked on in parallel by different team members
+- Setup tasks can run in parallel only when each task is marked [P] and passes the hard gates
+- Foundational tasks can run in parallel only when each task is marked [P] and passes the hard gates
+- Once Foundational phase completes, user stories may start in controlled parallel only when their tasks have disjoint write sets, explicit checks, and no unresolved cross-story dependency
+- Tests for a user story can run in parallel only when each [P] test task has a disjoint file-level write set and required checks
+- Models within a story can run in parallel only when each [P] model task has a disjoint file-level write set, required checks, and no shared registry/schema ownership
+- Different user stories can be worked on in parallel by different team members only after the coordinator confirms dependency closure and serializes shared updates
 
 ---
 
@@ -252,7 +282,7 @@ With multiple developers:
 
 ## Notes
 
-- [P] tasks = different files, no dependencies
+- [P] tasks = different files, satisfied dependencies, explicit `Allowed Write Set`, explicit `Required Checks`, and no worker-owned shared truth or global registry-like files
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing

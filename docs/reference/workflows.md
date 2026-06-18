@@ -342,6 +342,8 @@ specify workflow run speckit -i spec="Build a kanban board with drag-and-drop ta
 | `fan-out`    | Dispatch a step for each item in a list          |
 | `fan-in`     | Aggregate results from a fan-out step            |
 
+`fan-out` / `fan-in` are workflow-control conveniences, not a reliable multi-agent concurrency engine. Current execution runs fan-out items sequentially and records per-item outputs for later aggregation; `max_concurrency` is accepted as configuration but should not be treated as enforced parallelism. Do not use workflow fan-out to promise concurrent implementation work unless a future engine explicitly provides bounded concurrency, isolation, timeouts, conflict detection, result collection, and single-agent fallback.
+
 ## Expressions
 
 Steps can reference inputs and previous step outputs using `{{ expression }}` syntax:

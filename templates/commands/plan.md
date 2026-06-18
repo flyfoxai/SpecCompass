@@ -130,7 +130,7 @@ Execution flow:
      - `Dependency Surface`: direct imports, routes, contracts, schemas, permissions, events, global registries, and related tests that implementation tasks must check before editing or closeout
      - `Reverse Trace Expectation`: when delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes are allowed, name the required reverse lookup/search evidence
      - `Workset Code Boundary`: allowed code/test/config areas and forbidden/shared areas for implementation tasks
-     - `Global Registry Risk`: package manifests, lockfiles, route registries, schemas, permission matrices, global config, cross-module contracts, migrations, event registries, or other shared files that require serialized ownership
+     - `Global Registry Risk`: package manifests, lockfiles, route registries, schemas, permission matrices, global config, cross-module contracts, migrations, event bus registries, or other shared files that require serialized ownership
      - `Implementation Readiness`: the single source of truth for whether each workset can produce `Mode: impl` tasks
    - Keep `Code Mapping` at module, directory, boundary-object, or key-file level unless a high-risk public API, permission rule, data migration, event boundary, or core acceptance test already needs a stable `CODE` or `TEST` anchor. Do not invent function-level trace before implementation evidence exists.
    - When implementation readiness is blocked, record the exact reason and fallback route: `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.bundle`, `/sp.plan`, `/sp.tasks`, or human macro decision.

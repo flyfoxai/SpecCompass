@@ -147,9 +147,12 @@ Execution flow:
    - If a workset is too large by the project methodology's complex-part signals, create a split/promote task instead of generating oversized implementation tasks. Use the same threshold as `sp.plan`: any hard signal, or at least three warning signals.
    - Treat near-threshold split signals as an observation band, not an automatic block: create a task or note that records the candidate split, risk, and revisit point. Only require a decision task when there is a confirmed split dispute, hard trigger, repeated failure, irreversible risk, risk acceptance, compliance/data decision, or explicit user request for split approval.
    - In headless or non-interactive execution, observation-band work should shrink into sequential, verifiable local tasks inside the current workset instead of one oversized task. If a hard trigger exists or the shrunken scope still repeatedly fails, route to `NEEDS_DECISION` or `BLOCKED` instead of expanding context.
-   - For parallel `[P]` tasks, keep implementation scopes independent and avoid assigning simultaneous writes to shared memory files. If multiple parallel tasks affect `tasks.md`, `memory/open-items.md`, `memory/trace-index.md`, workset routing, or broad status summaries, add a serialized closeout task to merge those updates after worker evidence is collected.
+   - Treat parallel `[P]` tasks as controlled execution, not the default. Use the canonical multi-agent hard gates, shared truth files, and global registry-like file vocabulary from `sp-command-spec.md` §10.3. Use `[P]` only when the task has a narrow `Allowed Write Set`, explicit `Required Checks`, satisfied dependencies, and no same-batch write-set overlap. If any of those facts cannot be checked, make the task sequential.
+   - Apply the pre-dispatch hard gates before marking `[P]`: reject `[P]` when the write set is missing, too broad, overlapping, parser-uncertain, dependent on another unmerged worker result, or pointed at shared truth / global registry-like files.
+   - For parallel `[P]` tasks, keep implementation scopes independent and avoid assigning simultaneous writes to shared memory files. If multiple parallel tasks affect `tasks.md`, `memory/open-items.md`, `memory/trace-index.md`, workset routing, analysis/gate state, or broad status summaries, add a serialized closeout task to merge those updates after worker evidence is collected.
    - When a task is intended for a parallel worker, name the disjoint write set and mark shared memory files as read-only for that worker. Shared memory updates should be returned as evidence or proposed changes and merged by the serialized closeout task.
    - For tasks intended for multi-agent execution, make the task boundary readable from `tasks.md` without relying on chat history, but avoid bloating the task file. For `[P]` worker tasks, explicitly name `Allowed Write Set` and `Required Checks`; use global defaults for read set and forbidden shared files unless the task needs an exception.
+   - Add coordinator closeout work when multi-agent execution is used. The closeout must collect worker handoffs using the canonical worker handoff fields, compare declared and actual write sets, resolve proposed-update conflicts, run merged-state checks where outputs can interact, and produce a fallback report with the canonical fallback report fields when any worker is stale, failed, unverifiable, or out of bounds.
    - For code tasks that continue existing work, prefer a memory-first task packet: start from feature memory, workset memory, trace/open-items, and the task's `Read Set`; expand to source code only along direct dependencies, failing checks, or reverse-trace needs.
    - Do not mark global registry-like files as parallel by default. Treat package manifests, lockfiles, route registries, shared constants, database schemas, permission matrices, global config, cross-module contracts, migration scripts, event bus registries, and core type definitions as serialized work unless the plan proves the write impact is isolated.
    - When a parallel worker needs to change shared memory, task state, trace, or routing, create a follow-up closeout task owned by one coordinator. The worker task should output evidence and proposed updates, not apply shared-state changes directly.
@@ -171,7 +174,9 @@ Execution flow:
    - Confirm the active local work area can be discovered from memory.
    - Confirm each task that changes a stable fact has a memory/source-doc writeback path.
    - Confirm `[P]` or multi-agent tasks declare allowed write boundaries and required checks, and explicitly document any exception to the default read set, forbidden shared files, or expected handoff output.
+   - Confirm `[P]` tasks passed the controlled-execution hard gates: no missing/broad/overlapping write sets, no dependency ambiguity, no parser uncertainty, and no shared truth or global registry writes unless serialized closeout owns them.
    - Confirm tasks touching global registry-like files are serialized or have an explicit isolation reason.
+   - Confirm multi-agent batches include a coordinator closeout or single-agent fallback route before they can support analyze/gate PASS.
    - Confirm no task requires a hidden context set larger than its workset can safely hold.
    - Confirm every `Mode: impl` task has a readiness source, `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, effective defaults, and gate/evidence expectation visible in the task packet.
    - Confirm high-risk or code-continuation `Mode: impl` tasks include `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or an explicit `N/A - <reason>` when a field is not applicable. Empty fields are not evidence.
@@ -203,6 +208,7 @@ Execution flow:
 - Do not drop `OPEN-*`, `RISK-*`, `@t0`, or `@r0` context during task generation; either resolve it, keep it visible, or point to the revisit step.
 - Do not create implementation tasks that can change contracts, data, UI, permissions, acceptance, or risk state without a matching documentation or memory writeback task.
 - Do not let a parallel task rely on implicit ownership. If the allowed write set or required checks cannot be stated, make the task sequential.
+- Do not mark a task `[P]` when write-set parsing is uncertain, dependencies are ambiguous, or the task touches shared truth / global registry-like files without a serialized closeout owner.
 - Do not create implementation tasks that require hidden impact analysis. The task should point to the trace/workset context needed to check affected flows, screens, contracts, tables, permissions, acceptance, and tests.
 - Do not create implementation tasks that require hidden continuation context. The task should state the minimum `Read Set`, expected dependency checks, reverse-trace needs, and expected delta so a later model can resume without rereading the whole feature.
 - Do not create high-impact tasks without naming the expected direct disturbance surface and verification path.
@@ -211,6 +217,7 @@ Execution flow:
 - Do not treat fallback-log, task notes, or model recommendations as stable blocker truth. Current blocker state belongs in `memory/open-items.md`; trace-index is relation/history lookup.
 - Do not generate a blocker cleanup task that lacks `Blocker ID`, `Blocker Type`, `Failure Signature`, `Root Layer`, verification path, and `Writeback Target`.
 - Do not generate repetitive per-module tasks for a shared root failure signature; group the root cause and route it once unless new evidence proves the modules need separate repairs.
+- Do not rely on workflow `fan-out` / `fan-in` as true concurrency. Treat multi-agent work as controlled handoff unless a future engine explicitly provides isolation, timeout, conflict detection, result collection, and single-agent recovery.
 
 ## Post-Execution Checks
 

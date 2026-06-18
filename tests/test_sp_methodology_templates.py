@@ -17,6 +17,62 @@ TEMPLATE_BASH_PREREQ = PROJECT_ROOT / "templates" / "project" / "scripts" / "bas
 TEMPLATE_POWERSHELL_PREREQ = (
     PROJECT_ROOT / "templates" / "project" / "scripts" / "powershell" / "check-prerequisites.ps1"
 )
+COMMAND_SPEC = PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md"
+ARCHIVE_MULTI_AGENT_PLAN = PROJECT_ROOT / "docs" / "reference" / "archive" / "sp-multi-agent-controlled-execution-plan.zh-CN.md"
+
+MULTI_AGENT_WORKER_STATES = (
+    "ACCEPTABLE_LOCAL",
+    "NEEDS_SINGLE_AGENT_REVIEW",
+    "REJECTED_BOUNDARY_VIOLATION",
+    "STALE",
+    "FAILED_CHECKS",
+)
+MULTI_AGENT_FALLBACK_FIELDS = (
+    "Fallback Reason",
+    "affected worker classifications",
+    "changed files",
+    "evidence kept",
+    "discarded/deferred results",
+    "single-agent recovery route",
+    "next /sp.* step",
+)
+MULTI_AGENT_HANDOFF_FIELDS = (
+    "Task / Workset",
+    "Status",
+    "Execution Environment",
+    "Allowed Write Set",
+    "Actual Files Changed",
+    "Anchors Affected",
+    "Inputs Read",
+    "Checks Run",
+    "Result",
+    "Evidence",
+    "Proposed Shared Updates",
+    "Open Items / Risks",
+    "Merge Notes",
+)
+MULTI_AGENT_SHARED_TRUTH_FILES = (
+    "tasks.md",
+    "feature memory",
+    "trace/open-items",
+    "workset routing",
+    "analysis",
+    "gate",
+    "broad status summaries",
+)
+MULTI_AGENT_GLOBAL_REGISTRY_FILES = (
+    "package manifests",
+    "lockfiles",
+    "route registries",
+    "shared constants",
+    "database schemas",
+    "permission matrices",
+    "global config",
+    "cross-module contracts",
+    "migrations",
+    "event bus registries",
+    "core type definitions",
+)
 
 
 def _command(name: str) -> str:
@@ -28,6 +84,27 @@ def _paragraph_containing(content: str, needle: str) -> str:
         if needle in paragraph:
             return paragraph
     return ""
+
+
+def _section_between(content: str, start_heading: str, next_heading: str) -> str:
+    start = content.index(start_heading)
+    end = content.index(next_heading, start)
+    return content[start:end]
+
+
+def _assert_tokens_in_order(content: str, tokens: tuple[str, ...]) -> None:
+    cursor = 0
+    for token in tokens:
+        position = content.find(token, cursor)
+        assert position >= 0, token
+        cursor = position + len(token)
+
+
+def _fenced_block_containing(content: str, needle: str) -> str:
+    needle_position = content.index(needle)
+    start = content.rfind("```", 0, needle_position)
+    end = content.index("```", needle_position)
+    return content[start : end + 3]
 
 
 def test_risk_sensitive_commands_read_open_items_before_deciding():
@@ -500,8 +577,10 @@ def test_parallel_tasks_serialize_shared_memory_writeback():
 
     assert "共享状态写入" in methodology
     assert "必须串行更新，或者由一个收口步骤统一批量合并" in methodology
-    assert "shared writeback must be serialized or batched" in constitution
-    assert "disjoint write set and shared read-only files" in constitution
+    assert "docs/reference/sp-command-spec.md` §10.3" in constitution
+    assert "read-only shared truth files" in constitution
+    assert "serial shared-truth updates" in constitution
+    assert "fallback report" in constitution
     assert "Shared memory coordination" in implement
     assert "Parallel agent boundaries" in implement
     assert "one owner step merges shared memory" in implement
@@ -1875,10 +1954,14 @@ def test_reverse_trace_and_proposed_updates_support_safe_multi_agent_continuatio
 
     assert "Proposed Updates" in implement
     assert "coordinator closeout" in implement
-    assert "one coordinator assigns worksets" in readme_en
+    assert "For controlled multi-agent work" in readme_en
+    assert "one coordinator assigns eligible worksets" in readme_en
     assert "workers submit `Delta Summary` and `Proposed Updates`" in readme_en
-    assert "coordinator 分配 workset" in readme_zh
+    assert "failures fall back to single-agent recovery" in readme_en
+    assert "受控多 agent 协作" in readme_zh
+    assert "coordinator 分配符合条件的 workset" in readme_zh
     assert "提交 `Delta Summary` 和 `Proposed Updates`" in readme_zh
+    assert "失败时兜底到单 agent 恢复路线" in readme_zh
 
 
 def test_multi_agent_proposed_update_conflicts_block_analyze_and_gate_pass():
@@ -1891,6 +1974,135 @@ def test_multi_agent_proposed_update_conflicts_block_analyze_and_gate_pass():
     assert "semantic conflicts between proposed changes must be identified before PASS" in analyze
     assert "conflicting Proposed Updates targeting the same anchor, open-item, task, or registry field" in gate
     assert "conflicting Proposed Updates targeting the same object remain unresolved" in gate
+
+
+def test_multi_agent_control_contract_has_canonical_runtime_anchors():
+    """Shared multi-agent vocabulary should be canonical without hiding runtime-critical rules."""
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+    archive_multi_agent_plan = ARCHIVE_MULTI_AGENT_PLAN.read_text(encoding="utf-8")
+    methodology = (PROJECT_ROOT / "docs" / "reference" / "sp-project-methodology.md").read_text(
+        encoding="utf-8"
+    )
+    tasks_template = (PROJECT_ROOT / "templates" / "tasks-template.md").read_text(encoding="utf-8")
+    tasks = _command("tasks")
+    implement = _command("implement")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    multi_agent_section = _section_between(
+        command_spec,
+        "## 10.3 Controlled Multi-Agent Execution",
+        "## 10.4 Stage Evidence And Mechanical Guardrails",
+    )
+    archive_canonical_contract = _section_between(
+        archive_multi_agent_plan,
+        "## Canonical Contract",
+        "## 兜底策略",
+    )
+
+    for heading in (
+        "Canonical hard gates",
+        "Canonical worker handoff fields",
+        "Canonical worker status enum",
+        "Canonical dependency closure",
+        "Canonical fallback report fields",
+        "Canonical shared truth files",
+        "Canonical global registry-like files",
+    ):
+        assert heading in command_spec
+        assert heading in multi_agent_section
+
+    for token in (
+        *MULTI_AGENT_WORKER_STATES,
+        *MULTI_AGENT_FALLBACK_FIELDS,
+        *MULTI_AGENT_HANDOFF_FIELDS,
+        *MULTI_AGENT_SHARED_TRUTH_FILES,
+        *MULTI_AGENT_GLOBAL_REGISTRY_FILES,
+        "dependency closure",
+        "single-agent sequential recovery",
+    ):
+        assert token in multi_agent_section
+
+    _assert_tokens_in_order(multi_agent_section, MULTI_AGENT_HANDOFF_FIELDS)
+    _assert_tokens_in_order(archive_canonical_contract, MULTI_AGENT_HANDOFF_FIELDS)
+    _assert_tokens_in_order(multi_agent_section, MULTI_AGENT_WORKER_STATES)
+    _assert_tokens_in_order(multi_agent_section, MULTI_AGENT_FALLBACK_FIELDS)
+    _assert_tokens_in_order(multi_agent_section, MULTI_AGENT_SHARED_TRUTH_FILES)
+    _assert_tokens_in_order(multi_agent_section, MULTI_AGENT_GLOBAL_REGISTRY_FILES)
+    assert "Keep full runtime copies only where a command must decide or execute immediately" in multi_agent_section
+    assert "`/sp.tasks`, `/sp.implement`, `/sp.analyze`, and `/sp.gate`" in multi_agent_section
+    assert "No failure signal is not completion evidence" in multi_agent_section
+
+    assert "Trace `Expand Docs` checks" not in multi_agent_section
+    assert "[P] tasks = different files, no dependencies" not in tasks_template
+    no_legacy_status_files = [
+        PROJECT_ROOT / "docs" / "reference" / "sp-project-methodology.md",
+        PROJECT_ROOT / "docs" / "reference" / "workflows.md",
+        PROJECT_ROOT / "templates" / "tasks-template.md",
+        PROJECT_ROOT / "templates" / "project" / ".specify" / "memory" / "constitution.md",
+        COMMAND_SPEC,
+        *sorted((PROJECT_ROOT / "templates" / "commands").glob("*.md")),
+        *sorted((PROJECT_ROOT / "templates" / "project" / "docs").glob("sp-overview*.md")),
+    ]
+    for path in no_legacy_status_files:
+        content = path.read_text(encoding="utf-8")
+        for old_status in (
+            "BLOCKED_BY_GLOBAL",
+            "PARTIAL",
+            "Status: SUCCESS | FAILED",
+            "Proposed Shared Memory Updates",
+            "proposed shared-memory",
+            "Key Inputs Read",
+            "Tests / Checks Run",
+        ):
+            assert old_status not in content, path
+
+    for token in (
+        "Allowed Write Set",
+        "Required Checks",
+        "shared truth",
+        "global registry-like",
+        "coordinator closeout",
+        "fallback report",
+    ):
+        assert token in tasks_template
+        assert token in tasks
+
+    for token in (
+        *MULTI_AGENT_WORKER_STATES,
+        "Worker handoff",
+        "single-agent sequential recovery",
+        "dependency-closure requirements",
+        "Fallback Reason",
+        "next /sp.* step",
+    ):
+        assert token in implement
+
+    for token in MULTI_AGENT_WORKER_STATES:
+        assert token in analyze
+        assert token in implement
+
+    analyze_handoff_check = _paragraph_containing(analyze, "every worker report names")
+    implement_handoff_rule = _paragraph_containing(implement, "**Worker handoff**")
+    _assert_tokens_in_order(analyze_handoff_check, MULTI_AGENT_HANDOFF_FIELDS)
+    _assert_tokens_in_order(implement_handoff_rule, MULTI_AGENT_HANDOFF_FIELDS)
+
+    for token in MULTI_AGENT_FALLBACK_FIELDS:
+        assert token in analyze
+        assert token in gate
+
+    assert "dependency closure" in analyze
+    assert "dependency closure" in gate
+    assert "global registry-like" in analyze
+    assert "global registry-like" in gate
+
+    for content in (tasks_template, tasks, implement, analyze, gate):
+        assert "sp-command-spec.md` §10.3" in content
+
+    for token in MULTI_AGENT_WORKER_STATES:
+        assert token in methodology
+
+    methodology_handoff_block = _fenced_block_containing(methodology, "## Agent Handoff")
+    _assert_tokens_in_order(methodology_handoff_block, MULTI_AGENT_HANDOFF_FIELDS)
 
 
 def test_code_continuation_missing_or_empty_fields_have_safe_routes():

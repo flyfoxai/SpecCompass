@@ -1155,6 +1155,8 @@ SP 应把测试看成编码阶段的重要记忆入口。
 
 并行任务要区分“可并行实现”和“共享状态写入”。`[P]` 任务可以并行修改互不重叠的代码或文档，但共享 truth 面必须串行更新，或者由一个收口步骤统一批量合并。并行代理可以各自产出证据和建议，不应同时抢写同一份 memory、trace、任务树或阶段结论。
 
+受控多 agent 的 canonical 契约以 `templates/project/docs/reference/sp-command-spec.md` §10.3 为准，包括 hard gates、worker handoff 字段、worker 状态枚举、dependency closure、fallback report 字段、shared truth files 和 global registry-like files。命令模板可以保留运行时关键规则副本，但修改这些字段或枚举时必须先更新 §10.3，再同步 `/sp.tasks`、`/sp.implement`、`/sp.analyze`、`/sp.gate` 和模板测试；不要在各文档里各自发明第二套状态或字段名。
+
 共享 truth 面只定义一次，后续规则一律引用它，不再各自重列。默认包括：`tasks.md` 的任务状态和证据、`memory/open-items.md`、`memory/trace-index.md`、`memory/worksets/*`、`memory/stable-context.md`、feature 路由、稳定摘要、全局状态摘要、`analysis.md`、`gate.md`，以及会影响阶段路由或门禁判断的 source-of-truth 文档。Worker 默认只读这些文件；只有 coordinator 或明确的串行 closeout 任务可以写入。
 
 分配并行代理时要把写权限边界写进任务本身：每个代理只能修改自己的 disjoint write set；共享 truth 面和其他 worker 的写入范围默认都属于 `Forbidden Write Set`。代理需要改变共享 memory、trace、任务状态或阶段结论时，应在返回结果中给出证据和 proposed update，由主执行者或收口任务统一合并。
@@ -1168,7 +1170,7 @@ SP 应把测试看成编码阶段的重要记忆入口。
 
 其他边界使用全局默认：`Task ID`、`Workset`、依赖和 `[P]` 状态沿用任务本身；`Read Set` 从 workset、trace、source docs 和直接相关测试推导；`Forbidden Write Set` 默认引用共享 truth 面，并包括其他 worker 的写入范围。只有任务偏离这些默认值，才在任务中补写 `Read Set`、`Forbidden Write Set` 或 `Expected Output`。
 
-涉及全局注册类文件的任务默认不应 `[P]`。例如 `package.json`、锁文件、路由注册表、公共常量、数据库 schema、权限矩阵、全局配置、跨模块接口契约、迁移脚本、事件总线注册、核心类型定义。它们看起来可能只是一个文件，但会改变多个 worker 的隐式依赖；除非 `sp.tasks` 能证明影响范围被隔离，否则应降级为串行任务。
+涉及全局注册类文件的任务默认不应 `[P]`。例如 `package.json`、锁文件、路由注册表、公共常量、数据库 schema、权限矩阵、全局配置、跨模块接口契约、迁移脚本、event bus registries、核心类型定义。它们看起来可能只是一个文件，但会改变多个 worker 的隐式依赖；除非 `sp.tasks` 能证明影响范围被隔离，否则应降级为串行任务。
 
 共享可变文件只能串行合并。并行 worker 只能对共享 truth 面提交 proposed updates，由 coordinator 或串行 closeout 任务统一合并。`[P]` 任务的 Allowed Write Set 必须互不重叠；如果实际执行需要修改共享注册、全局配置、路由、schema、权限、迁移、lockfile 或 package manifest，应拆成串行 integration task，而不是继续当并行任务执行。
 
@@ -1540,43 +1542,39 @@ Worker 完成后必须输出 handoff，至少包含：
 
 ```md
 ## Agent Handoff
-Agent ID:
-Role:
-Task ID:
-Workset:
-Status: SUCCESS | FAILED | BLOCKED_BY_GLOBAL | PARTIAL | STALE
-Branch / Worktree:
-Base Revision:
+Task / Workset:
+Status:
+Execution Environment:
 Allowed Write Set:
-Files Changed:
+Actual Files Changed:
 Anchors Affected:
-Key Inputs Read:
-Tests / Checks Run:
+Inputs Read:
+Checks Run:
 Result:
 Evidence:
-Proposed Shared Memory Updates:
+Proposed Shared Updates:
 Open Items / Risks:
 Merge Notes:
 ```
 
-`Status` 是 coordinator 判断后续路线的机器可读入口：
+`Status` 是 coordinator 判断后续路线的机器可读入口，必须使用 §10.3 的 canonical worker status enum：`ACCEPTABLE_LOCAL`、`NEEDS_SINGLE_AGENT_REVIEW`、`REJECTED_BOUNDARY_VIOLATION`、`STALE` 或 `FAILED_CHECKS`。`Execution Environment` 可包含 agent id、role、branch/worktree、baseline ref 或等价执行环境证据；不要把这些扩成第二套 handoff 字段。
 
-- `SUCCESS`：任务在允许范围内完成，必要检查已运行或说明不可运行原因。
-- `FAILED`：任务尝试失败，不能合并为完成结果。
-- `BLOCKED_BY_GLOBAL`：任务需要修改 shared/global 文件、人工决策或上游计划，worker 不能继续扩权。
-- `PARTIAL`：存在可保留的局部结果，但仍缺验证、缺上下文或缺后续串行 closeout。
+- `ACCEPTABLE_LOCAL`：任务在允许范围内完成，必要检查已运行或说明不可运行原因，且可由 coordinator 独立复核。
+- `NEEDS_SINGLE_AGENT_REVIEW`：存在可保留的局部结果或有用证据，但仍缺验证、缺上下文、存在依赖不清，或需要转为单 agent 顺序复核。
+- `REJECTED_BOUNDARY_VIOLATION`：worker 触碰 forbidden/shared/global 文件、扩大 write set，或违反任务边界。
 - `STALE`：worker 基线过旧、超时、丢失 handoff 或结果无法可靠复核。
+- `FAILED_CHECKS`：任务尝试失败、检查失败，或不能合并为完成结果。
 
-`Key Inputs Read` 只记录影响实现判断的少数核心文件或文档，不要求把所有 grep、搜索结果和无关文件逐项列出，避免 handoff 变成长日志。
+`Inputs Read` 只记录影响实现判断的少数核心文件或文档，不要求把所有 grep、搜索结果和无关文件逐项列出，避免 handoff 变成长日志。
 
-简单任务可以使用轻量 handoff，但不能省略状态和证据。最小字段是：`Status`、`Files Changed`、`Tests / Checks Run`、`Evidence`、`Proposed Shared Memory Updates`。涉及风险、越权、临时 anchor、失败、局部结果或人工决策时，必须使用完整 handoff。
+简单任务可以使用轻量 handoff，但不能省略状态和证据。最小字段是：`Status`、`Actual Files Changed`、`Checks Run`、`Evidence`、`Proposed Shared Updates`。涉及风险、越权、临时 anchor、失败、局部结果或人工决策时，必须使用完整 handoff。
 
 Reviewer 的输出也要结构化，但保持只读。推荐回执字段是：`Scope Reviewed`、`Findings`、`Severity: blocker | high | medium | low`、`Evidence`、`Suggested Route`。Reviewer 的结论只能回到 coordinator；需要沉淀时由 coordinator 写入 open item、analysis 或 gate，Reviewer 不能直接改共享 truth。
 
-`Proposed Shared Memory Updates` 必须结构化，不能只写一段自由文本。推荐使用 YAML 代码块：
+`Proposed Shared Updates` 必须结构化，不能只写一段自由文本。推荐使用 YAML 代码块：
 
 ```yaml
-Proposed Shared Memory Updates:
+Proposed Shared Updates:
   - target: memory/open-items.md
     action: add | update | close | mark-stale
     anchor: OPEN01 | RISK02 | T012.TMP01 | <coordinator-assigned>
@@ -1598,21 +1596,23 @@ Coordinator 的 closeout 必须串行执行：
 
 Closeout 采用逐个摄取原则。Coordinator 一次只处理一个 worker：读 handoff、查 diff、判断状态、尝试合并、运行必要验证、写回必要状态，然后再处理下一个 worker。不要一次性把 3-5 个 worker 的完整 handoff、diff 和测试日志全部塞进上下文。单个 worker 收口并写回稳定状态后，其完整 handoff/diff 可以移出当前工作上下文，只保留状态、证据摘要和必要指针。
 
-遇到物理 merge/cherry-pick 冲突时，coordinator 不应在合并阶段手写代码解冲突。默认动作是 abort 当前合并，标记该 worker 为 `FAILED` 或 `STALE`，保留冲突摘要和影响文件，然后选择重派、串行修复、创建 integration task，或回到 `sp.tasks` 重新拆分。逻辑冲突也是同样原则：不能为了合并而即兴改业务规则。
+遇到物理 merge/cherry-pick 冲突时，coordinator 不应在合并阶段手写代码解冲突。默认动作是 abort 当前合并，标记该 worker 为 `FAILED_CHECKS` 或 `STALE`，保留冲突摘要和影响文件，然后选择重派、single-agent sequential recovery、创建 integration task，或回到 `sp.tasks` 重新拆分。逻辑冲突也是同样原则：不能为了合并而即兴改业务规则。
 
-`PARTIAL` 不能直接当作完成合并。Coordinator 可以保留 allowed 范围内、证据充分且不扩大风险的局部 diff，但对应任务保持 open，或拆出串行 closeout/验证/决策任务；没有验证或依赖不清的局部结果不得标记 `[X]`。
+`NEEDS_SINGLE_AGENT_REVIEW` 不能直接当作完成合并。Coordinator 可以保留 allowed 范围内、证据充分且不扩大风险的局部 diff，但对应任务保持 open，或拆出串行 closeout/验证/决策任务；没有验证或依赖不清的局部结果不得标记 `[X]`。
 
-越权修改的处置也要显式记录。Worker 触碰 `Forbidden Write Set` 时，coordinator 应把该 handoff 标为 `FAILED` 或 `BLOCKED_BY_GLOBAL`，记录越权文件、原因、是否有可保留的 allowed diff，以及下一步路线。不得静默丢弃，也不得静默合并。若越权来自任务本身拆错，应回到 `sp.tasks` 或 `sp.plan` 调整任务边界。
+越权修改的处置也要显式记录。Worker 触碰 `Forbidden Write Set` 时，coordinator 应把该 handoff 标为 `REJECTED_BOUNDARY_VIOLATION` 或 `NEEDS_SINGLE_AGENT_REVIEW`，记录越权文件、原因、是否有可保留的 allowed diff，以及下一步路线。不得静默丢弃，也不得静默合并。若越权来自任务本身拆错，应回到 `sp.tasks` 或 `sp.plan` 调整任务边界。
 
-如果 worker 超时、崩溃、丢失 handoff，或临时 branch/worktree 已废弃，coordinator 不应无限等待。应把该 worker 标为 stale/abandoned，检查是否有可用 diff 和风险；没有可靠 handoff 时，默认丢弃该 worker 结果、把任务退回 unassigned/open，并记录下一步是重派、串行执行，还是回到 `sp.tasks` 重新拆分。
+如果 worker 超时、崩溃、丢失 handoff，或临时 branch/worktree 已废弃，coordinator 不应无限等待。应把该 worker 标为 `STALE`，检查是否有可用 diff 和风险；没有可靠 handoff 时，默认丢弃该 worker 结果、把任务退回 unassigned/open，并记录下一步是重派、single-agent sequential recovery，还是回到 `sp.tasks` 重新拆分。
 
 超时阈值不应靠模型临场猜。Task packet 应包含 `Timeout / Attempt Limit`，或引用当前项目默认值。没有明确阈值时，coordinator 不应无限等待；在人工多会话场景中，超时由用户或 coordinator 明确宣布后生效。Stale 任务可以重派，但必须生成新的 packet 或刷新 base revision，不能让旧 worker 继续基于过期上下文合并。
 
-`sp.analyze` 在多 agent 场景下要重点检查 worker 结果之间的矛盾，而不是只检查单个任务是否自洽。它应关注：UI 调用的 API 是否存在、API 契约和数据模型是否一致、两个 worker 是否改了同一业务状态、trace anchor 是否断链、open item 是否被错误关闭、proposed memory updates 是否互相冲突、合并后测试是否失败。
+`sp.analyze` 在多 agent 场景下要重点检查 worker 结果之间的矛盾，而不是只检查单个任务是否自洽。它应关注：UI 调用的 API 是否存在、API 契约和数据模型是否一致、两个 worker 是否改了同一业务状态、trace anchor 是否断链、open item 是否被错误关闭、proposed shared updates 是否互相冲突、合并后测试是否失败。
 
 `sp.analyze` 发现跨 worker 矛盾时，应输出明确路线：可自动修复的证据缺口给 `FAIL` 并指向修复任务；需要人工产品、风险、合规、范围或验证降级选择的给 `NEEDS_DECISION`；缺少安全自动推进条件的给 `BLOCKED`。`sp.analyze` 不应在诊断阶段直接回滚 worker 结果；回滚、丢弃或重派由 coordinator closeout 或后续修复任务执行，并记录证据。批次 closeout 后的 analyze 应默认走增量优先：深查本批改动锚点、未关闭项和直接依赖；已经检核通过且依赖未变的部分只做轻量抽查，避免每批重复全量深读。
 
 `sp.gate` 在多 agent 场景下不能只看每个 worker 都声称完成。它要确认 coordinator 已经完成串行合并、共享 memory 收口、全局或相关验证、风险关闭或延期记录，并且没有未处理的 worker handoff、未合并分支、打开的 blocker 或需要人工决策的问题。
+
+多 agent 出错后的兜底必须显式成文。凡是 worker stale、失败、不可验证、越权、write set 冲突、依赖未形成 closure，或结果需要单 agent 复核，coordinator 都要冻结该批次，停止继续派发和合并未验证输出，按 §10.3 的 fallback report 字段记录 `Fallback Reason`、`affected worker classifications`、`changed files`、`evidence kept`、`discarded/deferred results`、`single-agent recovery route` 和 `next /sp.* step`。缺少 fallback report 时，`sp.analyze` 和 `sp.gate` 不得把该批次作为 PASS 依据。
 
 不要为了多 agent 协作引入过重机制：
 

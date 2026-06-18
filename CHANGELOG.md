@@ -2,6 +2,16 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.11] - 2026-06-19
+
+### Changed
+
+- Documented controlled multi-agent execution as a selective optimization path rather than the default SP execution model.
+- Added canonical worker handoff, worker status, dependency-closure, fallback-report, shared-truth, and global-registry rules for multi-agent batches.
+- Strengthened `/sp.tasks`, `/sp.implement`, `/sp.analyze`, and `/sp.gate` so stale, failed, unverifiable, or out-of-bounds worker output freezes the batch and routes to single-agent recovery.
+- Clarified that workflow `fan-out` / `fan-in` are aggregation conveniences, not a reliable parallel implementation engine.
+- Added regression coverage for the canonical multi-agent schema and fallback contract across methodology docs, command templates, task templates, and project templates.
+
 ## [0.10.10] - 2026-06-18
 
 ### Changed

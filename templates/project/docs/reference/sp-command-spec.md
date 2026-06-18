@@ -488,6 +488,8 @@ Not every file is seeded up front by the template root. Some are created or expa
 - create `Mode: impl` task packets only when readiness supports implementation
 - include `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, and visible effective defaults for implementation tasks
 - include continuation fields for high-risk or code-continuation tasks: `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or a clear `N/A - <reason>` no-applicable reason; empty fields are not evidence
+- treat parallel `[P]` as controlled execution, not the default; only mark a task `[P]` when the allowed write set is narrow, required checks are visible, dependencies are already satisfied, and same-batch `[P]` write sets do not overlap
+- refuse unsafe `[P]` before dispatch: missing or broad write set, missing checks, parser uncertainty, shared truth writes, global registry-like files, or dependency ambiguity should produce a sequential task or route to `/sp.plan` / `/sp.tasks`
 - split broad blocker cleanup into the smallest executable task, decision task, verification task, or memory/trace closeout task
 - keep task boundaries aligned with the workset split
 
@@ -503,6 +505,9 @@ Not every file is seeded up front by the template root. Some are created or expa
 - preserve CODE/TEST trace discipline for high-risk boundaries and acceptance-critical tests
 - perform lightweight reference scans before deleting, moving, or renaming code, tests, routes, schemas, permissions, migrations, events, or public UI/API objects
 - record verification evidence, task state, proposed trace updates, and open-item changes before claiming completion
+- use multi-agent workers only when delegation is explicitly justified by independent worksets, disjoint write sets, or context pressure; routine single-file or tightly coupled changes stay single-agent sequential
+- when acting as coordinator, require baseline evidence before dispatch, collect worker handoffs before merge, and downgrade to single-agent sequential recovery when a worker is stale, unverifiable, out of bounds, or conflicts with another worker
+- when acting as worker, treat shared truth files and global registry-like files as read-only unless explicitly assigned; return proposed updates rather than editing coordinator-owned state
 
 ### `sp.checklist`
 
@@ -565,6 +570,7 @@ All current `sp` commands should preserve these rules unless a later product dec
 - do not treat implementation self-reports as release evidence without rerunnable checks or explicit alternative evidence when checks cannot run
 - do not treat command success, generated documents, or exit code 0 as business PASS; business PASS still requires acceptance, trace, open-item, data-linkage, code/test evidence, and gate verdict
 - do not stage or commit unauthorized `src/`, `scripts/`, config, generated-code, schema, or test assets during document-stage closeout; turn required code work into a `Mode: impl` code handoff packet instead
+- do not present workflow `fan-out` / `fan-in` as reliable true concurrency; current workflow execution is sequential, and multi-agent parallelism is a methodology-level controlled handoff unless a future engine explicitly provides isolation, timeouts, conflict detection, result collection, and single-agent recovery
 
 ## 10.0 Stage Entry Preflight
 
@@ -652,6 +658,101 @@ No Self-Pass is mandatory. A model statement, generated file, runner exit 0, pro
 - blocker closure: `memory/open-items.md` `Close Evidence`, such as current verification, traceable source/code change, rollback/degrade evidence, or explicit human acceptance
 
 Closing is stricter than creating. A `Risk`, `Blocker`, High severity item, or any item affecting scope, acceptance, release, rollback, security, privacy, permission, authentication, audit, compliance, data, migration, tenant isolation, RBAC, payment, billing, production, real money, real data, implementation confidence, irreversible action, owner decision, or human decision must not be marked `Closed`, `Resolved`, `Verified`, `Accepted`, `Deferred`, `Downgraded`, or `Invalid` unless `Close Evidence` is present. Without close evidence, keep the item open/monitoring or return `FAIL`, `BLOCKED`, or `NEEDS_DECISION`.
+
+## 10.3 Controlled Multi-Agent Execution
+
+SP supports cautious multi-agent coordination as an optimization, not as a default execution model. The safe baseline remains single-agent sequential execution. Command templates should keep runtime-critical instructions visible, but the shared vocabulary below is the canonical contract for multi-agent eligibility, handoff, fallback, and gate review. Keep full runtime copies only where a command must decide or execute immediately: `/sp.tasks`, `/sp.implement`, `/sp.analyze`, and `/sp.gate`. Other docs and commands should cite this section instead of inventing another schema.
+
+### Canonical hard gates
+
+A task may be delegated to a parallel worker only when all hard gates pass:
+
+- `Allowed Write Set` is explicit, narrow, and disjoint from every other same-batch worker
+- `Required Checks` are explicit and can be rerun or replaced by a named manual verification route
+- dependencies are already satisfied; no worker relies on another worker's unmerged output
+- shared truth files are read-only for workers
+- global registry-like files are not worker-owned by default
+- the coordinator has a baseline snapshot, branch/worktree/ref, clean-state record, or equivalent evidence before dispatch
+
+If any hard gate cannot be checked, choose sequential execution. Parser uncertainty is not a pass condition.
+
+### Canonical worker handoff fields
+
+Worker handoff must use these canonical field labels in order:
+
+- `Task / Workset`
+- `Status`
+- `Execution Environment`
+- `Allowed Write Set`
+- `Actual Files Changed`
+- `Anchors Affected`
+- `Inputs Read`
+- `Checks Run`
+- `Result`
+- `Evidence`
+- `Proposed Shared Updates`
+- `Open Items / Risks`
+- `Merge Notes`
+
+`Status` must use one of the canonical worker status values below. Coordinator closeout must compare declared and actual write sets, check forbidden writes, resolve proposed-update conflicts, run merged-state checks when outputs can interact, and only then update shared truth. In a git-tracked repo, the pre-dispatch `HEAD` or named branch/worktree ref plus the current diff can satisfy the baseline requirement; require a separate clean-state record only when VCS evidence is unavailable or ambiguous.
+
+### Canonical worker status enum
+
+When multi-agent execution fails based on observable evidence from worker handoffs, command output, branches/worktrees, current diffs, or coordinator records, freeze the batch instead of expanding it: stop dispatching new worker work, stop merging unverified worker output, classify all worker results, preserve evidence, and recover remaining or unclear work sequentially. Worker status values are:
+
+- `ACCEPTABLE_LOCAL`
+- `NEEDS_SINGLE_AGENT_REVIEW`
+- `REJECTED_BOUNDARY_VIOLATION`
+- `STALE`
+- `FAILED_CHECKS`
+
+### Canonical dependency closure
+
+A dependent result is acceptable only when every dependency satisfies all dependency-closure requirements: merged, independently verifiable, and classified `ACCEPTABLE_LOCAL`. No failure signal is not completion evidence: the coordinator must still verify the declared handoff fields, actual diff, required checks, and dependency closure before treating a worker result as acceptable. Before ingesting acceptable results, use the baseline evidence to isolate or clean unverified and unauthorized diffs from the recovery path; if cleanup would touch user-owned changes or require destructive commands without approval, stop with `BLOCKED`/`NEEDS_DECISION` and present cleanup options. Downgrade every unclear, needs-review, out-of-bounds, stale, failed, unmerged, unverifiable, conflicting, or non-acceptable dependency to single-agent sequential recovery.
+
+### Canonical fallback report fields
+
+A fallback report is required before the batch can be considered closed; missing fallback output blocks `/sp.analyze` and `/sp.gate`. Use these canonical fields in order:
+
+- `Fallback Reason`
+- `affected worker classifications`
+- `changed files`
+- `evidence kept`
+- `discarded/deferred results`
+- `single-agent recovery route`
+- `next /sp.* step`
+
+Persist task-local fallback in the relevant `tasks.md` task note; persist batch-level fallback in the coordinator closeout output. If the failure caused upward fallback, repeated a previous signature, blocked stage entry, involved human/data/permission/security/release/rollback/worktree cleanup risk, or needs cross-command loop protection, also append or propose a concise entry in `specs/<feature>/memory/fallback-log.md`. `fallback-log.md` is loop evidence only; unresolved blocker truth still belongs in `memory/open-items.md`.
+
+### Canonical shared truth files
+
+Shared truth files are read-only for workers unless explicitly assigned to the coordinator or serialized closeout owner:
+
+- `tasks.md`
+- feature memory
+- trace/open-items
+- workset routing
+- analysis
+- gate
+- broad status summaries
+
+### Canonical global registry-like files
+
+Global registry-like files are serialized by default and should not be worker-owned unless the plan proves isolated impact and one owner handles merge verification:
+
+- package manifests
+- lockfiles
+- route registries
+- shared constants
+- database schemas
+- permission matrices
+- global config
+- cross-module contracts
+- migrations
+- event bus registries
+- core type definitions
+
+## 10.4 Stage Evidence And Mechanical Guardrails
 
 Trace `Expand Docs` checks must locate the column by header, not by a fixed column index. If the trace table later adds owner, status, workset, or route columns before `Expand Docs`, mechanical checks must still validate the real `Expand Docs` cells and report missing local files as `TRACE_EXPAND_DOC_MISSING`.
 

@@ -54,7 +54,8 @@
 - `sp.implement` 从 memory 和任务包开始，只编辑选中的已授权任务，并在声称完成前填写 `Delta Summary`。
 - `sp.analyze` 和 `sp.gate` 按增量优先复核：`Delta Summary`、当前 diff、任务包、trace/open-items，然后才读必要源码。
 - 轻量脚本只检查结构和链接，不证明业务语义。真正能否进入下一阶段，仍由 analyze/gate 基于 source docs、证据和决策判断。
-- 多 agent worker 默认不直接改共享 memory，除非被指定为 coordinator；共享更新通过 `Proposed Updates` 串行合并。
+- 多 agent 是受控优化，不是默认执行模式。`[P]` 只用于写集不重叠、依赖已满足、检查明确的任务；shared truth 和 global registry 类文件默认串行。
+- 多 agent worker 默认不直接改共享 memory，除非被指定为 coordinator；共享更新通过 `Proposed Updates` 串行合并。worker 失败、越界、缺证据或冲突时，冻结批次并转成单 agent 串行兜底。
 
 ## 下一步看哪里
 

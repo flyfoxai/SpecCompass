@@ -54,7 +54,8 @@ The current workflow is documentation-first, not documentation-only. Implementat
 - `sp.implement` starts from memory and the task packet, edits only the selected authorized task, and fills `Delta Summary` before claiming completion.
 - `sp.analyze` and `sp.gate` review implementation work delta-first: `Delta Summary`, current diff, task packet, trace/open-items, then necessary source code.
 - Lightweight scripts check structure and links, but they do not prove business semantics. Use analyze/gate to decide semantic readiness from source docs, evidence, and decisions.
-- Multi-agent workers should keep shared memory read-only unless assigned as coordinator; proposed shared updates are merged serially.
+- Multi-agent execution is a controlled optimization, not the default. Use `[P]` only when write sets are disjoint, dependencies are satisfied, and checks are explicit; shared truth and global registry-like files stay serial by default.
+- Multi-agent workers should keep shared memory read-only unless assigned as coordinator; proposed shared updates are merged serially. If a worker fails, goes out of bounds, lacks evidence, or conflicts with another worker, freeze the batch and fall back to single-agent sequential recovery.
 
 ## Read Next
 
