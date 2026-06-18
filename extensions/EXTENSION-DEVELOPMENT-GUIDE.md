@@ -250,6 +250,18 @@ Use standard Markdown with special placeholders:
 - `$ARGUMENTS`: User-provided arguments
 - `{SCRIPT}`: Replaced with script path during registration
 
+### Command Template Quality Checklist
+
+Before publishing an extension command template, verify:
+
+- Trigger and non-trigger conditions are clear.
+- Required inputs and output artifacts are named.
+- The command states which source files it may read and write.
+- Completion or PASS criteria require current evidence, not model confidence.
+- Runtime commands are inferred from project configuration, not hard-coded by stack assumption.
+- Human decisions, risk acceptance, and verification downgrades are routed explicitly.
+- New instructions are short, stage-scoped, and do not duplicate another command's authority.
+
 **Example**:
 
 ````markdown

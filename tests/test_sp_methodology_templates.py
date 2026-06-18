@@ -608,6 +608,73 @@ def test_post_verdict_writeback_cannot_self_prove_pass():
     assert "不能用本轮判定后的写回反过来证明本轮 PASS" in methodology
 
 
+def test_completion_evidence_contract_is_enforced_by_implementation_analysis_and_gate():
+    """Implementation, analysis, and gate should require current completion evidence."""
+    for command in ("implement", "analyze", "gate"):
+        content = _command(command)
+        assert "Completion Evidence Contract" in content, command
+        assert "checks actually run" in content, command
+        assert "unchecked scope" in content, command
+        assert "old check output" in content, command
+        assert "model confidence" in content, command
+
+
+def test_tdd_and_file_backed_evidence_rules_shape_plan_tasks_implementation():
+    """Planning/task/implementation guidance should prefer existing artifacts and test-first shaping."""
+    for command in ("plan", "tasks", "implement"):
+        content = _command(command)
+        assert "File-backed Evidence" in content, command
+        assert "Do not create a new evidence artifact by default" in content, command
+        assert "TDD-aware task shaping" in content, command
+        assert "acceptance-critical behavior" in content, command
+        assert "manual verification path" in content, command
+
+
+def test_debug_evidence_loop_and_review_feedback_handling_are_present():
+    """Repeated repair and review feedback should be evidence-routed, not assertion-routed."""
+    for command in ("implement", "analyze", "gate"):
+        content = _command(command)
+        assert "Debug Evidence Loop" in content, command
+        assert "smallest check that can disconfirm" in content, command
+        assert "Two attempts without new evidence" in content, command
+
+    for command in ("analyze", "gate"):
+        content = _command(command)
+        assert "Review Feedback Handling" in content, command
+        for classification in ("valid", "invalid", "needs-info", "accepted-risk"):
+            assert classification in content, f"{command} missing {classification}"
+
+
+def test_flow_ui_methodology_absorbs_lightweight_planning_and_business_flow_principles():
+    """Flow/UI should absorb only the lightweight, relevant design methodology."""
+    ui = _command("ui")
+    flow = _command("flow")
+
+    assert "Lightweight UI Planning" in ui
+    assert "Visual Style" in ui
+    assert "Layout & Display Efficiency" in ui
+    assert "Workflow Ergonomics" in ui
+    assert "2-3 short questions" in ui
+    assert "Do not turn UI planning into a full design-system" in ui
+
+    assert "Flow Design Principles" in flow
+    assert "Business fit is the first constraint" in flow
+    assert "simplest sufficient flow" in flow
+    assert "single-purpose" in flow
+    assert "loosely coupled" in flow
+    assert "diagram elegance" in flow
+
+
+def test_extension_guide_includes_command_template_quality_checklist():
+    """Extension authors should inherit the same lightweight command-template constraints."""
+    guide = (PROJECT_ROOT / "extensions" / "EXTENSION-DEVELOPMENT-GUIDE.md").read_text(encoding="utf-8")
+
+    assert "Command Template Quality Checklist" in guide
+    assert "Completion or PASS criteria require current evidence" in guide
+    assert "Runtime commands are inferred from project configuration" in guide
+    assert "Human decisions, risk acceptance, and verification downgrades are routed explicitly" in guide
+
+
 def test_early_flow_ui_equivalent_evidence_is_bounded_draft_safety_only():
     """Equivalent evidence before tasks.md should not become a hidden implementation-readiness gate."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")

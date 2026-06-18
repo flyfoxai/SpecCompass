@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.10] - 2026-06-18
+
+### Changed
+
+- Strengthened SP command templates with current completion evidence contracts, file-backed evidence reuse, TDD-aware task shaping, bounded debug evidence loops, and review-feedback classification.
+- Refined `/sp.ui` around lightweight three-dimensional UI planning: visual style, layout/display efficiency, and workflow ergonomics.
+- Refined `/sp.flow` around business-fit-first, simplest-sufficient, single-purpose, and loosely coupled flow design.
+- Updated the main SP methodology and README to document the lightweight skill-absorption rules without committing full research transcripts.
+
 ## [0.10.8] - 2026-06-14
 
 ### Changed

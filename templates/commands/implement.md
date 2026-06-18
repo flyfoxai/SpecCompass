@@ -189,6 +189,12 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Soft issue boundary**: Only low-risk warnings that do not affect routing, contracts, tests, acceptance, trace, `Blocker`, or high-impact `Risk` may proceed as soft issues. Build/test/lint/check failures, route errors, acceptance breaks, critical trace breaks, open `Blocker`, or high-impact `Risk` without required fields are not soft issues.
    - **Root-cause before fallback**: Before escalating upward, perform one bounded current-layer diagnosis or fix attempt when safe.
    - Minimum standard: read the task plus directly related source/docs, reproduce or locate the failure evidence, state at least one concrete hypothesis, and verify it with a test, check, file comparison, or document evidence.
+   - Debug Evidence Loop:
+     - Reproduce or locate the failure evidence.
+     - State the current hypothesis and the smallest check that can disconfirm it.
+     - Apply the smallest root-cause fix only after the check points to a cause.
+     - A second attempt on the same Failure Signature must cite disconfirming evidence from the first attempt.
+     - Two attempts without new evidence stop local repair and route upward.
    - Use a bounded evidence loop: handle one smallest implementation unit per round, record the evidence or missing evidence, and stop with `BLOCKED` or `NEEDS_DECISION` when the same `Failure Signature` repeats twice without new evidence, a smaller unit, or a changed owner route.
    - For a blocker, repeated failure, or broad "solve blockers" request, first reduce the issue to a smallest solvable unit with `Blocker ID`, `Failure Signature`, symptom, evidence, root layer, `Disconfirming Evidence` when retrying, repair strategy, verification, `Writeback Target`, and next route. If it cannot be reduced safely, stop and route to `/sp.tasks`, `/sp.plan`, `/sp.analyze`, `/sp.gate`, `/sp.clarify`, or direct human decision instead of editing broadly.
    - Use this `Failure Signature` shape when possible: `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`. Include `data` as a valid root layer when the issue is schema, migration, fixture, compatibility, data contract, or initialization related.
@@ -258,6 +264,17 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Do not defer ordinary task-state closure to `sp.analyze` or `sp.gate`. Those commands verify and correct drift; they are not the normal substitute for per-task completion writeback.
 
 9. Completion validation:
+   - Completion Evidence Contract:
+     - Before reporting a selected implementation task as complete, name the task/workset, checks actually run, result summary, unchecked scope, and remaining route.
+     - If a required check was not run, say why and keep the task, risk, or gate item open unless an explicit accepted decision allows the downgrade.
+     - Do not use model confidence, broad prose, or old check output as completion evidence.
+   - TDD-aware task shaping:
+     - For acceptance-critical behavior, create or identify the proving test/check before the implementation task when feasible.
+     - If no automated test is practical, record the manual verification path and why automated coverage is not being added in this task.
+     - A core behavior change without a test/check path is not implementation-ready unless the exception is explicitly tracked.
+   - File-backed Evidence:
+     - Prefer existing feature artifacts for evidence writeback. Use task notes/status for task-local checks, `FEATURE_DIR/memory/open-items.md` for unresolved risk/blockers, `FEATURE_DIR/memory/fallback-log.md` for repeated failure signatures, and trace/stable memory only for stable source-backed facts.
+     - Do not create a new evidence artifact by default. Add one only when the project explicitly adopts it.
    - Verify all selected required tasks for this run are completed; do not require unrelated future tasks to be closed before reporting the current run result.
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements

@@ -115,6 +115,19 @@ Global rules:
 
 - Before generating any screen, write a one-sentence business domain anchor that names the target product, target user, target business operation, and related flow source. Put this anchor visibly near the top of `ui/index.md` or the command summary, and use it to keep all screens, actions, fields, and visuals inside the business domain.
 - Decompose UI top-down before writing screen files: user roles, task entry points, screen map, per-screen purpose, required sections, fields, actions, states, validation, permissions, feedback, error/recovery behavior, and verification evidence.
+- Lightweight UI Planning:
+  - Default UI direction when the user gives no preference: clean, fresh, clearly grouped, humane to operate, clear information hierarchy, efficient use of space, and not crowded on mobile.
+  - Ask at most 2-3 short questions only when the missing choice would materially change the UI specification. Prefer one batch of questions.
+  - Useful questions:
+    1. Visual style: desired tone, required brand color/reference, or forbidden style.
+    2. Layout density: primary device and whether the screen should optimize for dense desktop work, mobile use, or balanced responsive use.
+    3. Workflow ergonomics: the most common user task, required operation order, and actions that should be one-click unless risk/audit rules require confirmation.
+  - The UI specification MUST cover three dimensions:
+    1. Visual Style: color intent, typography hierarchy, surface treatment, icon style, motion restraint, and contrast/readability.
+    2. Layout & Display Efficiency: information priority, grouping, responsive density, compact action placement, stable dimensions, and avoidance of wasted screen space.
+    3. Workflow Ergonomics: natural business sequence, primary/secondary action placement, minimal unnecessary clicks, reduced mouse travel, reasonable touch/click targets, and clear feedback states.
+  - Do not turn UI planning into a full design-system, Figma/MCP, automated audit, crawler, media-generation, or heavy research workflow unless the user explicitly asks.
+  - Avoid oversized controls that waste screen space, tiny controls that are hard to target, decorative card-heavy layouts for operational tools, and extra confirmation steps without risk, audit, permission, or irreversible-action reasons.
 - When inputs are too brief, use bounded model inference to avoid an under-designed UI. Safe inferred details include standard create/view/edit/review/result screens, empty/loading/error/success states, confirmation prompts for risky actions, search/filter/sort where the data set clearly needs them, validation display for existing field rules, and audit/result feedback. Unsafe inferred details include new business events, new permissions, new data validation rules, data-retention/compliance behavior, irreversible actions, pricing/settlement behavior, or acceptance downgrades.
 - Label inferred UI content clearly with `Source: model-inferred` or `OPEN-*` references. Inferred content may shape a review draft, but it must not close risks, replace user decisions, or become stable memory/trace until confirmed or checked.
 - Use `[SRC:FLOW-*]`, `[SRC:SPEC-*]`, `[SRC:CLARIFY-*]`, `OPEN-*`, `Source: model-inferred`, or `[INFER:DRAFT]` markers for stable or draft screen, field, action, and state rows so provenance is visible. Stable UI facts need flow-backed or source-backed provenance; `[INFER:DRAFT]` and `Source: model-inferred` are never stable evidence by themselves.
@@ -175,6 +188,9 @@ Global rules:
 - Confirm any `Source: model-inferred` UI content is marked as draft, traceable to the flow/spec source, and not promoted to stable memory/trace without confirmation or current evidence.
 - Confirm every stable screen, section, field, action, state, and validation rule has provenance such as `[SRC:FLOW-*]`, `[SRC:SPEC-*]`, `[SRC:CLARIFY-*]`, or an explicit `OPEN-*`; `[INFER:DRAFT]` and `Source: model-inferred` do not qualify as stable provenance.
 - Confirm critical actions and field constraints are explicit.
+- Confirm Visual Style is described at a lightweight decision level: color intent, typography hierarchy, surface treatment, icon style, motion restraint, and contrast/readability.
+- Confirm Layout & Display Efficiency is addressed: information priority, grouping, responsive density, compact action placement, stable dimensions, and avoidance of wasted screen space.
+- Confirm Workflow Ergonomics is addressed: natural business sequence, primary/secondary action placement, minimal unnecessary clicks, reduced mouse travel, reasonable touch/click targets, and clear feedback states.
 - Confirm every critical screen, action, and field has a flow, data, API, permission, acceptance, or open-item source.
 - Confirm direct-neighbor data-linkage checks are visible for any field, action, validation, permission, API parameter, screen state, or test expectation that changes business meaning.
 - Confirm UI actions do not create unapproved business events, state transitions, side effects, or validation rules.

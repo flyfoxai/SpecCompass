@@ -123,6 +123,10 @@ Execution flow:
      - `Runtime Commands`: install, test, build, lint, typecheck, and local smoke commands when known
      - `Code Mapping`: workset/flow/UI/API/data/permission/event/acceptance anchors to module, directory, boundary object, or key-file level
      - `Test Mapping`: acceptance-critical tests, contract tests, UI interaction checks, or manual verification paths
+     - `TDD-aware task shaping`:
+       - For acceptance-critical behavior, create or identify the proving test/check before the implementation task when feasible.
+       - If no automated test is practical, record the manual verification path and why automated coverage is not being added in this task.
+       - A core behavior change without a test/check path is not implementation-ready unless the exception is explicitly tracked.
      - `Dependency Surface`: direct imports, routes, contracts, schemas, permissions, events, global registries, and related tests that implementation tasks must check before editing or closeout
      - `Reverse Trace Expectation`: when delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes are allowed, name the required reverse lookup/search evidence
      - `Workset Code Boundary`: allowed code/test/config areas and forbidden/shared areas for implementation tasks
@@ -140,6 +144,9 @@ Execution flow:
      - `Writeback Target`
    - If a planning blocker reaches `NEEDS_DECISION`, freeze downstream work for the same `Blocker ID` until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`. A model recommendation is not enough.
    - If planning sees a repeated fallback signature, append or propose a `fallback-log` entry or `promote-candidate: <Failure Signature>` for `/sp.analyze` or `/sp.gate` to promote. Do not directly create, merge, close, or promote `memory/open-items.md` blocker state from `/sp.plan`.
+   - File-backed Evidence:
+     - Prefer existing feature artifacts for evidence writeback. Use task notes/status for task-local checks, `memory/open-items.md` for unresolved risk/blockers, `memory/fallback-log.md` for repeated failure signatures, and trace/stable memory only for stable source-backed facts.
+     - Do not create a new evidence artifact by default. Add one only when the project explicitly adopts it.
 5. Refresh workset and routing memory.
    - Create or update `specs/<feature>/plan.md`
    - Create or update `specs/<feature>/memory/worksets/index.md`

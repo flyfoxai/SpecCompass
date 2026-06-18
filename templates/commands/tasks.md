@@ -111,6 +111,10 @@ Execution flow:
      - `Proposed Updates`: shared-memory, trace, task-state, source-doc, or open-item updates the implementer proposes when direct writeback is not allowed
      - `Task Packet Defaults`: compressed effective defaults for `Forbidden Write Set`, `Fallback Route`, `Writeback Rule`, `Required Evidence`, and rollback/degrade handling
      - `Gate / Evidence Expectation`: whether the task needs later `/sp.analyze`, `/sp.gate`, review, or human decision before the workset can advance
+   - TDD-aware task shaping:
+     - For acceptance-critical behavior, create or identify the proving test/check before the implementation task when feasible.
+     - If no automated test is practical, record the manual verification path and why automated coverage is not being added in this task.
+     - A core behavior change without a test/check path is not implementation-ready unless the exception is explicitly tracked.
    - Use formal `CODE` and `TEST` trace fields or rows for high-risk boundary objects and acceptance-critical tests. Ordinary internal helpers, private functions, pure style components, and local glue code do not require `CODE` anchors unless they become stable cross-document objects.
    - If `Allowed Write Set` is insufficient, do not auto-expand it. Return `NEEDS_PLAN` when the workset/code boundary is wrong or missing; return `NEEDS_TASKS` when the task split or packet fields are incomplete.
    - Keep task ownership, dependency order, and output targets visible.
@@ -152,6 +156,9 @@ Execution flow:
    - Add fallback metadata only to high-risk tasks: tasks touching external dependencies, contracts, migrations, permissions, `@r0`, acceptance gaps, release/rollback risk, or unresolved human/product decisions. Ordinary tasks should not carry fallback boilerplate.
    - For those high-risk tasks, include the fallback target, trigger condition, and writeback requirement in the task text.
    - If a task cannot be made executable without changing upstream documents, stop task expansion for that area and record the exact fallback target: `/sp.plan`, `/sp.bundle`, `/sp.flow`, `/sp.ui`, `/sp.clarify`, `/sp.specify`, or a human macro decision.
+   - File-backed Evidence:
+     - Prefer existing feature artifacts for evidence writeback. Use task notes/status for task-local checks, `memory/open-items.md` for unresolved risk/blockers, `memory/fallback-log.md` for repeated failure signatures, and trace/stable memory only for stable source-backed facts.
+     - Do not create a new evidence artifact by default. Add one only when the project explicitly adopts it.
 5. Refresh memory if task grouping changes routing.
    - Refresh `specs/<feature>/memory/worksets/index.md`
    - Refresh `specs/<feature>/memory/worksets/ws-*.md` where needed

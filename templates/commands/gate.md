@@ -86,6 +86,12 @@ Global rules:
 - Check whether user input changes requirements, acceptance, flow, UI, plan, tasks, implementation boundary, risk acceptance, or verification standard. If so, old gate evidence is stale; stop and route to the owner command before deciding PASS.
 - If `analysis.md` is missing, stale, contradictory, too narrow, lacks a current `Memory Check Summary`, or depends on unchecked draft facts, route to `/sp.analyze` unless the gate can decide a smaller current `FAIL`, `BLOCKED`, or `NEEDS_DECISION` directly.
 - Use a bounded evidence loop: decide one smallest gate question per round, record the decisive evidence or missing evidence, and stop with `BLOCKED` or `NEEDS_DECISION` when the same `Failure Signature` or `blocker-signature` repeats twice without new evidence, a smaller unit, or a changed owner route.
+- Debug Evidence Loop:
+  - Reproduce or locate the failure evidence.
+  - State the current hypothesis and the smallest check that can disconfirm it.
+  - Apply the smallest gate finding or route decision only after the check points to a cause.
+  - A second attempt on the same Failure Signature must cite disconfirming evidence from the first attempt.
+  - Two attempts without new evidence stop local repair and route upward.
 - If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not treat command success, generated docs, or exit code 0 as business PASS.
 - Use incremental review order before expanding to a full audit:
   - if implementation evidence or worker handoff exists, review `Delta Summary` first, then current diff, then task packet, then trace/open-items, then necessary source code
@@ -143,6 +149,10 @@ If the gate would need to rediscover Flow-UI relation integrity, orphan anchors,
 - For `Implementation Readiness Gate`, verify every proposed `Mode: impl` task has `Allowed Write Set`, `Required Checks`, effective defaults, and trace anchors or explicit no-trace reason. Missing task packet fields route to `/sp.tasks`; missing code boundary routes to `/sp.plan`.
 - For `Implementation Readiness Gate`, verify high-risk or code-continuation `Mode: impl` tasks also have `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or a clear no-applicable reason. Missing continuation fields route to `/sp.tasks` unless `plan.md` is missing the code-boundary or dependency surface, in which case route to `/sp.plan`.
 - For `Implementation Regression Gate`, treat `/sp.implement` evidence as audit input, not release evidence. Rerun or independently check critical tests/build/lint/typecheck/manual verification when feasible before PASS.
+- Completion Evidence Contract:
+  - Before accepting a selected implementation task or workset as complete, name the task/workset, checks actually run, result summary, unchecked scope, and remaining route.
+  - If a required check was not run, require the reason and keep the task, risk, or gate item open unless an explicit accepted decision allows the downgrade.
+  - Do not use model confidence, broad prose, or old check output as completion evidence.
 - For `Implementation Regression Gate`, block PASS when high-risk boundary `CODE` trace or acceptance-critical `TEST` trace is missing without an open item, or when a normal trace warning has crossed the stage unresolved.
 - For `Implementation Regression Gate`, treat `Delta Summary` as the first review surface and verify it against current diff, task packet, direct trace/open-items, and required checks before PASS.
 - Block PASS when delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes lack reverse-trace/search evidence or an explicit open item that explains the missing evidence.
@@ -178,6 +188,12 @@ If the gate would need to rediscover Flow-UI relation integrity, orphan anchors,
 - When the gate sends work upward because of repeated failure, append or propose a fallback-log entry with workset or anchor, command, failure signature, failed evidence, attempted routes, next recommended route, and this run's timestamp or run label.
   Promote repeated, stage-blocking, decision-bound, data/permission/security/release/rollback, or worktree-cleanup fallback entries or `promote-candidate` notes into `memory/open-items.md`; if the signature was already promoted, cite the existing open item ID instead of creating a duplicate, otherwise mark the fallback-log entry as `promoted` with the open item ID.
 - When multi-agent work occurred, verify coordinator closeout before PASS or CONDITIONAL: all worker handoffs are present, intentionally deferred, or marked stale/abandoned with task state reopened; write-set violations are resolved; conflicting Proposed Updates targeting the same anchor, open-item, task, or registry field are identified and resolved; shared memory/task/trace/routing updates were merged serially; global registry-like changes were handled by one owner; and merged-state checks ran where worker outputs can interact.
+- Review Feedback Handling:
+  - Classify each material review item as `valid`, `invalid`, `needs-info`, or `accepted-risk`.
+  - `valid`: name the required fix, owner route, and verification.
+  - `invalid`: cite code, source docs, tests, or current evidence; do not reject by assertion.
+  - `needs-info`: name the missing fact and next route.
+  - `accepted-risk`: require explicit human acceptance, impact scope, rollback/degrade path, owner, and revisit condition.
 - Identify only business-layer complexity that is already visible before delivery planning: independent user goals, 3+ roles, 4+ user paths, external systems, separate release/compliance constraints, or blockers that prevent stable scope. Do not decide API/table/event/migration-based promotion at gate; leave those delivery-layer signals for `sp.plan` or `sp.analyze`.
 - Treat gate complexity as a pre-planning business signal only. Delivery-level split signals such as API, table, event, migration, code-boundary, or test-boundary complexity remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze` using the shared complex-part threshold.
 - Evaluate `specs/<feature>/memory/open-items.md` before deciding:

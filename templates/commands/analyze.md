@@ -79,6 +79,12 @@ Execution flow:
    - Confirm open blockers, high-impact risks, stale routing, and unresolved decisions do not already make the requested analysis impossible at this layer.
    - If user input changes product goal, requirements, acceptance, flow, UI, workset, task packet, implementation boundary, risk acceptance, or verification standard, stop normal analysis and route to the upstream owner command before diagnosing downstream artifacts.
    - Use a bounded evidence loop: handle one smallest solvable unit per round, record the evidence or missing evidence, and stop with `BLOCKED` or `NEEDS_DECISION` when the same `Failure Signature` or `blocker-signature` appears twice at this layer without new evidence, a smaller unit, or a changed owner route.
+   - Debug Evidence Loop:
+     - Reproduce or locate the failure evidence.
+     - State the current hypothesis and the smallest check that can disconfirm it.
+     - Apply the smallest root-cause finding or routing repair only after the check points to a cause.
+     - A second attempt on the same Failure Signature must cite disconfirming evidence from the first attempt.
+     - Two attempts without new evidence stop local repair and route upward.
    - If preflight fails, output `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Use `FAIL` for repairable upstream evidence gaps, `BLOCKED` when safe automatic progress is impossible, and `NEEDS_DECISION` when the missing input is a human choice. Do not auto-create missing upstream documents from `/sp.analyze`.
 3. Initialize analysis context.
    - Read project-level `.specify/memory/*` routing files first.
@@ -237,12 +243,22 @@ Execution flow:
      - High-risk `DEFERRED_WITH_OWNER` items cannot support `PASS` unless they have explicit acceptance or defer evidence, owner, impact scope, rollback/degrade path, close condition, and revisit anchor.
      - `/sp.analyze` may diagnose `NEEDS_DECISION`, but it cannot advance, close, or downgrade that decision without a human-selected decision record already written back to the source doc, task, or `memory/open-items.md`.
    - Treat implementation evidence as audit input, not final release evidence. Worker or `/sp.implement` self-reports must be checked against current files, current task state, and rerunnable checks when feasible before they support diagnostic PASS.
+   - Completion Evidence Contract:
+     - Before accepting a selected implementation task as complete, name the task/workset, checks actually run, result summary, unchecked scope, and remaining route.
+     - If a required check was not run, require the reason and keep the task, risk, or gate item open unless an explicit accepted decision allows the downgrade.
+     - Do not use model confidence, broad prose, or old check output as completion evidence.
    - Treat `Delta Summary` as the first implementation review surface, not as proof by itself. Confirm it against diff, selected task packet, direct trace/open-items, and necessary source/test evidence before it supports diagnostic PASS.
    - Do not mark PASS when delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes lack `Reverse Trace Checked`, reverse-trace/search evidence, or a tracked open item.
    - Apply oscillation protection: if the same failure signature has already appeared twice at the same layer, or the same workset is bouncing between two layers without new evidence, return `NEEDS_DECISION` or `BLOCKED` with the failure chain, attempted routes, options, recommendation, and next `/sp.*` route.
    - When repeated failures or upward fallback are detected, read `specs/<feature>/memory/fallback-log.md` if it exists. If the current finding matches a recent failure signature and no new evidence changed the route, report `BLOCKED` or `NEEDS_DECISION` instead of re-auditing the same loop.
    - If analysis discovers a new repeated-failure route, append or propose a concise fallback-log entry with workset or anchor, command, failure signature, failed evidence, attempted routes, next recommended route, and this run's timestamp or run label.
    - Promote fallback-log entries or `promote-candidate` notes to `specs/<feature>/memory/open-items.md` when the same failure signature appears twice in the same workset, the fallback blocks stage entry, or the issue involves human decision, data migration, permissions, security, release, rollback, or worktree cleanup. If the signature was already promoted, cite the existing open item ID instead of creating a duplicate; otherwise mark the fallback-log entry as `promoted` and cite the open item ID so fallback-log does not become a second truth source.
+   - Review Feedback Handling:
+     - Classify each material review item as `valid`, `invalid`, `needs-info`, or `accepted-risk`.
+     - `valid`: name the required fix, owner route, and verification.
+     - `invalid`: cite code, source docs, tests, or current evidence; do not reject by assertion.
+     - `needs-info`: name the missing fact and next route.
+     - `accepted-risk`: require explicit human acceptance, impact scope, rollback/degrade path, owner, and revisit condition.
    - If the evidence shows the current layer is the wrong place to continue, do not keep auditing lower-level files. Record the source layer, target layer, reason, and exact next `/sp.*` step.
 6. Record the result.
    - Create or update `specs/<feature>/analysis.md`.

@@ -49,6 +49,10 @@ The main methodology is documented in [SP Project Methodology](./docs/reference/
 - Track unresolved work explicitly in `memory/open-items.md`, including risks, blockers, decisions, owners, close conditions, and revisit points.
 - Use blocker closeout when clearing blockers: `open-items.md` remains the source of truth, while `/sp.analyze` and `/sp.gate` require item-by-item evidence instead of accepting progress summaries.
 - Make readiness checkable with lightweight evidence signatures: record source files, anchors, open-item state, visual/human review status, and current checks; human-confirmed facts need a traceable decision record, not model prose.
+- Require current completion evidence before claiming work is done: name the task or workset, list checks actually run, summarize results, call out unchecked scope, and route remaining work explicitly.
+- Shape code tasks around evidence: reuse task notes, open items, fallback logs, and trace/memory before creating new artifacts; for acceptance-critical behavior, identify the proving test or manual verification path before implementation.
+- Debug by evidence, not repetition: reproduce or locate the failure, state a falsifiable hypothesis, apply the smallest root-cause fix, and route upward after repeated attempts without new evidence.
+- Treat review feedback as a routed decision: classify material items as `valid`, `invalid`, `needs-info`, or `accepted-risk` before closing analyze/gate work.
 - Use lightweight impact-radius checks before changing APIs, permissions, data, event flows, UI contracts, or core tests.
 - Use reverse-trace checks before delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes, so normal code is not damaged while fixing a local problem.
 - Treat `plan.md` `Implementation Readiness` as the single source of truth for code-stage entry. Other commands may consume, diagnose, or gate it, but should not invent a second readiness fact.
@@ -67,9 +71,9 @@ SpecCompass keeps the workflow readable for humans and predictable for agents:
 - Stable requirements enter through `/sp.specify`. New or changed requirements are checked for conflicts instead of being silently merged into stale specs.
 - When intent is unclear, `/sp.clarify` asks focused questions with plain-language options and records the decision so later agents do not need to rediscover it.
 - `/sp.plan` defines the technical route, worksets, impact radius, agent boundaries, source layout, runtime commands, code/test mapping, and `Implementation Readiness` before code changes begin.
-- `/sp.flow` is the backbone. Business flows connect process nodes to UI screens, events, API calls, data objects, tests, and code anchors.
+- `/sp.flow` is the backbone. Business flows connect process nodes to UI screens, events, API calls, data objects, tests, and code anchors. Flow design prioritizes business fit first, then the simplest sufficient flow, single-purpose rules, loose coupling, and split points for actors, states, permissions, exceptions, and verification.
 - `/sp.flow` uses structured flow files and renderable diagrams for early review. First-time, high-risk, or large flow changes stay as drafts until the user confirms visible labels or chooses a repair option.
-- `/sp.ui` runs after flow: it collects the elements needed by each screen and turns process-bound elements into a coherent interface.
+- `/sp.ui` runs after flow: it collects the elements needed by each screen and turns process-bound elements into a coherent interface. UI planning stays lightweight across three dimensions: visual style, layout/display efficiency, and workflow ergonomics.
 - `/sp.ui` uses structured UI files, prototypes, or previews for review. UI that depends on an unconfirmed flow remains draft instead of becoming stable implementation input.
 - `/sp.tasks` keeps implementation small. It consumes `Implementation Readiness` and creates `Mode: doc` or `Mode: impl` task packets with clear scope, expected evidence, `Allowed Write Set`, `Required Checks`, `Read Set`, dependency checks, reverse-trace requirements, expected delta, and proposed shared updates.
 - `/sp.implement` writes code only for selected `Mode: impl` tasks. It checks `Allowed Write Set`, required checks, trace anchors, task context, dependency surface, and reverse-trace evidence before risky edits, then records verification evidence and a `Delta Summary`.
@@ -109,6 +113,8 @@ The intended result is not heavier ceremony. The intended result is fewer dead e
 - Context-budget rules that favor current worksets, direct dependencies, related tests, and trace links before broad repository reads.
 - Impact-radius discipline for high-risk changes, including APIs, permissions, data migrations, event flows, UI contracts, and core tests.
 - Stronger `/sp.analyze`, `/sp.gate`, and `/sp.implement` rules for evidence checks, risk closure, fallback routing, headless failure reports, and memory updates. `/sp.analyze` uses `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION`; `/sp.gate` uses `PASS`, `FAIL`, `CONDITIONAL`, `BLOCKED`, or `NEEDS_DECISION`. `CONDITIONAL` is gate-only and means the next stage depends on named conditions that must be closed or explicitly accepted.
+- Completion, debugging, and review closeout rules that favor current evidence over model confidence, old check output, progress summaries, or repeated repair attempts.
+- Lightweight UI and flow planning rules that improve design quality and business-flow clarity without making Figma, media generation, crawling, or a full design-system workflow mandatory.
 - Blocker closeout discipline: blockers and high-risk items are closed one by one as `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`; progress percentages and broad status reports cannot replace close evidence.
 - Guardrails for unclear or conflicting requirements: ask for a decision, route back to the right `/sp.*` phase, and avoid guessing through business contradictions.
 - Better support for splitting complex domains before the model context becomes too large.

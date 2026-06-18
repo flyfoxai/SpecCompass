@@ -97,6 +97,13 @@ Global rules:
 
 - Before generating any flow node, write a one-sentence business domain anchor that names the target product, target user, target business operation, and source requirement. Put this anchor visibly near the top of `flows/index.md` or the command summary, and use it to keep all flow nodes, labels, events, and UI contracts inside the business domain.
 - Decompose the flow top-down before writing diagrams: business goal, actors, lifecycle states, mainline stages, decision points, exception/recovery paths, non-UI/system/external steps, UI contracts, and verification evidence.
+- Flow Design Principles:
+  - Business fit is the first constraint. A flow step, branch, state, exception, or handoff is valid only when it serves a source-backed business requirement, acceptance path, permission rule, data/state transition, recovery need, audit need, or user outcome.
+  - Prefer the simplest sufficient flow. Do not add stages, approvals, confirmations, retries, states, actors, diagrams, or subflows unless they change business correctness, risk control, recovery, auditability, verification, or user outcome.
+  - Keep flow units single-purpose and loosely coupled. Each subflow should have one business responsibility, clear entry/exit conditions, explicit inputs/outputs, and minimal assumptions about neighboring subflows.
+  - Split when a branch has its own actor, lifecycle state, permission boundary, exception policy, verification path, or independent review value. Keep it inline only when splitting would hide a simple local decision.
+  - When multiple valid flow shapes exist, offer 2-3 options with business impact and recommend the simplest one that satisfies the source requirements.
+  - Do not optimize for diagram elegance over business truth. Do not merge distinct business responsibilities just to make one diagram shorter, and do not create new nodes for symmetry or decoration.
 - When inputs are too brief, use bounded model inference to avoid an under-designed flow. Safe inferred details include common lifecycle stages, request/review/approve/reject/cancel/retry/audit patterns, empty or failure branches, timeout/retry behavior, notification or audit side effects, and verification checkpoints. Unsafe inferred details include new business rules, authority boundaries, pricing/settlement, data-retention/compliance, irreversible deletion, tenant/security permissions, or acceptance downgrades.
 - Label inferred flow content clearly with `Source: model-inferred` or `OPEN-*` references. Inferred content may shape a review draft, but it must not close risks, replace user decisions, or become stable memory/trace until confirmed or checked.
 - Use `[SRC:SPEC-*]`, `[SRC:CLARIFY-*]`, `[SRC:FLOW-*]`, `OPEN-*`, `Source: model-inferred`, or `[INFER:DRAFT]` markers for stable or draft flow rows so provenance is visible. Stable flow facts need source-backed provenance; `[INFER:DRAFT]` and `Source: model-inferred` are never stable evidence by themselves.
@@ -150,6 +157,11 @@ Global rules:
 ## Check Before Finish
 
 - Confirm the mainline and exception paths are both visible.
+- Confirm every non-trivial node, branch, state, exception, handoff, and subflow exists for a business reason, not diagram symmetry.
+- Confirm the mainline is the shortest source-backed path that satisfies acceptance, permissions, state progression, and recovery needs.
+- Confirm each subflow has one responsibility, clear input/output boundaries, and no hidden dependency on neighboring subflows.
+- Confirm split/inline decisions are recorded when a branch is large, cross-actor, permissioned, independently verifiable, or exception-heavy.
+- Confirm simplification did not remove required permissions, auditability, recovery, verification evidence, or source-backed exception handling.
 - Confirm the flow is not under-decomposed: it covers business goal, actors, mainline stages, decisions, exceptions, state changes, non-UI/system steps, UI contracts, and verification evidence, or records explicit open items for missing parts.
 - Confirm any `Source: model-inferred` flow content is marked as draft, traceable to the source requirement, and not promoted to stable memory/trace without confirmation or current evidence.
 - Confirm every stable flow node, decision, event, state, UI contract, and exception path has provenance such as `[SRC:SPEC-*]`, `[SRC:CLARIFY-*]`, `[SRC:FLOW-*]`, or an explicit `OPEN-*`; `[INFER:DRAFT]` and `Source: model-inferred` do not qualify as stable provenance.
