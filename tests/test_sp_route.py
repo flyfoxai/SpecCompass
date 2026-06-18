@@ -42,13 +42,20 @@ def _write_feature_pointer(project: Path, feature: str) -> None:
 
 
 def _run_bash(project: Path) -> dict:
+    bash_route = str(BASH_ROUTE).replace("\\", "/")
     result = subprocess.run(
-        ["bash", str(BASH_ROUTE), "--json"],
+        ["bash", bash_route, "--json"],
         cwd=project,
         capture_output=True,
         text=True,
-        check=True,
     )
+    if result.returncode != 0:
+        pytest.fail(
+            "sp-route.sh failed\n"
+            f"exit code: {result.returncode}\n"
+            f"stdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
     return json.loads(result.stdout)
 
 
@@ -329,13 +336,19 @@ def test_route_reports_multi_feature_ambiguity(tmp_path):
     env.pop("SPECIFY_FEATURE_DIRECTORY", None)
 
     result = subprocess.run(
-        ["bash", str(BASH_ROUTE), "--json"],
+        ["bash", str(BASH_ROUTE).replace("\\", "/"), "--json"],
         cwd=project,
         env=env,
         capture_output=True,
         text=True,
-        check=True,
     )
+    if result.returncode != 0:
+        pytest.fail(
+            "sp-route.sh failed\n"
+            f"exit code: {result.returncode}\n"
+            f"stdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
     payload = json.loads(result.stdout)
 
     assert payload["status"] == "NEEDS_DECISION"
