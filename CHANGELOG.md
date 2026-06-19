@@ -2,6 +2,12 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.13] - 2026-06-19
+
+### Changed
+
+- Fixed GitHub Release note generation so literal documentation filenames are preserved in the published body.
+
 ## [0.10.12] - 2026-06-19
 
 ### Changed

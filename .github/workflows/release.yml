@@ -50,7 +50,7 @@ jobs:
 
           - [SP Project Methodology](https://github.com/flyfoxai/SpecCompass/blob/${VERSION}/docs/reference/sp-project-methodology.md)
 
-          Release notes intentionally summarize the main methodology only. Implementation fixes, workflow maintenance, tests, and other support commits are tracked in git history and `CHANGELOG.md`, but are not promoted as release themes.
+          Release notes intentionally summarize the main methodology only. Implementation fixes, workflow maintenance, tests, and other support commits are tracked in git history and CHANGELOG.md, but are not promoted as release themes.
 
           ## Install
 

@@ -29,6 +29,8 @@ def test_release_notes_publish_main_methodology_only():
     assert "## SP Main Methodology" in release_workflow
     assert "docs/reference/sp-project-methodology.md" in release_workflow
     assert "Release notes intentionally summarize the main methodology only" in release_workflow
+    assert "CHANGELOG.md" in release_workflow
+    assert "`CHANGELOG.md`" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
 
