@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.12] - 2026-06-19
+
+### Changed
+
+- Bumped the public package version after the Windows route parity fixes.
+- Added release workflow guards so manual releases must use a version greater than the latest tag.
+- Focused GitHub Release notes on the maintained main SP methodology entry point instead of promoting support commits as release themes.
+
 ## [0.10.11] - 2026-06-19
 
 ### Changed

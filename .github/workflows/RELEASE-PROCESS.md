@@ -11,6 +11,13 @@ The release process is split into two workflows to ensure version consistency:
 
 This separation ensures that git tags always point to commits with the correct version in `pyproject.toml`.
 
+## Release Policy
+
+- Every release must bump the public version above the latest `v*` tag. Patch releases should normally leave the workflow input empty so the release trigger auto-increments the patch version.
+- Manual release versions are allowed for planned minor or major releases only when the requested version is strictly greater than the latest release tag. The workflow rejects duplicate, equal, or lower versions.
+- GitHub Release notes publish only the maintained main SP methodology entry point. Support work such as implementation fixes, tests, CI maintenance, and workflow plumbing remains in git history and `CHANGELOG.md`; it is not promoted as a release theme.
+- The main methodology entry point is `docs/reference/sp-project-methodology.md`.
+
 ## Before Creating a Release
 
 **Important**: Write clear, descriptive commit messages!
@@ -78,7 +85,7 @@ The workflow will:
 
 The workflow will:
 
-- Use your specified version
+- Use your specified version after verifying it is greater than the latest release tag
 - Update `pyproject.toml`
 - Update `CHANGELOG.md` by adding a new section for the release based on commits since the last tag
 - Commit changes to a `chore/release-vX.Y.Z` branch
@@ -135,7 +142,7 @@ Once the release trigger workflow completes:
 2. Extract version from tag name
 3. Check if release already exists
 4. Build release package variants (all agents × shell/powershell)
-5. Generate release notes from commits
+5. Generate release notes focused on the main SP methodology
 6. Create GitHub Release with all assets
 
 ## Version Constraints
@@ -143,6 +150,7 @@ Once the release trigger workflow completes:
 - Tags must follow format: `v{MAJOR}.{MINOR}.{PATCH}`
 - Example valid versions: `v0.1.11`, `v0.2.0`, `v1.0.0`
 - Auto-increment only bumps patch version
+- Manual versions must be strictly greater than the latest release tag
 - Cannot create duplicate tags (workflow will fail)
 
 ## Benefits of This Approach

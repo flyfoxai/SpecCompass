@@ -31,6 +31,13 @@ jobs:
         env:
           INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
+          LATEST_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n 1)
+          LATEST_VERSION="${LATEST_TAG#v}"
+          if [[ -z "$LATEST_TAG" ]]; then
+            LATEST_VERSION="0.0.0"
+          fi
+          echo "Latest release tag: ${LATEST_TAG:-none}"
+
           if [[ -n "$INPUT_VERSION" ]]; then
             # Manual version specified - strip optional v prefix
             VERSION="${INPUT_VERSION#v}"
@@ -39,16 +46,20 @@ jobs:
               echo "Error: Invalid version format '$VERSION'. Must be X.Y.Z (e.g. 1.2.3 or v1.2.3)"
               exit 1
             fi
+            if [[ -n "$LATEST_TAG" ]]; then
+              LOWEST_VERSION=$(printf '%s\n%s\n' "$LATEST_VERSION" "$VERSION" | sort -V | head -n 1)
+              if [[ "$VERSION" == "$LATEST_VERSION" || "$LOWEST_VERSION" != "$LATEST_VERSION" ]]; then
+                echo "Error: Release version $VERSION must be greater than latest tag $LATEST_TAG."
+                echo "Use an empty input to auto-increment the patch version."
+                exit 1
+              fi
+            fi
             echo "version=$VERSION" >> $GITHUB_OUTPUT
             echo "tag=v$VERSION" >> $GITHUB_OUTPUT
             echo "Using manual version: $VERSION"
           else
             # Auto-increment patch version
-            LATEST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-            echo "Latest tag: $LATEST_TAG"
-
-            # Extract version number and increment
-            VERSION=$(echo $LATEST_TAG | sed 's/v//')
+            VERSION="$LATEST_VERSION"
             IFS='.' read -ra VERSION_PARTS <<< "$VERSION"
             MAJOR=${VERSION_PARTS[0]:-0}
             MINOR=${VERSION_PARTS[1]:-0}
@@ -107,6 +118,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
+              "- Published the main SP methodology as the release focus." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp
