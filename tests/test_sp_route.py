@@ -379,6 +379,7 @@ def test_route_detects_seed_artifacts(tmp_path):
     assert "spec.md" in payload["blockers"]
 
 
+@requires_bash
 def test_bash_and_powershell_route_parity_for_ready_feature(tmp_path):
     project = _init_project(tmp_path)
     _write_feature_pointer(project, "001-demo")
