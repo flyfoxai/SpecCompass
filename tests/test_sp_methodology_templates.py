@@ -18,6 +18,15 @@ TEMPLATE_POWERSHELL_PREREQ = (
     PROJECT_ROOT / "templates" / "project" / "scripts" / "powershell" / "check-prerequisites.ps1"
 )
 COMMAND_SPEC = PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md"
+CONTEXT_MEMORY_ARCHITECTURE = (
+    PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-context-memory-architecture.md"
+)
+COMMAND_USAGE_DOC = PROJECT_ROOT / "docs" / "reference" / "speckit-command-usage.md"
+TEMPLATE_COMMAND_USAGE_DOC = (
+    PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "speckit-command-usage.md"
+)
+SP_IMPROVEMENT_RECOMMENDATIONS = PROJECT_ROOT / "docs" / "reference" / "sp-mechanism-improvement-recommendations.zh-CN.md"
+ASK_NEXT_WORK_PLAN = PROJECT_ROOT / "docs" / "reference" / "ask-project-next-work-plan.zh-CN.md"
 ARCHIVE_MULTI_AGENT_PLAN = PROJECT_ROOT / "docs" / "reference" / "archive" / "sp-multi-agent-controlled-execution-plan.zh-CN.md"
 
 MULTI_AGENT_WORKER_STATES = (
@@ -162,6 +171,202 @@ def test_route_continue_resume_entry_is_documented():
     workflows = (PROJECT_ROOT / "docs" / "reference" / "workflows.md").read_text(encoding="utf-8")
     assert "/sp.route y" in workflows
     assert "resume entry" in workflows
+
+
+def test_project_intake_direction_judgment_is_methodology_contract():
+    """Project intake should choose one mainline before spending tokens on deep feature work."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+
+    for token in (
+        "项目接手方向判断",
+        "不能“看到什么做什么”",
+        "PROJECT_GOAL",
+        "CURRENT_STAGE",
+        "PRIMARY_THEME",
+        "ROOT_BLOCKER_FAMILY",
+        "FIRST_FIX",
+        "DEFERRED_WORK",
+        "READ_SET",
+        "PRIORITY_CLASS",
+        "NEXT_COMMAND",
+        "DO_NOT_RUN",
+        "切换成本",
+        "唯一下一步动作",
+    ):
+        assert token in methodology
+
+    _assert_tokens_in_order(
+        methodology,
+        (
+            "P0",
+            "SP 安装、命令、模板、路由漂移",
+            "P1",
+            "阶段阻塞",
+            "P2",
+            "主线 feature 的 readiness 缺口",
+            "P3",
+            "gate/analyze 边界问题",
+            "P4",
+            "运行时、集成、E2E、性能证据补齐",
+            "P5",
+            "flow/UI/governance 可视化、格式整理、重构",
+        ),
+    )
+
+
+def test_route_template_outputs_project_direction_and_single_next_action():
+    """The route command should return concrete project direction, not vague conditional advice."""
+    route = _command("route")
+
+    for token in (
+        "Project Intake Direction Judgment",
+        "`/sp.route y`",
+        "`/sp.route all`",
+        "Warm Route",
+        "Cold Start / Global Scan",
+        "do not deep-read every feature",
+        "PROJECT_GOAL",
+        "CURRENT_STAGE",
+        "PRIMARY_THEME",
+        "ROOT_BLOCKER_FAMILY",
+        "FIRST_FIX",
+        "DEFERRED_WORK",
+        "READ_SET",
+        "PRIORITY_CLASS",
+        "NEXT_ACTION",
+        "NEXT_COMMAND",
+        "WHY_THIS_NEXT",
+        "DO_NOT_RUN",
+        "NEEDS_DECISION",
+        "CURRENT_THEME",
+        "REQUESTED_THEME",
+        "SWITCH_COST",
+        "RECOMMENDATION",
+        "single preferred next command",
+    ):
+        assert token in route
+
+    assert "Preserve `/sp.route y` behavior" in route
+    assert "Only `/sp.route all` may perform a global scan" in route
+    assert "Do not add a second auto-continue field" in route
+    assert "continueAllowed" in route
+    assert "autoExecute" in route
+    assert "AUTO_CONTINUE" not in route
+
+
+def test_route_output_contract_has_structured_fields():
+    """The route output contract should be a parseable fenced block, not scattered keywords."""
+    route = _command("route")
+    block = _fenced_block_containing(route, "PROJECT_GOAL")
+
+    _assert_tokens_in_order(
+        block,
+        (
+            "PROJECT_GOAL:",
+            "CURRENT_STAGE:",
+            "PRIMARY_THEME:",
+            "ROOT_BLOCKER_FAMILY:",
+            "FIRST_FIX:",
+            "DEFERRED_WORK:",
+            "READ_SET:",
+            "PRIORITY_CLASS:",
+            "NEXT_ACTION:",
+            "NEXT_COMMAND:",
+            "WHY_THIS_NEXT:",
+            "DO_NOT_RUN:",
+        ),
+    )
+
+    switch_block = _fenced_block_containing(route, "CURRENT_THEME")
+    for field in ("CURRENT_THEME:", "REQUESTED_THEME:", "SWITCH_COST:", "RISK:", "RECOMMENDATION:", "NEXT_COMMAND:"):
+        assert field in switch_block
+
+
+def test_command_spec_and_memory_architecture_define_project_intake_scan():
+    """Installed project docs should teach agents how to route before broad reading."""
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+    memory_architecture = CONTEXT_MEMORY_ARCHITECTURE.read_text(encoding="utf-8")
+
+    for content, label in ((command_spec, "command-spec"), (memory_architecture, "context-memory")):
+        assert "project intake direction judgment" in content, label
+        assert "/sp.route all" in content, label
+        assert "Warm Route" in content, label
+        assert "PRIMARY_THEME" in content, label
+        assert "ROOT_BLOCKER_FAMILY" in content, label
+        assert "READ_SET" in content, label
+        assert "DEFERRED_WORK" in content, label
+        assert "do not deep-read every feature" in content, label
+        assert "single mainline" in content, label
+
+
+def test_route_usage_docs_keep_global_scan_and_resume_modes_aligned():
+    """Root and installed usage docs should not drift on /sp.route modes."""
+    docs = {
+        "root-usage": COMMAND_USAGE_DOC.read_text(encoding="utf-8"),
+        "template-usage": TEMPLATE_COMMAND_USAGE_DOC.read_text(encoding="utf-8"),
+    }
+
+    for label, content in docs.items():
+        for token in (
+            "/sp.route",
+            "Warm Route",
+            "speckit.route.v1",
+            "autoExecute",
+            "continueAllowed",
+            "PROJECT_GOAL",
+            "PRIMARY_THEME",
+            "/sp.route all",
+            "项目接手方向判断",
+            "NEEDS_DECISION",
+            "/sp.route y",
+            "语义保持不变",
+            "不是全局扫描",
+            "REPEATED_FALLBACK",
+            "fallback-loop-detected",
+        ):
+            assert token in content, f"{label} missing {token}"
+
+
+def test_sp_recommendation_docs_do_not_reintroduce_auto_continue_field():
+    """Recommendation docs should use CAN_CONTINUE and JSON route fields, not a second continuation key."""
+    docs = {
+        "methodology": METHODOLOGY_DOC.read_text(encoding="utf-8"),
+        "improvement-recommendations": SP_IMPROVEMENT_RECOMMENDATIONS.read_text(encoding="utf-8"),
+        "ask-next-work-plan": ASK_NEXT_WORK_PLAN.read_text(encoding="utf-8"),
+    }
+
+    for label, content in docs.items():
+        assert "AUTO_CONTINUE" not in content, label
+        assert "CAN_CONTINUE" in content, label
+
+    improvement = docs["improvement-recommendations"]
+    assert "/sp.route all" in improvement
+    assert "/sp.route y" in improvement
+    assert "autoExecute" in improvement
+    assert "continueAllowed" in improvement
+
+
+def test_priority_classes_are_consistent_across_route_contract_docs():
+    """P0-P5 classes should stay aligned across methodology, route, and installed command spec."""
+    docs = {
+        "methodology": METHODOLOGY_DOC.read_text(encoding="utf-8"),
+        "route": _command("route"),
+        "command-spec": COMMAND_SPEC.read_text(encoding="utf-8"),
+    }
+
+    expectations = {
+        "P0": ("机制漂移", "mechanism drift"),
+        "P1": ("阶段阻塞", "stage blocker"),
+        "P2": ("readiness", "open-items"),
+        "P3": ("gate/analyze", "analyze/gate"),
+        "P4": ("E2E", "performance"),
+        "P5": ("flow/UI/governance", "formatting"),
+    }
+
+    for label, content in docs.items():
+        for priority, phrases in expectations.items():
+            assert priority in content, f"{label} missing {priority}"
+            assert any(phrase in content for phrase in phrases), f"{label} missing {priority} meaning"
 
 
 def test_prd_template_has_prerequisite_scripts_and_upstream_handoffs():

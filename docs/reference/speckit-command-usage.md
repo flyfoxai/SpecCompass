@@ -127,9 +127,26 @@ SP 对应用户可见命令目标：
 /sp.route
 ```
 
-它只建议下一步，不自动执行。输出是 `speckit.route.v1` JSON，其中
+它在已有主线时做 Warm Route：只根据当前 active feature、route/memory、
+open-items 和 Stage Readiness 建议下一步，不自动执行。输出是
+`speckit.route.v1` JSON，其中
 `autoExecute` 固定为 `false`，并包含 `next`、`reason`、`missing`、
 `blockers`、`continueAllowed`、`blockerType`、`blockerRoute` 等字段。
+面向人的说明还应给出 `PROJECT_GOAL`、`CURRENT_STAGE`、`PRIMARY_THEME`、
+`ROOT_BLOCKER_FAMILY`、`FIRST_FIX`、`DEFERRED_WORK`、`READ_SET`、
+`PRIORITY_CLASS`、`NEXT_ACTION`、`NEXT_COMMAND`、`WHY_THIS_NEXT`、
+`DO_NOT_RUN`。
+
+需要全局扫描和重新判断项目主线时，显式运行：
+
+```text
+/sp.route all
+```
+
+`/sp.route all` 才执行项目接手方向判断：先读项目 memory 和候选 feature
+memory，只为一个主线展开深层文档。它不应默认深读所有 feature、flow/UI、
+governance、archive 或历史分析文件。无法判断主线时，应返回
+`NEEDS_DECISION`，而不是让用户自行理解“是否需要阶段入口判断”。
 
 如果希望 agent 在安全时直接衔接下一步，显式运行：
 
@@ -140,6 +157,7 @@ SP 对应用户可见命令目标：
 此时仍由 route 脚本只产出 JSON；是否继续由命令模板和宿主 agent 判断。
 只有 `continueAllowed: true` 且不是人工决策、未知阻塞或重复 fallback 时，
 agent 才可以随后执行推荐的 `/sp.*` 命令。
+`/sp.route y` 的语义保持不变：它是安全继续下一步，不是全局扫描。
 
 停止规则：
 

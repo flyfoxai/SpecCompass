@@ -2,6 +2,16 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.14] - 2026-06-20
+
+### Changed
+
+- Added `/sp.route all` as the explicit global scan and project intake direction judgment entry.
+- Preserved `/sp.route y` as safe continuation only, with default `/sp.route` documented as Warm Route.
+- Strengthened SP route outputs with one primary theme, priority class, smallest read set, switch-cost reporting, and one concrete next command.
+- Added ASK project next-work guidance and SP mechanism improvement recommendations.
+- Added regression coverage for route semantics, recommendation docs, and priority classes.
+
 ## [0.10.13] - 2026-06-19
 
 ### Changed

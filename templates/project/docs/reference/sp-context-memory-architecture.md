@@ -88,6 +88,32 @@ Default sequence:
 
 This avoids whole-project re-scans when the task only touches one feature or one workset.
 
+The same rule applies to project intake direction judgment. `/sp.route all` is
+the explicit global scan entry. Ordinary `/sp.route` and `/sp.route y` use Warm
+Route when a reliable `PRIMARY_THEME`, active feature, or feature memory already
+exists. Warm Route should not repeat global intake; it reads only the active
+mainline's route evidence, feature memory, open items, Stage Readiness, and the
+smallest source set needed for the next command.
+
+When `/sp.route all` is used, or when no reliable mainline exists, the agent
+must choose one single mainline before spending tokens on deep feature work. The
+intake output should include `PROJECT_GOAL`, `CURRENT_STAGE`, `PRIMARY_THEME`,
+`ROOT_BLOCKER_FAMILY`, `FIRST_FIX`, `DEFERRED_WORK`, `READ_SET`,
+`PRIORITY_CLASS`, `NEXT_COMMAND`, and `DO_NOT_RUN`.
+
+The intake read order is:
+
+1. project entry and routing evidence: `README`, `.specify/memory/project-index.md`, `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, and `/sp.route` output when available
+2. candidate feature memory: `specs/<feature>/memory/index.md`, `memory/open-items.md`, and Stage Readiness
+3. source documents only for the selected `PRIMARY_THEME`
+
+The stable rule phrase is: do not deep-read every feature. This also means do
+not deep-read all flow/UI files, governance diagrams, archives, or historical
+analyses during intake. If many features exist, report
+the candidate distribution, choose or request one `PRIMARY_THEME`, and place the
+rest in `DEFERRED_WORK`. Broad scans are allowed only after a concrete owner
+route explains why the smaller `READ_SET` is insufficient.
+
 For code-continuation work, the same rule applies before source reading:
 
 1. feature memory and workset memory
