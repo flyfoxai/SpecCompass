@@ -183,6 +183,7 @@ def test_project_intake_direction_judgment_is_methodology_contract():
         "PROJECT_GOAL",
         "CURRENT_STAGE",
         "PRIMARY_THEME",
+        "PRIMARY_THEME_SUMMARY",
         "ROOT_BLOCKER_FAMILY",
         "FIRST_FIX",
         "DEFERRED_WORK",
@@ -233,7 +234,17 @@ def test_route_template_outputs_project_direction_and_single_next_action():
         "DEFERRED_WORK",
         "READ_SET",
         "PRIORITY_CLASS",
+        "OPTION_A",
+        "OPTION_B",
+        "OPTION_C",
+        "OPTION_D",
+        "RECOMMENDED_OPTION",
+        "WHY_RECOMMENDED",
+        "USER_DECISION_NEEDED",
+        "MY_RECOMMENDATION",
         "NEXT_ACTION",
+        "NEXT_COMMAND_EXEC",
+        "NEXT_COMMAND_ID",
         "NEXT_COMMAND",
         "WHY_THIS_NEXT",
         "DO_NOT_RUN",
@@ -265,12 +276,23 @@ def test_route_output_contract_has_structured_fields():
             "PROJECT_GOAL:",
             "CURRENT_STAGE:",
             "PRIMARY_THEME:",
+            "PRIMARY_THEME_SUMMARY:",
             "ROOT_BLOCKER_FAMILY:",
             "FIRST_FIX:",
             "DEFERRED_WORK:",
             "READ_SET:",
             "PRIORITY_CLASS:",
+            "OPTION_A:",
+            "OPTION_B:",
+            "OPTION_C:",
+            "OPTION_D:",
+            "RECOMMENDED_OPTION:",
+            "WHY_RECOMMENDED:",
+            "USER_DECISION_NEEDED:",
+            "MY_RECOMMENDATION:",
             "NEXT_ACTION:",
+            "NEXT_COMMAND_EXEC:",
+            "NEXT_COMMAND_ID:",
             "NEXT_COMMAND:",
             "WHY_THIS_NEXT:",
             "DO_NOT_RUN:",
@@ -280,6 +302,137 @@ def test_route_output_contract_has_structured_fields():
     switch_block = _fenced_block_containing(route, "CURRENT_THEME")
     for field in ("CURRENT_THEME:", "REQUESTED_THEME:", "SWITCH_COST:", "RISK:", "RECOMMENDATION:", "NEXT_COMMAND:"):
         assert field in switch_block
+
+
+def test_route_closeout_must_offer_options_and_recommendation():
+    """Route output should give answers, not only problems or opaque internal terms."""
+    route = _command("route")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+
+    for content, label in (
+        (route, "route-template"),
+        (methodology, "methodology"),
+        (command_spec, "command-spec"),
+    ):
+        for token in (
+            "2-4",
+            "OPTION_A",
+            "OPTION_B",
+            "OPTION_C",
+            "OPTION_D",
+            "RECOMMENDED_OPTION",
+            "WHY_RECOMMENDED",
+            "USER_DECISION_NEEDED",
+            "PRIMARY_THEME_SUMMARY",
+            "MY_RECOMMENDATION",
+            "NEXT_ACTION",
+            "NEXT_COMMAND_EXEC",
+            "NEXT_COMMAND_ID",
+            "NEXT_COMMAND",
+        ):
+            assert token in content, f"{label} missing {token}"
+
+    assert "Do not stop at problem reporting" in route
+    assert "stage entry judgment" in route
+    assert "plain-language options" in route
+    assert "route JSON plus global" in route
+    assert "READ_SET" in route
+    assert "active-context" in route
+    assert "feature-map" in route
+    assert "open-items.md" in route
+    assert "Stage Readiness" in route
+    assert "Do not recommend a direction" in route
+    assert "USER_DECISION_NEEDED: yes" in route
+    assert "HUMAN_DECISION" in route
+    assert "must not recommend a substantive downstream route" in route
+    assert "USER_DECISION_NEEDED` is a human closeout label only" in route
+    assert "Say the recommendation in plain Chinese" in route
+    assert "single copy-pasteable line" in route
+    assert "NEXT_COMMAND_EXEC" in route
+    assert "NEXT_COMMAND_ID" in route
+    assert "NEXT_COMMAND_PROMPT" not in route
+    assert "[CMD:" in route
+    assert "RECOMMENDED_OPTION` must point to a non-None option" in route
+    assert "NEXT_COMMAND_EXEC` must match" in route
+    assert "must never treat this whole line as" in route
+    assert "Hermes" in route
+    assert "OpenClaw" in route
+    assert "CrewAI" in route
+    assert "LangGraph" in route
+    assert "Shared project memory writes must be serialized" in route
+    assert "我的推荐：选" in route
+    assert "brief Chinese summary" in route
+    assert "what it mainly does" in route
+    assert "role is not confirmed" in route
+    assert "PRIMARY_THEME_SUMMARY" in route
+    assert "模板库模板在实际 feature 中的应用链路样本" in route
+    assert (
+        "NEXT_COMMAND: /sp.analyze 110-template-library-template-application "
+        "请先用几句话说明 110-template-library-template-application 的主要作用"
+    ) in route
+    assert (
+        "OPTION_A: [CMD: /sp.analyze 110-template-library-template-application]"
+    ) in route
+    assert "OPTION_B: [CMD: None] 现在运行 /sp.implement" in methodology
+    assert "NEXT_COMMAND_EXEC: /sp.analyze 110-template-library-template-application" in methodology
+    assert "越过 analyze/gate 边界" in route
+    assert "只说“上一步已完成”" in methodology
+    assert "把判断结果说成人话" in methodology
+    assert "推荐必须说人话" in methodology
+    assert "我的推荐：选 A" in methodology
+    assert "一整行可以直接复制粘贴执行的命令" in methodology
+    assert "slash 命令 + 中文提示词" in methodology
+    assert "人类入口和机器入口" in methodology
+    assert "不能让 worker 自己从长中文句子里猜命令" in methodology
+    assert "每个选项必须以 `[CMD: ...]` 开头" in methodology
+    assert "自动继续仍然只看 route JSON 的 `continueAllowed` 和 `autoExecute`" in methodology
+    assert "顺手给出简短中文介绍" in methodology
+    assert "帮助用户做主观检查" in methodology
+    assert "作用未确认" in methodology
+    assert "不能根据名字编造作用" in methodology
+    assert "要重新检查哪些阶段边界或 gate 风险" in methodology
+    assert "不能只根据当前文件、局部上下文或模型直觉生成" in methodology
+    assert "全局 SP 证据" in methodology
+    assert "`OPTION_A` 到 `OPTION_D`" in methodology
+    assert "`.specify/memory/active-context.md`" in methodology
+    assert "`.specify/memory/feature-map.md`" in methodology
+    assert "`memory/open-items.md`" in methodology
+    assert "Stage Readiness" in methodology
+    assert "不能推荐下游实质推进命令来绕过人工决策" in methodology
+    assert "一个 coordinator，多个只读 worker，集中写 memory" in methodology
+    assert "Hermes/OpenClaw" in methodology
+    assert "CrewAI" in methodology
+    assert "LangGraph" in methodology
+    assert "不应让多个 worker 并发写 active-context" in methodology
+    assert "must not merely say that the previous step is complete" in command_spec
+    assert "Avoid internal phrasing such as \"stage entry judgment\"" in command_spec
+    assert "route JSON plus global SP evidence" in command_spec
+    assert "The recommendation must say the next step in plain Chinese" in command_spec
+    assert "one-line copy-pasteable command" in command_spec
+    assert "`NEXT_COMMAND_EXEC`" in command_spec
+    assert "`NEXT_COMMAND_ID`" in command_spec
+    assert "`NEXT_COMMAND_PROMPT`" not in command_spec
+    assert "`NEXT_COMMAND` is the human copy-paste line" in command_spec
+    assert "must dispatch only from route JSON" in command_spec
+    assert "or `NEXT_COMMAND_EXEC`" in command_spec
+    assert "worker prompt/context" in command_spec
+    assert "serialize writes to `.specify/memory/*`" in command_spec
+    assert "Hermes" in command_spec
+    assert "OpenClaw" in command_spec
+    assert "CrewAI" in command_spec
+    assert "LangGraph" in command_spec
+    assert "OPTION_A: [CMD: </sp.* or None>]" in command_spec
+    assert "`USER_DECISION_NEEDED` is a human explanation label only" in command_spec
+    assert "`PRIMARY_THEME_SUMMARY`" in command_spec
+    assert "brief Chinese `PRIMARY_THEME_SUMMARY`" in command_spec
+    assert "quick subjective check" in command_spec
+    assert "instead of inventing a description" in command_spec
+    assert "我的推荐：选 A：110-template-library-template-application" in command_spec
+    assert "They must not be guessed from only the current file or local context" in command_spec
+    assert "`OPTION_A`..`OPTION_D`" in command_spec
+    assert "`HUMAN_DECISION`" in command_spec
+    assert "must not bypass the human decision" in command_spec
 
 
 def test_command_spec_and_memory_architecture_define_project_intake_scan():

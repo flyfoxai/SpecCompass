@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.15] - 2026-06-20
+
+### Changed
+
+- Strengthened `/sp.route` closeouts with plain-language options, evidence-backed recommendations, and one copy-pasteable Chinese next command.
+- Added `NEXT_COMMAND_EXEC` and structured `[CMD: ...]` option prefixes so humans keep a readable command while multi-agent coordinators get a stable dispatch field.
+- Documented Hermes, OpenClaw, CrewAI, and LangGraph routing rules, including serialized memory writes and read-only worker boundaries.
+- Added regression coverage for route recommendation clarity, command consistency, feature summaries, and multi-agent orchestration guardrails.
+
 ## [0.10.14] - 2026-06-20
 
 ### Changed
