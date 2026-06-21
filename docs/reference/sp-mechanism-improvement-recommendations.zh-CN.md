@@ -191,17 +191,29 @@ CAN_CONTINUE: yes | no
 
 ## 下一步建议
 
+OPTION_A: [CMD: </sp.xxx feature-id 或 None>] <人话说明动作和影响>
+OPTION_B: [CMD: </sp.xxx feature-id 或 None>] <人话说明动作和影响>
+OPTION_C: [CMD: </sp.xxx feature-id 或 None>] <没有第三个有效选项时写 [CMD: None] None>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<推荐对象和理由>
 NEXT_ACTION: <一句明确动作，不使用“如果需要”>
-NEXT_COMMAND: </sp.xxx feature-id 或 None>
-WHY_THIS_NEXT: <为什么这是下一步>
+NEXT_COMMAND_EXEC: </sp.xxx feature-id 或 None>
+NEXT_COMMAND_ID: </sp.xxx feature-id 或 None>
+NEXT_COMMAND: </sp.xxx feature-id 加中文提示词的一整行；必须能一次复制粘贴执行>
+WHY_THIS_NEXT: <基于全局/feature memory、open-items、Stage Readiness 和本命令证据说明为什么这是下一步>
 DO_NOT_RUN: <明确禁止的命令或 None>
 ```
 
 其中：
 
 - `NEXT_ACTION` 必须是确定动作，不能是条件句。
-- `NEXT_COMMAND` 只能有一个首选命令；备选命令放到说明里，不得让用户自己判断主路线。
+- `OPTION_A`、`OPTION_B`、`OPTION_C` 必须给出可理解的选择和影响，不能只列内部术语。
+- `RECOMMENDED_OPTION` 必须指向一个非 `None` 的有效选项；`MY_RECOMMENDATION` 必须用“我的推荐：选 A：...”这类中文句式说明理由。
+- `NEXT_COMMAND_EXEC` 只能放纯命令或 `None`，供自动化、多 agent coordinator 或 route JSON 对齐使用。
+- `NEXT_COMMAND` 只能有一个首选命令，并且必须是“slash 命令 + 中文提示词”的单行文本，能一次复制粘贴执行；不得再拆出单独的提示字段。
+- 最终复制框必须放在回复最底部，且只能包含 `NEXT_COMMAND` 的值本身；不要把 `OPTION_A/B/C`、`MY_RECOMMENDATION`、`NEXT_COMMAND_EXEC`、`WHY_THIS_NEXT`、`DO_NOT_RUN` 或 `NEXT_COMMAND:` 标签放进复制框。
 - `DO_NOT_RUN` 必须在存在误用风险时填写，例如文档治理 feature 禁止 `/sp.implement`。
+- 如果出现 `110-template-library-template-application` 这类编号 feature 或模块名，收尾必须用 1-3 句中文说明它的主要作用；证据不足时明确写“作用未确认”，并推荐补证据或 `/sp.route all`。
 - 不再新增第二套继续字段。命令是否可以自动衔接，只看 route JSON 的 `autoExecute` 和 `continueAllowed`，以及宿主命令模板的停止规则；面向人的输出只说明 `CAN_CONTINUE` 和阻塞原因。
 
 ### 3. “阶段入口判断”必须被替换为用户可理解的动作

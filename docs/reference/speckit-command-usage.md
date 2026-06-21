@@ -159,6 +159,32 @@ governance、archive 或历史分析文件。无法判断主线时，应返回
 agent 才可以随后执行推荐的 `/sp.*` 命令。
 `/sp.route y` 的语义保持不变：它是安全继续下一步，不是全局扫描。
 
+### 3.2 SP 命令收尾推荐
+
+每个 `/sp.*` 命令完成后都必须给出可执行的下一步推荐，不能只说“完成了”或只列问题。收尾必须包含 2-3 个选项、一个推荐项、推荐理由、唯一下一步动作，以及一行可以直接复制粘贴的 `NEXT_COMMAND`。
+
+推荐块固定包含：
+
+```text
+OPTION_A: [CMD: </sp.* 或 None>] <动作和影响>
+OPTION_B: [CMD: </sp.* 或 None>] <动作和影响>
+OPTION_C: [CMD: </sp.* 或 None>] <没有第三个有效选项时写 [CMD: None] None>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<推荐对象和理由>
+NEXT_ACTION: <唯一下一步动作>
+NEXT_COMMAND_EXEC: </sp.* 或 None>
+NEXT_COMMAND_ID: </sp.* 或 None>
+NEXT_COMMAND: </sp.* 加中文提示词的一整行，必须能一次复制粘贴执行>
+WHY_THIS_NEXT: <为什么这是正确方向>
+DO_NOT_RUN: <当前不要运行的命令或 None>
+```
+
+`NEXT_COMMAND_EXEC` 是给自动化或多 agent 编排器使用的纯命令。`NEXT_COMMAND` 是给人复制粘贴的整行命令，中文提示词必须和 slash 命令写在同一行，不再拆成单独提示字段。如果推荐中出现 `110-template-library-template-application` 这类编号模块，输出还应简短说明它的主要作用，方便用户做主观检查。
+
+结构化推荐内容放在前面，最终复制框必须放在整个回复最底部。最终复制框只放 `NEXT_COMMAND` 的值本身，不带 `NEXT_COMMAND:` 标签，也不放 `OPTION_A/B/C`、`MY_RECOMMENDATION`、`NEXT_COMMAND_EXEC`、`WHY_THIS_NEXT`、`DO_NOT_RUN` 或解释文字。如果没有可执行下一步，复制框只写 `None`。
+
+当 `/sp.flow` 或 `/sp.ui` 需要人工确认时，命令不能只写“请确认”。它必须先用简洁中文展示确认摘要：flow 要说明设计依据、业务目标、角色、主流程、决策点、异常/恢复、状态变化和需要看的标签；UI 要说明 PRD/spec/flow 依据、布局结构、screen/section、按钮和作用、字段和校验、图片/预览、图表/表格及数据源、权限/状态和需要看的标签。若其中有人工决策点，还要给 2-3 个选项、影响、推荐和理由。
+
 停止规则：
 
 - `NEEDS_DECISION`、`HUMAN_DECISION`、`UNKNOWN_BLOCKER`：进入 `/sp.clarify`，生成或补齐人工决策包。

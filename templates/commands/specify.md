@@ -200,6 +200,34 @@ Execution flow:
 
 ## Next
 
-- If `Stage Readiness` is `READY_FOR_FLOW`, suggest `/sp.flow`.
-- If `Stage Readiness` is `DRAFT_ONLY`, `NEEDS_DECISION`, `BLOCKED`, or otherwise not ready, do not suggest `/sp.flow`; tell the user which blocker prevents flow work and suggest `/sp.clarify`, `/sp.specify`, or the exact owner route.
-- If `spec.md` or its upstream `prd.md` still contains `[src:ai-proposed]`, `[uncertain:*]`, `Source: model-inferred`, `[INFER:DRAFT]`, unconfirmed candidate requirements, or unresolved open items that affect scope, acceptance, roles, permissions, data meaning, or flow behavior, end with an explicit review prompt. Ask the user to confirm, reject, or revise the named items before they become stable requirements, and route to `/sp.clarify` when a human choice is required.
+End every run with a concrete closeout recommendation. Do not only list possible readiness branches. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
+
+Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, `spec.md` readiness, upstream PRD evidence, and this specification evidence. If scope, acceptance, roles, permissions, data meaning, or flow behavior still depends on unconfirmed input, recommend `/sp.clarify`, `/sp.specify`, or the exact owner route instead of `/sp.flow`.
+
+If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.
+
+Use this exact closeout shape:
+
+```text
+OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+NEXT_ACTION: <one concrete next action; do not write "if needed">
+NEXT_COMMAND_EXEC: </sp.* or None>
+NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+DO_NOT_RUN: <commands that would be unsafe now, or None>
+```
+
+Command-specific guidance:
+
+- If `Stage Readiness` is `READY_FOR_FLOW`, recommend `/sp.flow <feature>` with a prompt naming the stable requirements and boundary checks.
+- If `Stage Readiness` is `READY_FOR_FLOW`, suggest `/sp.flow` only after unconfirmed items are absent or explicitly handled.
+- When confirmation gaps remain, do not suggest `/sp.flow`.
+- If readiness is `DRAFT_ONLY`, `NEEDS_DECISION`, `BLOCKED`, or otherwise not ready, recommend `/sp.clarify`, `/sp.specify`, or the exact owner route and name the blocker in plain Chinese.
+- If `spec.md` or upstream `prd.md` still contains `[src:ai-proposed]`, `[uncertain:*]`, `Source: model-inferred`, `[INFER:DRAFT]`, unconfirmed candidate requirements, or unresolved open items affecting downstream work, recommend `/sp.clarify <feature>` or a focused `/sp.specify <feature>` repair.
+- If user confirmation is still needed, end with an explicit review prompt that asks the user to confirm, reject, or revise the named items.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.

@@ -335,3 +335,33 @@ Note: This command assumes a complete task breakdown exists in tasks.md. If task
         EXECUTE_COMMAND: {command}
         ```
     - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
+
+## Next
+
+End every run with a concrete closeout recommendation. Do not only report implementation completion, failed checks, or generic next steps. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
+
+Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, selected task packet, Delta Summary, checks run, task-state writeback, and this implementation evidence. If checks failed, writeback is incomplete, risk acceptance is missing, or the task boundary was wrong, recommend `/sp.tasks`, `/sp.plan`, `/sp.clarify`, `/sp.analyze`, or the exact owner route instead of claiming downstream readiness.
+
+If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.
+
+Use this exact closeout shape:
+
+```text
+OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+NEXT_ACTION: <one concrete next action; do not write "if needed">
+NEXT_COMMAND_EXEC: </sp.* or None>
+NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+DO_NOT_RUN: <commands that would be unsafe now, or None>
+```
+
+Command-specific guidance:
+- Recommend `/sp.analyze <feature>` after implementation only when selected task evidence, checks, task-state writeback, and open-item handling are complete enough for diagnostic review.
+- Recommend `/sp.tasks`, `/sp.plan`, `/sp.clarify`, or the exact owner route when implementation exposed task-packet, plan, risk, human-decision, or boundary problems.
+- Do not recommend another `/sp.implement` unless the next ready `Mode: impl` task is clearly authorized and no analyze/gate review is required by the current workflow.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.

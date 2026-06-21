@@ -61,6 +61,18 @@ Global rules:
   - **No confirmation required**: trivial label, copy, formatting, or docs-only refresh; no new or changed flow semantics; no new nodes, branches, states, permissions, exceptions, or downstream readiness impact; and no visual artifact requires a direction choice. Record why confirmation was not required.
   - **Recommended confirmation**: small non-critical additions or readability/layout changes, including 1-2 non-critical nodes, branches, or labels, where source backing is clear and downstream readiness is not affected. The run may continue as a draft or with a warning, but must state what the user should review by visible label.
   - **Required confirmation**: first-time stable flow generation, major branch/state/permission/exception changes, 3 or more new flow nodes, explicit review requests, unclear user approval of the direction, model-inferred flow content that would be used beyond draft, or any change affecting stable memory, stable trace, gate PASS evidence, implementation readiness, or `READY_FOR_UI`. In those cases, end with a draft result and ask the user to confirm or request changes by visible label before promotion.
+- When confirmation is recommended or required, show a concise Chinese flow
+  review summary before asking the user to confirm. Do not only write "please
+  confirm". The summary must let the user understand what they are confirming
+  without opening every source file: business goal, source basis from PRD/spec
+  or clarifications, actors, main flow stages, decisions, exception/recovery
+  paths, state changes, UI contracts, system/external steps, draft or inferred
+  parts, files to review, and visible labels to reference in feedback.
+- If the flow draft contains a human decision point, explain the background in
+  plain Chinese, give 2-3 options, describe each option's impact, give a
+  recommendation, and state the reason. Keep the flow in `DRAFT_ONLY`,
+  `NEEDS_DECISION`, or `BLOCKED` until the user confirms or chooses a repair
+  option.
 - For explicit `--auto` runs, only the visual review gate may be skipped. State why it was skipped, what changed, which tier would otherwise apply, and whether the result is still draft or ready for the next step.
 - `--auto` may skip only the visual review gate; it must never skip Subject Scope, business domain anchor, Stage Entry Preflight, or subject-confusion checks.
 
@@ -180,9 +192,33 @@ Global rules:
 
 ## Next
 
-- Suggest `/sp.ui` or `/sp.gate` only when flow `Stage Readiness` is `READY_FOR_UI`; otherwise suggest `/sp.flow`, `/sp.clarify`, or `/sp.specify` with the exact blocker route.
+- End every run with a concrete closeout recommendation. Do not only list possible next commands. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
+- Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, flow `Stage Readiness`, and this flow evidence. If flow readiness is missing or blocked, recommend `/sp.flow`, `/sp.clarify`, or `/sp.specify` with the exact blocker route instead of downstream work.
+- If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.
+- Use this exact closeout shape:
+
+  ```text
+  OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+  OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+  OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+  RECOMMENDED_OPTION: A | B | C
+  MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+  NEXT_ACTION: <one concrete next action; do not write "if needed">
+  NEXT_COMMAND_EXEC: </sp.* or None>
+  NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+  NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+  WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+  DO_NOT_RUN: <commands that would be unsafe now, or None>
+  ```
+- Recommend `/sp.ui <feature>` or `/sp.gate <feature>` only when flow `Stage Readiness` is `READY_FOR_UI`; otherwise recommend `/sp.flow`, `/sp.clarify`, or `/sp.specify` with the exact blocker route.
+- Suggest `/sp.ui` or `/sp.gate` only when flow `Stage Readiness` is `READY_FOR_UI`.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.
 - End with a visual review prompt when renderable text diagrams, exported
   images, or flow previews exist. Tell the user:
+  - a short Chinese flow review summary before the confirmation request:
+    `设计依据` from PRD/spec/clarifications, `业务目标`, `参与角色`,
+    `主流程`, `决策点`, `异常/恢复`, `状态变化`, `UI 契约`,
+    `系统/外部步骤`, `草稿或推理项`, and `需要确认的问题`;
   - flow visuals are ready for review, or only structured flow files are ready
     if no preview/export was generated;
   - which files to review, such as `specs/<feature>/flows/*.mmd`;
@@ -197,3 +233,6 @@ Global rules:
 - If visual review is required, do not present `/sp.ui` or `/sp.gate` as the
   immediate next step until the user confirms the flow draft or selects a
   repair option.
+  The immediate recommendation should be the confirmation/repair action, with a
+  copy-pasteable `/sp.flow <feature>` command that tells the next run exactly
+  which visible flow/decision/exception labels to confirm or revise.

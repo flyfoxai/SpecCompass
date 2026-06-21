@@ -349,9 +349,15 @@ def test_route_closeout_must_offer_options_and_recommendation():
     assert "USER_DECISION_NEEDED` is a human closeout label only" in route
     assert "Say the recommendation in plain Chinese" in route
     assert "single copy-pasteable line" in route
+    assert "final `text` fenced code block" in route
+    assert "contains only the" in route
+    assert "`NEXT_COMMAND` value" in route
+    assert "no `NEXT_COMMAND:` prefix" in route
+    assert "no `OPTION_*`" in route
+    assert "final copy box at the very bottom" in route
     assert "NEXT_COMMAND_EXEC" in route
     assert "NEXT_COMMAND_ID" in route
-    assert "NEXT_COMMAND_PROMPT" not in route
+    assert "NEXT_COMMAND" in route
     assert "[CMD:" in route
     assert "RECOMMENDED_OPTION` must point to a non-None option" in route
     assert "NEXT_COMMAND_EXEC` must match" in route
@@ -382,6 +388,10 @@ def test_route_closeout_must_offer_options_and_recommendation():
     assert "推荐必须说人话" in methodology
     assert "我的推荐：选 A" in methodology
     assert "一整行可以直接复制粘贴执行的命令" in methodology
+    assert "最终复制框必须放在整个回复最底部" in methodology
+    assert "里面只能放 `NEXT_COMMAND` 的值本身" in methodology
+    assert "不要带 `NEXT_COMMAND:` 标签" in methodology
+    assert "用户可以直接复制最后一个代码块启动下一步" in methodology
     assert "slash 命令 + 中文提示词" in methodology
     assert "人类入口和机器入口" in methodology
     assert "不能让 worker 自己从长中文句子里猜命令" in methodology
@@ -410,9 +420,13 @@ def test_route_closeout_must_offer_options_and_recommendation():
     assert "route JSON plus global SP evidence" in command_spec
     assert "The recommendation must say the next step in plain Chinese" in command_spec
     assert "one-line copy-pasteable command" in command_spec
+    assert "final copy box must appear at the very bottom" in command_spec
+    assert "contain only the `NEXT_COMMAND` value itself" in command_spec
+    assert "no `NEXT_COMMAND:` label" in command_spec
+    assert "one-copy, one-paste" in command_spec
     assert "`NEXT_COMMAND_EXEC`" in command_spec
     assert "`NEXT_COMMAND_ID`" in command_spec
-    assert "`NEXT_COMMAND_PROMPT`" not in command_spec
+    assert "`NEXT_COMMAND`" in command_spec
     assert "`NEXT_COMMAND` is the human copy-paste line" in command_spec
     assert "must dispatch only from route JSON" in command_spec
     assert "or `NEXT_COMMAND_EXEC`" in command_spec
@@ -433,6 +447,69 @@ def test_route_closeout_must_offer_options_and_recommendation():
     assert "`OPTION_A`..`OPTION_D`" in command_spec
     assert "`HUMAN_DECISION`" in command_spec
     assert "must not bypass the human decision" in command_spec
+
+
+def test_non_route_commands_have_closeout_recommendation_contract():
+    """Every ordinary SP command should finish with a concrete recommended next step."""
+    required_tokens = (
+        "## Next",
+        "OPTION_A:",
+        "OPTION_B:",
+        "OPTION_C:",
+        "RECOMMENDED_OPTION:",
+        "MY_RECOMMENDATION:",
+        "NEXT_ACTION:",
+        "NEXT_COMMAND_EXEC:",
+        "NEXT_COMMAND_ID:",
+        "NEXT_COMMAND:",
+        "WHY_THIS_NEXT:",
+        "DO_NOT_RUN:",
+        "Do not split the prompt into a separate field",
+        "final `text` fenced code block",
+        "contains only the `NEXT_COMMAND` value",
+        "Do not put `OPTION_A/B/C`",
+        "inside that final copy box",
+    )
+    forbidden_prompt_field = "NEXT_COMMAND" + "_PROMPT"
+
+    for command_file in sorted(COMMANDS_DIR.glob("*.md")):
+        if command_file.name == "route.md":
+            continue
+
+        content = command_file.read_text(encoding="utf-8")
+        for token in required_tokens:
+            assert token in content, f"{command_file.name} missing {token}"
+        assert (
+            "copy-pasteable" in content or "复制粘贴" in content
+        ), f"{command_file.name} missing copy-paste guidance"
+        assert forbidden_prompt_field not in content, command_file.name
+
+
+def test_closeout_recommendation_docs_cover_ordinary_commands():
+    """Methodology and installed docs should define ordinary command closeout behavior."""
+    docs = {
+        "methodology": METHODOLOGY_DOC.read_text(encoding="utf-8"),
+        "command-spec": COMMAND_SPEC.read_text(encoding="utf-8"),
+        "root-usage": COMMAND_USAGE_DOC.read_text(encoding="utf-8"),
+        "template-usage": TEMPLATE_COMMAND_USAGE_DOC.read_text(encoding="utf-8"),
+        "improvement-recommendations": SP_IMPROVEMENT_RECOMMENDATIONS.read_text(encoding="utf-8"),
+    }
+    forbidden_prompt_field = "NEXT_COMMAND" + "_PROMPT"
+
+    for label, content in docs.items():
+        assert forbidden_prompt_field not in content, label
+        assert "NEXT_COMMAND_EXEC" in content, label
+        assert "NEXT_COMMAND" in content, label
+        assert "OPTION_A" in content, label
+        assert "MY_RECOMMENDATION" in content, label
+        assert "最终复制框" in content or "final copy box" in content, label
+        assert "NEXT_COMMAND` 的值本身" in content or "NEXT_COMMAND` value itself" in content, label
+        assert "NEXT_COMMAND:" in content, label
+
+    assert "普通命令收尾推荐契约" in docs["methodology"]
+    assert "Command-Wide Closeout Recommendation" in docs["command-spec"]
+    assert "SP 命令收尾推荐" in docs["root-usage"]
+    assert "SP 命令收尾推荐" in docs["template-usage"]
 
 
 def test_command_spec_and_memory_architecture_define_project_intake_scan():
@@ -1523,6 +1600,14 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "3 or more new flow nodes" in flow
     assert "which tier would otherwise apply" in flow
     assert "`--auto` may skip only the visual review gate" in flow
+    assert "concise Chinese flow" in flow
+    assert "Do not only write \"please" in flow
+    assert "business goal" in flow
+    assert "main flow stages" in flow
+    assert "exception/recovery" in flow
+    assert "state changes" in flow
+    assert "visible labels to reference in feedback" in flow
+    assert "2-3 options" in flow
     assert "multiple reasonable repairs" in flow
     assert "not present `/sp.ui` or `/sp.gate` as the" in flow
     assert "immediate next step" in flow
@@ -1546,6 +1631,17 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "3 or more new screens or critical actions" in ui
     assert "Process Visualization UI risk" in ui
     assert "`--auto` may skip only the visual review gate" in ui
+    assert "concise Chinese UI" in ui
+    assert "Do not only write \"please" in ui
+    assert "design basis from PRD/spec and flow steps" in ui
+    assert "layout structure" in ui
+    assert "actions and their" in ui
+    assert "effects, fields and validation sources" in ui
+    assert "images/previews" in ui
+    assert "charts/tables and" in ui
+    assert "data sources, permissions/states" in ui
+    assert "visible labels to reference in feedback" in ui
+    assert "2-3 options" in ui
     assert "multiple reasonable layouts" in ui
     assert "not present `/sp.gate` as the immediate next" in ui
 
@@ -1567,6 +1663,11 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "Preserve `FLOW` as the main relation axis" in plan
 
     assert "classify flow visual review into three tiers before promotion" in command_spec
+    assert "show a concise Chinese" in command_spec
+    assert "flow review summary before asking for confirmation" in command_spec
+    assert "UI review summary before asking for confirmation" in command_spec
+    assert "charts/tables and data sources" in command_spec
+    assert "if a flow or UI review summary contains a human decision point" in command_spec
     assert "**No confirmation required** for trivial label" in command_spec
     assert "**Recommended confirmation** for small" in command_spec
     assert "**Required confirmation** for" in command_spec
@@ -2639,6 +2740,11 @@ def test_flow_ui_next_prompts_require_visual_review_before_downstream():
     ui = _command("ui")
 
     assert "End with a visual review prompt" in flow
+    assert "short Chinese flow review summary" in flow
+    assert "`设计依据` from PRD/spec/clarifications" in flow
+    assert "`主流程`" in flow
+    assert "`决策点`" in flow
+    assert "`异常/恢复`" in flow
     assert "flow visuals are ready for review" in flow
     assert "which files to review" in flow
     assert "which viewer to use" in flow
@@ -2646,6 +2752,11 @@ def test_flow_ui_next_prompts_require_visual_review_before_downstream():
     assert "do not present `/sp.ui` or `/sp.gate`" in flow
 
     assert "End with a visual review prompt" in ui
+    assert "short Chinese UI review summary" in ui
+    assert "`设计依据` from PRD/spec and flow" in ui
+    assert "`布局结构`" in ui
+    assert "`动作按钮`" in ui
+    assert "`图表/表格和数据源`" in ui
     assert "UI visuals are ready for review" in ui
     assert "which files to review" in ui
     assert "which viewer to use" in ui

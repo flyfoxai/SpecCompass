@@ -79,6 +79,19 @@ Global rules:
   - **No confirmation required**: trivial copy, label, formatting, or docs-only refresh; no new or changed screens, actions, fields, states, permissions, data binding, validation, or downstream readiness impact; and no visual artifact requires a direction choice. Record why confirmation was not required.
   - **Recommended confirmation**: small non-critical organization, readability, or layout changes, including 1-2 non-critical screens, actions, fields, or states, where flow/source backing is clear and no critical flow, data, permission, or acceptance path is affected. The run may continue as a draft or with a warning, but must state what the user should review by visible label.
   - **Required confirmation**: first-time stable UI generation, major screen/action/field/permission/data-binding changes, 3 or more new screens or critical actions, explicit review requests, unclear user approval of the direction, Process Visualization UI risk, model-inferred UI content that would be used beyond draft, or any change affecting stable memory, stable trace, gate PASS evidence, implementation readiness, or `READY_FOR_PLAN`. In those cases, end with a draft result and ask the user to confirm or request changes by visible label before promotion.
+- When confirmation is recommended or required, show a concise Chinese UI review
+  summary before asking the user to confirm. Do not only write "please confirm".
+  The summary must let the user understand what they are confirming without
+  opening every source file: design basis from PRD/spec and flow steps, why this
+  UI shape was chosen, layout structure, screens/sections, actions and their
+  effects, fields and validation sources, images/previews, charts/tables and
+  data sources, permissions/states, known draft or inferred parts, files to
+  review, and visible labels to reference in feedback.
+- If the UI draft contains a human decision point, explain the background in
+  plain Chinese, give 2-3 options, describe each option's impact, give a
+  recommendation, and state the reason. Keep the UI in `DRAFT_ONLY`,
+  `NEEDS_DECISION`, or `BLOCKED` until the user confirms or chooses a repair
+  option.
 - For explicit `--auto` runs, only the visual review gate may be skipped. State why it was skipped, what changed, which tier would otherwise apply, and whether the result is still draft or ready for the next step.
 - `--auto` may skip only the visual review gate; it must never skip Subject Scope, business domain anchor, Stage Entry Preflight, subject-confusion checks, or Process Visualization UI checks.
 
@@ -207,10 +220,34 @@ Global rules:
 
 ## Next
 
-- Suggest `/sp.gate` only when UI `Stage Readiness` is `READY_FOR_PLAN`; otherwise suggest `/sp.ui`, `/sp.flow`, `/sp.clarify`, or `/sp.specify` with the exact blocker route.
+- End every run with a concrete closeout recommendation. Do not only list possible next commands or only ask for visual review. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
+- Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, UI `Stage Readiness`, visual-review state, flow/spec provenance, and this UI evidence. If visual review is required and not satisfied, recommend the review/repair route instead of `/sp.gate`.
+- If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.
+- Use this exact closeout shape:
+
+  ```text
+  OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+  OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+  OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+  RECOMMENDED_OPTION: A | B | C
+  MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+  NEXT_ACTION: <one concrete next action; do not write "if needed">
+  NEXT_COMMAND_EXEC: </sp.* or None>
+  NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+  NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+  WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+  DO_NOT_RUN: <commands that would be unsafe now, or None>
+  ```
+- Recommend `/sp.gate <feature>` only when UI `Stage Readiness` is `READY_FOR_PLAN` and required visual review is satisfied or explicitly not required; otherwise recommend `/sp.ui`, `/sp.flow`, `/sp.clarify`, or `/sp.specify` with the exact blocker route.
+- Suggest `/sp.gate` only when UI `Stage Readiness` is `READY_FOR_PLAN`.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.
 - End with a visual review prompt when structured UI files, wireframes, JSON
   Forms assets, HTML/CSS prototypes, Storybook stories, previews, or exported
   images exist. Tell the user:
+  - a short Chinese UI review summary before the confirmation request:
+    `设计依据` from PRD/spec and flow, `布局结构`, `主要区域`,
+    `动作按钮`, `字段/校验`, `图片/预览`, `图表/表格和数据源`,
+    `权限/状态`, `草稿或推理项`, and `需要确认的问题`;
   - UI visuals are ready for review, or only structured UI files are ready if no
     preview/export was generated;
   - which files to review, such as `specs/<feature>/ui/*.md` and
@@ -225,3 +262,6 @@ Global rules:
     previews or exported images are regenerated.
 - If visual review is required, do not present `/sp.gate` as the immediate next
   step until the user confirms the UI draft or selects a repair option.
+  The immediate recommendation should be the confirmation/repair action, with a
+  copy-pasteable `/sp.ui <feature>` command that tells the next run exactly
+  which visible screen/action/field labels to confirm or revise.

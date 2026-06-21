@@ -324,7 +324,32 @@ If the gate would need to rediscover Flow-UI relation integrity, orphan anchors,
 
 ## Next
 
-- If `PASS`, suggest the next stage command, normally `/sp.bundle` for a business gate or the appropriate downstream `/sp.*` route for later gate modes.
-- If `FAIL`, point back to the required earlier step.
-- If `CONDITIONAL`, point to the exact next safe `/sp.*` route or human decision named in `Next Step`. Do not suggest the downstream stage until the condition is closed or explicitly accepted.
-- If `BLOCKED` or `NEEDS_DECISION`, include the failure-site or decision summary. When human input is required, route to `/sp.clarify` to generate or complete the decision package unless a current package and human-selected decision record already exists; include 2-4 options, the recommendation, and the exact next `/sp.*` route without treating the recommendation as the final decision.
+End every run with a concrete closeout recommendation. Do not only say that the gate passed, failed, or is conditional. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
+
+Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, gate verdict, Stage Readiness, and this gate evidence. If gate evidence is missing, stale, or conflicting, recommend `/sp.analyze`, `/sp.clarify`, or the exact owner route instead of downstream work.
+
+If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.
+
+Use this exact closeout shape:
+
+```text
+OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+NEXT_ACTION: <one concrete next action; do not write "if needed">
+NEXT_COMMAND_EXEC: </sp.* or None>
+NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+DO_NOT_RUN: <commands that would be unsafe now, or None>
+```
+
+Command-specific guidance:
+
+- If `PASS`, recommend the next authorized stage command, normally `/sp.bundle <feature>` for a business gate or the appropriate downstream `/sp.*` route for later gate modes.
+- If `FAIL`, recommend the required earlier owner step.
+- If `CONDITIONAL`, recommend the exact safe route named in `Next Step`; do not recommend the downstream stage until the condition is closed or explicitly accepted.
+- If `BLOCKED` or `NEEDS_DECISION`, include the failure-site or decision summary and recommend `/sp.clarify <feature>` unless a current package and human-selected decision record already exists.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.

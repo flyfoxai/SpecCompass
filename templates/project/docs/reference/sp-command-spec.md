@@ -352,6 +352,12 @@ Not every file is seeded up front by the template root. Some are created or expa
 - close with a visual review prompt when text diagrams, previews, or exported
   flow images exist: tell the user which files to review, which viewer to use,
   and how to request changes by visible label before regenerating visuals
+- when visual confirmation is recommended or required, show a concise Chinese
+  flow review summary before asking for confirmation. The summary must explain
+  the PRD/spec/clarification basis, business goal, actors, main flow stages,
+  decisions, exception/recovery paths, state changes, system/external steps, UI
+  contracts, draft or inferred parts, review files/previews, and visible labels
+  such as `FLOW A1-3`, `DEC D2`, or `ERR E1`. Do not only say "please confirm".
 - classify flow visual review into three tiers before promotion:
   **No confirmation required** for trivial label, copy, formatting, or docs-only
   refreshes with no semantic, node, branch, state, permission, exception, or
@@ -415,6 +421,14 @@ Not every file is seeded up front by the template root. Some are created or expa
   assets, prototypes, previews, or exported images exist: tell the user which
   files to review, which viewer to use, and how to request changes by visible
   label before regenerating visuals
+- when visual confirmation is recommended or required, show a concise Chinese
+  UI review summary before asking for confirmation. The summary must explain
+  the PRD/spec basis, consumed flow steps or events, why the current layout was
+  chosen, layout structure, screens/sections, buttons and effects, fields and
+  validation sources, images/previews, charts/tables and data sources,
+  permissions/states, draft or inferred parts, review files/previews, and
+  visible labels such as `SCREEN S1`, `SECTION S1.2`, `ACTION A2`, or
+  `FIELD F3`. Do not only say "please confirm the UI draft".
 - classify UI visual review into three tiers before promotion:
   **No confirmation required** for trivial copy, label, formatting, or docs-only
   refreshes with no new or changed screens, actions, fields, states,
@@ -433,6 +447,11 @@ Not every file is seeded up front by the template root. Some are created or expa
   implementation readiness input. When confirmation is not required or skipped
   by explicit `--auto`, state why, what changed, which tier would otherwise
   apply, and whether the result is still draft or ready for the next step
+- if a flow or UI review summary contains a human decision point, explain the
+  background in plain Chinese, give 2-3 options, describe each option's impact,
+  give a recommendation, explain the reason, and keep the artifact in
+  `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user confirms or
+  selects a repair option.
 - `--auto` may skip only the visual review gate; it must never skip subject
   scope, business domain anchor, stage entry preflight, subject-confusion
   checks, or Process Visualization UI checks
@@ -559,6 +578,8 @@ The route closeout must not merely say that the previous step is complete or lis
 
 The recommendation must say the next step in plain Chinese. `MY_RECOMMENDATION` should use a direct sentence such as `我的推荐：选 A：110-template-library-template-application`, followed by the reason. Keep `NEXT_COMMAND_EXEC` as the pure slash command for parsing, keep `NEXT_COMMAND_ID` only as a legacy alias with the same value, and make `NEXT_COMMAND` the one-line copy-pasteable command: the slash command followed by the Chinese instruction. The instruction must tell the next command what to focus on, which boundary or gate risk to recheck, and which global SP evidence or memory files to respect. For example: `NEXT_COMMAND_EXEC: /sp.analyze 110-template-library-template-application`, `NEXT_COMMAND_ID: /sp.analyze 110-template-library-template-application`, and `NEXT_COMMAND: /sp.analyze 110-template-library-template-application 请重点关注 template application 的 Stage Readiness、open-items.md 中未关闭事项，以及是否存在越过 analyze/gate 边界的问题。请基于 active-context、feature-map 和该 feature 的 memory/index.md 重新判断，不能把运行时或实现证据当成已授权实现。`
 
+After the structured recommendation fields, the final copy box must appear at the very bottom of the response. It must be the last `text` fenced code block and contain only the `NEXT_COMMAND` value itself: no `NEXT_COMMAND:` label, no `OPTION_A/B/C/D`, no `MY_RECOMMENDATION`, no `NEXT_COMMAND_EXEC`, no `WHY_THIS_NEXT`, no `DO_NOT_RUN`, and no explanatory text. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.
+
 When the route names a numbered feature, module, or mainline such as `110-template-library-template-application`, it must include a brief Chinese `PRIMARY_THEME_SUMMARY` explaining what it mainly does and why it matters to the current route. The summary must be based on `READ_SET`, feature memory, PRD, outline, or Stage Readiness evidence. If the role is not confirmed, write that it is not confirmed and recommend evidence repair or `/sp.route all` instead of inventing a description. The one-line `NEXT_COMMAND` should also ask the next command to restate that module role before doing detailed analysis, so the user can perform a quick subjective check without interrupting execution.
 
 Route options and `WHY_RECOMMENDED` must be grounded in the route JSON plus global SP evidence listed in `READ_SET`: project memory, `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, `memory/open-items.md`, and Stage Readiness. They must not be guessed from only the current file or local context. If the evidence is missing, stale, or conflicting, the recommended option should be `/sp.route all`, `/sp.clarify`, or the smallest memory/evidence repair step, not downstream stage or production work. When `USER_DECISION_NEEDED: yes`, `NEEDS_DECISION`, or `HUMAN_DECISION` applies, `RECOMMENDED_OPTION` may only complete the decision package, run `/sp.clarify`, or gather the smallest missing evidence; it must not bypass the human decision.
@@ -574,6 +595,34 @@ Priority classes are fixed: `P0` for SP installation, command template, route, o
 When switching mainlines, include a switch-cost explanation before changing `PRIMARY_THEME`: `CURRENT_THEME`, `REQUESTED_THEME`, `SWITCH_COST`, `RISK`, `RECOMMENDATION`, and `NEXT_COMMAND`. If the current mainline is not closed or invalid, request user confirmation or route to `/sp.clarify` before switching.
 
 The route scripts must keep `autoExecute=false` and must not execute downstream commands. Only explicit `/sp.route y` may let the command template dispatch the next route, and only when `continueAllowed` is true. `NEEDS_DECISION`, `HUMAN_DECISION`, `UNKNOWN_BLOCKER`, `REPEATED_FALLBACK`, and `fallback-loop-detected` must stop automatic continuation and route to `/sp.clarify` or the owner decision path. `/sp.route all` never dispatches downstream commands; it reports the global scan and recommended route only. Repeated loop evidence comes from `fallback-log.md`; do not re-dispatch the same failed route.
+
+### 9.1 Command-Wide Closeout Recommendation
+
+`/sp.route` owns route selection, but ordinary `/sp.*` commands must still finish with a concrete next-step recommendation. Every successful, conditional, blocked, or decision-needed closeout for `/sp.prd`, `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.bundle`, `/sp.plan`, `/sp.tasks`, `/sp.analyze`, `/sp.gate`, `/sp.checklist`, `/sp.taskstoissues`, `/sp.implement`, and `/sp.constitution` must include a `## Next` section with options, a recommendation, and one copy-pasteable next command.
+
+The closeout must not merely say the command is complete, list problems, or tell the user to decide whether a stage-entry judgment is needed. It must translate the current evidence into plain Chinese options and one recommended action. Use this exact field contract:
+
+```text
+OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+NEXT_ACTION: <one concrete next action; do not write "if needed">
+NEXT_COMMAND_EXEC: </sp.* or None>
+NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+NEXT_COMMAND: </sp.* plus Chinese prompt in one line; must be copy-pasteable in one pass; write None only when NEXT_COMMAND_EXEC is None>
+WHY_THIS_NEXT: <why this is the correct direction, grounded in project/feature memory, open-items, Stage Readiness, and this command's evidence>
+DO_NOT_RUN: <commands that would be unsafe now, or None>
+```
+
+`NEXT_COMMAND_EXEC` is the machine entry and must contain only the executable slash command or `None`. `NEXT_COMMAND` is the human copy-paste line: the slash command followed by the Chinese instruction in the same line. Do not split the Chinese prompt into any separate prompt field. Multi-agent orchestrators such as Hermes, OpenClaw, CrewAI, and LangGraph must dispatch from route JSON or `NEXT_COMMAND_EXEC`, then pass the full `NEXT_COMMAND` as worker prompt/context.
+
+The final copy box must be separate from the structured field block. Put options, recommendation, rationale, machine fields, and `DO_NOT_RUN` before the copy box. End the response with one final `text` fenced code block that contains only the command line from `NEXT_COMMAND`, without the `NEXT_COMMAND:` prefix. This keeps the human action one-copy, one-paste.
+
+Ordinary command recommendations must be globally grounded. Before choosing `RECOMMENDED_OPTION`, use the smallest relevant read set from `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, `memory/open-items.md`, Stage Readiness, and the current command evidence. If those sources are missing, stale, or conflicting, recommend `/sp.route all`, `/sp.clarify`, or the smallest owner route instead of a downstream command.
+
+When a closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include a brief Chinese description of what it mainly does and why it matters to the recommendation. Base the description on feature memory, PRD, outline, Stage Readiness, or this command's read set. If the role is not confirmed, say it is not confirmed and recommend evidence repair or `/sp.route all` instead of inventing a description.
 
 ## 10. Boundary Rules
 

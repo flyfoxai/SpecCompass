@@ -58,6 +58,35 @@ You **MUST** consider the user input before proceeding (if not empty).
     ```
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
+## Next
+
+End every run with a concrete closeout recommendation. Do not only say that issues were created or skipped. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
+
+Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, exported issue evidence, task export readiness, and this command evidence. If task packets, allowed write sets, required checks, remote identity, or blockers are unresolved, recommend `/sp.tasks`, `/sp.plan`, `/sp.clarify`, or the exact owner route instead of issue export or implementation.
+
+If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.
+
+Use this exact closeout shape:
+
+```text
+OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+NEXT_ACTION: <one concrete next action; do not write "if needed">
+NEXT_COMMAND_EXEC: </sp.* or None>
+NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+DO_NOT_RUN: <commands that would be unsafe now, or None>
+```
+
+Command-specific guidance:
+- Recommend `/sp.analyze <feature>` after successful issue export only when tasks remain reviewable and no hidden human decision blocks the next diagnostic check.
+- Recommend `/sp.tasks`, `/sp.plan`, `/sp.clarify`, or the exact owner route when export readiness is blocked.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.
+
 ## Outline
 
 1. Run `{SCRIPT}` from repo root and parse FEATURE_DIR and AVAILABLE_DOCS list. All paths must be absolute. For single quotes in args like "I'm Groot", use escape syntax: e.g 'I'\''m Groot' (or double-quote if possible: "I'm Groot").

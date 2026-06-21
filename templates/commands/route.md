@@ -124,6 +124,13 @@ Rules:
   global SP evidence or memory files to respect. Keep the parseable slash
   command alone in `NEXT_COMMAND_EXEC`. Keep `NEXT_COMMAND_ID` as a legacy
   alias only when an older prompt requires it.
+- After the structured recommendation and explanation, finish the entire
+  response with a final `text` fenced code block that contains only the
+  `NEXT_COMMAND` value. This final copy box must be the last thing in the
+  response, with no label, no `NEXT_COMMAND:` prefix, and no `OPTION_*`,
+  `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, or
+  explanatory text inside it. If `NEXT_COMMAND_EXEC` is `None`, the final copy
+  box contains only `None`.
 - When naming a feature, module, or numbered mainline such as
   `110-template-library-template-application`, include a brief Chinese summary
   of what it mainly does. Base the summary on `READ_SET`, feature memory, PRD,
@@ -240,7 +247,11 @@ requiring the user to restate the route analysis. It should be one line, start
 with the exact slash command, then include the Chinese guidance. It should name
 the feature/mainline when known. Automation must never treat this whole line as
 a shell command; use route JSON or `NEXT_COMMAND_EXEC` for dispatch and pass the
-remaining Chinese guidance as task context. Example:
+remaining Chinese guidance as task context.
+
+After the fields above, the final copy box at the very bottom must contain only
+the recommended command line itself. Do not put options, labels, rationale, or
+machine fields in that final copy box. Example structured fields:
 
 ```text
 OPTION_A: [CMD: /sp.analyze 110-template-library-template-application] 继续复核该模板应用样本的 analyze 证据；影响是先把 gate 前边界确认清楚。
@@ -251,6 +262,12 @@ PRIMARY_THEME_SUMMARY: 110-template-library-template-application 主要用于验
 NEXT_COMMAND_EXEC: /sp.analyze 110-template-library-template-application
 NEXT_COMMAND_ID: /sp.analyze 110-template-library-template-application
 NEXT_COMMAND: /sp.analyze 110-template-library-template-application 请先用几句话说明 110-template-library-template-application 的主要作用：它是模板库模板在实际 feature 中的应用链路样本，用来检查模板机制是否能被正确落地。请重点关注 template application 的 Stage Readiness、open-items.md 中未关闭事项，以及是否存在越过 analyze/gate 边界的问题。请基于 active-context、feature-map 和该 feature 的 memory/index.md 重新判断，不能把运行时或实现证据当成已授权实现。
+```
+
+Final copy box at the very bottom:
+
+```text
+/sp.analyze 110-template-library-template-application 请先用几句话说明 110-template-library-template-application 的主要作用：它是模板库模板在实际 feature 中的应用链路样本，用来检查模板机制是否能被正确落地。请重点关注 template application 的 Stage Readiness、open-items.md 中未关闭事项，以及是否存在越过 analyze/gate 边界的问题。请基于 active-context、feature-map 和该 feature 的 memory/index.md 重新判断，不能把运行时或实现证据当成已授权实现。
 ```
 
 For multi-agent frameworks, use this mapping:

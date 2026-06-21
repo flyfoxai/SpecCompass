@@ -371,7 +371,32 @@ Execution flow:
 
 ## Next
 
-- If `PASS`, the document/readiness/task-packet/evidence set is diagnostically ready for the relevant next step; use `/sp.gate` when a stage-entry decision is required.
-- If `FAIL`, point to the exact `sp.*` step that must be revisited.
-- If `BLOCKED`, include the failure-site report and the exact next `/sp.*` route.
-- If `NEEDS_DECISION`, route to `/sp.clarify` to generate or complete the decision package unless a current package and human-selected decision record already exists. Explain the background, impact, 2-4 options, recommendation, and next `/sp.*` route; do not treat the model recommendation as the final decision.
+End every run with a concrete closeout recommendation. Do not stop at "analysis complete", do not only list problems, and do not use vague phrasing such as "if a stage-entry decision is required". Give the user an answer in plain Chinese.
+
+Before choosing the recommendation, reconcile the smallest relevant global state: `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, Stage Readiness, and this analysis evidence. If those sources are missing, stale, or conflicting, recommend `/sp.route all`, `/sp.clarify`, or the exact owner route instead of downstream work.
+
+If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. Base the description on memory, PRD, outline, Stage Readiness, or analysis evidence. If the role is not confirmed, say it is not confirmed and route to evidence repair or `/sp.route all`.
+
+Use this exact closeout shape:
+
+```text
+OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+NEXT_ACTION: <one concrete next action; do not write "if needed">
+NEXT_COMMAND_EXEC: </sp.* or None>
+NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+DO_NOT_RUN: <commands that would be unsafe now, or None>
+```
+
+Command-specific guidance:
+
+- If `PASS`, prefer `/sp.gate <feature>` when gate has not made the stage decision yet; say plainly that analyze is diagnostic evidence and does not authorize implementation.
+- If `FAIL`, choose the exact owner route that repairs the failed source layer.
+- If `BLOCKED`, include the failure-site report and recommend the smallest safe owner route.
+- If `NEEDS_DECISION`, recommend `/sp.clarify <feature>` unless a current decision package and human-selected decision record already exists.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.

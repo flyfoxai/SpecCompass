@@ -222,5 +222,31 @@ Execution flow:
 
 ## Next
 
-- If the plan proposes a workset split, sub-feature promotion, sub-project promotion, near-threshold split decision, major ownership boundary, or implementation-readiness downgrade that needs human acceptance, do not suggest `/sp.tasks` as the immediate next step. End with an explicit confirmation prompt that names the proposed boundary, impact, 2-4 options when useful, recommendation, and the next route (`/sp.clarify`, `/sp.plan`, or the confirmed downstream step).
-- Suggest `/sp.tasks` only when workset boundaries, implementation readiness, allowed write sets, required checks, and any split/promotion decisions are confirmed or explicitly non-blocking.
+End every run with a concrete closeout recommendation. Do not only say whether `/sp.tasks` is possible. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
+
+Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, plan Implementation Readiness, workset boundaries, and this planning evidence. If split, promotion, ownership, allowed write set, or human-decision evidence is unresolved, recommend `/sp.clarify`, `/sp.plan`, or the exact owner route instead of `/sp.tasks`.
+
+If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.
+
+Use this exact closeout shape:
+
+```text
+OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+NEXT_ACTION: <one concrete next action; do not write "if needed">
+NEXT_COMMAND_EXEC: </sp.* or None>
+NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+DO_NOT_RUN: <commands that would be unsafe now, or None>
+```
+
+Command-specific guidance:
+
+- Recommend `/sp.tasks <feature>` only when workset boundaries, implementation readiness, allowed write sets, required checks, and split/promotion decisions are confirmed or explicitly non-blocking.
+- If the plan proposes a workset split, sub-feature promotion, sub-project promotion, near-threshold split decision, major ownership boundary, or implementation-readiness downgrade that needs human acceptance, recommend `/sp.clarify <feature>` or another `/sp.plan <feature>` pass with the exact decision prompt.
+- When workset split, sub-feature promotion, sub-project promotion, ownership boundary, or readiness downgrade is unresolved, do not suggest `/sp.tasks` as the immediate next step; end with an explicit confirmation prompt and the owner route.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.

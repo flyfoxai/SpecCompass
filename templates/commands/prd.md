@@ -220,10 +220,34 @@ Execution flow:
 
 ## Next
 
-- If the PRD contains `[src:ai-proposed]`, `[uncertain:*]`, unconfirmed candidate requirements, or unresolved decision packages, end with an explicit review prompt before suggesting downstream work. State which candidate items need confirmation, what impact they have, and whether the next safe route is `/sp.clarify` or another `/sp.prd` pass.
-- If `spec-outline.md` is `READY_FOR_SPECIFY`, suggest `/sp.specify`.
-- If readiness is `NEEDS_PRD`, suggest another `/sp.prd` pass with the missing interview areas.
-- If readiness is `NEEDS_SOURCE`, ask for source recovery or an explicit rebase decision before `/sp.specify`.
-- If readiness is `SPLIT_REQUIRED`, ask the user to confirm the split before `/sp.specify`.
-- If major user choices remain unresolved, suggest `/sp.clarify`.
-- If governance candidates were collected, suggest `/sp.constitution`.
+End every run with a concrete closeout recommendation. Do not only list readiness branches. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
+
+Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, PRD evidence, `spec-outline.md` readiness, and unresolved candidate requirements. If source authority, split, or human choice evidence is missing, recommend `/sp.prd`, `/sp.clarify`, or `/sp.constitution` instead of `/sp.specify`.
+
+If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.
+
+Use this exact closeout shape:
+
+```text
+OPTION_A: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_B: [CMD: </sp.* or None>] <plain-language action and impact>
+OPTION_C: [CMD: </sp.* or None>] <write [CMD: None] None when there is no third valid option>
+RECOMMENDED_OPTION: A | B | C
+MY_RECOMMENDATION: 我的推荐：选 <A|B|C>：<用中文说明推荐对象和理由>
+NEXT_ACTION: <one concrete next action; do not write "if needed">
+NEXT_COMMAND_EXEC: </sp.* or None>
+NEXT_COMMAND_ID: </sp.* or None; legacy alias of NEXT_COMMAND_EXEC>
+NEXT_COMMAND: </sp.* 加中文提示词的一整行；必须能一次复制粘贴执行；如果 NEXT_COMMAND_EXEC 为 None 则写 None>
+WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
+DO_NOT_RUN: <commands that would be unsafe now, or None>
+```
+
+Command-specific guidance:
+
+- If `spec-outline.md` is `READY_FOR_SPECIFY`, recommend `/sp.specify <feature>` with a prompt naming the PRD evidence and boundary checks to preserve.
+- If readiness is `NEEDS_PRD`, recommend another `/sp.prd <feature>` pass with the missing interview/source areas.
+- If readiness is `NEEDS_SOURCE`, recommend source recovery or explicit rebase decision before `/sp.specify`.
+- If readiness is `SPLIT_REQUIRED` or major choices remain unresolved, recommend `/sp.clarify <feature>`.
+- If governance candidates block feature specification, recommend `/sp.constitution`.
+- If PRD contains `[src:ai-proposed]`, `[uncertain:*]`, or unconfirmed candidate requirements, end with an explicit review prompt that asks whether the next safe route is `/sp.clarify`.
+- Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.

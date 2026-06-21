@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.16] - 2026-06-21
+
+### Changed
+
+- Required ordinary `/sp.*` command closeouts to provide plain-language options, one recommendation, machine-readable `NEXT_COMMAND_EXEC`, and one final copy-pasteable `NEXT_COMMAND` block.
+- Strengthened `/sp.flow` and `/sp.ui` confirmation gates so human review requests first show concise Chinese summaries of the flow/UI design, evidence basis, visible labels, decision points, and recommended next action.
+- Added regression coverage for command closeout consistency, final copy box placement, and flow/UI confirmation summary requirements.
+
 ## [0.10.15] - 2026-06-20
 
 ### Changed
