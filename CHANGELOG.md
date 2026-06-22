@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.18] - 2026-06-22
+
+### Changed
+
+- Published the main SP methodology as the release focus.
+- feat: embed Huashu design confirmation workflow
+
 ## [0.10.17] - 2026-06-22
 
 ### Changed
