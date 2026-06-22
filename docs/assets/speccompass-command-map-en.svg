@@ -70,11 +70,11 @@
   <text x="645" y="512" class="cmd">/sp.analyze</text>
   <text x="785" y="512" class="text">Detect drift, broken trace links, stale context, unresolved risks</text>
   <text x="645" y="550" class="cmd">/sp.gate</text>
-  <text x="785" y="550" class="text">Decide PASS, FAIL, CONDITIONAL, BLOCKED, or NEEDS_DECISION</text>
+  <text x="785" y="550" class="text">Stage decision, blocked reason, and fallback route</text>
   <text x="645" y="588" class="cmd">/sp.bundle</text>
   <text x="785" y="588" class="text">Package feature documents for review and delivery</text>
-  <text x="645" y="626" class="note">Output: readiness decision, fallback route, or delivery package</text>
+  <text x="645" y="626" class="note">Output: readiness decision, Status Reason, fallback route, or delivery package</text>
 
-  <rect x="58" y="700" width="1064" height="34" rx="17" fill="#e0ebe7" stroke="#b9cec7"/>
-  <text x="86" y="722" class="note">Fallback principle: if a lower layer cannot proceed safely, move upward to clarify, specify, plan, or gate with clear options.</text>
+  <rect x="58" y="700" width="1064" height="34" rx="17" fill="#e0f7f5" stroke="#0ABAB5"/>
+  <text x="86" y="722" class="note">Finish Quality Gate: fix model-solvable gaps first; blocked states need short reasons and clear upper-layer options.</text>
 </svg>

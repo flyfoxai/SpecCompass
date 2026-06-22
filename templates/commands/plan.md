@@ -160,8 +160,10 @@ Execution flow:
      right confirmation rail are not business UI requirements.
    - Keep `Code Mapping` at module, directory, boundary-object, or key-file level unless a high-risk public API, permission rule, data migration, event boundary, or core acceptance test already needs a stable `CODE` or `TEST` anchor. Do not invent function-level trace before implementation evidence exists.
    - When implementation readiness is blocked, record the exact reason and fallback route: `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.bundle`, `/sp.plan`, `/sp.tasks`, or human macro decision.
+   - For every blocked workset, blocked task, blocked implementation-readiness row, non-ready split/promotion candidate, or unresolved planning fallback, add `Status Reason` directly after the status. The reason must be 10-30 Chinese characters (or equivalent short English phrase for English-language projects) and explain the root cause and implementation impact.
    - For complex blockers that affect code boundaries, worksets, runtime commands, implementation readiness, or architecture route, record a planner-owned blocker handoff instead of leaving a broad note:
      - `Blocker ID`
+     - `Status Reason`
      - `Failure Signature` using `<Root Layer>::<command-or-check>::<primary-file-or-anchor>::<error-type>`
      - `Root Layer`
      - `Disconfirming Evidence` when retrying
@@ -189,6 +191,17 @@ Execution flow:
    - Confirm routing memory points to the current primary workset.
    - Confirm `Implementation Readiness` is present in `plan.md` and is not contradicted by open blockers, missing code landing boundaries, missing validation commands, or missing source contracts.
    - Confirm code-stage planning includes the dependency surface and reverse-trace expectation needed for `/sp.tasks` to generate bounded implementation packets without broad rereading.
+   - Confirm every blocked workset, blocked task, fallback, `NEEDS_DECISION`, `BLOCKED`, `DRAFT_ONLY`, or non-ready readiness row has a `Status Reason` of 10-30 Chinese characters (or equivalent short English phrase for English-language projects).
+   - Run the `Finish Quality Gate` before closeout:
+     ```yaml
+     Finish Quality Gate:
+       model_fixable_issues: none | present
+       human_blockers: none | present
+       self_fix_rounds: 0-3
+       quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED
+       evidence: <current plan, worksets, readiness rows, open items, and blocker routes>
+     ```
+     Do not stop to report while model-fixable quality issues remain. Continue fixing incomplete workset boundaries, missing readiness fields, missing `Status Reason`, absent frontend design authority, weak code landing boundaries, or unclear validation commands until `QUALITY_PASSED`, `HUMAN_BLOCKED`, or `EXHAUSTED_BLOCKED`. If the remaining issue is a human input or decision blocker, return `HUMAN_BLOCKED` with `Status Reason` of 10-30 Chinese characters (or equivalent short English phrase for English-language projects), background, impact, options, recommendation, and owner route. CONTINUE_FIXING is an internal loop state; do not use it as the final output status of this command. If three self-fix rounds cannot resolve the same planning issue, return `EXHAUSTED_BLOCKED` with the failure signature and next route.
 
 ## Output
 

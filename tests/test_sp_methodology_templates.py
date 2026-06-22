@@ -1133,6 +1133,71 @@ def test_completion_evidence_contract_is_enforced_by_implementation_analysis_and
         assert "model confidence" in content, command
 
 
+def test_blocked_reason_and_finish_quality_gate_are_formalized():
+    """Non-ready states need short reasons, and commands must self-fix solvable quality gaps."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+
+    for token in (
+        "阻塞短原因与收尾质量门禁",
+        "Status Reason",
+        "10-30 个中文字符",
+        "Finish Quality Gate",
+        "model_fixable_issues",
+        "human_blockers",
+        "self_fix_rounds: 0-3",
+        "初始为 `0`",
+        "QUALITY_PASSED",
+        "CONTINUE_FIXING",
+        "内部循环控制状态",
+        "HUMAN_BLOCKED",
+        "EXHAUSTED_BLOCKED",
+        "NEEDS_PLAN",
+        "NEEDS_TASKS",
+        "NEEDS_CONTEXT",
+        "DEFERRED_WITH_OWNER",
+        "英文项目可以写等价长度的短英文短语",
+        "不得用禁用检查、删除测试、`@ts-ignore`、降低验收或隐藏失败来制造通过",
+    ):
+        assert token in methodology
+
+    for command in ("flow", "ui", "plan", "tasks", "implement", "analyze", "gate"):
+        content = _command(command)
+        assert "Finish Quality Gate" in content, command
+        assert "Status Reason" in content, command
+        assert "10-30 Chinese characters" in content, command
+        assert "equivalent short English phrase" in content, command
+        assert "model_fixable_issues" in content, command
+        assert "human_blockers" in content, command
+        assert "self_fix_rounds: 0-3" in content, command
+        assert "quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED" in content, command
+        assert "quality_result: PASS |" not in content, command
+        assert "CONTINUE_FIXING is an internal loop state" in content, command
+        assert "CONTINUE_FIXING" in content, command
+        assert "HUMAN_BLOCKED" in content, command
+        assert "EXHAUSTED_BLOCKED" in content, command
+        assert "Do not stop to report while model-fixable quality issues remain" in content, command
+
+    flow = _command("flow")
+    ui = _command("ui")
+    for content, label in ((flow, "flow"), (ui, "ui")):
+        assert "right feedback rail" in content, label
+        for token in ("diagram", "review rail", "manifest", "open item", "Stage Readiness", "Status Reason"):
+            assert token in content, label
+        assert "Stage Readiness.Status" in content, label
+
+    for command in ("plan", "tasks"):
+        content = _command(command)
+        assert "blocked workset" in content, command
+        assert "blocked task" in content, command
+
+    for command in ("implement", "analyze", "gate"):
+        content = _command(command)
+        assert "quality_result" in content, command
+        assert "human input or decision blocker" in content, command
+        for state in ("NEEDS_PLAN", "NEEDS_TASKS", "NEEDS_CONTEXT", "DEFERRED_WITH_OWNER"):
+            assert state in content, command
+
+
 def test_tdd_and_file_backed_evidence_rules_shape_plan_tasks_implementation():
     """Planning/task/implementation guidance should prefer existing artifacts and test-first shaping."""
     for command in ("plan", "tasks", "implement"):

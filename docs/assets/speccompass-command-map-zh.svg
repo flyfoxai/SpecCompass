@@ -70,11 +70,11 @@
   <text x="645" y="512" class="cmd">/sp.analyze</text>
   <text x="785" y="512" class="text">检查漂移、trace 断链、过期上下文、未闭环风险</text>
   <text x="645" y="550" class="cmd">/sp.gate</text>
-  <text x="785" y="550" class="text">判断 PASS、FAIL、CONDITIONAL、BLOCKED 或 NEEDS_DECISION</text>
+  <text x="785" y="550" class="text">阶段准入结论、阻塞原因和兜底路线</text>
   <text x="645" y="588" class="cmd">/sp.bundle</text>
   <text x="785" y="588" class="text">打包 feature 文档，用于评审和交付</text>
-  <text x="645" y="626" class="note">产出：准入结论、兜底路线或交付包</text>
+  <text x="645" y="626" class="note">产出：准入结论、短原因、兜底路线或交付包</text>
 
-  <rect x="58" y="700" width="1064" height="34" rx="17" fill="#e0ebe7" stroke="#b9cec7"/>
-  <text x="86" y="722" class="note">兜底原则：低层不能安全继续时，向上回到 clarify、specify、plan 或 gate，并给出清楚选项。</text>
+  <rect x="58" y="700" width="1064" height="34" rx="17" fill="#e0f7f5" stroke="#0ABAB5"/>
+  <text x="86" y="722" class="note">收尾质量门禁：先修模型可解缺口；阻塞状态必须带短原因，并给出上层选项。</text>
 </svg>

@@ -329,9 +329,20 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Do not self-approve conditional risk acceptance. If a risk must remain open while work proceeds, ask the user for the decision and record the accepted scope, owner, revisit anchor, rollback or degrade path, and close condition.
    - If this implementation run encounters or locally repairs a blocker, report the blocker evidence, changed files, verification result, proposed `memory/open-items.md` update, and next route. `/sp.implement` does not own the full Blocker Closeout ledger; full closeout is verified by `/sp.analyze` and decided by `/sp.gate`.
    - If the user asks `/sp.implement` to "solve blockers", execute only the selected ready `Mode: impl` repair task or the smallest solvable unit from the blocker breakdown. After local evidence is recorded, route unresolved or cross-layer blocker closeout to `/sp.analyze`, `/sp.gate`, or `/sp.clarify` instead of declaring all blockers closed from implementation prose.
+   - Add `Status Reason` to every `BLOCKED`, `NEEDS_DECISION`, `NEEDS_PLAN`, `NEEDS_TASKS`, `NEEDS_CONTEXT`, `DEFERRED_WITH_OWNER`, failed readiness, failed selected task, blocked task, blocked workset, unresolved open item, or unsafe cleanup result. The reason must be 10-30 Chinese characters (or equivalent short English phrase for English-language projects), sit directly after the status, and explain the root cause and impact.
    - Do not claim PASS from prose alone when mechanical evidence is available. Current test/build/lint/check results, existing active feature paths, required source docs, trace links, and open blockers/high risks override subjective confidence.
    - In headless or non-interactive runs, do not invent human approval. If the next safe step needs risk acceptance, disputed split, compliance/data decision, irreversible action, or hard-gate override, return `NEEDS_DECISION` or `BLOCKED` with background, impact, 2-4 options, recommendation, and the next `/sp.*` route. End the output with `SP_EXIT_CODE: 1`; if the host supports process exit control, also terminate with a non-zero exit status.
    - When asking for human input, route to `/sp.clarify` to generate or complete the decision package unless a current package and human-selected decision record already exists. Use plain language: explain the background, impact, 2-4 viable options, tradeoffs, your recommendation, and the next `/sp.*` route. Do not record the model recommendation as the final decision.
+   - Run the `Finish Quality Gate` before closeout:
+     ```yaml
+     Finish Quality Gate:
+       model_fixable_issues: none | present
+       human_blockers: none | present
+       self_fix_rounds: 0-3
+       quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED
+       evidence: <current task evidence, diff, checks, writeback, and blocker routing>
+     ```
+     Do not stop to report while model-fixable quality issues remain. Continue fixing code, docs, task-state writeback, tests, lint/typecheck/build failures, missing `Delta Summary`, missing `Status Reason`, incomplete proposed updates, or locally repairable blocker evidence until `QUALITY_PASSED`, `HUMAN_BLOCKED`, or `EXHAUSTED_BLOCKED`. If the remaining issue is a human input or decision blocker such as risk acceptance, destructive cleanup approval, disputed scope, compliance/data choice, or verification downgrade, return `HUMAN_BLOCKED` with a 10-30 Chinese characters (or equivalent short English phrase for English-language projects) `Status Reason`, background, impact, options, recommendation, and owner route. CONTINUE_FIXING is an internal loop state; do not use it as the final output status of this command. If three self-fix rounds cannot resolve the same implementation quality issue safely, return `EXHAUSTED_BLOCKED` with the failure signature and next route.
    - Report final status with summary of completed work
    - Do not output a full file-read list by default. Include read-set details only when the user asks for debug/audit detail or when a failure needs that evidence.
 

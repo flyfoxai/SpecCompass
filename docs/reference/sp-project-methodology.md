@@ -467,6 +467,53 @@ SP 不默认继续往前做就是正确。
 
 `memory/open-items.md` 是 blocker、risk、decision 和 close condition 的唯一稳定事实源。`analysis.md`、`gate.md`、`tasks.md`、fallback-log 和聊天记录只能是投影、证据或候选来源。发现真实阻塞散落在 analysis、plan、checklist、worklog 或旧 runner 输出中时，应该提升或引用到 open-items；已经解决、废弃或无效的阻塞要有证据关闭，而不是靠自然语言说“可收口”。
 
+### 阻塞短原因与收尾质量门禁
+
+任何可见的非就绪状态都必须带短原因。状态本身只告诉后续模型“停在哪里”，短原因告诉人和模型“为什么停”。因此 `BLOCKED`、`NEEDS_DECISION`、`NEEDS_PLAN`、`NEEDS_TASKS`、`NEEDS_CONTEXT`、`WAITING_FOR_BATCH_REVIEW`、`DRAFT_ONLY`、`FAIL`、`CONDITIONAL`、`STALE`、`REJECTED`、`DEFERRED_WITH_OWNER` 以及 flow/ui 图、右侧确认栏、Stage Readiness、task packet、open item、analysis/gate report 中的等价非就绪项，都必须在状态后直接附上 `Status Reason`。
+
+`Status Reason` 是 10-30 个中文字符的可读短句，默认写中文；英文项目可以写等价长度的短英文短语，按显示宽度和可读性估算，不要求硬套中文字符计数，但不能只写 `blocked`、`missing info`、`待确认`、`有问题` 这类空泛词。短原因应说明根因和影响，必要时再配合长说明。例如：
+
+```yaml
+Status: BLOCKED
+Status Reason: 缺少支付回调格式，无法定异常分支
+Blocker Type: HUMAN_INPUT_REQUIRED
+Owner Route: /sp.clarify
+```
+
+紧凑展示时可以写成：
+
+```text
+BLOCKED — 缺少支付回调格式，无法定异常分支
+```
+
+短原因不是完整报告，完整报告仍要保留 `Blocker Type`、`Root Layer`、`Failure Signature`、owner route、验证路径、写回目标和背景说明。短原因的用途是让确认会、后续模型和人工 reviewer 在列表、流程图、右侧确认栏、任务表或 gate 报告里一眼知道阻塞性质。
+
+当前已落地的核心交付链路命令（`/sp.flow`、`/sp.ui`、`/sp.plan`、`/sp.tasks`、`/sp.implement`、`/sp.analyze`、`/sp.gate`）收尾前必须执行 `Finish Quality Gate`。它不是新命令，而是命令尾部的自检与自修复循环。其他 SP 命令遵循同一原则，并在各自模板中按命令职责逐步落地。推荐字段如下：
+
+```yaml
+Finish Quality Gate:
+  model_fixable_issues: none | present
+  human_blockers: none | present
+  self_fix_rounds: 0-3
+  quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED
+  evidence: <本轮检查依据、命令结果、文件差异或人工决策>
+```
+
+判定规则固定如下：
+
+- `QUALITY_PASSED`：当前命令责任范围内的模型可修复质量问题已经清空，剩余事项要么不存在，要么是已记录且不阻断下一阶段的低风险 warning。它只表示收尾质量门禁通过，不替代 `/sp.analyze` 或 `/sp.gate` 的业务 `PASS` verdict。
+- `CONTINUE_FIXING`：仍有模型可修复问题。它是命令内部循环控制状态，不得作为命令最终输出状态；此时不得汇报“完成”，必须继续修改、补文档、补证据或重跑检查。
+- `HUMAN_BLOCKED`：剩余问题来自人工输入、业务决策、风险接受、外部凭证、不可访问 source、合规/权限/数据选择、不可逆操作授权等模型不能安全决定的事项。必须输出短 `Status Reason`、背景、影响、2-4 个选项、推荐项和下一步 `/sp.*` 路线。
+- `EXHAUSTED_BLOCKED`：同一问题经过最多 3 轮有证据的自修复仍未消除，或继续修复需要扩大范围到未授权层级。必须保留失败现场、失败签名、已尝试路线、为什么继续自动修复不安全，以及 owner route。
+
+`self_fix_rounds` 初始为 `0`，表示尚未对当前诊断问题执行自修复；每完成一轮有证据的自修复后递增。同一诊断问题连续 3 轮仍未消除，或任意一轮需要扩大到未授权范围时，才触发 `EXHAUSTED_BLOCKED`。不同问题不混算轮次，已关闭的问题不再占用后续问题的修复次数。
+
+模型可修复问题包括：文档缺字段、flow 节点缺端口契约、UI 元素未绑定 flow/action/source、确认页缺右侧反馈栏、Stage Readiness 缺 `Status Reason`、任务包字段不完整、analysis/gate 报告缺证据、lint/test/build/typecheck 失败、可由当前上下文定位的格式/链接/引用错误、明显未按已确认需求实现的代码或文档缺口。
+
+人工阻塞包括：业务规则冲突但多种方案都合理、PRD/source authority 缺失、外部 API 文档或密钥不可用、风险接受或验证降级需要授权、合规/安全/权限/租户边界需要人选、删除/迁移/发布等不可逆动作需要批准、reviewer 组织方式或确认范围需要用户决定。
+
+自修复不能造假。不得用禁用检查、删除测试、`@ts-ignore`、降低验收或隐藏失败来制造通过；不得把失败项改写成 warning 来绕过硬门禁；不得因为“已经改了很多”就把 `CONTINUE_FIXING` 改成 `QUALITY_PASSED`。如果问题需要人工信息或决策，它不是质量问题；应归入 `human_blockers` 并输出 `HUMAN_BLOCKED`。如果问题在当前命令职责内可修复，不能停下来汇报，应继续修复，直到 `QUALITY_PASSED`、`HUMAN_BLOCKED` 或 `EXHAUSTED_BLOCKED`。
+
 ### 8.2 有界证据循环和 No Self-Pass
 
 SP 不应依赖“无限循环”来防止虚报。无限循环会增加 token 消耗，放大错误方向，并让模型把重复动作误判成进展。SP 采用的是有界证据循环：每轮只处理一个最小可解决单元，必须产生新的证据或明确的下一步路由；没有新证据就停止自动推进。

@@ -282,6 +282,7 @@ not authorization evidence until written to `flow-confirmation.md`.
 - Refresh `specs/<feature>/memory/trace-index.md` only when stable trace links changed. Draft links stay in `flows/*` or `memory/open-items.md` until checked.
 - Refresh `specs/<feature>/memory/index.md` if routing changes
 - Write or refresh flow `Stage Readiness` in `specs/<feature>/flows/index.md` or `specs/<feature>/memory/index.md`: include `Stage`, `Status`, `Based On`, `Source Snapshot` or `Evidence Signature`, `Confirm Strategy`, `Batch ID`, `Batch Scope`, `Batch Review Status`, `Unresolved Blockers`, `Needs Decision`, `Inferred/Draft Items`, `Next Allowed Stage`, and `Writeback Target`. The signature must include `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`. Use `WAITING_FOR_BATCH_REVIEW` when the batch is generated but not confirmed. Use `READY_FOR_UI` only when the source-backed flow, port contracts, UI contracts, provenance, batch or visual-review status, and open blockers are clean; otherwise use `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` with the next owner route.
+- Add `Status Reason` to every blocked or non-ready item in the diagram, table, review rail, manifest, open item, or Stage Readiness. The reason must be 10-30 Chinese characters (or equivalent short English phrase for English-language projects), explain the root cause and impact, and sit directly after statuses such as `BLOCKED`, `NEEDS_DECISION`, `WAITING_FOR_BATCH_REVIEW`, `DRAFT_ONLY`, `STALE`, or `REJECTED`.
 
 ## Check Before Finish
 
@@ -322,6 +323,16 @@ not authorization evidence until written to `flow-confirmation.md`.
   the batch manifest lists all in-scope flow items, and downstream commands are
   blocked until confirmation or explicit batch split.
 - Confirm flow `Stage Readiness` is not `READY_FOR_UI` when source provenance is missing, draft inference is used as stable evidence, batch/visual review is still required, `SP_STAGE_SEED` remains, or high-impact open items remain.
+- Run the `Finish Quality Gate` before closeout:
+  ```yaml
+  Finish Quality Gate:
+    model_fixable_issues: none | present
+    human_blockers: none | present
+    self_fix_rounds: 0-3
+    quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED
+    evidence: <current checks, files, diagram labels, review artifacts, and blocker routes>
+  ```
+  Do not stop to report while model-fixable quality issues remain. Continue fixing incomplete port contracts, unreadable diagrams, missing right feedback rail, missing `Status Reason`, malformed review manifests, missing source labels, or flow/UI contract gaps until `QUALITY_PASSED`, `HUMAN_BLOCKED`, or `EXHAUSTED_BLOCKED`. If the remaining issue needs human input, source authority, or a decision, return `HUMAN_BLOCKED` with a 10-30 Chinese characters (or equivalent short English phrase for English-language projects) `Status Reason`, background, impact, options, recommendation, and owner route. CONTINUE_FIXING is an internal loop state; do not use it as the final output status of this command. If three self-fix rounds cannot resolve the same issue, return `EXHAUSTED_BLOCKED` with the failure signature and next route.
 
 ## Next
 

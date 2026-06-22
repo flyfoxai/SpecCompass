@@ -67,6 +67,8 @@
   <path d="M590 512 L590 538" class="arrow"/>
   <path d="M1030 578 C1100 520 1100 230 1034 164" class="feedback"/>
 
-  <rect x="220" y="650" width="740" height="34" rx="17" fill="#e6eee9" stroke="#bbcec7"/>
-  <text x="246" y="672" class="layer-text">控制规则：PASS 必须有证据；不清楚或冲突的状态必须回到正确上层。</text>
+  <rect x="162" y="640" width="856" height="50" rx="18" fill="#e6f7f5" stroke="#0ABAB5"/>
+  <rect x="162" y="640" width="12" height="50" rx="6" fill="#0ABAB5"/>
+  <text x="194" y="661" class="layer-text">收尾质量门禁：模型可修复缺口继续自修，直到 QUALITY_PASSED 或有界兜底。</text>
+  <text x="194" y="680" class="layer-text">阻塞或非就绪状态必须带短原因，再进入人工决策或上层路由。</text>
 </svg>

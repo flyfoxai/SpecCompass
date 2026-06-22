@@ -352,6 +352,7 @@ not authorization evidence until written to `ui-confirmation.md`.
   `Implementation Design Requirements`. Do not mark `READY_FOR_PLAN` for
   frontend work unless these fields are present and the review-surface isolation
   rule is satisfied.
+- Add `Status Reason` to every blocked or non-ready item in the diagram, table, review rail, manifest, open item, or Stage Readiness. The reason must be 10-30 Chinese characters (or equivalent short English phrase for English-language projects), explain the root cause and impact, and sit directly after statuses such as `BLOCKED`, `NEEDS_DECISION`, `WAITING_FOR_BATCH_REVIEW`, `DRAFT_ONLY`, `STALE`, or `REJECTED`.
 
 ## Check Before Finish
 
@@ -380,6 +381,16 @@ not authorization evidence until written to `ui-confirmation.md`.
   the batch manifest lists all in-scope UI items, and downstream commands are
   blocked until confirmation or explicit batch split.
 - Confirm UI `Stage Readiness` is not `READY_FOR_PLAN` when flow readiness is missing, source provenance is missing, draft inference is used as stable evidence, batch/visual review is still required, `SP_STAGE_SEED` remains, or high-impact open items remain.
+- Run the `Finish Quality Gate` before closeout:
+  ```yaml
+  Finish Quality Gate:
+    model_fixable_issues: none | present
+    human_blockers: none | present
+    self_fix_rounds: 0-3
+    quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED
+    evidence: <current checks, files, screen labels, review artifacts, and blocker routes>
+  ```
+  Do not stop to report while model-fixable quality issues remain. Continue fixing missing flow bindings, weak screen/action/field provenance, missing right feedback rail, missing `Status Reason`, Huashu/design-authority gaps, malformed review manifests, or process-visualization leakage until `QUALITY_PASSED`, `HUMAN_BLOCKED`, or `EXHAUSTED_BLOCKED`. If the remaining issue needs human input, source authority, framework/design-system decision, or risk acceptance, return `HUMAN_BLOCKED` with a 10-30 Chinese characters (or equivalent short English phrase for English-language projects) `Status Reason`, background, impact, options, recommendation, and owner route. CONTINUE_FIXING is an internal loop state; do not use it as the final output status of this command. If three self-fix rounds cannot resolve the same issue, return `EXHAUSTED_BLOCKED` with the failure signature and next route.
 
 ## Next
 

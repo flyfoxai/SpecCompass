@@ -67,6 +67,8 @@
   <path d="M590 512 L590 538" class="arrow"/>
   <path d="M1030 578 C1100 520 1100 230 1034 164" class="feedback"/>
 
-  <rect x="220" y="650" width="740" height="34" rx="17" fill="#e6eee9" stroke="#bbcec7"/>
-  <text x="246" y="672" class="layer-text">Control rule: PASS requires evidence. Unclear or conflicting states must return to the right upper layer.</text>
+  <rect x="162" y="640" width="856" height="50" rx="18" fill="#e6f7f5" stroke="#0ABAB5"/>
+  <rect x="162" y="640" width="12" height="50" rx="6" fill="#0ABAB5"/>
+  <text x="194" y="661" class="layer-text">Finish Quality Gate: model-fixable gaps keep looping until QUALITY_PASSED or bounded fallback.</text>
+  <text x="194" y="680" class="layer-text">Blocked or non-ready states carry a short Status Reason before human or upper-layer routing.</text>
 </svg>

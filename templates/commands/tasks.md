@@ -170,6 +170,7 @@ Execution flow:
    - If an item is in `NEEDS_DECISION`, freeze downstream tasks for the same `Blocker ID` until the human-selected decision is written back to the source doc, task, or `memory/open-items.md`.
    - For tasks that modify existing code, include a bounded test-read expectation: directly related, failing, same-name, adjacent, or contract-bearing tests should be checked before implementation; indirect tests can start from signatures or failure output.
    - If a workset is too large by the project methodology's complex-part signals, create a split/promote task instead of generating oversized implementation tasks. Use the same threshold as `sp.plan`: any hard signal, or at least three warning signals.
+   - Add `Status Reason` to every blocked task, blocked workset, non-ready readiness row, unresolved owner-route blocker, or fallback item that prevents task generation or task execution. The reason must be 10-30 Chinese characters (or equivalent short English phrase for English-language projects), sit directly after the status, and explain the root cause and impact instead of repeating `blocked`, `pending`, or `missing info`.
    - Treat near-threshold split signals as an observation band, not an automatic block: create a task or note that records the candidate split, risk, and revisit point. Only require a decision task when there is a confirmed split dispute, hard trigger, repeated failure, irreversible risk, risk acceptance, compliance/data decision, or explicit user request for split approval.
    - In headless or non-interactive execution, observation-band work should shrink into sequential, verifiable local tasks inside the current workset instead of one oversized task. If a hard trigger exists or the shrunken scope still repeatedly fails, route to `NEEDS_DECISION` or `BLOCKED` instead of expanding context.
    - Treat parallel `[P]` tasks as controlled execution, not the default. Use the canonical multi-agent hard gates, shared truth files, and global registry-like file vocabulary from `sp-command-spec.md` §10.3. Use `[P]` only when the task has a narrow `Allowed Write Set`, explicit `Required Checks`, satisfied dependencies, and no same-batch write-set overlap. If any of those facts cannot be checked, make the task sequential.
@@ -214,6 +215,16 @@ Execution flow:
    - Confirm `BUSINESS_DECISION` and unresolved `SCOPE_CONFLICT` items are routed to `/sp.clarify`, not hidden inside implementation work.
    - Confirm `EXECUTION_INFRA` items are isolated from business feature tasks unless the task is explicitly about fixing execution infrastructure.
    - Confirm unresolved `NEEDS_DECISION` items are not converted into executable implementation tasks before the human-selected decision is written back.
+   - Run the `Finish Quality Gate` before closeout:
+     ```yaml
+     Finish Quality Gate:
+       model_fixable_issues: none | present
+       human_blockers: none | present
+       self_fix_rounds: 0-3
+       quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED
+       evidence: <task packet, readiness, open-item, and validation checks used>
+     ```
+     Do not stop to report while model-fixable quality issues remain. Continue fixing incomplete task packets, missing `Status Reason`, missing blocker fields, invalid `Mode`, absent `Allowed Write Set`, absent `Required Checks`, weak readiness consumption, hidden human-decision tasks, or stale memory/task routing until `QUALITY_PASSED`, `HUMAN_BLOCKED`, or `EXHAUSTED_BLOCKED`. If the remaining gap is a human input or decision blocker, return `HUMAN_BLOCKED` with a 10-30 Chinese characters (or equivalent short English phrase for English-language projects) `Status Reason`, background, impact, options, recommendation, and owner route. CONTINUE_FIXING is an internal loop state; do not use it as the final output status of this command. If three self-fix rounds cannot resolve the same task-generation quality issue, return `EXHAUSTED_BLOCKED` with the failure signature and next route.
 
 ## Output
 

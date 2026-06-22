@@ -276,7 +276,18 @@ Execution flow:
    - Confirm findings are evidence-based and traceable to current documents.
    - Confirm the diagnostic verdict is one of `PASS`, `FAIL`, `BLOCKED`, or `NEEDS_DECISION` and is justified explicitly for analysis readiness only. This verdict does not replace `/sp.gate` stage-entry judgment.
    - Confirm missing required context is reported as `BLOCKED` with context details and the next `/sp.*` route, or `NEEDS_DECISION` when the missing context requires human choice. `NEEDS_CONTEXT` is an implementation/task fallback route, not a valid `/sp.analyze` verdict.
+   - Confirm every `BLOCKED`, `NEEDS_DECISION`, `NEEDS_PLAN`, `NEEDS_TASKS`, `NEEDS_CONTEXT`, `DEFERRED_WITH_OWNER`, `FAIL`, non-ready `Stage Readiness`, unresolved blocker, rejected finding, blocked task, blocked workset, or human-decision route has a `Status Reason` of 10-30 Chinese characters (or equivalent short English phrase for English-language projects) directly after the status. The reason must name root cause and impact, not just say `blocked` or `missing info`.
    - Confirm the next blocking actions are clear.
+   - Run the `Finish Quality Gate` before closeout:
+     ```yaml
+     Finish Quality Gate:
+       model_fixable_issues: none | present
+       human_blockers: none | present
+       self_fix_rounds: 0-3
+       quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED
+       evidence: <analysis findings, memory checks, current documents, and routing checks>
+     ```
+     Do not stop to report while model-fixable quality issues remain. Continue fixing analysis output gaps, missing evidence, missing `Status Reason`, unclassified blockers, stale owner routes, invalid verdict wording, incomplete blocker breakdowns, or report/writeback inconsistencies until `QUALITY_PASSED`, `HUMAN_BLOCKED`, or `EXHAUSTED_BLOCKED`. If the remaining gap is a human input or decision blocker such as risk acceptance, disputed split, source rebase choice, compliance/data choice, or verification downgrade, return `HUMAN_BLOCKED` with a 10-30 Chinese characters (or equivalent short English phrase for English-language projects) `Status Reason`, background, impact, options, recommendation, and owner route. CONTINUE_FIXING is an internal loop state; do not use it as the final output status of this command. If three self-fix rounds cannot resolve the same diagnostic quality issue, return `EXHAUSTED_BLOCKED` with the failure signature and next route.
 
 ## Output
 

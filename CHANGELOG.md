@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.19] - 2026-06-23
+
+### Changed
+
+- Published the main SP methodology as the release focus.
+- Formalized short `Status Reason` requirements for blocked and non-ready states across the core SP delivery chain.
+- Added command-level `Finish Quality Gate` self-checks so model-fixable gaps continue through bounded repair before closeout.
+- Refreshed README diagrams to show the quality gate, status-reason, and fallback-control semantics.
+
 ## [0.10.18] - 2026-06-22
 
 ### Changed

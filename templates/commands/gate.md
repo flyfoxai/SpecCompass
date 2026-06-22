@@ -277,6 +277,7 @@ If the gate would need to rediscover Flow-UI relation integrity, orphan anchors,
 - Confirm each blocker points to the exact `sp.*` step that must be revisited.
 - Confirm blocker closeout does not create a second persistent ledger beside `memory/open-items.md`.
 - Confirm each blocker has `Blocker Type`, `Root Layer`, `Failure Signature`, smallest solvable unit, owner route, verification path, and `Writeback Target`.
+- Confirm every `FAIL`, `CONDITIONAL`, `BLOCKED`, `NEEDS_DECISION`, `NEEDS_PLAN`, `NEEDS_TASKS`, `NEEDS_CONTEXT`, `DEFERRED_WITH_OWNER`, non-ready `Stage Readiness`, unresolved blocker, rejected gate condition, blocked task, blocked workset, or human-decision route has a `Status Reason` of 10-30 Chinese characters (or equivalent short English phrase for English-language projects) directly after the status. The reason must explain root cause and impact, not merely restate that the item is blocked.
 - Confirm `CODE_TEST_ONLY` items discovered during document-stage work are represented as `Mode: impl` handoff packets instead of unauthorized code artifacts.
 - Confirm `EXECUTION_INFRA` items are isolated from business requirements and are promoted to open-items only when they block stage evidence.
 - Confirm every blocker/high-risk item relevant to this gate has one of `RESOLVED`, `OPEN`, `DEFERRED_WITH_OWNER`, or `INVALID_OR_STALE`.
@@ -291,6 +292,16 @@ If the gate would need to rediscover Flow-UI relation integrity, orphan anchors,
 - If the gate detects business-layer signals that may require splitting, record them as a recommendation for `sp.plan`; do not decide delivery-layer promotion granularity at gate.
 - Confirm open items are still visible after the gate decision.
 - Confirm every open risk or conditional pass cites the affected `OPEN-*` or `RISK-*` item, close condition, and revisit step.
+- Run the `Finish Quality Gate` before closeout:
+  ```yaml
+  Finish Quality Gate:
+    model_fixable_issues: none | present
+    human_blockers: none | present
+    self_fix_rounds: 0-3
+    quality_result: QUALITY_PASSED | CONTINUE_FIXING | HUMAN_BLOCKED | EXHAUSTED_BLOCKED
+    evidence: <gate inputs, analysis freshness, blocker state, and decisive checks>
+  ```
+  Do not stop to report while model-fixable quality issues remain. Continue fixing missing gate evidence, stale analysis routing, missing `Status Reason`, incomplete blocker closeout, invalid verdict wording, missing `Next Step`, missing affected open-item IDs, or contradictory gate output until `QUALITY_PASSED`, `HUMAN_BLOCKED`, or `EXHAUSTED_BLOCKED`. If the remaining gap is a human input or decision blocker such as risk acceptance, hard-gate override, disputed split, irreversible action, compliance/data choice, or verification downgrade, return `HUMAN_BLOCKED` with a 10-30 Chinese characters (or equivalent short English phrase for English-language projects) `Status Reason`, background, impact, options, recommendation, and owner route. CONTINUE_FIXING is an internal loop state; do not use it as the final output status of this command. If three self-fix rounds cannot resolve the same gate quality issue, return `EXHAUSTED_BLOCKED` with the failure signature and next route.
 
 ## Post-Execution Checks
 
