@@ -57,6 +57,13 @@ Global rules:
 - Treat newly generated or refreshed flow outputs as draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent evidence. Draft flow facts may guide discussion, but they must not close risks, support PASS, or replace stable source facts.
 - Manage context as an engineering budget: start from routing, spec, clarifications, and open items; expand only to the flow source documents needed for the current branch or state decision.
 - Treat data-linkage as a direct-neighbor constraint. When a flow step changes state, data, permission, event, persistence, side effect, or acceptance meaning, check the directly related UI contract, API/data contract, permission rule, test or verification path, trace entry, and open item before treating the flow as stable.
+- Keep diagrams reviewable before asking for approval. A single reviewable flow diagram should normally contain no more than 12 business nodes. At 10-12 nodes, prefer a summary diagram plus subflows. Above 12 business nodes, split into subflows before asking for approval. The overview diagram should show only major stages, cross-subflow handoffs, and unresolved blockers; each child subflow should have one responsibility and its own visible review labels.
+- Use a top-down main-trunk layout for Mermaid or other renderable flow
+  diagrams: keep the source-backed happy path vertical and centered, expand
+  exception, rollback, blocked, and recovery paths sideways, avoid crossing
+  connectors, and do not add decorative symmetry nodes. Separate stable node
+  IDs from visible business labels; visible labels should be concise target
+  domain labels that humans can cite in feedback.
 - Classify visual review into three tiers before promoting flow artifacts:
   - **No confirmation required**: trivial label, copy, formatting, or docs-only refresh; no new or changed flow semantics; no new nodes, branches, states, permissions, exceptions, or downstream readiness impact; and no visual artifact requires a direction choice. Record why confirmation was not required.
   - **Recommended confirmation**: small non-critical additions or readability/layout changes, including 1-2 non-critical nodes, branches, or labels, where source backing is clear and downstream readiness is not affected. The run may continue as a draft or with a warning, but must state what the user should review by visible label.
@@ -261,13 +268,16 @@ not authorization evidence until written to `flow-confirmation.md`.
   Document Schema above. This Markdown file is the authorization evidence
   downstream commands must read before treating flow artifacts as stable input.
 - When generating `flow-review.html`, use the unified confirmation template:
-  a header with a short specCompass mechanism note and page title, a main review
-  area with labeled flow diagrams or tables, and a narrow right confirmation
-  sidebar. The sidebar should be approximately 280-320px wide, use Tiffany Blue
-  `#0ABAB5` as the primary color, and include batch summary, feedback textarea,
-  per-item approve/defer/reject controls, and a batch confirmation action. The
-  page must show where `flow-confirmation.md` will be written. If HTML review is
-  unavailable, the Markdown batch review manifest must expose the same fields.
+  a header titled `SpecCompass — <project> / <feature>` with a short
+  specCompass mechanism note and page title, a main review area with labeled
+  flow diagrams or tables, and a narrow right confirmation sidebar. The right feedback rail is mandatory; if it is missing, the review artifact is invalid
+  and cannot authorize downstream work. The sidebar should be approximately
+  280-320px wide, use Tiffany Blue `#0ABAB5` as the primary color, and include
+  batch summary, selected item details, status banner, feedback textarea,
+  per-item approve/defer/reject/block controls, a Pending Decisions list,
+  blocker/stale list, and a batch confirmation action. The page must show where
+  `flow-confirmation.md` will be written. If HTML review is unavailable, the
+  Markdown batch review manifest must expose the same fields.
 - Refresh `specs/<feature>/memory/stable-context.md` only when source-backed or checked flow facts changed, or when routing changed. Draft inferences stay in `flows/*` or `memory/open-items.md`.
 - Refresh `specs/<feature>/memory/trace-index.md` only when stable trace links changed. Draft links stay in `flows/*` or `memory/open-items.md` until checked.
 - Refresh `specs/<feature>/memory/index.md` if routing changes
@@ -291,6 +301,18 @@ not authorization evidence until written to `flow-confirmation.md`.
 - Confirm every Mermaid artifact matches the written description.
 - Confirm flow visuals or renderable Mermaid files show human-review labels and
   that each label maps back to a structured source row or anchor.
+- Confirm every reviewable diagram obeys the node budget: no more than 12
+  business nodes per diagram unless a written exception is justified, 10-12
+  nodes are reviewed for summary-plus-subflows splitting, and anything above 12
+  business nodes is split before approval is requested.
+- Confirm every renderable flow diagram uses a top-down main-trunk layout with
+  the mainline centered, exceptions/recovery/blockers side-expanded, stable IDs
+  separated from concise visible business labels, and no unnecessary crossing
+  lines.
+- Confirm blocked, pending decision, and stale statuses are visible both in the
+  diagram or table and in the right feedback rail. A non-empty Pending Decisions
+  list, any decision node missing an explicit default path, or any undefined branch exit must keep `Stage Readiness.Status` as `NEEDS_DECISION` or
+  `BLOCKED`, not `READY_FOR_UI`. Confirm every decision node has an explicit default path before promotion.
 - Run a subject-confusion scan: confirm no flow node, actor, event, state, decision, diagram label, or written flow description uses `/sp.*`, `sp.*`, `memory/index.md`, `trace-index.md`, `open-items.md`, or `SUBJECT_CONFUSION` as business content. Treat broader terms such as `preflight`, `Allowed Write Set`, `Required Checks`, or `NEEDS_DECISION` as contextual analyze/gate findings, not automatic mechanical failures. If clear control-plane content is found, stop, discard the affected flow content, and return a `SUBJECT_CONFUSION` blocker with the exact `specs/<feature>/spec.md` read target and next `/sp.flow` route. Do not regenerate in the same run.
 - Confirm draft assumptions are labeled or routed to `memory/open-items.md` instead of being promoted to stable memory.
 - Confirm any open branch, state conflict, or unresolved exception is registered in `memory/open-items.md`.

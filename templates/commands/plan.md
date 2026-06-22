@@ -81,6 +81,14 @@ Execution flow:
    - Check whether user input changes product goal, requirements, acceptance, flow, UI, workset boundary, architecture boundary, or implementation-readiness expectations. Route upstream before planning if the change belongs to PRD/spec/clarify/flow/ui.
    - Confirm upstream flow and UI contracts needed by the requested workset are present or explicitly tracked as open items. If delivery planning would have to invent flow state, UI behavior, data binding, permission, acceptance, or source facts, stop and route to `/sp.flow`, `/sp.ui`, `/sp.specify`, or `/sp.clarify`.
    - Confirm flow/UI batch confirmation is complete before treating those artifacts as planning input. If flow or UI readiness is `WAITING_FOR_BATCH_REVIEW`, partial, rejected, stale, or missing batch confirmation evidence, stop and route to the relevant `/sp.flow` or `/sp.ui` batch review path instead of creating implementation readiness.
+   - For frontend work, read the UI confirmation design fields before planning
+     implementation: `design_authority`, `design_scope`, `frontend_framework`,
+     `brand_override`, `design_deviation_items`, and
+     `implementation_design_requirements` from
+     `specs/<feature>/ui/review/ui-confirmation.md` or the UI `Stage
+     Readiness`. If frontend implementation would consume UI confirmation but
+     these fields are missing, stop and route to `/sp.ui` to refresh the
+     confirmation record.
    - If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not create implementation readiness from missing or generic upstream facts.
 3. Load the smallest useful planning context:
    - `.specify/memory/feature-map.md`
@@ -131,8 +139,25 @@ Execution flow:
      - `Dependency Surface`: direct imports, routes, contracts, schemas, permissions, events, global registries, and related tests that implementation tasks must check before editing or closeout
      - `Reverse Trace Expectation`: when delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes are allowed, name the required reverse lookup/search evidence
      - `Workset Code Boundary`: allowed code/test/config areas and forbidden/shared areas for implementation tasks
+     - `Frontend Design Authority` for frontend work:
+       ```yaml
+       Frontend Design Authority:
+         baseline: huashu-design
+         production_override: none | <PRD design system>
+         framework: <selected frontend framework>
+         rule: framework implements design; framework does not replace design authority
+         review_surface_rule: right confirmation rail is review-only
+       ```
+       Use this block to propagate UI confirmation into implementation
+       planning. If the PRD or target product design system overrides Huashu in
+       business production UI, record the source and the affected deviation
+       items instead of silently replacing the design baseline.
      - `Global Registry Risk`: package manifests, lockfiles, route registries, schemas, permission matrices, global config, cross-module contracts, migrations, event bus registries, or other shared files that require serialized ownership
      - `Implementation Readiness`: the single source of truth for whether each workset can produce `Mode: impl` tasks
+   - Do not mark frontend implementation readiness as ready unless the plan
+     records `Frontend Design Authority`, approved PRD override or `none`,
+     design deviations, and the rule that review-surface controls such as the
+     right confirmation rail are not business UI requirements.
    - Keep `Code Mapping` at module, directory, boundary-object, or key-file level unless a high-risk public API, permission rule, data migration, event boundary, or core acceptance test already needs a stable `CODE` or `TEST` anchor. Do not invent function-level trace before implementation evidence exists.
    - When implementation readiness is blocked, record the exact reason and fallback route: `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.bundle`, `/sp.plan`, `/sp.tasks`, or human macro decision.
    - For complex blockers that affect code boundaries, worksets, runtime commands, implementation readiness, or architecture route, record a planner-owned blocker handoff instead of leaving a broad note:

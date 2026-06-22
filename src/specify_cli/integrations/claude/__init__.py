@@ -272,6 +272,7 @@ class ClaudeIntegration(SkillsIntegration):
                 self.record_file_in_manifest(path, project_root, manifest)
 
         self._remove_core_skill_dirs(project_root)
+        created.extend(self.install_bundled_helper_skills(project_root, manifest))
         created.extend(self.install_scripts(project_root, manifest))
         ctx_path = self.upsert_context_section(project_root)
         if ctx_path is not None:

@@ -37,6 +37,8 @@ packages = ["src/specify_cli"]
 "templates/project" = "specify_cli/core_pack/templates/project"
 # Command templates
 "templates/commands" = "specify_cli/core_pack/commands"
+# Bundled helper skills required by SP methodology
+"templates/skills" = "specify_cli/core_pack/skills"
 "scripts/bash" = "specify_cli/core_pack/scripts/bash"
 "scripts/powershell" = "specify_cli/core_pack/scripts/powershell"
 # Bundled extensions (installable via `specify extension add <name>`)

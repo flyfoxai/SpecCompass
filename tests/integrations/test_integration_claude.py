@@ -83,6 +83,19 @@ class TestClaudeIntegration:
         assert not (skills_dir / "speckit-plan" / "SKILL.md").exists()
         assert not (skills_dir / "speckit-analyze" / "SKILL.md").exists()
 
+    def test_setup_installs_bundled_design_skill(self, tmp_path):
+        integration = get_integration("claude")
+        manifest = IntegrationManifest("claude", tmp_path)
+        created = integration.setup(tmp_path, manifest, script_type="sh")
+
+        skill_file = tmp_path / ".claude" / "skills" / "huashu-design" / "SKILL.md"
+        assert skill_file.exists()
+        assert skill_file in created
+        content = skill_file.read_text(encoding="utf-8")
+        assert "name: huashu-design" in content
+        assert "frontend display pages" in content
+        assert "SpecCompass" in content
+
     def test_setup_removes_preexisting_core_skill_variants(self, tmp_path):
         integration = get_integration("claude")
         skills_dir = tmp_path / ".claude" / "skills"

@@ -75,6 +75,32 @@ Global rules:
 - Treat data-linkage as a direct-neighbor constraint. When a UI field, action, screen state, permission, API parameter, validation rule, or test expectation changes business meaning, check the directly related flow node, data object, API contract, permission rule, acceptance path, trace entry, and open item before treating the UI as stable.
 - `/sp.ui` must consume `/sp.flow` outputs. If `specs/<feature>/flows/*` is missing or the required flow contract is absent, stop and route to `/sp.flow` instead of inventing UI business behavior.
 - If the UI depends on an unconfirmed flow draft, keep the UI result as draft or register an open item; do not promote it to stable memory, stable trace, gate PASS evidence, or implementation readiness input.
+- Use `huashu-design` for frontend display pages, UI review pages, and
+  project UI previews. This applies to `ui-review.html`, all generated
+  frontend page previews, and any UI confirmation surface that users inspect
+  visually. React + Vite, Storybook, JSON Forms, or a real project dev server
+  are rendering/carrier choices; they do not replace the required design skill.
+- If the host does not provide the `huashu-design` skill, stop before
+  finalizing visual UI artifacts, state the missing skill explicitly, and
+  record the fallback as `Design Skill: huashu-design missing`. Do not silently
+  replace it with generic frontend styling. A controlled fallback may be used
+  only for non-authoritative drafts and must be marked as a framework/design
+  deviation in the review manifest and confirmation document.
+- Classify the design scope before writing review data or downstream readiness:
+  - `review-surface`: the SpecCompass confirmation shell and review controls.
+    `huashu-design` is mandatory, and the narrow right confirmation rail belongs
+    only to this scope.
+  - `business-preview`: target product UI previews for human review.
+    `huashu-design` is the default design authority unless a PRD-confirmed
+    product design system overrides it.
+  - `business-production`: target product frontend implementation. Use
+    `huashu-design` as the baseline design and acceptance constraint unless the
+    PRD or confirmed product design system provides a stronger authority.
+- Frameworks are carriers, not design authority. React + Vite, Storybook, JSON
+  Forms, Vue, Svelte, Lit, Alpine/HTMX, a project dev server, or any adapter may
+  render the preview, but the review record must still name the design authority,
+  chosen frontend framework, and any PRD override or deviation.
+- Keep review-surface controls isolated: do not use SpecCompass review confirmation rail in business UI. The right confirmation rail, approve/defer/reject controls, authorization writeback UI, and SpecCompass control-plane labels may appear only under `specs/<feature>/ui/review/*` unless the target product explicitly requires an approval side panel as a business feature.
 - Classify visual review into three tiers before promoting UI artifacts:
   - **No confirmation required**: trivial copy, label, formatting, or docs-only refresh; no new or changed screens, actions, fields, states, permissions, data binding, validation, or downstream readiness impact; and no visual artifact requires a direction choice. Record why confirmation was not required.
   - **Recommended confirmation**: small non-critical organization, readability, or layout changes, including 1-2 non-critical screens, actions, fields, or states, where flow/source backing is clear and no critical flow, data, permission, or acceptance path is affected. The run may continue as a draft or with a warning, but must state what the user should review by visible label.
@@ -154,6 +180,21 @@ owner_approval:
   status: APPROVED | PENDING | NOT_REQUIRED
 human_confirmation: CONFIRMED | NEEDS_REVISION | REJECTED | SCOPED_CONFIRMATION | STALE | REVOKED
 authorization_scope: READY_FOR_PLAN | BLOCKED | <narrow confirmed scope>
+design_authority: huashu-design
+design_scope: review-surface | business-preview | business-production
+design_skill_used: huashu-design | fallback-generic | <custom>
+frontend_framework: <framework-or-not-selected>
+brand_override: none | <PRD source/design system>
+design_deviation_items:
+  - item_id: <id>
+    expected: <huashu-design expectation>
+    actual: <override/deviation>
+    reason: <PRD/user-confirmed source>
+    severity: deviation-minor | deviation-moderate | deviation-critical
+implementation_design_requirements:
+  - use huashu-design tokens unless PRD override applies
+  - preserve confirmed layout hierarchy
+  - do not use SpecCompass review confirmation rail in business UI
 confirmed_items: [<SCREEN/ACTION/FIELD labels or IDs>]
 deferred_items: [<SCREEN/ACTION/FIELD labels or IDs>]
 rejected_items: [<SCREEN/ACTION/FIELD labels or IDs>]
@@ -297,12 +338,20 @@ not authorization evidence until written to `ui-confirmation.md`.
   wide, use Tiffany Blue `#0ABAB5` as the primary color, and include batch
   summary, framework approximation/deviation notes, feedback textarea,
   per-item approve/defer/reject controls, and a batch confirmation action. The
-  page must show where `ui-confirmation.md` will be written. If HTML review is
+  page must show where `ui-confirmation.md` will be written. The visual design
+  must come from `huashu-design`; if that skill is missing, mark the page and
+  review data with `Design Skill: huashu-design missing` and keep the result
+  non-authoritative until the user accepts the deviation. If HTML review is
   unavailable, the Markdown batch review manifest must expose the same fields.
 - Refresh `specs/<feature>/memory/stable-context.md` only when source-backed or checked UI facts changed, or when routing changed. Draft inferences stay in `ui/*` or `memory/open-items.md`.
 - Refresh `specs/<feature>/memory/trace-index.md` only when stable UI trace links changed. Draft links stay in `ui/*` or `memory/open-items.md` until checked.
 - Refresh `specs/<feature>/memory/index.md` if routing changes
 - Write or refresh UI `Stage Readiness` in `specs/<feature>/ui/index.md` or `specs/<feature>/memory/index.md`: include `Stage`, `Status`, `Based On`, `Source Snapshot` or `Evidence Signature`, `Confirm Strategy`, `Batch ID`, `Batch Scope`, `Batch Review Status`, `Unresolved Blockers`, `Needs Decision`, `Inferred/Draft Items`, `Next Allowed Stage`, and `Writeback Target`. The signature must include `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`. Use `WAITING_FOR_BATCH_REVIEW` when the batch is generated but not confirmed. Use `READY_FOR_PLAN` only when screen/action/field/state bindings, flow provenance, draft-inference handling, batch or visual-review status, and open blockers are clean; otherwise use `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` with the next owner route.
+- UI `Stage Readiness` must also include `Design Authority`, `Design Scope`,
+  `Frontend Framework`, `Brand Override`, `Design Deviations`, and
+  `Implementation Design Requirements`. Do not mark `READY_FOR_PLAN` for
+  frontend work unless these fields are present and the review-surface isolation
+  rule is satisfied.
 
 ## Check Before Finish
 

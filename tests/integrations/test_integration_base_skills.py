@@ -22,6 +22,9 @@ from specify_cli.integrations.manifest import IntegrationManifest
 from .inventory_helpers import command_stems, shared_init_files
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+
 class SkillsIntegrationTests:
     """Mixin — set class-level constants and inherit these tests.
 
@@ -39,6 +42,7 @@ class SkillsIntegrationTests:
     COMMANDS_SUBDIR: str
     REGISTRAR_DIR: str
     CONTEXT_FILE: str
+    HELPER_SKILL_NAMES = {"huashu-design"}
 
     # -- Registration -----------------------------------------------------
 
@@ -86,6 +90,8 @@ class SkillsIntegrationTests:
         for f in skill_files:
             assert f.exists()
             assert f.name == "SKILL.md"
+            if f.parent.name in self.HELPER_SKILL_NAMES:
+                continue
             assert f.parent.name == skill_directory_name(f.parent.name)
 
     def test_setup_writes_to_correct_directory(self, tmp_path):
@@ -98,7 +104,9 @@ class SkillsIntegrationTests:
         }
         expected_dir = i.skills_dest(tmp_path)
         assert expected_dir.exists(), f"Expected directory {expected_dir} was not created"
-        skill_files = [f for f in created if f.name == "SKILL.md"]
+        skill_files = [
+            f for f in created if f.name == "SKILL.md" and f.parent.name not in self.HELPER_SKILL_NAMES
+        ]
         assert len(skill_files) > 0, "No skill files were created"
         for f in skill_files:
             # Each SKILL.md is in a generated skill directory under an allowed skills root.
@@ -111,7 +119,9 @@ class SkillsIntegrationTests:
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
-        skill_files = [f for f in created if f.name == "SKILL.md"]
+        skill_files = [
+            f for f in created if f.name == "SKILL.md" and f.parent.name not in self.HELPER_SKILL_NAMES
+        ]
 
         expected_commands = set(command_stems())
 
@@ -122,6 +132,26 @@ class SkillsIntegrationTests:
             actual_commands.add(skill_basename_stem(skill_dir_name))
 
         assert actual_commands == expected_commands
+
+    def test_setup_installs_bundled_design_skills(self, tmp_path):
+        """Skills hosts should get project-local helper skills required by SP methodology."""
+        i = get_integration(self.KEY)
+        m = IntegrationManifest(self.KEY, tmp_path)
+        created = i.setup(tmp_path, m)
+
+        skill_file = i.skills_dest(tmp_path) / "huashu-design" / "SKILL.md"
+        assert skill_file.exists()
+        assert skill_file in created
+        content = skill_file.read_text(encoding="utf-8")
+        assert "name: huashu-design" in content
+        assert "frontend display pages" in content
+        assert "SpecCompass" in content
+
+    def test_bundled_design_skills_are_included_in_wheel(self):
+        """Published wheels must include helper skills, not only source checkouts."""
+        pyproject = (PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+
+        assert '"templates/skills" = "specify_cli/core_pack/skills"' in pyproject
 
     def test_skill_frontmatter_structure(self, tmp_path):
         """SKILL.md must have name, description, compatibility, metadata."""
@@ -555,6 +585,7 @@ class SkillsIntegrationTests:
         # Skill files
         for cmd in self._SKILL_COMMANDS:
             files.append(f"{skills_prefix}/{skill_directory_name(cmd)}/SKILL.md")
+        files.append(f"{skills_prefix}/huashu-design/SKILL.md")
 
         for companion_dir in i.companion_skill_dirs(Path(".")):
             companion_prefix = companion_dir.as_posix()

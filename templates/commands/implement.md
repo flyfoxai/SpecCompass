@@ -62,6 +62,20 @@ You **MUST** consider the user input before proceeding (if not empty).
      - If either confirmation document is absent, stale, rejected, revoked, waiting for batch review, or narrower than the selected task's required scope, stop before editing. Return `Blocker Type: UPSTREAM_DOC_GAP`, name the missing or stale confirmation artifact, and route to `/sp.flow`, `/sp.ui`, `/sp.plan`, or `/sp.tasks` as the owner.
      - `SCOPED_CONFIRMATION` does not authorize implementation for the full batch. Implementation may consume only explicitly confirmed items whose deferred or rejected siblings are isolated into a child batch and whose dependency impact is recorded. If the selected task touches unresolved child-batch items, return `NEEDS_TASKS` or `NEEDS_PLAN` instead of editing.
      - `--auto` does not bypass Flow/UI batch confirmation, Stage Entry Preflight, stale checks, owner approval, or authorization writeback.
+   - For frontend tasks, confirm the selected task has a `Design Constraint`,
+     read `plan.md` `Frontend Design Authority`, and read
+     `specs/<feature>/ui/review/ui-confirmation.md`. Confirm
+     `design_authority: huashu-design` or an approved PRD/product design-system
+     override. If the selected task touches business UI under `src/`, app
+     pages, components, styles, routes, or a project dev server, do not
+     implement the right confirmation rail, approve/defer/reject controls,
+     authorization writeback UI, or SpecCompass labels unless the business spec
+     explicitly requires that product feature.
+   - If PRD framework or design-system requirements conflict with the Huashu
+     baseline, follow the approved PRD override recorded in UI confirmation or
+     `Frontend Design Authority`, and preserve deviation evidence. If the
+     design authority, override, or deviation record is missing, stop with
+     `NEEDS_UI`, `NEEDS_PLAN`, or `NEEDS_TASKS` instead of guessing.
    - Check whether user input changes requirements, acceptance, flow, UI, architecture, workset boundary, task split, allowed write set, required checks, risk acceptance, or verification standard. If so, stop implementation and route to `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.plan`, or `/sp.tasks` as the owner.
    - If implementation would need to invent missing source facts, code boundaries, task packet fields, runtime commands, human decisions, or validation downgrade, stop and report the upstream route instead of editing.
    - If preflight fails, return `NEEDS_PLAN`, `NEEDS_TASKS`, `NEEDS_CONTEXT`, `BLOCKED`, or `NEEDS_DECISION` as appropriate, and include `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`.
@@ -160,11 +174,21 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Task mode**: `Mode: impl` tasks are executable by this command; missing mode or `Mode: doc` tasks are not production-code tasks and must be routed back to `/sp.tasks` or executed by the appropriate document command.
    - **Task details**: ID, description, file paths, parallel markers [P], `Allowed Write Set`, `Required Checks`, trace anchors, and effective defaults
    - **Continuation fields**: `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates` when present or required by risk
+   - **Frontend design fields**: for frontend implementation, parse the task's
+     `Design Constraint`, `plan.md` `Frontend Design Authority`, and
+     `ui-confirmation.md` design fields before editing. Translate the confirmed
+     design into theme tokens, CSS variables, component styles, layout rules,
+     and required checks. Treat the frontend framework as the implementation
+     carrier, not the design authority.
    - **Execution flow**: Order and dependency requirements
    - **Task packet defaults**: Confirm the selected task exposes compressed effective defaults for `Forbidden Write Set`, `Fallback Route`, `Writeback Rule`, and `Required Evidence`, or points to a small stable defaults file that was read before editing.
    - If a selected implementation task lacks `Mode: impl`, stop and return `NEEDS_TASKS` with the task ID, why it cannot be executed as code, and the next `/sp.tasks` route.
    - If `plan.md` does not mark the task's workset implementation-ready, stop and return `NEEDS_PLAN` or `NEEDS_DECISION` with the blocking readiness evidence and next route.
    - If required task context is missing and cannot be recovered from routed files, stop and return `NEEDS_CONTEXT` with the missing context, files checked, and next route.
+   - If a frontend task lacks `Design Constraint`, references
+     `huashu-design` without confirmation evidence, or would leak the
+     SpecCompass review right confirmation rail into business UI, stop with
+     `NEEDS_TASKS`, `NEEDS_PLAN`, or `NEEDS_UI` before editing.
 
 7. Execute implementation following the selected task plan:
    - **Selected-scope execution**: Execute only the selected `Mode: impl` task or task group for this run. Do not treat `/sp.implement` as permission to finish every task in `tasks.md` unless the user explicitly requested full remaining implementation and every included task is independently ready.

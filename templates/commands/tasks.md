@@ -111,6 +111,24 @@ Execution flow:
      - `Required Checks`: tests, build, lint, typecheck, script, or manual verification route
      - `Trace Anchors`: relevant `FLOW`, `UI`, `API`, `TABLE`, `PERM`, `EVENT`, `ACC`, `CODE`, or `TEST` anchors
      - `Read Set`: the smallest memory, source-doc, code, and test files the implementer should read before editing
+     - `Design Constraint` for frontend implementation tasks:
+       ```yaml
+       Design Constraint:
+         design_skill: huashu-design
+         design_layer: review-surface | business-preview | business-production
+         frontend_framework: <framework>
+         brand_override: none | <PRD source/design system>
+         apply_review_rail: false
+         allowed_deviation: false | true
+         deviation_source: <ui-confirmation or PRD source>
+         required_checks:
+           - theme tokens match confirmed UI design
+           - layout follows confirmed UI hierarchy
+           - no SpecCompass confirmation controls in business pages
+       ```
+       Use `apply_review_rail: false` for normal business UI. Set it true only
+       when the target product explicitly requires an approval side panel as a
+       business feature and the source artifact names that requirement.
      - `Dependencies Checked`: direct dependencies, imports, routes, contracts, data objects, permissions, tests, or workset neighbors that must be checked before closeout
      - `Reverse Trace Checked`: required reverse lookup/search evidence before delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes
      - `Expected Delta`: the intended user-visible, contract, data, test, or internal behavior change in one concise statement
@@ -187,6 +205,10 @@ Execution flow:
    - Confirm no task requires a hidden context set larger than its workset can safely hold.
    - Confirm every `Mode: impl` task has a readiness source, `Allowed Write Set`, `Required Checks`, trace anchors or explicit no-trace reason, effective defaults, and gate/evidence expectation visible in the task packet.
    - Confirm high-risk or code-continuation `Mode: impl` tasks include `Read Set`, `Dependencies Checked`, `Reverse Trace Checked`, `Expected Delta`, `Delta Summary`, and `Proposed Updates`, or an explicit `N/A - <reason>` when a field is not applicable. Empty fields are not evidence.
+   - Confirm frontend `Mode: impl` tasks include `Design Constraint`, consume
+     `plan.md` `Frontend Design Authority`, and do not ask production business
+     UI to implement the SpecCompass review-surface right confirmation rail
+     unless an explicit business requirement allows it.
    - Confirm no `Mode: impl` task was generated from a workset that lacks `plan.md` `Implementation Readiness`.
    - Confirm blocker-derived tasks include `Blocker ID`, `Blocker Type`, `Failure Signature`, `Root Layer`, `Disconfirming Evidence` when retrying, and `Writeback Target`.
    - Confirm `BUSINESS_DECISION` and unresolved `SCOPE_CONFLICT` items are routed to `/sp.clarify`, not hidden inside implementation work.

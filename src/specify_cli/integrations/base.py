@@ -263,6 +263,25 @@ class IntegrationBase(ABC):
                 return candidate
         return None
 
+    def shared_skills_dir(self) -> Path | None:
+        """Return path to bundled helper skills.
+
+        Checks ``core_pack/skills/`` first for packaged installs, then
+        ``templates/skills/`` for source checkouts. These are project-local
+        helper skills required by the SP methodology, not generated core
+        ``sp-*`` command skills.
+        """
+        import inspect
+
+        pkg_dir = Path(inspect.getfile(IntegrationBase)).resolve().parent.parent
+        for candidate in [
+            pkg_dir / "core_pack" / "skills",
+            pkg_dir.parent.parent / "templates" / "skills",
+        ]:
+            if candidate.is_dir():
+                return candidate
+        return None
+
     def list_command_templates(self) -> list[Path]:
         """Return sorted list of command template files from the shared directory."""
         cmd_dir = self.shared_commands_dir()
@@ -1402,6 +1421,41 @@ class SkillsIntegration(IntegrationBase):
         """
         return ()
 
+    def install_bundled_helper_skills(
+        self,
+        project_root: Path,
+        manifest: IntegrationManifest,
+    ) -> list[Path]:
+        """Copy bundled helper skills into this integration's skills directory."""
+        skills_src = self.shared_skills_dir()
+        if not skills_src:
+            return []
+
+        project_root_resolved = project_root.resolve()
+        dest = self.skills_dest(project_root).resolve()
+        try:
+            dest.relative_to(project_root_resolved)
+        except ValueError as exc:
+            raise ValueError(
+                f"Bundled skill destination {dest} escapes "
+                f"project root {project_root_resolved}"
+            ) from exc
+
+        created: list[Path] = []
+        for skill_src_dir in sorted(p for p in skills_src.iterdir() if p.is_dir()):
+            skill_file_src = skill_src_dir / "SKILL.md"
+            if not skill_file_src.is_file():
+                continue
+
+            skill_dest_dir = dest / skill_src_dir.name
+            skill_file_dest = skill_dest_dir / "SKILL.md"
+            skill_dest_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(skill_file_src, skill_file_dest)
+            self.record_file_in_manifest(skill_file_dest, project_root, manifest)
+            created.append(skill_file_dest)
+
+        return created
+
     def post_process_skill_content(self, content: str) -> str:
         """Post-process a SKILL.md file's content after generation.
 
@@ -1601,6 +1655,8 @@ class SkillsIntegration(IntegrationBase):
                 arg_placeholder=arg_placeholder,
             )
         )
+
+        created.extend(self.install_bundled_helper_skills(project_root, manifest))
 
         created.extend(self.install_scripts(project_root, manifest))
 

@@ -165,6 +165,11 @@ bpmn-js 的启发是：复杂审批、跨角色协作、网关、事件和异常
 - PRD 或目标产品的前端框架选择，应优先考虑真实 UI 开发需要：业务页面复杂度、团队既有技术栈、组件库、运行环境、性能、可访问性、部署方式和长期维护成本。
 - 如果 PRD 已明确要求 Vue、Svelte、原生 Web Components、服务端渲染、移动端框架或其他技术栈，`/sp.ui` 的目标产品 UI 规格应服从 PRD；React + Vite 确认页只能作为审查外壳或近似预览层。
 - 如果确认页模板使用的框架不能准确表达 PRD 要求的 UI 能力，应及时标注偏差，并转向更符合 PRD 的预览方式，例如接入真实项目 dev server、Storybook、目标框架 adapter，或在确认文档中把该项列为 `Needs implementation check`。
+- 前端展示页面的设计必须接入 `huashu-design` skill。React + Vite 是确认页工具层默认方案，负责承载、构建和交互；`huashu-design` 负责前端展示页面的设计规范、视觉组织和页面体验判断。两者不是替代关系。
+- 如果当前宿主没有提供 `huashu-design` skill，应在确认页和确认文档中记录 `Design Skill: huashu-design missing`，并把视觉结果标记为非授权草稿或带偏差的近似预览，等待用户安装/启用 skill 或明确接受降级。
+- `huashu-design` 同时作用于三类界面：SpecCompass 确认页、业务 UI 预览、业务前端实现。确认页必须使用统一 Tiffany blue 模板和右侧确认栏；业务 UI 预览默认以 `huashu-design` 为设计权威；业务前端实现则把确认过的设计要求转成 theme token、CSS 变量、组件样式、布局规则和验收检查。
+- 如果 PRD 或目标产品已确认设计系统与 `huashu-design` 冲突，业务前端实现应服从 PRD 或产品设计系统，但必须记录 `brand_override`、偏差项、原因和影响范围。前端框架只是承载方式，不能替代设计权威。
+- 右侧确认栏只属于确认页。approve/defer/reject 控件、反馈输入、授权写回 UI 和 SpecCompass 控制面标签不得进入业务前端实现，除非目标产品明确要求类似业务审批侧栏，并且该侧栏已按业务权限、数据和验收重新建模。
 
 ## 5. 统一确认页模板规范
 
@@ -916,11 +921,16 @@ DO_NOT_RUN: <当前不要运行的命令或 None>
 
 - 生成 `flows/review/flow-review.html` 和 `flows/review/flow-review-data.json`。
 - 默认生成或刷新 flow batch review manifest；多模块/多 workset 场景默认集中确认，而不是逐模块打断用户。
+- 单张可审核流程图通常不超过 12 个业务节点；10-12 个节点时优先拆成 overview 加子流程；超过 12 个业务节点时必须先拆成子流程，再请求用户确认。
+- 流程图采用自上而下的主干优先布局：主成功路径纵向居中，异常、驳回、补偿、回滚、阻塞和恢复路径侧向展开，避免交叉线和无业务意义的对称节点。
+- overview 图只展示主阶段、子流程交接、跨角色交接和未解决 blocker；每个子流程保持单一职责、清楚输入输出边界和可见 review 标签。
 - `Stage Readiness` 记录 `Confirm Strategy`、`Batch ID`、`Batch Scope`、`Batch Review Status`；确认前状态为 `WAITING_FOR_BATCH_REVIEW`。
 - 使用统一确认页模板，而不是命令临时生成不同风格页面。
 - 顶部展示 SpecCompass 机制确认说明、页面标题、feature、command、stage 和 SP 工具产物声明。
 - 页面左侧能看到所有必须确认的流程标签。
 - 页面右侧能对每个流程项选择状态并填写意见。
+- 页面右侧反馈确认栏是合格条件；缺失右侧栏时，review artifact 不得作为授权证据。
+- 阻塞、待决策和 stale 状态必须同时出现在图和右侧确认栏；`Pending Decisions` 非空、决策无默认路径或分支出口未定义时，不允许 `READY_FOR_UI`。
 - 右侧确认栏使用统一 Tiffany blue 主题 token 和统一布局。
 - `modified`、`rejected`、`deferred` 无意见时不能完成全局确认。
 - 能生成或导出 `flow-confirmation.md`。

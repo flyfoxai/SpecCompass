@@ -15,11 +15,17 @@ def command_stems() -> list[str]:
 
 
 def root_template_files() -> list[str]:
-    return sorted(
+    files = [
         f".specify/templates/{path.name}"
         for path in TEMPLATES_ROOT.glob("*.md")
         if path.is_file()
+    ]
+    files.extend(
+        f".specify/templates/skills/{path.parent.name}/{path.name}"
+        for path in (TEMPLATES_ROOT / "skills").glob("*/SKILL.md")
+        if path.is_file()
     )
+    return sorted(files)
 
 
 def project_template_files() -> list[str]:

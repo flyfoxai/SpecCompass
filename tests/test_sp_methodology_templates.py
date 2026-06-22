@@ -1560,6 +1560,8 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     analyze = _command("analyze")
     gate = _command("gate")
     plan = _command("plan")
+    tasks = _command("tasks")
+    implement = _command("implement")
     command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
         encoding="utf-8"
     )
@@ -1598,6 +1600,16 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "**Required confirmation**" in flow
     assert "first-time stable flow generation" in flow
     assert "3 or more new flow nodes" in flow
+    assert "single reviewable flow diagram should normally contain no more than 12 business nodes" in flow
+    assert "At 10-12 nodes, prefer a summary diagram plus subflows" in flow
+    assert "Above 12 business nodes, split into subflows before asking for approval" in flow
+    assert "top-down main-trunk layout" in flow
+    assert "SpecCompass — <project> / <feature>" in flow
+    assert "right feedback rail is mandatory" in flow
+    assert "blocked, pending decision, and stale statuses" in flow
+    assert "Pending Decisions" in flow
+    assert "decision node has an explicit default path" in flow
+    assert "undefined branch exit" in flow
     assert "which tier would otherwise apply" in flow
     assert "`--auto` may skip only the visual review gate" in flow
     assert "concise Chinese flow" in flow
@@ -1623,6 +1635,13 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "unless `spec.md` explicitly requires" in ui
     assert "business domain anchor" in ui
     assert "Put this anchor visibly near the top of `ui/index.md`" in ui
+    assert "huashu-design" in ui
+    assert "frontend display pages" in ui
+    assert "If the host does not provide the `huashu-design` skill" in ui
+    assert "design_authority: huashu-design" in ui
+    assert "business-production" in ui
+    assert "implementation_design_requirements" in ui
+    assert "do not use SpecCompass review confirmation rail in business UI" in ui
     assert "unconfirmed flow draft" in ui
     assert "Classify visual review into three tiers" in ui
     assert "**No confirmation required**" in ui
@@ -1661,6 +1680,36 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
 
     assert "Treat unchecked `/sp.flow` and `/sp.ui` outputs as draft facts" in plan
     assert "Preserve `FLOW` as the main relation axis" in plan
+    assert "Frontend Design Authority" in plan
+    assert "framework implements design; framework does not replace design authority" in plan
+
+    assert "Design Constraint" in tasks
+    assert "apply_review_rail" in tasks
+
+    assert "Frontend Design Authority" in implement
+    assert "ui-confirmation.md" in implement
+    assert "right confirmation rail" in implement
+
+    assert "单张可审核流程图通常不超过 12 个业务节点" in methodology
+    assert "10-12 个节点时优先拆成 overview 加子流程" in methodology
+    assert "超过 12 个业务节点时必须先拆成子流程" in methodology
+    assert "自上而下的主干优先布局" in methodology
+    assert "右侧反馈确认栏是 flow 确认页的合格条件" in methodology
+    assert "阻塞、待决策和 stale 状态必须同时出现在图和右侧确认栏" in methodology
+    assert "前端展示页面的设计必须使用 `huashu-design` skill" in methodology
+    assert "宿主没有提供 `huashu-design` skill" in methodology
+    assert "后期前端开发" in methodology
+    assert "PRD" in methodology and "覆盖" in methodology and "偏差" in methodology
+    assert "右侧确认栏" in methodology and "业务前端" in methodology
+
+    review_design = (PROJECT_ROOT / "docs" / "reference" / "sp-flow-ui-confirmation-review-design.zh-CN.md").read_text(
+        encoding="utf-8"
+    )
+    assert "huashu-design" in review_design
+    assert "前端展示页面" in review_design
+    assert "确认页工具层默认方案" in review_design
+    assert "业务前端实现" in review_design
+    assert "右侧确认栏只属于确认页" in review_design
 
     assert "classify flow visual review into three tiers before promotion" in command_spec
     assert "show a concise Chinese" in command_spec
