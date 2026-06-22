@@ -73,8 +73,90 @@ Global rules:
   recommendation, and state the reason. Keep the flow in `DRAFT_ONLY`,
   `NEEDS_DECISION`, or `BLOCKED` until the user confirms or chooses a repair
   option.
+- Default human confirmation strategy is `confirm_strategy: batch`. For a
+  multi-module, multi-workset, or dependency-domain flow generation, generate or
+  refresh all in-scope flow drafts first, add them to the batch review manifest,
+  and set flow readiness to `WAITING_FOR_BATCH_REVIEW` until the user completes
+  the batch confirmation. Do not interrupt the user for per-module confirmation
+  unless the user selected `confirm_strategy: rolling`, the current run is a
+  small hotfix, a core dependency must be locked before the rest, the batch is
+  too large for one review, or reviewer availability requires a split. In those
+  cases, record the downgrade reason and use `hybrid` or `rolling`.
+- Batch confirmation must preserve human context: one flow batch should include
+  `Batch ID`, `Batch Scope`, `Included Items`, `Excluded Items`, `Source
+  Snapshot` or `Evidence Signature`, `Review Owner`, `Batch Review Status`,
+  `Scoped Approval Policy`, and `Fallback Strategy`. Scoped approval does not
+  unlock `READY_FOR_UI` unless failed/deferred items are explicitly split into
+  a child batch and dependency impact is recorded.
+- Scoped approval does not authorize the full batch. A `SCOPED_CONFIRMATION` result must
+  name confirmed items, deferred or rejected items, child batch IDs, dependency
+  impact, and the next owner route. Downstream stages may consume only the
+  confirmed scope when unresolved items are isolated and do not affect the
+  requested downstream work.
+- Batch-related notifications must use a stable field shape when they are shown
+  in command output or review pages: `NOTIFY_TYPE`, `MESSAGE`, `WHY_NOW`,
+  `IMPACT`, `REQUIRED_ACTION`, `BLOCKS_STAGE`, `NEXT_COMMAND`, `DO_NOT_RUN`,
+  and `WRITE_BACK`. Use `INFO` when first explaining the batch-first strategy,
+  `AUTH` when a batch is ready for confirmation, `STALE` when source changes
+  invalidate a prior confirmation, and `BLOCK` when a downstream command would
+  bypass required confirmation.
 - For explicit `--auto` runs, only the visual review gate may be skipped. State why it was skipped, what changed, which tier would otherwise apply, and whether the result is still draft or ready for the next step.
-- `--auto` may skip only the visual review gate; it must never skip Subject Scope, business domain anchor, Stage Entry Preflight, or subject-confusion checks.
+- `--auto` may skip only the visual review gate; it must never skip Subject Scope, business domain anchor, Stage Entry Preflight, subject-confusion checks, batch confirmation, confirmation-document writeback, stale checks, owner approval, or authorization scope checks. If the current scope requires batch confirmation, `--auto` must still write `WAITING_FOR_BATCH_REVIEW` and request human authorization.
+
+## Confirmation Document Schema
+
+`specs/<feature>/flows/review/flow-confirmation.md` is the SP workflow authorization record for a confirmed flow batch. It must be Markdown with machine-readable frontmatter:
+
+```yaml
+document_type: sp_human_confirmation
+command: /sp.flow
+feature: <feature>
+schema_version: 1
+review_artifact: specs/<feature>/flows/review/flow-review.html
+review_artifact_mode: single-file-static | local-writer | server-preview | markdown-only
+confirm_strategy: batch | hybrid | rolling
+batch_id: <Batch ID from the review manifest>
+batch_scope: <confirmed flow scope>
+batch_review_status: CONFIRMED | SCOPED_CONFIRMATION | REJECTED | STALE | REVOKED
+source_artifacts_snapshot:
+  - path: specs/<feature>/spec.md
+    digest: sha256:<...> | not-computed
+    semantic_scope: [requirements, acceptance, flow]
+    anchors: [<stable-heading-or-id>]
+source_hash_verified: MATCH | STALE | NOT_CHECKED
+confirmed_by:
+  name: <human name or role>
+  email: <optional>
+  role: owner | reviewer | stakeholder
+  confirmed_at: <ISO-8601 or run label>
+owner_approval:
+  required: true | false
+  status: APPROVED | PENDING | NOT_REQUIRED
+human_confirmation: CONFIRMED | NEEDS_REVISION | REJECTED | SCOPED_CONFIRMATION | STALE | REVOKED
+authorization_scope: READY_FOR_UI | BLOCKED | <narrow confirmed scope>
+confirmed_items: [<FLOW labels or IDs>]
+deferred_items: [<FLOW labels or IDs>]
+rejected_items: [<FLOW labels or IDs>]
+child_batches:
+  - batch_id: <child-batch-id>
+    status: pending | confirmed | rejected | stale
+    dependency_impact: <what remains blocked>
+items_with_deviation:
+  - id: <item-id>
+    severity: deviation-minor | deviation-moderate | deviation-critical
+    note: <deviation or inference note>
+reservations: [<explicit reservations>]
+revocation:
+  status: active | revoked | superseded
+  revoked_by: <name-or-None>
+  revoked_at: <ISO-8601-or-None>
+```
+
+Do not promote flow `Stage Readiness` to `READY_FOR_UI` until this document
+exists, has `human_confirmation: CONFIRMED`, has owner approval when required,
+covers the requested authorization scope, and is not stale. Review manifests,
+HTML local state, screenshots, or browser localStorage are review aids; they are
+not authorization evidence until written to `flow-confirmation.md`.
 
 ## Purpose
 
@@ -102,6 +184,11 @@ Global rules:
 - Check whether user input changes product goal, source authority, requirements, acceptance, business rules, or scope boundary. If so, stop flow work and route to `/sp.prd`, `/sp.specify`, or `/sp.clarify` before creating or refreshing flow artifacts.
 - Check whether the requested flow decision depends on unresolved user intent, conflicting requirements, risk acceptance, verification downgrade, permission ownership, or irreversible tradeoff. If so, route to `/sp.clarify` with the decision options instead of inventing the transition.
 - Confirm existing flow artifacts are not only generic templates, stale drafts, or unconfirmed visual-review outputs being used as stable facts. If they are, keep the result draft or route to the owner command before promoting memory or trace.
+- Confirm whether the current run belongs to an existing flow batch or starts a
+  new one. If an existing `WAITING_FOR_BATCH_REVIEW` flow batch covers the same
+  scope, update that batch instead of creating independent per-module
+  confirmations. If source changes make the batch baseline stale, mark the batch
+  stale and route to the owner refresh before adding more downstream evidence.
 - If the source information is coarse but the business domain, user role, business goal, and feature boundary are clear, continue only by creating a bounded draft decomposition. Use common business-flow patterns to fill likely missing steps, mark each inferred step as `Source: model-inferred`, and keep it draft until user review or later analyze/gate checks. If the coarse source hides a business choice, security/permission rule, compliance rule, irreversible transition, pricing/settlement rule, or acceptance meaning, stop and route to `/sp.clarify` or `/sp.specify` instead of inferring it.
 - If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not generate flow documents from missing or contradictory requirement facts just to satisfy downstream commands.
 
@@ -140,7 +227,11 @@ Global rules:
 - If branch, state, or exception behavior cannot be resolved after bounded evidence review, fall back to `/sp.clarify` or `/sp.specify` instead of inventing the transition.
 - If a direct-neighbor data-linkage gap affects acceptance, tests, release, rollback, permissions, data safety, or human decisions, register it in `memory/open-items.md` and route to `/sp.clarify`, `/sp.specify`, `/sp.ui`, `/sp.plan`, or `/sp.gate` rather than smoothing it over in the flow diagram.
 - If the same flow issue has multiple reasonable repairs, offer 2-3 options with impact, recommendation, and next command instead of choosing silently.
-- If an earlier flow draft is still waiting for confirmation and the user moves to a downstream command or a new topic, remind the user that the draft is not stable and ask whether to continue review, abandon the draft, or start the new task.
+- If an earlier flow batch is still waiting for confirmation and the user moves
+  to a downstream command or a new topic, remind the user that the batch is not
+  stable, name the affected `Batch ID` and `Batch Scope`, and recommend returning
+  to the batch review page. Do not suggest `/sp.ui`, `/sp.plan`, or `/sp.gate`
+  until the batch is confirmed or explicitly split.
 - After drafting but before writing files, run a subject-confusion scan. If any draft flow node, label, event, or UI contract primarily describes SP mechanics, command stages, routing, memory operations, or a process-display UI instead of the target business domain, discard the affected draft before file write, stop execution, and return a `SUBJECT_CONFUSION` blocker that instructs the next run to regenerate from `spec.md`.
 - If the same feature or workset hits `SUBJECT_CONFUSION` twice for the same business-domain boundary, stop retrying and route to `/sp.clarify` with 2-3 boundary choices for the user to decide.
 
@@ -155,16 +246,32 @@ Global rules:
 - Do not invent exception handling or state transitions that are not supported by `spec.md` or clarifications.
 - Do not use deep default IDs such as `FLOW01.STEP04`, `UI03.BTN05`, or `API02.FIELD03` as stable public coordinates unless a recurring cross-document object truly needs promotion.
 - Do not write draft flow assumptions into `memory/stable-context.md` or use them to close `OPEN-*`, `RISK-*`, `@t0`, or `@r0`.
-- Do not suggest `/sp.ui`, `/sp.plan`, or `/sp.gate` as if the flow is stable when the current run requires visual review and the user has not confirmed the draft.
+- Do not suggest `/sp.ui`, `/sp.plan`, or `/sp.gate` as if the flow is stable when the current run requires batch confirmation or visual review and the user has not confirmed the draft.
 
 ## Output
 
 - Create or update `specs/<feature>/flows/index.md`
 - Create or update `specs/<feature>/flows/*.mmd`
+- Create or update `specs/<feature>/flows/review/flow-review-batch.md` or an
+  equivalent batch review manifest when confirmation is recommended or required.
+- Create or update `specs/<feature>/flows/review/flow-review.html` and
+  review-data artifacts when the unified confirmation page is available.
+- After the user completes batch confirmation, write or update
+  `specs/<feature>/flows/review/flow-confirmation.md` using the Confirmation
+  Document Schema above. This Markdown file is the authorization evidence
+  downstream commands must read before treating flow artifacts as stable input.
+- When generating `flow-review.html`, use the unified confirmation template:
+  a header with a short specCompass mechanism note and page title, a main review
+  area with labeled flow diagrams or tables, and a narrow right confirmation
+  sidebar. The sidebar should be approximately 280-320px wide, use Tiffany Blue
+  `#0ABAB5` as the primary color, and include batch summary, feedback textarea,
+  per-item approve/defer/reject controls, and a batch confirmation action. The
+  page must show where `flow-confirmation.md` will be written. If HTML review is
+  unavailable, the Markdown batch review manifest must expose the same fields.
 - Refresh `specs/<feature>/memory/stable-context.md` only when source-backed or checked flow facts changed, or when routing changed. Draft inferences stay in `flows/*` or `memory/open-items.md`.
 - Refresh `specs/<feature>/memory/trace-index.md` only when stable trace links changed. Draft links stay in `flows/*` or `memory/open-items.md` until checked.
 - Refresh `specs/<feature>/memory/index.md` if routing changes
-- Write or refresh flow `Stage Readiness` in `specs/<feature>/flows/index.md` or `specs/<feature>/memory/index.md`: include `Stage`, `Status`, `Based On`, `Source Snapshot` or `Evidence Signature`, `Unresolved Blockers`, `Needs Decision`, `Inferred/Draft Items`, `Next Allowed Stage`, and `Writeback Target`. The signature must include `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`. Use `READY_FOR_UI` only when the source-backed flow, port contracts, UI contracts, provenance, visual-review status, and open blockers are clean; otherwise use `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` with the next owner route.
+- Write or refresh flow `Stage Readiness` in `specs/<feature>/flows/index.md` or `specs/<feature>/memory/index.md`: include `Stage`, `Status`, `Based On`, `Source Snapshot` or `Evidence Signature`, `Confirm Strategy`, `Batch ID`, `Batch Scope`, `Batch Review Status`, `Unresolved Blockers`, `Needs Decision`, `Inferred/Draft Items`, `Next Allowed Stage`, and `Writeback Target`. The signature must include `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`. Use `WAITING_FOR_BATCH_REVIEW` when the batch is generated but not confirmed. Use `READY_FOR_UI` only when the source-backed flow, port contracts, UI contracts, provenance, batch or visual-review status, and open blockers are clean; otherwise use `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` with the next owner route.
 
 ## Check Before Finish
 
@@ -188,7 +295,11 @@ Global rules:
 - Confirm draft assumptions are labeled or routed to `memory/open-items.md` instead of being promoted to stable memory.
 - Confirm any open branch, state conflict, or unresolved exception is registered in `memory/open-items.md`.
 - Confirm whether the visual review gate was required, skipped, or already satisfied. If required and not satisfied, confirm the flow remains a draft and is not promoted to stable memory or stable trace.
-- Confirm flow `Stage Readiness` is not `READY_FOR_UI` when source provenance is missing, draft inference is used as stable evidence, visual review is still required, `SP_STAGE_SEED` remains, or high-impact open items remain.
+- Confirm whether the default batch confirmation applies. If it applies and is
+  not complete, confirm `Stage Readiness.Status` is `WAITING_FOR_BATCH_REVIEW`,
+  the batch manifest lists all in-scope flow items, and downstream commands are
+  blocked until confirmation or explicit batch split.
+- Confirm flow `Stage Readiness` is not `READY_FOR_UI` when source provenance is missing, draft inference is used as stable evidence, batch/visual review is still required, `SP_STAGE_SEED` remains, or high-impact open items remain.
 
 ## Next
 
@@ -210,10 +321,10 @@ Global rules:
   WHY_THIS_NEXT: <why this is the correct direction, grounded in global/feature memory, open-items, Stage Readiness, and this command evidence>
   DO_NOT_RUN: <commands that would be unsafe now, or None>
   ```
-- Recommend `/sp.ui <feature>` or `/sp.gate <feature>` only when flow `Stage Readiness` is `READY_FOR_UI`; otherwise recommend `/sp.flow`, `/sp.clarify`, or `/sp.specify` with the exact blocker route.
+- Recommend `/sp.ui <feature>` or `/sp.gate <feature>` only when flow `Stage Readiness` is `READY_FOR_UI`; if the status is `WAITING_FOR_BATCH_REVIEW`, recommend the flow batch review/confirmation route and list `/sp.ui`, `/sp.plan`, and `/sp.implement` under `DO_NOT_RUN`.
 - Suggest `/sp.ui` or `/sp.gate` only when flow `Stage Readiness` is `READY_FOR_UI`.
 - Keep `NEXT_COMMAND_EXEC` as the pure slash command. `NEXT_COMMAND` must be the same command plus the Chinese prompt in one line. Do not split the prompt into a separate field. After the recommendation fields, finish the entire response with a final `text` fenced code block that contains only the `NEXT_COMMAND` value. Do not put `OPTION_A/B/C`, `MY_RECOMMENDATION`, `NEXT_COMMAND_EXEC`, `WHY_THIS_NEXT`, `DO_NOT_RUN`, labels, or explanations inside that final copy box. If `NEXT_COMMAND_EXEC` is `None`, the final copy box contains only `None`.
-- End with a visual review prompt when renderable text diagrams, exported
+- End with a visual review prompt and batch confirmation prompt when renderable text diagrams, exported
   images, or flow previews exist. Tell the user:
   - a short Chinese flow review summary before the confirmation request:
     `设计依据` from PRD/spec/clarifications, `业务目标`, `参与角色`,
@@ -230,9 +341,8 @@ Global rules:
     to manual review instead of direct failure";
   - that visual changes must be written back to structured flow files before
     diagrams, exports, or previews are regenerated.
-- If visual review is required, do not present `/sp.ui` or `/sp.gate` as the
-  immediate next step until the user confirms the flow draft or selects a
-  repair option.
+- If batch confirmation or visual review is required, do not present `/sp.ui` or `/sp.gate` as the immediate next step until the user confirms the flow draft
+  or selects a repair option.
   The immediate recommendation should be the confirmation/repair action, with a
   copy-pasteable `/sp.flow <feature>` command that tells the next run exactly
   which visible flow/decision/exception labels to confirm or revise.

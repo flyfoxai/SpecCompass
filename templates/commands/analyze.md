@@ -147,7 +147,8 @@ Execution flow:
      - `sp.flow` artifacts that are treated as stable have upstream `Stage Readiness: READY_FOR_FLOW` from `spec.md` or feature memory
      - `sp.ui` artifacts that are treated as stable have upstream flow `Stage Readiness: READY_FOR_UI` from `flows/index.md` or feature memory
      - current UI artifacts that support downstream planning have UI `Stage Readiness: READY_FOR_PLAN`
-     - missing, stale, mismatched, generic-template, `SP_STAGE_SEED`, `DRAFT_ONLY`, `NEEDS_CLARIFY`, `NEEDS_DECISION`, or `BLOCKED` readiness prevents diagnostic PASS and routes to the owner command
+     - missing, stale, mismatched, generic-template, `SP_STAGE_SEED`, `DRAFT_ONLY`, `WAITING_FOR_BATCH_REVIEW`, `NEEDS_CLARIFY`, `NEEDS_DECISION`, or `BLOCKED` readiness prevents diagnostic PASS and routes to the owner command
+     - flow/UI readiness that uses `confirm_strategy: batch` must include `Batch ID`, `Batch Scope`, `Batch Review Status`, and the relevant confirmation document (`flow-confirmation.md` or `ui-confirmation.md`); review manifests, screenshots, HTML local state, or browser state are auxiliary review evidence only and cannot replace the authorization document. `WAITING_FOR_BATCH_REVIEW`, `partial`, `rejected`, or `stale` batch status cannot support diagnostic PASS, downstream readiness, risk closure, trace closure, or implementation readiness
      - readiness should include lightweight `Based On` plus `Source Snapshot` or `Evidence Signature`; minimum signature fields are `Sources`, `Anchors`, `Open Items`, `Visual/Human Review`, and `Checks`; do not use file mtime or raw hash as a hard gate because copy, Git, formatting, and regeneration noise can produce false stale signals
      - if the snapshot/signature does not match current source, trace, open-items, visual review, or gate/analyze evidence, report a stale/mismatch finding with the owner route; block diagnostic PASS when the mismatch affects stage entry, risk closure, trace closure, or implementation readiness
      - if confirmed human markers such as `[src:user-confirmed]`, `USER_CONFIRMED`, or `VERIFIED_BY_HUMAN` have no nearby decision record, report a finding and route to `/sp.clarify`; model-generated prose cannot prove human confirmation
@@ -299,6 +300,7 @@ Execution flow:
 - Do not mark PASS when project/feature routing is stale and the active target cannot be safely reconciled from current memory and source documents.
 - Do not mark PASS when generic template artifacts are the only evidence for flow, UI, delivery, implementation readiness, or acceptance coverage.
 - Do not mark PASS when required `Stage Readiness` is missing, stale, mismatched, or contradicted by current evidence.
+- Do not mark PASS when required flow/UI batch confirmation is still `WAITING_FOR_BATCH_REVIEW`, partial, rejected, or stale.
 - Do not mark PASS when `/sp.flow` ran or produced stable flow facts without upstream `READY_FOR_FLOW`.
 - Do not mark PASS when `/sp.ui` ran or produced stable UI facts without upstream `READY_FOR_UI`.
 - Do not mark PASS when stable flow/UI facts lack source provenance, or when `[INFER:DRAFT]` / `Source: model-inferred` is used as stable evidence.

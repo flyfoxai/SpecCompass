@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.17] - 2026-06-22
+
+### Changed
+
+- Added batch-first Flow/UI confirmation methodology with authorization documents, source snapshot checks, scoped approval handling, and stale/revocation safeguards.
+- Added unified Flow/UI confirmation page requirements with specCompass header, Tiffany Blue right-side confirmation rail, feedback input, item-level decisions, and batch authorization writeback.
+- Strengthened `/sp.plan`, `/sp.tasks`, `/sp.implement`, `/sp.analyze`, and `/sp.gate` so unconfirmed, partial, rejected, stale, or missing Flow/UI confirmation cannot support implementation readiness or PASS decisions.
+- Added the Flow/UI confirmation review design note documenting framework tradeoffs, notification semantics, and release-stage implementation guidance.
+
 ## [0.10.16] - 2026-06-21
 
 ### Changed

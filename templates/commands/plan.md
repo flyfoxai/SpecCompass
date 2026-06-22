@@ -80,6 +80,7 @@ Execution flow:
    - Confirm routing identifies one active feature and the required `bundle.md` is current enough for planning.
    - Check whether user input changes product goal, requirements, acceptance, flow, UI, workset boundary, architecture boundary, or implementation-readiness expectations. Route upstream before planning if the change belongs to PRD/spec/clarify/flow/ui.
    - Confirm upstream flow and UI contracts needed by the requested workset are present or explicitly tracked as open items. If delivery planning would have to invent flow state, UI behavior, data binding, permission, acceptance, or source facts, stop and route to `/sp.flow`, `/sp.ui`, `/sp.specify`, or `/sp.clarify`.
+   - Confirm flow/UI batch confirmation is complete before treating those artifacts as planning input. If flow or UI readiness is `WAITING_FOR_BATCH_REVIEW`, partial, rejected, stale, or missing batch confirmation evidence, stop and route to the relevant `/sp.flow` or `/sp.ui` batch review path instead of creating implementation readiness.
    - If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`. Do not create implementation readiness from missing or generic upstream facts.
 3. Load the smallest useful planning context:
    - `.specify/memory/feature-map.md`
@@ -92,7 +93,7 @@ Execution flow:
 4. Produce or refresh the delivery design outputs.
    - Define the delivery design objects and workset structure.
    - Keep relationships among flows, screens, data, APIs, permissions, and acceptance explicit.
-   - Treat unchecked `/sp.flow` and `/sp.ui` outputs as draft facts. They may guide planning, but any workset, API, data, permission, event, or acceptance decision that depends on an unchecked draft must cite the draft status and create or preserve an open item until `/sp.analyze`, `/sp.gate`, or equivalent evidence checks it.
+   - Treat unchecked `/sp.flow` and `/sp.ui` outputs as draft facts. They may guide planning discussion, but they cannot create implementation readiness. Any workset, API, data, permission, event, or acceptance decision that depends on an unchecked draft or `WAITING_FOR_BATCH_REVIEW` batch must cite the draft status and create or preserve an open item until the relevant batch is confirmed and `/sp.analyze`, `/sp.gate`, or equivalent evidence checks it.
    - Preserve `FLOW` as the main relation axis: delivery objects should trace back to `FLOW` coordinates, source documents, or open-item evidence instead of inventing independent UI/API/data behavior.
    - Before finalizing worksets, check that critical flow steps have enough port contract evidence for delivery planning: input, permission or precondition, action, output or side effect, target state, failure path, and verification route. Missing pieces should trigger fallback to `/sp.flow`, `/sp.ui`, `/sp.specify`, `/sp.clarify`, or a human macro decision.
    - Split the feature into bounded work areas when the scope justifies it.
