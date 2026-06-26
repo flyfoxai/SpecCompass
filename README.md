@@ -28,8 +28,8 @@ SpecCompass turns specifications into a control mechanism for agent work:
 
 1. Capture product intent with `/sp.prd`, `/sp.specify`, and `/sp.clarify`
 2. When unsure what to do next, run `/sp.route` to recover direction and get the next safe command
-3. Review business and architecture flow with `/sp.flow`
-4. Review screen structure and interaction choices with `/sp.ui`
+3. Generate or refresh business and architecture flows with `/sp.flow`, then review and confirm them visually
+4. Generate or refresh screen structure and interaction choices with `/sp.ui`, then review and confirm the UI preview
 5. Prepare the delivery boundary with `/sp.bundle`, `/sp.plan`, and `/sp.tasks`
 6. Close the document chain before coding: `/sp.analyze` checks evidence, then `/sp.gate` authorizes the stage
 7. Implement only authorized work with `/sp.implement`
@@ -46,9 +46,9 @@ For controlled multi-agent work, one coordinator assigns eligible worksets, work
 
 ## Visual confirmation
 
-`/sp.flow` creates a review page for modules, process diagrams, decision points, and recommended choices.
+`/sp.flow` first generates or refreshes the business and architecture flow artifacts, then creates a review page for modules, process diagrams, decision points, and recommended choices.
 
-`/sp.ui` creates a review page for screen previews, regions, controls, states, and key interaction choices.
+`/sp.ui` first generates or refreshes the screen map, page structure, UI regions, controls, states, and key interaction choices, then creates a review page for visual confirmation.
 
 Both pages use a right-side review rail. Reviewers can accept the recommendation or submit another choice with comments. The browser page helps review the decision; the generated confirmation document is what authorizes later implementation.
 
