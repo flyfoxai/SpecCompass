@@ -64,11 +64,13 @@ json_object_artifacts() {
     printf '"bundle":%s,' "$5"
     printf '"plan":%s,' "$6"
     printf '"tasks":%s,' "$7"
-    printf '"openItems":%s' "$8"
+    printf '"analysis":%s,' "$8"
+    printf '"gate":%s,' "$9"
+    printf '"openItems":%s' "${10}"
     printf '}'
 }
 
-empty_artifacts='{"prd":false,"spec":false,"flows":false,"ui":false,"bundle":false,"plan":false,"tasks":false,"openItems":false}'
+empty_artifacts='{"prd":false,"spec":false,"flows":false,"ui":false,"bundle":false,"plan":false,"tasks":false,"analysis":false,"gate":false,"openItems":false}'
 
 emit_json() {
     local status="$1"
@@ -160,6 +162,18 @@ has_ready_marker() {
     local marker="$2"
     [[ -f "$path" ]] || return 1
     grep -Eq "(^|[[:space:]])${marker}($|[[:space:]])" "$path"
+}
+
+has_analysis_pass_marker() {
+    local path="$1"
+    [[ -f "$path" ]] || return 1
+    grep -Eiq '^[[:space:]]*(Diagnostic[[:space:]]+)?Verdict[[:space:]]*:[[:space:]]*PASS[[:space:]]*$|^[[:space:]]*SP_STATUS[[:space:]]*:[[:space:]]*PASS[[:space:]]*$|^[[:space:]]*PASS[[:space:]]*$' "$path"
+}
+
+has_gate_pass_verdict() {
+    local path="$1"
+    [[ -f "$path" ]] || return 1
+    grep -Eiq '^[[:space:]]*Verdict[[:space:]]*:[[:space:]]*PASS[[:space:]]*$' "$path"
 }
 
 dir_has_files() {
@@ -288,6 +302,8 @@ ui_exists=false
 bundle_exists=false
 plan_exists=false
 tasks_exists=false
+analysis_exists=false
+gate_exists=false
 open_items_exists=false
 
 [[ -f "$feature_dir/prd.md" ]] && prd_exists=true
@@ -297,9 +313,11 @@ dir_has_files "$feature_dir/ui" && ui_exists=true
 [[ -f "$feature_dir/bundle.md" ]] && bundle_exists=true
 [[ -f "$feature_dir/plan.md" ]] && plan_exists=true
 [[ -f "$feature_dir/tasks.md" ]] && tasks_exists=true
+[[ -f "$feature_dir/analysis.md" ]] && analysis_exists=true
+[[ -f "$feature_dir/gate.md" ]] && gate_exists=true
 [[ -f "$feature_dir/memory/open-items.md" ]] && open_items_exists=true
 
-artifacts=$(json_object_artifacts "$prd_exists" "$spec_exists" "$flows_exists" "$ui_exists" "$bundle_exists" "$plan_exists" "$tasks_exists" "$open_items_exists")
+artifacts=$(json_object_artifacts "$prd_exists" "$spec_exists" "$flows_exists" "$ui_exists" "$bundle_exists" "$plan_exists" "$tasks_exists" "$analysis_exists" "$gate_exists" "$open_items_exists")
 
 if [[ "$prd_exists" != true ]] || has_seed_marker "$feature_dir/prd.md"; then
     emit_route "NEEDS_PRD" "/sp.prd" "missing-prd" "$active_feature" "$feature_dir" "$artifacts" "$(json_array "prd.md")" "$(json_array)" "high"
@@ -371,9 +389,29 @@ if open_items_have_blockers "$feature_dir/memory/open-items.md"; then
     exit 0
 fi
 
-if has_ready_marker "$feature_dir/plan.md" "READY_FOR_TASKS"; then
-    emit_route "READY_FOR_IMPLEMENT" "/sp.implement" "ready-for-implement" "$active_feature" "$feature_dir" "$artifacts" "$(json_array)" "$(json_array)" "high"
+if ! has_ready_marker "$feature_dir/plan.md" "READY_FOR_TASKS"; then
+    emit_route "NEEDS_PLAN" "/sp.plan" "plan-readiness-missing" "$active_feature" "$feature_dir" "$artifacts" "$(json_array)" "$(json_array "plan.md")" "medium"
     exit 0
 fi
 
-emit_route "NEEDS_PLAN" "/sp.plan" "plan-readiness-missing" "$active_feature" "$feature_dir" "$artifacts" "$(json_array)" "$(json_array "plan.md")" "medium"
+if [[ "$analysis_exists" != true ]] || has_seed_marker "$feature_dir/analysis.md"; then
+    emit_route "NEEDS_ANALYZE" "/sp.analyze" "missing-analysis" "$active_feature" "$feature_dir" "$artifacts" "$(json_array "analysis.md")" "$(json_array)" "high"
+    exit 0
+fi
+
+if ! has_analysis_pass_marker "$feature_dir/analysis.md"; then
+    emit_route "NEEDS_ANALYZE" "/sp.analyze" "analysis-not-pass" "$active_feature" "$feature_dir" "$artifacts" "$(json_array)" "$(json_array "analysis.md")" "high"
+    exit 0
+fi
+
+if [[ "$gate_exists" != true ]] || has_seed_marker "$feature_dir/gate.md"; then
+    emit_route "NEEDS_GATE" "/sp.gate" "missing-gate" "$active_feature" "$feature_dir" "$artifacts" "$(json_array "gate.md")" "$(json_array)" "high"
+    exit 0
+fi
+
+if ! has_gate_pass_verdict "$feature_dir/gate.md"; then
+    emit_route "NEEDS_GATE" "/sp.gate" "gate-not-pass" "$active_feature" "$feature_dir" "$artifacts" "$(json_array)" "$(json_array "gate.md")" "high"
+    exit 0
+fi
+
+emit_route "READY_FOR_IMPLEMENT" "/sp.implement" "gate-authorized-implement" "$active_feature" "$feature_dir" "$artifacts" "$(json_array)" "$(json_array)" "high"

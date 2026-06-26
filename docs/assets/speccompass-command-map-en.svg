@@ -1,78 +1,98 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="700" viewBox="0 0 1180 700" role="img" aria-labelledby="title desc">
-<title id="title">SpecCompass command responsibility map</title>
-<desc id="desc">Each command owns one control layer; flow/UI Web review and confirmation docs form the authorization chain before implementation.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="640" viewBox="0 0 1180 640" role="img" aria-labelledby="title desc">
+<title id="title">SpecCompass Command Responsibility Map</title>
+<desc id="desc">A simple map of how commands divide agent work: understand, ask route for the next safe step, confirm, close readiness, and implement.</desc>
 
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f6fbfb"/>
-      <stop offset="100%" stop-color="#eef7f6"/>
-    </linearGradient>
-    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#203b36" flood-opacity="0.14"/>
-    </filter>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#245f52"/>
-    </marker>
-    <style>
-      .title { font: 760 32px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
-      .subtitle { font: 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
-      .card-title { font: 720 17px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
-      .card-text { font: 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
-      .tag { font: 700 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #fff; letter-spacing: 0; }
-      .small { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
-      .note { font: 700 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
-      .rail-title { font: 700 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
-      .rail-text { font: 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
-      .arrow { stroke: #245f52; stroke-width: 2.5; marker-end: url(#arrow); fill: none; }
-      .dash { stroke: #6d5932; stroke-width: 2.3; stroke-dasharray: 7 7; marker-end: url(#arrow); fill: none; }
-    </style>
-  </defs>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#f7fcfb"/>
+    <stop offset="100%" stop-color="#eef8f7"/>
+  </linearGradient>
+  <linearGradient id="aqua" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#0ABAB5"/>
+    <stop offset="100%" stop-color="#058f8b"/>
+  </linearGradient>
+  <filter id="shadow" x="-12%" y="-18%" width="124%" height="145%">
+    <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#173c37" flood-opacity="0.13"/>
+  </filter>
+  <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+    <path d="M2,2 L10,6 L2,10 Z" fill="#19756f"/>
+  </marker>
+  <style>
+.title { font: 760 34px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#11342f; letter-spacing:0; }
+.subtitle { font: 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#516662; letter-spacing:0; }
+.kicker { font: 720 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#0b7772; letter-spacing:0; }
+.card-title { font: 760 20px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#123b35; letter-spacing:0; }
+.card-sub { font: 14px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#49625d; letter-spacing:0; }
+.card-small { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#60736f; letter-spacing:0; }
+.command { font: 700 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill:#11342f; letter-spacing:0; }
+.badge { font: 720 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#fff; letter-spacing:0; }
+.note { font: 720 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#143b35; letter-spacing:0; }
+.muted { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#60736f; letter-spacing:0; }
+</style>
+</defs>
 
-<rect width="1180" height="700" rx="28" fill="url(#bg)"/>
-<circle cx="1052" cy="92" r="150" fill="#0ABAB5" opacity="0.10"/>
-<circle cx="105" cy="640" r="170" fill="#0ABAB5" opacity="0.08"/>
-<text x="58" y="64" class="title">SpecCompass command responsibility map</text>
-<text x="58" y="92" class="subtitle">Each command owns one control layer; flow/UI Web review and confirmation docs form the authorization chain before implementation.</text>
-<rect x="58" y="126" width="505" height="196" rx="22" fill="#fff" filter="url(#shadow)"/>
-<rect x="58" y="126" width="505" height="48" rx="22" fill="#17483d"/>
-<text x="82" y="157" class="tag">1. Intent intake</text>
-<text x="86" y="208" class="card-title">/sp.prd</text>
-<text x="218" y="208" class="card-text">captures product intent, sources, outline readiness</text>
-<text x="86" y="245" class="card-title">/sp.specify</text>
-<text x="218" y="245" class="card-text">stabilizes scope, requirements, conflict checks</text>
-<text x="86" y="282" class="card-title">/sp.clarify</text>
-<text x="218" y="282" class="card-text">records human decisions with options instead of guesses</text>
-<rect x="617" y="126" width="505" height="196" rx="22" fill="#fff" filter="url(#shadow)"/>
-<rect x="617" y="126" width="505" height="48" rx="22" fill="#245f52"/>
-<text x="641" y="157" class="tag">2. Plan and boundaries</text>
-<text x="645" y="208" class="card-title">/sp.plan</text>
-<text x="777" y="208" class="card-text">sets architecture route, worksets, impact radius, readiness</text>
-<text x="645" y="245" class="card-title">/sp.tasks</text>
-<text x="777" y="245" class="card-text">creates Mode: doc / Mode: impl packets and write bounds</text>
-<text x="645" y="282" class="card-title">/sp.route</text>
-<text x="777" y="282" class="card-text">recommends the next safe command from current state</text>
-<rect x="58" y="360" width="505" height="250" rx="22" fill="#fff" filter="url(#shadow)"/>
-<rect x="58" y="360" width="505" height="48" rx="22" fill="#0ABAB5"/>
-<text x="82" y="391" class="tag">3. Flow confirmation</text>
-<text x="86" y="442" class="card-title">/sp.flow</text>
-<text x="218" y="442" class="card-text">writes flow-review-data.json and Web review page</text>
-<text x="86" y="479" class="card-title">流程图</text>
-<text x="218" y="479" class="card-text">shows module summaries, short diagrams, node checkpoints</text>
-<text x="86" y="516" class="card-title">推荐选项</text>
-<text x="218" y="516" class="card-text">model gives recommended choice, alternatives, impact, rationale</text>
-<text x="86" y="553" class="card-title">授权证据</text>
-<text x="218" y="553" class="card-text">formal result is written to flow-confirmation.md</text>
-<rect x="617" y="360" width="505" height="250" rx="22" fill="#fff" filter="url(#shadow)"/>
-<rect x="617" y="360" width="505" height="48" rx="22" fill="#2f6e7c"/>
-<text x="641" y="391" class="tag">4. UI confirmation and build</text>
-<text x="645" y="442" class="card-title">/sp.ui</text>
-<text x="777" y="442" class="card-text">writes independent ui-review-data.json and UI previews</text>
-<text x="645" y="479" class="card-title">右侧确认栏</text>
-<text x="777" y="479" class="card-text">confirms layout, controls, states, exception handling</text>
-<text x="645" y="516" class="card-title">/sp.implement</text>
-<text x="777" y="516" class="card-text">consumes authorized flow/UI and Mode: impl tasks only</text>
-<text x="645" y="553" class="card-title">/sp.analyze / gate</text>
-<text x="777" y="553" class="card-text">checks drift, evidence, readiness, blocker routing</text>
-<rect x="58" y="640" width="1064" height="34" rx="17" fill="#e6f7f5" stroke="#0ABAB5"/>
-<text x="86" y="662" class="note">Review pages are aids; downstream commands trust flow-confirmation.md / ui-confirmation.md, not browser draft state.</text>
+<rect width="1180" height="640" rx="30" fill="url(#bg)"/>
+<circle cx="1050" cy="88" r="142" fill="#0ABAB5" opacity="0.10"/>
+<circle cx="126" cy="566" r="150" fill="#0ABAB5" opacity="0.08"/>
+<text x="58" y="66" class="title">SpecCompass Command Responsibility Map</text>
+<text x="58" y="94" class="subtitle">A simple map of how commands divide agent work: understand, ask route for the next safe step, confirm, close readiness, and implement.</text>
+<rect x="54" y="138" width="204" height="292" rx="24" fill="#ffffff" filter="url(#shadow)"/>
+<rect x="72" y="156" width="54" height="30" rx="15" fill="url(#aqua)"/>
+<text x="99" y="177" class="badge" text-anchor="middle">01</text>
+<text x="72" y="224" class="card-title">Understand Intent</text>
+<text x="72" y="254" class="card-sub">Clarify what should be built</text>
+<rect x="72" y="294" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="156.0" y="314" class="command" text-anchor="middle">/sp.prd</text>
+<rect x="72" y="336" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="156.0" y="356" class="command" text-anchor="middle">/sp.specify</text>
+<rect x="72" y="378" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="156.0" y="398" class="command" text-anchor="middle">/sp.clarify</text>
+<path d="M264 284.0 L272 284.0" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="280" y="138" width="204" height="292" rx="24" fill="#ffffff" filter="url(#shadow)"/>
+<rect x="298" y="156" width="54" height="30" rx="15" fill="url(#aqua)"/>
+<text x="325" y="177" class="badge" text-anchor="middle">02</text>
+<text x="298" y="224" class="card-title">Smart Route</text>
+<text x="298" y="254" class="card-sub">Not sure? Run route</text>
+<rect x="298" y="294" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="382.0" y="314" class="command" text-anchor="middle">/sp.route</text>
+<rect x="298" y="336" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="382.0" y="356" class="card-small" text-anchor="middle">agent chooses safe next step</text>
+<path d="M490 284.0 L498 284.0" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="506" y="138" width="204" height="292" rx="24" fill="#ffffff" filter="url(#shadow)"/>
+<rect x="524" y="156" width="54" height="30" rx="15" fill="url(#aqua)"/>
+<text x="551" y="177" class="badge" text-anchor="middle">03</text>
+<text x="524" y="224" class="card-title">Visual Review</text>
+<text x="524" y="254" class="card-sub">Make flow and UI reviewable</text>
+<rect x="524" y="294" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="608.0" y="314" class="command" text-anchor="middle">/sp.flow</text>
+<rect x="524" y="336" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="608.0" y="356" class="command" text-anchor="middle">/sp.ui</text>
+<path d="M716 284.0 L724 284.0" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="732" y="138" width="204" height="292" rx="24" fill="#ffffff" filter="url(#shadow)"/>
+<rect x="750" y="156" width="54" height="30" rx="15" fill="url(#aqua)"/>
+<text x="777" y="177" class="badge" text-anchor="middle">04</text>
+<text x="750" y="224" class="card-title">Prepare Delivery</text>
+<text x="750" y="254" class="card-sub">Turn confirmed work into tasks</text>
+<rect x="750" y="294" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="834.0" y="314" class="command" text-anchor="middle">/sp.bundle</text>
+<rect x="750" y="336" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="834.0" y="356" class="command" text-anchor="middle">/sp.plan</text>
+<rect x="750" y="378" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="834.0" y="398" class="command" text-anchor="middle">/sp.tasks</text>
+<path d="M942 284.0 L950 284.0" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="958" y="138" width="204" height="292" rx="24" fill="#ffffff" filter="url(#shadow)"/>
+<rect x="976" y="156" width="54" height="30" rx="15" fill="url(#aqua)"/>
+<text x="1003" y="177" class="badge" text-anchor="middle">05</text>
+<text x="976" y="224" class="card-title">Gate Then Build</text>
+<text x="976" y="254" class="card-sub">Analyze before implement</text>
+<rect x="976" y="294" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="1060.0" y="314" class="command" text-anchor="middle">/sp.analyze</text>
+<rect x="976" y="336" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="1060.0" y="356" class="command" text-anchor="middle">/sp.gate</text>
+<rect x="976" y="378" width="168" height="30" rx="15" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="1060.0" y="398" class="command" text-anchor="middle">/sp.implement</text>
+<rect x="80" y="488" width="1020" height="70" rx="24" fill="#ffffff" stroke="#b9e4df"/>
+<rect x="104" y="510" width="190" height="28" rx="14" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="199" y="529" class="kicker" text-anchor="middle">Human confirmation</text>
+<text x="328" y="531" class="note">Unsure what to do next? Run route. Analyze and gate close the chain before implementation.</text>
 </svg>

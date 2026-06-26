@@ -70,15 +70,17 @@ Rules:
   `continueAllowed` is `true` and `blockerRoute` is a concrete non-clarify
   `/sp.*` route. Emit `EXECUTE_COMMAND` for that owner route.
 - For non-blocked routes such as `NEEDS_PRD`, `NEEDS_SPECIFY`, `NEEDS_FLOW`,
-  `NEEDS_UI`, `NEEDS_BUNDLE`, `NEEDS_PLAN`, `NEEDS_TASKS`, and
-  `READY_FOR_IMPLEMENT`, continue only when `continueAllowed` is `true`.
+  `NEEDS_UI`, `NEEDS_BUNDLE`, `NEEDS_PLAN`, `NEEDS_TASKS`,
+  `NEEDS_ANALYZE`, `NEEDS_GATE`, and `READY_FOR_IMPLEMENT`, continue only
+  when `continueAllowed` is `true`.
 - If `status` is `NEEDS_DECISION`, `NEEDS_PRD`, `NEEDS_SPECIFY`,
-  `NEEDS_FLOW`, `NEEDS_UI`, `NEEDS_BUNDLE`, `NEEDS_PLAN`, `NEEDS_TASKS`, or
-  `BLOCKED`, report the status, reason, missing artifacts, blockers, and next
-  route.
+  `NEEDS_FLOW`, `NEEDS_UI`, `NEEDS_BUNDLE`, `NEEDS_PLAN`, `NEEDS_TASKS`,
+  `NEEDS_ANALYZE`, `NEEDS_GATE`, or `BLOCKED`, report the status, reason,
+  missing artifacts, blockers, and next route.
 - If `status` is `READY_FOR_IMPLEMENT`, report the active feature and next
-  route. Execute `/sp.implement` only in explicit `y` mode and only when
-  `continueAllowed` is `true`.
+  route. This status is valid only after `analysis.md` reports PASS and
+  `gate.md` reports `Verdict: PASS`. Execute `/sp.implement` only in explicit
+  `y` mode and only when `continueAllowed` is `true`.
 - Preserve the JSON fields `schema`, `status`, `next`, `reason`,
   `activeFeature`, `featureDir`, `artifacts`, `missing`, `blockers`,
   `confidence`, `autoExecute`, `continueAllowed`, `blockerType`,

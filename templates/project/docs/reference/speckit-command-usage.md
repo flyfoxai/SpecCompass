@@ -156,6 +156,9 @@ governance、archive 或历史分析文件。无法判断主线时，应返回
 只有 `continueAllowed: true` 且不是人工决策、未知阻塞或重复 fallback 时，
 agent 才可以随后执行推荐的 `/sp.*` 命令。
 `/sp.route y` 的语义保持不变：它是安全继续下一步，不是全局扫描。
+即使 `plan.md` 和 `tasks.md` 已经存在，`/sp.route` 也不能直接跳到
+`/sp.implement`；它必须先确认 `analysis.md` 为 PASS，再确认 `gate.md`
+为 `Verdict: PASS`，然后才允许进入实现。
 
 ### 5.1 SP 命令收尾推荐
 
@@ -188,7 +191,7 @@ DO_NOT_RUN: <当前不要运行的命令或 None>
 - `NEEDS_DECISION`、`HUMAN_DECISION`、`UNKNOWN_BLOCKER`：进入 `/sp.clarify`，生成或补齐人工决策包。
 - `BLOCKED` + `UPSTREAM_DOC_GAP`：如果 `blockerRoute` 是具体 owner route，例如 `/sp.flow`，可以继续到该 owner 命令补文档。
 - `REPEATED_FALLBACK` 或 `fallback-loop-detected`：说明 `memory/fallback-log.md` 已记录同一失败签名重复出现，不能继续重跑同一路线；应进入 `/sp.clarify` 或 owner 决策。
-- 普通缺失阶段：如 `NEEDS_PRD`、`NEEDS_SPECIFY`、`NEEDS_FLOW`、`NEEDS_UI`、`NEEDS_BUNDLE`、`NEEDS_PLAN`、`NEEDS_TASKS`，可在 `continueAllowed: true` 时继续到对应命令。
+- 普通缺失阶段：如 `NEEDS_PRD`、`NEEDS_SPECIFY`、`NEEDS_FLOW`、`NEEDS_UI`、`NEEDS_BUNDLE`、`NEEDS_PLAN`、`NEEDS_TASKS`、`NEEDS_ANALYZE`、`NEEDS_GATE`，可在 `continueAllowed: true` 时继续到对应命令。
 
 SP 和原版一样，feature 文档通常在：
 

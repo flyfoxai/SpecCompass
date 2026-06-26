@@ -35,6 +35,8 @@ function New-Artifacts {
         [bool]$Bundle = $false,
         [bool]$Plan = $false,
         [bool]$Tasks = $false,
+        [bool]$Analysis = $false,
+        [bool]$Gate = $false,
         [bool]$OpenItems = $false
     )
     [ordered]@{
@@ -45,6 +47,8 @@ function New-Artifacts {
         bundle    = $Bundle
         plan      = $Plan
         tasks     = $Tasks
+        analysis  = $Analysis
+        gate      = $Gate
         openItems = $OpenItems
     }
 }
@@ -144,6 +148,18 @@ function Test-ReadyMarker {
     param([string]$Path, [string]$Marker)
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
     return [bool](Select-String -LiteralPath $Path -Pattern "(^|\s)$([regex]::Escape($Marker))($|\s)" -Quiet)
+}
+
+function Test-AnalysisPassMarker {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    return [bool](Select-String -LiteralPath $Path -Pattern '^\s*(Diagnostic\s+)?Verdict\s*:\s*PASS\s*$|^\s*SP_STATUS\s*:\s*PASS\s*$|^\s*PASS\s*$' -Quiet)
+}
+
+function Test-GatePassVerdict {
+    param([string]$Path)
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) { return $false }
+    return [bool](Select-String -LiteralPath $Path -Pattern '^\s*Verdict\s*:\s*PASS\s*$' -Quiet)
 }
 
 function Test-OpenItemsHaveBlockers {
@@ -263,6 +279,8 @@ $ui = Join-Path $featureDir 'ui'
 $bundle = Join-Path $featureDir 'bundle.md'
 $plan = Join-Path $featureDir 'plan.md'
 $tasks = Join-Path $featureDir 'tasks.md'
+$analysis = Join-Path $featureDir 'analysis.md'
+$gate = Join-Path $featureDir 'gate.md'
 $openItems = Join-Path $featureDir 'memory/open-items.md'
 
 $artifacts = New-Artifacts `
@@ -273,6 +291,8 @@ $artifacts = New-Artifacts `
     -Bundle (Test-Path -LiteralPath $bundle -PathType Leaf) `
     -Plan (Test-Path -LiteralPath $plan -PathType Leaf) `
     -Tasks (Test-Path -LiteralPath $tasks -PathType Leaf) `
+    -Analysis (Test-Path -LiteralPath $analysis -PathType Leaf) `
+    -Gate (Test-Path -LiteralPath $gate -PathType Leaf) `
     -OpenItems (Test-Path -LiteralPath $openItems -PathType Leaf)
 
 if (-not $artifacts.prd -or (Test-SeedMarker $prd)) {
@@ -347,9 +367,29 @@ if (Test-OpenItemsHaveBlockers $openItems) {
     exit 0
 }
 
-if (Test-ReadyMarker $plan "READY_FOR_TASKS") {
-    Emit-Route -Status "READY_FOR_IMPLEMENT" -Next "/sp.implement" -Reason "ready-for-implement" -ActiveFeature $activeFeature -FeatureDir $featureDir -Artifacts $artifacts
+if (-not (Test-ReadyMarker $plan "READY_FOR_TASKS")) {
+    Emit-Route -Status "NEEDS_PLAN" -Next "/sp.plan" -Reason "plan-readiness-missing" -ActiveFeature $activeFeature -FeatureDir $featureDir -Artifacts $artifacts -Blockers @("plan.md") -Confidence "medium"
     exit 0
 }
 
-Emit-Route -Status "NEEDS_PLAN" -Next "/sp.plan" -Reason "plan-readiness-missing" -ActiveFeature $activeFeature -FeatureDir $featureDir -Artifacts $artifacts -Blockers @("plan.md") -Confidence "medium"
+if (-not $artifacts.analysis -or (Test-SeedMarker $analysis)) {
+    Emit-Route -Status "NEEDS_ANALYZE" -Next "/sp.analyze" -Reason "missing-analysis" -ActiveFeature $activeFeature -FeatureDir $featureDir -Artifacts $artifacts -Missing @("analysis.md")
+    exit 0
+}
+
+if (-not (Test-AnalysisPassMarker $analysis)) {
+    Emit-Route -Status "NEEDS_ANALYZE" -Next "/sp.analyze" -Reason "analysis-not-pass" -ActiveFeature $activeFeature -FeatureDir $featureDir -Artifacts $artifacts -Blockers @("analysis.md")
+    exit 0
+}
+
+if (-not $artifacts.gate -or (Test-SeedMarker $gate)) {
+    Emit-Route -Status "NEEDS_GATE" -Next "/sp.gate" -Reason "missing-gate" -ActiveFeature $activeFeature -FeatureDir $featureDir -Artifacts $artifacts -Missing @("gate.md")
+    exit 0
+}
+
+if (-not (Test-GatePassVerdict $gate)) {
+    Emit-Route -Status "NEEDS_GATE" -Next "/sp.gate" -Reason "gate-not-pass" -ActiveFeature $activeFeature -FeatureDir $featureDir -Artifacts $artifacts -Blockers @("gate.md")
+    exit 0
+}
+
+Emit-Route -Status "READY_FOR_IMPLEMENT" -Next "/sp.implement" -Reason "gate-authorized-implement" -ActiveFeature $activeFeature -FeatureDir $featureDir -Artifacts $artifacts

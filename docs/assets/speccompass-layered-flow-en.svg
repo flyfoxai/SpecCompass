@@ -1,80 +1,84 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="780" viewBox="0 0 1180 780" role="img" aria-labelledby="title desc">
-<title id="title">SpecCompass layered delivery process</title>
-<desc id="desc">Work moves from intent to implementation; flow and UI are reviewed in Web pages and authorized by confirmation docs.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="690" viewBox="0 0 1180 690" role="img" aria-labelledby="title desc">
+<title id="title">SpecCompass Layered Process</title>
+<desc id="desc">Route current state, confirm flow and UI, then analyze and gate before implementation.</desc>
 
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f6fbfb"/>
-      <stop offset="100%" stop-color="#eef7f6"/>
-    </linearGradient>
-    <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#203b36" flood-opacity="0.14"/>
-    </filter>
-    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
-      <path d="M2,2 L10,6 L2,10 Z" fill="#245f52"/>
-    </marker>
-    <style>
-      .title { font: 760 32px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
-      .subtitle { font: 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
-      .card-title { font: 720 17px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
-      .card-text { font: 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
-      .tag { font: 700 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #fff; letter-spacing: 0; }
-      .small { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
-      .note { font: 700 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
-      .rail-title { font: 700 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
-      .rail-text { font: 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
-      .arrow { stroke: #245f52; stroke-width: 2.5; marker-end: url(#arrow); fill: none; }
-      .dash { stroke: #6d5932; stroke-width: 2.3; stroke-dasharray: 7 7; marker-end: url(#arrow); fill: none; }
-    </style>
-  </defs>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#f7fcfb"/>
+    <stop offset="100%" stop-color="#eef8f7"/>
+  </linearGradient>
+  <linearGradient id="aqua" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0%" stop-color="#0ABAB5"/>
+    <stop offset="100%" stop-color="#058f8b"/>
+  </linearGradient>
+  <filter id="shadow" x="-12%" y="-18%" width="124%" height="145%">
+    <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#173c37" flood-opacity="0.13"/>
+  </filter>
+  <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+    <path d="M2,2 L10,6 L2,10 Z" fill="#19756f"/>
+  </marker>
+  <style>
+.title { font: 760 34px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#11342f; letter-spacing:0; }
+.subtitle { font: 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#516662; letter-spacing:0; }
+.kicker { font: 720 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#0b7772; letter-spacing:0; }
+.card-title { font: 760 20px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#123b35; letter-spacing:0; }
+.card-sub { font: 14px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#49625d; letter-spacing:0; }
+.card-small { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#60736f; letter-spacing:0; }
+.command { font: 700 13px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fill:#11342f; letter-spacing:0; }
+.badge { font: 720 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#fff; letter-spacing:0; }
+.note { font: 720 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#143b35; letter-spacing:0; }
+.muted { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill:#60736f; letter-spacing:0; }
+</style>
+</defs>
 
-<rect width="1180" height="780" rx="28" fill="url(#bg)"/>
-<circle cx="1035" cy="105" r="145" fill="#0ABAB5" opacity="0.10"/>
-<text x="58" y="64" class="title">SpecCompass layered delivery process</text>
-<text x="58" y="92" class="subtitle">Work moves from intent to implementation; flow and UI are reviewed in Web pages and authorized by confirmation docs.</text>
-<rect x="136" y="126" width="908" height="70" rx="18" fill="#fff" filter="url(#shadow)"/>
-<rect x="136" y="126" width="146" height="70" rx="18" fill="#17483d"/>
-<text x="209" y="157" class="tag" text-anchor="middle">Layer 1</text>
-<text x="209" y="178" class="tag" text-anchor="middle">Intent</text>
-<text x="316" y="155" class="card-title">/sp.prd  /sp.specify  /sp.clarify</text>
-<text x="316" y="179" class="card-text">Clarify goal, scope, sources, constraints, and human decisions.</text>
-<path d="M590 202 L590 210" class="arrow"/>
-<rect x="136" y="218" width="908" height="70" rx="18" fill="#fff" filter="url(#shadow)"/>
-<rect x="136" y="218" width="146" height="70" rx="18" fill="#245f52"/>
-<text x="209" y="249" class="tag" text-anchor="middle">Layer 2</text>
-<text x="209" y="270" class="tag" text-anchor="middle">Plan</text>
-<text x="316" y="247" class="card-title">/sp.plan</text>
-<text x="316" y="271" class="card-text">Split worksets, impact radius, dependencies, implementation readiness.</text>
-<path d="M590 294 L590 302" class="arrow"/>
-<rect x="136" y="310" width="908" height="70" rx="18" fill="#fff" filter="url(#shadow)"/>
-<rect x="136" y="310" width="146" height="70" rx="18" fill="#0ABAB5"/>
-<text x="209" y="341" class="tag" text-anchor="middle">Layer 3</text>
-<text x="209" y="362" class="tag" text-anchor="middle">Flow Web review</text>
-<text x="316" y="339" class="card-title">/sp.flow → flow-review-data.json → flow-confirmation.md</text>
-<text x="316" y="363" class="card-text">Confirm modules, flow diagrams, node decisions, and recommendations.</text>
-<path d="M590 386 L590 394" class="arrow"/>
-<rect x="136" y="402" width="908" height="70" rx="18" fill="#fff" filter="url(#shadow)"/>
-<rect x="136" y="402" width="146" height="70" rx="18" fill="#2f6e7c"/>
-<text x="209" y="433" class="tag" text-anchor="middle">Layer 4</text>
-<text x="209" y="454" class="tag" text-anchor="middle">UI Web review</text>
-<text x="316" y="431" class="card-title">/sp.ui → ui-review-data.json → ui-confirmation.md</text>
-<text x="316" y="455" class="card-text">Confirm screen previews, regions, components, states, and interactions.</text>
-<path d="M590 478 L590 486" class="arrow"/>
-<rect x="136" y="494" width="908" height="70" rx="18" fill="#fff" filter="url(#shadow)"/>
-<rect x="136" y="494" width="146" height="70" rx="18" fill="#6d5932"/>
-<text x="209" y="525" class="tag" text-anchor="middle">Layer 5</text>
-<text x="209" y="546" class="tag" text-anchor="middle">Tasks and code</text>
-<text x="316" y="523" class="card-title">/sp.tasks  /sp.implement</text>
-<text x="316" y="547" class="card-text">Convert authorized facts into Mode: impl tasks and fresh evidence.</text>
-<path d="M590 570 L590 578" class="arrow"/>
-<rect x="136" y="586" width="908" height="70" rx="18" fill="#fff" filter="url(#shadow)"/>
-<rect x="136" y="586" width="146" height="70" rx="18" fill="#344f67"/>
-<text x="209" y="617" class="tag" text-anchor="middle">Layer 6</text>
-<text x="209" y="638" class="tag" text-anchor="middle">Analyze and gate</text>
-<text x="316" y="615" class="card-title">/sp.analyze  /sp.gate</text>
-<text x="316" y="639" class="card-text">Detect drift, blockers, and gaps; fix model-solvable issues before routing upward.</text>
-<path d="M1044 620 C1110 560 1110 220 1048 158" class="dash"/>
-<text x="1062" y="375" class="small">feedback</text>
-<rect x="136" y="704" width="908" height="44" rx="18" fill="#e6f7f5" stroke="#0ABAB5"/>
-<text x="162" y="731" class="note">Quality rule: keep fixing model-solvable document or code gaps; keep blockers only for missing human information or authorization.</text>
+<rect width="1180" height="690" rx="30" fill="url(#bg)"/>
+<circle cx="1028" cy="104" r="150" fill="#0ABAB5" opacity="0.10"/>
+<circle cx="108" cy="606" r="162" fill="#0ABAB5" opacity="0.08"/>
+<text x="58" y="66" class="title">SpecCompass Layered Process</text>
+<text x="58" y="94" class="subtitle">Route current state, confirm flow and UI, then analyze and gate before implementation.</text>
+<rect x="52" y="150" width="140" height="116" rx="24" fill="#ffffff" stroke="#d5e4e1" filter="url(#shadow)"/>
+<text x="122" y="192" class="card-title" text-anchor="middle">Intent</text>
+<text x="122" y="220" class="muted" text-anchor="middle">Problem and scope</text>
+<text x="122" y="246" class="kicker" text-anchor="middle">PRD / Spec</text>
+<path d="M200 208 L208 208" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="212" y="150" width="140" height="116" rx="24" fill="#ffffff" stroke="#d5e4e1" filter="url(#shadow)"/>
+<text x="282" y="192" class="card-title" text-anchor="middle">Smart Route</text>
+<text x="282" y="220" class="muted" text-anchor="middle">Next safe command</text>
+<text x="282" y="246" class="kicker" text-anchor="middle">Route</text>
+<path d="M360 208 L368 208" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="372" y="150" width="140" height="116" rx="24" fill="#0ABAB5" stroke="#0ABAB5" filter="url(#shadow)"/>
+<text x="442" y="192" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="760" fill="#ffffff" text-anchor="middle">Flow Review</text>
+<text x="442" y="220" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" fill="#e9fffd" text-anchor="middle">Business process</text>
+<text x="442" y="246" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">Flow review</text>
+<path d="M520 208 L528 208" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="532" y="150" width="140" height="116" rx="24" fill="#0ABAB5" stroke="#0ABAB5" filter="url(#shadow)"/>
+<text x="602" y="192" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="760" fill="#ffffff" text-anchor="middle">UI Review</text>
+<text x="602" y="220" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" fill="#e9fffd" text-anchor="middle">Screen structure</text>
+<text x="602" y="246" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="12" font-weight="700" fill="#ffffff" text-anchor="middle">UI review</text>
+<path d="M680 208 L688 208" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="692" y="150" width="140" height="116" rx="24" fill="#ffffff" stroke="#d5e4e1" filter="url(#shadow)"/>
+<text x="762" y="192" class="card-title" text-anchor="middle">Plan / Tasks</text>
+<text x="762" y="220" class="muted" text-anchor="middle">Delivery boundary</text>
+<text x="762" y="246" class="kicker" text-anchor="middle">Bundle / Plan</text>
+<path d="M840 208 L848 208" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="852" y="150" width="140" height="116" rx="24" fill="#ffffff" stroke="#d5e4e1" filter="url(#shadow)"/>
+<text x="922" y="192" class="card-title" text-anchor="middle">Analyze / Gate</text>
+<text x="922" y="220" class="muted" text-anchor="middle">Close before code</text>
+<text x="922" y="246" class="kicker" text-anchor="middle">Readiness</text>
+<path d="M1000 208 L1008 208" stroke="#19756f" stroke-width="2.4" marker-end="url(#arrow)" fill="none"/>
+<rect x="1012" y="150" width="140" height="116" rx="24" fill="#ffffff" stroke="#d5e4e1" filter="url(#shadow)"/>
+<text x="1082" y="192" class="card-title" text-anchor="middle">Implement</text>
+<text x="1082" y="220" class="muted" text-anchor="middle">Authorized work</text>
+<text x="1082" y="246" class="kicker" text-anchor="middle">Implement</text>
+<rect x="278" y="344" width="624" height="116" rx="28" fill="#ffffff" stroke="#0ABAB5" stroke-width="2.2" filter="url(#shadow)"/>
+<rect x="304" y="370" width="150" height="32" rx="16" fill="url(#aqua)"/>
+<text x="379" y="392" class="badge" text-anchor="middle">Confirmation Records</text>
+<text x="486" y="392" class="card-title">flow-confirmation.md / ui-confirmation.md</text>
+<text x="486" y="424" class="card-sub">Authorization source for later development</text>
+<path d="M442 280 C442 304 456 322 486 344" stroke="#19756f" stroke-width="2.2" marker-end="url(#arrow)" fill="none"/>
+<path d="M602 280 C602 304 600 322 590 344" stroke="#19756f" stroke-width="2.2" marker-end="url(#arrow)" fill="none"/>
+<path d="M902 402 C1022 374 1016 232 940 204" stroke="#9a6a18" stroke-width="2.2" stroke-dasharray="7 7" marker-end="url(#arrow)" fill="none"/>
+<text x="1012" y="358" class="muted" text-anchor="middle">repair loop</text>
+<rect x="136" y="544" width="908" height="56" rx="22" fill="#e7f7f5" stroke="#b9e4df"/>
+<text x="590" y="579" class="note" text-anchor="middle">Principle: model-solvable issues are fixed first; human judgment is requested only when needed.</text>
 </svg>

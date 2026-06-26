@@ -116,6 +116,19 @@ def _assert_route_schema(payload: dict) -> None:
     assert isinstance(payload["loopSignature"], str)
     assert payload["loopRoute"].startswith("/sp.")
     assert isinstance(payload["artifacts"], dict)
+    for artifact_key in (
+        "prd",
+        "spec",
+        "flows",
+        "ui",
+        "bundle",
+        "plan",
+        "tasks",
+        "analysis",
+        "gate",
+        "openItems",
+    ):
+        assert artifact_key in payload["artifacts"]
     assert isinstance(payload["missing"], list)
     assert isinstance(payload["blockers"], list)
 
@@ -301,7 +314,7 @@ def test_route_stops_repeated_fallback_loop_before_auto_continue(tmp_path):
 
 
 @requires_bash
-def test_route_reports_ready_for_implement(tmp_path):
+def test_route_requires_analysis_after_tasks_before_implement(tmp_path):
     project = _init_project(tmp_path)
     _write_feature_pointer(project, "001-demo")
     _write_feature(
@@ -321,8 +334,95 @@ def test_route_reports_ready_for_implement(tmp_path):
 
     payload = _run_bash(project)
 
+    assert payload["status"] == "NEEDS_ANALYZE"
+    assert payload["next"] == "/sp.analyze"
+    assert payload["reason"] == "missing-analysis"
+    assert "analysis.md" in payload["missing"]
+
+
+@requires_bash
+def test_route_requires_gate_after_analysis_pass_before_implement(tmp_path):
+    project = _init_project(tmp_path)
+    _write_feature_pointer(project, "001-demo")
+    _write_feature(
+        project,
+        "001-demo",
+        {
+            "prd.md": "Status: READY_FOR_SPECIFY\n",
+            "spec.md": "Status: READY_FOR_FLOW\n",
+            "flows/index.md": "Status: READY_FOR_UI\n",
+            "ui/index.md": "Status: READY_FOR_PLAN\n",
+            "bundle.md": "Status: READY_FOR_PLAN\n",
+            "plan.md": "Implementation Readiness: READY_FOR_TASKS\n",
+            "tasks.md": "- [ ] T001 Do work\n",
+            "analysis.md": "Verdict: PASS\n",
+            "memory/open-items.md": "Start empty\n",
+        },
+    )
+
+    payload = _run_bash(project)
+
+    assert payload["status"] == "NEEDS_GATE"
+    assert payload["next"] == "/sp.gate"
+    assert payload["reason"] == "missing-gate"
+    assert "gate.md" in payload["missing"]
+
+
+@requires_bash
+def test_route_rejects_non_pass_gate_before_implement(tmp_path):
+    project = _init_project(tmp_path)
+    _write_feature_pointer(project, "001-demo")
+    _write_feature(
+        project,
+        "001-demo",
+        {
+            "prd.md": "Status: READY_FOR_SPECIFY\n",
+            "spec.md": "Status: READY_FOR_FLOW\n",
+            "flows/index.md": "Status: READY_FOR_UI\n",
+            "ui/index.md": "Status: READY_FOR_PLAN\n",
+            "bundle.md": "Status: READY_FOR_PLAN\n",
+            "plan.md": "Implementation Readiness: READY_FOR_TASKS\n",
+            "tasks.md": "- [ ] T001 Do work\n",
+            "analysis.md": "Verdict: PASS\n",
+            "gate.md": "Verdict: CONDITIONAL\n",
+            "memory/open-items.md": "Start empty\n",
+        },
+    )
+
+    payload = _run_bash(project)
+
+    assert payload["status"] == "NEEDS_GATE"
+    assert payload["next"] == "/sp.gate"
+    assert payload["reason"] == "gate-not-pass"
+    assert "gate.md" in payload["blockers"]
+
+
+@requires_bash
+def test_route_reports_ready_for_implement_only_after_analysis_and_gate_pass(tmp_path):
+    project = _init_project(tmp_path)
+    _write_feature_pointer(project, "001-demo")
+    _write_feature(
+        project,
+        "001-demo",
+        {
+            "prd.md": "Status: READY_FOR_SPECIFY\n",
+            "spec.md": "Status: READY_FOR_FLOW\n",
+            "flows/index.md": "Status: READY_FOR_UI\n",
+            "ui/index.md": "Status: READY_FOR_PLAN\n",
+            "bundle.md": "Status: READY_FOR_PLAN\n",
+            "plan.md": "Implementation Readiness: READY_FOR_TASKS\n",
+            "tasks.md": "- [ ] T001 Do work\n",
+            "analysis.md": "Verdict: PASS\n",
+            "gate.md": "Verdict: PASS\n",
+            "memory/open-items.md": "Start empty\n",
+        },
+    )
+
+    payload = _run_bash(project)
+
     assert payload["status"] == "READY_FOR_IMPLEMENT"
     assert payload["next"] == "/sp.implement"
+    assert payload["reason"] == "gate-authorized-implement"
     assert payload["confidence"] == "high"
 
 
@@ -418,3 +518,7 @@ def test_route_template_supports_explicit_resume_trigger_y():
     assert "loopDetected" in template
     assert "REPEATED_FALLBACK" in template
     assert "fallback-log.md" in template
+    assert "NEEDS_ANALYZE" in template
+    assert "NEEDS_GATE" in template
+    assert "analysis.md" in template
+    assert "gate.md" in template
