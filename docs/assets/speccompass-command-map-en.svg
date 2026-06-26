@@ -1,80 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="760" viewBox="0 0 1180 760" role="img" aria-labelledby="title desc">
-  <title id="title">SpecCompass command responsibility map</title>
-  <desc id="desc">A list-style overview of each SpecCompass command and what it controls.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="700" viewBox="0 0 1180 700" role="img" aria-labelledby="title desc">
+<title id="title">SpecCompass command responsibility map</title>
+<desc id="desc">Each command owns one control layer; flow/UI Web review and confirmation docs form the authorization chain before implementation.</desc>
+
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f7f1e7"/>
-      <stop offset="55%" stop-color="#eef5ef"/>
-      <stop offset="100%" stop-color="#e8eef8"/>
+      <stop offset="0%" stop-color="#f6fbfb"/>
+      <stop offset="100%" stop-color="#eef7f6"/>
     </linearGradient>
     <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
-      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#213934" flood-opacity="0.14"/>
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#203b36" flood-opacity="0.14"/>
     </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#245f52"/>
+    </marker>
     <style>
-      .title { font: 700 30px Georgia, serif; fill: #14362f; }
-      .subtitle { font: 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #4a625d; }
-      .group { font: 700 17px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #ffffff; }
-      .cmd { font: 700 15px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #12372f; }
-      .text { font: 13px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #4a625d; }
-      .note { font: 700 12px ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif; fill: #25564b; }
+      .title { font: 760 32px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
+      .subtitle { font: 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
+      .card-title { font: 720 17px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
+      .card-text { font: 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
+      .tag { font: 700 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #fff; letter-spacing: 0; }
+      .small { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
+      .note { font: 700 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
+      .rail-title { font: 700 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
+      .rail-text { font: 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
+      .arrow { stroke: #245f52; stroke-width: 2.5; marker-end: url(#arrow); fill: none; }
+      .dash { stroke: #6d5932; stroke-width: 2.3; stroke-dasharray: 7 7; marker-end: url(#arrow); fill: none; }
     </style>
   </defs>
-  <rect width="1180" height="760" rx="28" fill="url(#bg)"/>
-  <circle cx="1040" cy="96" r="160" fill="#fff" opacity="0.35"/>
-  <circle cx="110" cy="710" r="180" fill="#fff" opacity="0.28"/>
-  <text x="58" y="66" class="title">SpecCompass command map</text>
-  <text x="58" y="94" class="subtitle">Each command owns one layer of control. The agent should move to the right layer instead of guessing across layers.</text>
 
-  <rect x="58" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
-  <rect x="58" y="128" width="505" height="48" rx="22" fill="#17483d"/>
-  <text x="82" y="159" class="group">1. Define intent</text>
-  <text x="86" y="200" class="cmd">/sp.constitution</text>
-  <text x="226" y="200" class="text">Project principles, engineering constraints, governance</text>
-  <text x="86" y="234" class="cmd">/sp.prd</text>
-  <text x="226" y="234" class="text">Optional product discovery draft before stable specification</text>
-  <text x="86" y="268" class="cmd">/sp.specify</text>
-  <text x="226" y="268" class="text">Feature goal, scope, requirements, conflict checks</text>
-  <text x="86" y="302" class="cmd">/sp.clarify</text>
-  <text x="226" y="302" class="text">Focused user decisions when intent is unsafe to infer</text>
-  <text x="86" y="336" class="cmd">/sp.checklist</text>
-  <text x="226" y="336" class="text">Targeted quality checklist for requirements and review</text>
-  <text x="86" y="366" class="note">Output: stable intent, open decisions, acceptance direction</text>
-
-  <rect x="617" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
-  <rect x="617" y="128" width="505" height="48" rx="22" fill="#245f52"/>
-  <text x="641" y="159" class="group">2. Shape the work</text>
-  <text x="645" y="208" class="cmd">/sp.plan</text>
-  <text x="785" y="208" class="text">Architecture route, worksets, impact radius, boundaries</text>
-  <text x="645" y="246" class="cmd">/sp.flow</text>
-  <text x="785" y="246" class="text">Business process backbone, branches, events, state changes</text>
-  <text x="645" y="284" class="cmd">/sp.ui</text>
-  <text x="785" y="284" class="text">Screens and elements derived from flow, data, and actions</text>
-  <text x="645" y="322" class="cmd">/sp.tasks</text>
-  <text x="785" y="322" class="text">Small executable tasks with evidence and write boundaries</text>
-  <text x="645" y="360" class="note">Output: bounded work plan, trace anchors, implementable tasks</text>
-
-  <rect x="58" y="430" width="505" height="238" rx="22" fill="#ffffff" filter="url(#shadow)"/>
-  <rect x="58" y="430" width="505" height="48" rx="22" fill="#6d5932"/>
-  <text x="82" y="461" class="group">3. Execute safely</text>
-  <text x="86" y="512" class="cmd">/sp.implement</text>
-  <text x="226" y="512" class="text">Code, tests, verification evidence, necessary state updates</text>
-  <text x="86" y="550" class="cmd">Multi-agent rule</text>
-  <text x="226" y="550" class="text">Coordinator assigns worksets; workers stay in allowed files</text>
-  <text x="86" y="588" class="cmd">Memory writeback</text>
-  <text x="226" y="588" class="text">Write stable facts, risks, and unresolved items only when changed</text>
-  <text x="86" y="626" class="note">Output: changed code, fresh evidence, updated stable state</text>
-
-  <rect x="617" y="430" width="505" height="238" rx="22" fill="#ffffff" filter="url(#shadow)"/>
-  <rect x="617" y="430" width="505" height="48" rx="22" fill="#344f67"/>
-  <text x="641" y="461" class="group">4. Close the loop</text>
-  <text x="645" y="512" class="cmd">/sp.analyze</text>
-  <text x="785" y="512" class="text">Detect drift, broken trace links, stale context, unresolved risks</text>
-  <text x="645" y="550" class="cmd">/sp.gate</text>
-  <text x="785" y="550" class="text">Stage decision, blocked reason, and fallback route</text>
-  <text x="645" y="588" class="cmd">/sp.bundle</text>
-  <text x="785" y="588" class="text">Package feature documents for review and delivery</text>
-  <text x="645" y="626" class="note">Output: readiness decision, Status Reason, fallback route, or delivery package</text>
-
-  <rect x="58" y="700" width="1064" height="34" rx="17" fill="#e0f7f5" stroke="#0ABAB5"/>
-  <text x="86" y="722" class="note">Finish Quality Gate: fix model-solvable gaps first; blocked states need short reasons and clear upper-layer options.</text>
+<rect width="1180" height="700" rx="28" fill="url(#bg)"/>
+<circle cx="1052" cy="92" r="150" fill="#0ABAB5" opacity="0.10"/>
+<circle cx="105" cy="640" r="170" fill="#0ABAB5" opacity="0.08"/>
+<text x="58" y="64" class="title">SpecCompass command responsibility map</text>
+<text x="58" y="92" class="subtitle">Each command owns one control layer; flow/UI Web review and confirmation docs form the authorization chain before implementation.</text>
+<rect x="58" y="126" width="505" height="196" rx="22" fill="#fff" filter="url(#shadow)"/>
+<rect x="58" y="126" width="505" height="48" rx="22" fill="#17483d"/>
+<text x="82" y="157" class="tag">1. Intent intake</text>
+<text x="86" y="208" class="card-title">/sp.prd</text>
+<text x="218" y="208" class="card-text">captures product intent, sources, outline readiness</text>
+<text x="86" y="245" class="card-title">/sp.specify</text>
+<text x="218" y="245" class="card-text">stabilizes scope, requirements, conflict checks</text>
+<text x="86" y="282" class="card-title">/sp.clarify</text>
+<text x="218" y="282" class="card-text">records human decisions with options instead of guesses</text>
+<rect x="617" y="126" width="505" height="196" rx="22" fill="#fff" filter="url(#shadow)"/>
+<rect x="617" y="126" width="505" height="48" rx="22" fill="#245f52"/>
+<text x="641" y="157" class="tag">2. Plan and boundaries</text>
+<text x="645" y="208" class="card-title">/sp.plan</text>
+<text x="777" y="208" class="card-text">sets architecture route, worksets, impact radius, readiness</text>
+<text x="645" y="245" class="card-title">/sp.tasks</text>
+<text x="777" y="245" class="card-text">creates Mode: doc / Mode: impl packets and write bounds</text>
+<text x="645" y="282" class="card-title">/sp.route</text>
+<text x="777" y="282" class="card-text">recommends the next safe command from current state</text>
+<rect x="58" y="360" width="505" height="250" rx="22" fill="#fff" filter="url(#shadow)"/>
+<rect x="58" y="360" width="505" height="48" rx="22" fill="#0ABAB5"/>
+<text x="82" y="391" class="tag">3. Flow confirmation</text>
+<text x="86" y="442" class="card-title">/sp.flow</text>
+<text x="218" y="442" class="card-text">writes flow-review-data.json and Web review page</text>
+<text x="86" y="479" class="card-title">流程图</text>
+<text x="218" y="479" class="card-text">shows module summaries, short diagrams, node checkpoints</text>
+<text x="86" y="516" class="card-title">推荐选项</text>
+<text x="218" y="516" class="card-text">model gives recommended choice, alternatives, impact, rationale</text>
+<text x="86" y="553" class="card-title">授权证据</text>
+<text x="218" y="553" class="card-text">formal result is written to flow-confirmation.md</text>
+<rect x="617" y="360" width="505" height="250" rx="22" fill="#fff" filter="url(#shadow)"/>
+<rect x="617" y="360" width="505" height="48" rx="22" fill="#2f6e7c"/>
+<text x="641" y="391" class="tag">4. UI confirmation and build</text>
+<text x="645" y="442" class="card-title">/sp.ui</text>
+<text x="777" y="442" class="card-text">writes independent ui-review-data.json and UI previews</text>
+<text x="645" y="479" class="card-title">右侧确认栏</text>
+<text x="777" y="479" class="card-text">confirms layout, controls, states, exception handling</text>
+<text x="645" y="516" class="card-title">/sp.implement</text>
+<text x="777" y="516" class="card-text">consumes authorized flow/UI and Mode: impl tasks only</text>
+<text x="645" y="553" class="card-title">/sp.analyze / gate</text>
+<text x="777" y="553" class="card-text">checks drift, evidence, readiness, blocker routing</text>
+<rect x="58" y="640" width="1064" height="34" rx="17" fill="#e6f7f5" stroke="#0ABAB5"/>
+<text x="86" y="662" class="note">Review pages are aids; downstream commands trust flow-confirmation.md / ui-confirmation.md, not browser draft state.</text>
 </svg>

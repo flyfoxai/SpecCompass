@@ -13,6 +13,12 @@ Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
 
 ![SpecCompass layered process](./docs/assets/speccompass-layered-flow-en.svg)
 
+Review confirmation page examples:
+
+![SpecCompass flow review confirmation page](./docs/assets/speccompass-flow-review-preview.png)
+
+![SpecCompass UI review confirmation page](./docs/assets/speccompass-ui-review-preview.png)
+
 ## Why This Fork Exists
 
 Upstream Spec Kit has a stable installation and runtime mechanism. In larger AI coding projects, however, plain `spec`, `plan`, and `tasks` can still be too thin when the model must coordinate requirements, architecture, UI, APIs, data, tests, and delivery evidence across many files.

@@ -1,80 +1,78 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="760" viewBox="0 0 1180 760" role="img" aria-labelledby="title desc">
-  <title id="title">SpecCompass 命令职责图</title>
-  <desc id="desc">用列表形式说明每个 SpecCompass 命令负责处理的内容。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="700" viewBox="0 0 1180 700" role="img" aria-labelledby="title desc">
+<title id="title">SpecCompass 命令职责图</title>
+<desc id="desc">每个命令只负责一个控制层；flow/UI 的 Web 审核与确认文档是进入实现前的授权链。</desc>
+
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f7f1e7"/>
-      <stop offset="55%" stop-color="#eef5ef"/>
-      <stop offset="100%" stop-color="#e8eef8"/>
+      <stop offset="0%" stop-color="#f6fbfb"/>
+      <stop offset="100%" stop-color="#eef7f6"/>
     </linearGradient>
     <filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">
-      <feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#213934" flood-opacity="0.14"/>
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#203b36" flood-opacity="0.14"/>
     </filter>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#245f52"/>
+    </marker>
     <style>
-      .title { font: 700 30px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #14362f; }
-      .subtitle { font: 15px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #4a625d; }
-      .group { font: 700 17px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #ffffff; }
-      .cmd { font: 700 15px ui-sans-serif, system-ui, sans-serif; fill: #12372f; }
-      .text { font: 13px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #4a625d; }
-      .note { font: 700 12px "PingFang SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #25564b; }
+      .title { font: 760 32px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
+      .subtitle { font: 15px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
+      .card-title { font: 720 17px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
+      .card-text { font: 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
+      .tag { font: 700 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #fff; letter-spacing: 0; }
+      .small { font: 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
+      .note { font: 700 12px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
+      .rail-title { font: 700 13px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #11342f; letter-spacing: 0; }
+      .rail-text { font: 11px ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; fill: #4a625d; letter-spacing: 0; }
+      .arrow { stroke: #245f52; stroke-width: 2.5; marker-end: url(#arrow); fill: none; }
+      .dash { stroke: #6d5932; stroke-width: 2.3; stroke-dasharray: 7 7; marker-end: url(#arrow); fill: none; }
     </style>
   </defs>
-  <rect width="1180" height="760" rx="28" fill="url(#bg)"/>
-  <circle cx="1040" cy="96" r="160" fill="#fff" opacity="0.35"/>
-  <circle cx="110" cy="710" r="180" fill="#fff" opacity="0.28"/>
-  <text x="58" y="66" class="title">SpecCompass 命令职责图</text>
-  <text x="58" y="94" class="subtitle">每个命令负责一个控制层级。模型应该回到正确层级处理问题，而不是跨层猜测。</text>
 
-  <rect x="58" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
-  <rect x="58" y="128" width="505" height="48" rx="22" fill="#17483d"/>
-  <text x="82" y="159" class="group">1. 明确意图</text>
-  <text x="86" y="200" class="cmd">/sp.constitution</text>
-  <text x="226" y="200" class="text">项目原则、工程约束、治理规则</text>
-  <text x="86" y="234" class="cmd">/sp.prd</text>
-  <text x="226" y="234" class="text">可选产品发现草稿，先于稳定规格</text>
-  <text x="86" y="268" class="cmd">/sp.specify</text>
-  <text x="226" y="268" class="text">功能目标、范围、需求、冲突检查</text>
-  <text x="86" y="302" class="cmd">/sp.clarify</text>
-  <text x="226" y="302" class="text">意图不能安全推断时，向用户确认关键决策</text>
-  <text x="86" y="336" class="cmd">/sp.checklist</text>
-  <text x="226" y="336" class="text">面向需求和复核的质量检查清单</text>
-  <text x="86" y="366" class="note">产出：稳定意图、待决问题、验收方向</text>
-
-  <rect x="617" y="128" width="505" height="260" rx="22" fill="#ffffff" filter="url(#shadow)"/>
-  <rect x="617" y="128" width="505" height="48" rx="22" fill="#245f52"/>
-  <text x="641" y="159" class="group">2. 组织工作</text>
-  <text x="645" y="208" class="cmd">/sp.plan</text>
-  <text x="785" y="208" class="text">技术路线、workset、影响半径、边界</text>
-  <text x="645" y="246" class="cmd">/sp.flow</text>
-  <text x="785" y="246" class="text">业务流程主轴、分支、事件、状态变化</text>
-  <text x="645" y="284" class="cmd">/sp.ui</text>
-  <text x="785" y="284" class="text">由流程、数据、动作推导界面和元素</text>
-  <text x="645" y="322" class="cmd">/sp.tasks</text>
-  <text x="785" y="322" class="text">可执行小任务、验证证据、允许写入范围</text>
-  <text x="645" y="360" class="note">产出：有边界的计划、trace 锚点、可实现任务</text>
-
-  <rect x="58" y="430" width="505" height="238" rx="22" fill="#ffffff" filter="url(#shadow)"/>
-  <rect x="58" y="430" width="505" height="48" rx="22" fill="#6d5932"/>
-  <text x="82" y="461" class="group">3. 稳健执行</text>
-  <text x="86" y="512" class="cmd">/sp.implement</text>
-  <text x="226" y="512" class="text">编码、测试、验证证据、必要状态回写</text>
-  <text x="86" y="550" class="cmd">多 agent 规则</text>
-  <text x="226" y="550" class="text">coordinator 分配 workset，worker 只写允许文件</text>
-  <text x="86" y="588" class="cmd">memory 回写</text>
-  <text x="226" y="588" class="text">只在稳定事实、风险、未决项变化时写入</text>
-  <text x="86" y="626" class="note">产出：代码变更、新鲜证据、更新后的稳定状态</text>
-
-  <rect x="617" y="430" width="505" height="238" rx="22" fill="#ffffff" filter="url(#shadow)"/>
-  <rect x="617" y="430" width="505" height="48" rx="22" fill="#344f67"/>
-  <text x="641" y="461" class="group">4. 闭环收口</text>
-  <text x="645" y="512" class="cmd">/sp.analyze</text>
-  <text x="785" y="512" class="text">检查漂移、trace 断链、过期上下文、未闭环风险</text>
-  <text x="645" y="550" class="cmd">/sp.gate</text>
-  <text x="785" y="550" class="text">阶段准入结论、阻塞原因和兜底路线</text>
-  <text x="645" y="588" class="cmd">/sp.bundle</text>
-  <text x="785" y="588" class="text">打包 feature 文档，用于评审和交付</text>
-  <text x="645" y="626" class="note">产出：准入结论、短原因、兜底路线或交付包</text>
-
-  <rect x="58" y="700" width="1064" height="34" rx="17" fill="#e0f7f5" stroke="#0ABAB5"/>
-  <text x="86" y="722" class="note">收尾质量门禁：先修模型可解缺口；阻塞状态必须带短原因，并给出上层选项。</text>
+<rect width="1180" height="700" rx="28" fill="url(#bg)"/>
+<circle cx="1052" cy="92" r="150" fill="#0ABAB5" opacity="0.10"/>
+<circle cx="105" cy="640" r="170" fill="#0ABAB5" opacity="0.08"/>
+<text x="58" y="64" class="title">SpecCompass 命令职责图</text>
+<text x="58" y="92" class="subtitle">每个命令只负责一个控制层；flow/UI 的 Web 审核与确认文档是进入实现前的授权链。</text>
+<rect x="58" y="126" width="505" height="196" rx="22" fill="#fff" filter="url(#shadow)"/>
+<rect x="58" y="126" width="505" height="48" rx="22" fill="#17483d"/>
+<text x="82" y="157" class="tag">1. 需求入口</text>
+<text x="86" y="208" class="card-title">/sp.prd</text>
+<text x="218" y="208" class="card-text">捕获产品意图、来源和 outline readiness</text>
+<text x="86" y="245" class="card-title">/sp.specify</text>
+<text x="218" y="245" class="card-text">稳定 feature 范围、需求和冲突检查</text>
+<text x="86" y="282" class="card-title">/sp.clarify</text>
+<text x="218" y="282" class="card-text">用选项记录人工决策，避免模型猜测</text>
+<rect x="617" y="126" width="505" height="196" rx="22" fill="#fff" filter="url(#shadow)"/>
+<rect x="617" y="126" width="505" height="48" rx="22" fill="#245f52"/>
+<text x="641" y="157" class="tag">2. 方案与边界</text>
+<text x="645" y="208" class="card-title">/sp.plan</text>
+<text x="777" y="208" class="card-text">确定架构路线、workset、影响半径和实现准入</text>
+<text x="645" y="245" class="card-title">/sp.tasks</text>
+<text x="777" y="245" class="card-text">生成 Mode: doc / Mode: impl 任务包和写入边界</text>
+<text x="645" y="282" class="card-title">/sp.route</text>
+<text x="777" y="282" class="card-text">根据当前状态推荐下一步安全命令</text>
+<rect x="58" y="360" width="505" height="250" rx="22" fill="#fff" filter="url(#shadow)"/>
+<rect x="58" y="360" width="505" height="48" rx="22" fill="#0ABAB5"/>
+<text x="82" y="391" class="tag">3. Flow 确认</text>
+<text x="86" y="442" class="card-title">/sp.flow</text>
+<text x="218" y="442" class="card-text">生成 flow-review-data.json 和 Web 审核页</text>
+<text x="86" y="479" class="card-title">流程图</text>
+<text x="218" y="479" class="card-text">展示模块简介、短流程图、节点确认点</text>
+<text x="86" y="516" class="card-title">推荐选项</text>
+<text x="218" y="516" class="card-text">模型给出推荐、备选、后果和推荐理由</text>
+<text x="86" y="553" class="card-title">授权证据</text>
+<text x="218" y="553" class="card-text">正式结果写入 flow-confirmation.md</text>
+<rect x="617" y="360" width="505" height="250" rx="22" fill="#fff" filter="url(#shadow)"/>
+<rect x="617" y="360" width="505" height="48" rx="22" fill="#2f6e7c"/>
+<text x="641" y="391" class="tag">4. UI 确认与实现</text>
+<text x="645" y="442" class="card-title">/sp.ui</text>
+<text x="777" y="442" class="card-text">生成独立 ui-review-data.json 和界面预览</text>
+<text x="645" y="479" class="card-title">右侧确认栏</text>
+<text x="777" y="479" class="card-text">确认布局、控件、状态、异常处理等设计点</text>
+<text x="645" y="516" class="card-title">/sp.implement</text>
+<text x="777" y="516" class="card-text">只消费已授权的 flow/UI 和 Mode: impl 任务</text>
+<text x="645" y="553" class="card-title">/sp.analyze / gate</text>
+<text x="777" y="553" class="card-text">检查漂移、证据、readiness 和阻塞路由</text>
+<rect x="58" y="640" width="1064" height="34" rx="17" fill="#e6f7f5" stroke="#0ABAB5"/>
+<text x="86" y="662" class="note">确认页只是审核入口；后续命令只信任 flow-confirmation.md / ui-confirmation.md。</text>
 </svg>
