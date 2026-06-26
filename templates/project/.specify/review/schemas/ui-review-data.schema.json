@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.local/schemas/ui-review-data.schema.json",
+  "title": "SpecCompass UI Review Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_type",
+    "artifact_path",
+    "confirm_strategy",
+    "batch_id",
+    "project",
+    "source_snapshot",
+    "modules"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 1
+    },
+    "review_type": {
+      "const": "ui"
+    },
+    "artifact_path": {
+      "type": "string",
+      "pattern": "ui-review-data\\.json$"
+    },
+    "confirm_strategy": {
+      "type": "string",
+      "enum": ["batch", "hybrid", "rolling"]
+    },
+    "batch_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "feature", "business_overview"],
+      "properties": {
+        "name": {"type": "string"},
+        "feature": {"type": "string"},
+        "business_overview": {"type": "string"},
+        "review_goal": {"type": "string"}
+      }
+    },
+    "source_snapshot": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": {"type": "string"},
+          "anchors": {"type": "array", "items": {"type": "string"}},
+          "semantic_scope": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "schema_notes": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "$defs": {
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "summary", "screens"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "summary": {"type": "string"},
+        "review_layer": {
+          "type": "string",
+          "enum": ["business", "system_arch", "mixed"]
+        },
+        "must_confirm_total": {"type": "integer", "minimum": 0},
+        "screens": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/review_item"}
+        },
+        "trace_notes": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "review_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "summary",
+        "source_path",
+        "item_type",
+        "screen_layout",
+        "screen_regions",
+        "nodes"
+      ],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "summary": {"type": "string"},
+        "source_path": {"type": "string"},
+        "item_type": {
+          "type": "string",
+          "enum": ["screen", "screen_map", "prototype", "form", "state", "index"]
+        },
+        "screen_layout": {
+          "type": "string",
+          "enum": [
+            "dashboard",
+            "form",
+            "list_detail",
+            "wizard",
+            "detail",
+            "settings",
+            "screen_map",
+            "modal",
+            "custom"
+          ]
+        },
+        "screen_regions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/screen_region"}
+        },
+        "states": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/ui_state"}
+        },
+        "framework_approximation": {"type": "string"},
+        "framework_notes": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "complex_flow_exception": {"type": "string"},
+        "low_risk_linear_exception": {"type": "string"},
+        "nodes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/node"}
+        },
+        "edges": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/edge"}
+        },
+        "trace_notes": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "screen_region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "purpose", "position", "components"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "purpose": {"type": "string"},
+        "position": {
+          "type": "string",
+          "enum": ["top", "left", "main", "right", "bottom", "modal", "drawer", "inline"]
+        },
+        "source_ref": {"type": "string"},
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/ui_component"}
+        },
+        "notes": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "ui_component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "label", "purpose", "source_ref"],
+      "properties": {
+        "id": {"type": "string"},
+        "kind": {
+          "type": "string",
+          "enum": [
+            "button",
+            "input",
+            "select",
+            "textarea",
+            "checkbox",
+            "radio",
+            "table",
+            "card",
+            "nav",
+            "tab",
+            "filter",
+            "search",
+            "badge",
+            "chart-note",
+            "modal-note",
+            "dynamic-marker",
+            "text",
+            "empty-state",
+            "error-note"
+          ]
+        },
+        "label": {"type": "string"},
+        "purpose": {"type": "string"},
+        "source_ref": {"type": "string"},
+        "action_ref": {"type": "string"},
+        "field_ref": {"type": "string"},
+        "state_ref": {"type": "string"},
+        "decision_node_id": {"type": "string"},
+        "future_behavior_note": {"type": "string"}
+      }
+    },
+    "ui_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "state_type", "plain_note", "source_ref"],
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "state_type": {
+          "type": "string",
+          "enum": ["default", "empty", "loading", "error", "success", "permission", "dynamic_marker"]
+        },
+        "plain_note": {"type": "string"},
+        "source_ref": {"type": "string"},
+        "future_behavior_note": {"type": "string"}
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "plain_summary",
+        "review_layer",
+        "review_level",
+        "owner",
+        "node_kind",
+        "source_ref"
+      ],
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "plain_summary": {"type": "string"},
+        "action_prompt": {"type": "string"},
+        "review_layer": {
+          "type": "string",
+          "enum": ["business", "system_arch"]
+        },
+        "review_level": {
+          "type": "string",
+          "enum": [
+            "must_confirm",
+            "recommended",
+            "uncertain",
+            "key_step",
+            "verified",
+            "system_arch"
+          ]
+        },
+        "owner": {"type": "string"},
+        "node_kind": {
+          "type": "string",
+          "enum": [
+            "human_judgment",
+            "flow",
+            "decision",
+            "error",
+            "state",
+            "ui",
+            "system",
+            "external",
+            "role",
+            "sequence"
+          ]
+        },
+        "source_ref": {"type": "string"},
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {"$ref": "#/$defs/option"}
+        },
+        "recommended_option": {"type": "string"}
+      }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "when_to_choose", "consequence", "project_impact", "next_exit"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "id": {"const": "OPTION_B"}
+            },
+            "required": ["id"]
+          },
+          "then": {
+            "properties": {
+              "next_exit": {"pattern": "^needs-decision"}
+            }
+          }
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["OPTION_A", "OPTION_B", "OPTION_C", "OPTION_D"]
+        },
+        "label": {"type": "string"},
+        "when_to_choose": {"type": "string"},
+        "consequence": {"type": "string"},
+        "project_impact": {"type": "string"},
+        "next_exit": {
+          "type": "string",
+          "description": "OPTION_B.next_exit must start with 'needs-decision'. Other options should provide a concrete continuation route."
+        },
+        "recommended": {"type": "boolean"}
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": {"type": "string"},
+        "to": {"type": "string"},
+        "label": {"type": "string"}
+      }
+    }
+  }
+}

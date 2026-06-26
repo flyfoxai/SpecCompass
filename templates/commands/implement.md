@@ -57,10 +57,10 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Confirm routing identifies one active feature/workset and the requested work can be mapped to a selected `Mode: impl` task.
    - Confirm `tasks.md`, `plan.md`, `plan.md` `Implementation Readiness`, `Allowed Write Set`, `Required Checks`, and the selected task packet are present before editing.
    - Confirm the selected implementation task does not depend on unconfirmed Flow/UI artifacts:
-     - `specs/<feature>/flows/review/flow-confirmation.md` must exist when the task consumes flow facts from a batch-confirmed scope. It must have `human_confirmation: CONFIRMED`, owner approval `APPROVED` or `NOT_REQUIRED`, an `authorization_scope` that covers the selected task, and a `source_artifacts_snapshot` or equivalent `Evidence Signature` that still matches current flow sources.
-     - `specs/<feature>/ui/review/ui-confirmation.md` must exist when the task consumes UI facts from a batch-confirmed scope. It must have `human_confirmation: CONFIRMED`, owner approval `APPROVED` or `NOT_REQUIRED`, an `authorization_scope` that covers the selected task, and a `source_artifacts_snapshot` or equivalent `Evidence Signature` that still matches current UI sources.
-     - If either confirmation document is absent, stale, rejected, revoked, waiting for batch review, or narrower than the selected task's required scope, stop before editing. Return `Blocker Type: UPSTREAM_DOC_GAP`, name the missing or stale confirmation artifact, and route to `/sp.flow`, `/sp.ui`, `/sp.plan`, or `/sp.tasks` as the owner.
-     - `SCOPED_CONFIRMATION` does not authorize implementation for the full batch. Implementation may consume only explicitly confirmed items whose deferred or rejected siblings are isolated into a child batch and whose dependency impact is recorded. If the selected task touches unresolved child-batch items, return `NEEDS_TASKS` or `NEEDS_PLAN` instead of editing.
+     - `specs/<feature>/flows/review/flow-confirmation.md` must exist when the task consumes flow facts from a batch-confirmed scope. It must have `human_confirmation: CONFIRMED`, owner approval is `CONFIRMED` or `NOT_REQUIRED`, an `authorization_scope` that covers the selected task, no consumed `needs_decision_items` or `unresolved_decision_items`, and a `source_artifacts_snapshot` or equivalent `Evidence Signature` that still matches current flow sources.
+     - `specs/<feature>/ui/review/ui-confirmation.md` must exist when the task consumes UI facts from a batch-confirmed scope. It must have `human_confirmation: CONFIRMED`, owner approval is `CONFIRMED` or `NOT_REQUIRED`, an `authorization_scope` that covers the selected task, no consumed `needs_decision_items` or `unresolved_decision_items`, and a `source_artifacts_snapshot` or equivalent `Evidence Signature` that still matches current UI sources.
+     - If either confirmation document is absent, stale, `NEEDS_REVISION`, revoked, waiting for batch review, contains consumed unresolved decision items, or is narrower than the selected task's required scope, stop before editing. Return `Blocker Type: UPSTREAM_DOC_GAP`, name the missing or stale confirmation artifact, and route to `/sp.flow`, `/sp.ui`, `/sp.plan`, or `/sp.tasks` as the owner.
+     - `SCOPED_CONFIRMATION` does not authorize implementation for the full batch. Implementation may consume only explicitly confirmed or `decision_recorded_items` whose `needs_decision_items` or `unresolved_decision_items` are isolated into a child batch and whose dependency impact is recorded. If the selected task touches unresolved child-batch items, return `NEEDS_TASKS` or `NEEDS_PLAN` instead of editing.
      - `--auto` does not bypass Flow/UI batch confirmation, Stage Entry Preflight, stale checks, owner approval, or authorization writeback.
    - For frontend tasks, confirm the selected task has a `Design Constraint`,
      read `plan.md` `Frontend Design Authority`, and read
@@ -68,7 +68,8 @@ You **MUST** consider the user input before proceeding (if not empty).
      `design_authority: huashu-design` or an approved PRD/product design-system
      override. If the selected task touches business UI under `src/`, app
      pages, components, styles, routes, or a project dev server, do not
-     implement the right confirmation rail, approve/defer/reject controls,
+     implement the right confirmation rail, recommended-option controls,
+     needs-decision controls,
      authorization writeback UI, or SpecCompass labels unless the business spec
      explicitly requires that product feature.
    - If PRD framework or design-system requirements conflict with the Huashu

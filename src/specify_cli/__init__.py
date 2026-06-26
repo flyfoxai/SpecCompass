@@ -721,7 +721,8 @@ def _install_shared_infra(
 ) -> bool:
     """Install shared infrastructure files into *project_path*.
 
-    Copies ``.specify/scripts/`` and ``.specify/templates/`` from the
+    Copies ``.specify/scripts/``, ``.specify/templates/``, and
+    ``.specify/review/`` from the
     bundled core_pack or source checkout. Tracks all installed files
     in ``speckit.manifest.json``. Existing files are preserved by default;
     callers pass ``overwrite_existing=True`` only for explicit force/upgrade
@@ -745,7 +746,7 @@ def _install_shared_infra(
         except ValueError:
             return False
         parts = rel.parts
-        if len(parts) >= 3 and parts[0] == ".specify" and parts[1] in {"scripts", "templates"}:
+        if len(parts) >= 3 and parts[0] == ".specify" and parts[1] in {"scripts", "templates", "review"}:
             return True
         if len(parts) >= 2 and parts[0] == "scripts" and parts[1] in {"bash", "powershell"}:
             return True

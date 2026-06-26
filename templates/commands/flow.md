@@ -57,13 +57,35 @@ Global rules:
 - Treat newly generated or refreshed flow outputs as draft facts until checked by `/sp.analyze`, `/sp.gate`, or equivalent evidence. Draft flow facts may guide discussion, but they must not close risks, support PASS, or replace stable source facts.
 - Manage context as an engineering budget: start from routing, spec, clarifications, and open items; expand only to the flow source documents needed for the current branch or state decision.
 - Treat data-linkage as a direct-neighbor constraint. When a flow step changes state, data, permission, event, persistence, side effect, or acceptance meaning, check the directly related UI contract, API/data contract, permission rule, test or verification path, trace entry, and open item before treating the flow as stable.
-- Keep diagrams reviewable before asking for approval. A single reviewable flow diagram should normally contain no more than 12 business nodes. At 10-12 nodes, prefer a summary diagram plus subflows. Above 12 business nodes, split into subflows before asking for approval. The overview diagram should show only major stages, cross-subflow handoffs, and unresolved blockers; each child subflow should have one responsibility and its own visible review labels.
+- Keep diagrams reviewable before asking for approval. A single reviewable flow diagram should normally contain 5-7 business nodes. At 8 or more business nodes, warn that the diagram should be split and prefer a summary diagram plus subflows. At 10 or more business nodes, do not move directly into confirmation by default: split the diagram first, or write a qualified complex-flow exception reason. A qualified exception must explain why the diagram cannot be split, the required preconditions, the postconditions handed to the next section, the segment-by-segment review order, and the pass criteria for each section. A low-risk linear exception / 低风险线性例外 may also keep a longer diagram in one view only when it states that the path has no high-risk decision, permission, irreversible result, external dependency, or exception branch, and provides a collapsible segment checklist / 分段折叠清单 so reviewers can audit it in smaller chunks. A complex flow may stay in one diagram only when the exception reason is visible, specific, and reviewable. The overview diagram should show only major stages, cross-subflow handoffs, and unresolved blockers; each child subflow should have one responsibility and its own visible review labels.
+- Do not merge real business steps just to satisfy the 5-7 node budget. Treat a step as its own business node, or move it into a child subflow, when it changes business state, crosses roles, calls an external system, makes a permission or approval decision, changes a user-visible result, handles failure/compensation/recovery, creates a persistence side effect, or changes acceptance evidence. A complex-flow exception reason must name the concrete coupling that prevents splitting, the required preconditions, the postconditions handed to the next section, the segment-by-segment review order, and the pass criteria for each section; generic phrases such as "business complexity" or "cannot split" are not enough.
 - Use a top-down main-trunk layout for Mermaid or other renderable flow
   diagrams: keep the source-backed happy path vertical and centered, expand
   exception, rollback, blocked, and recovery paths sideways, avoid crossing
   connectors, and do not add decorative symmetry nodes. Separate stable node
   IDs from visible business labels; visible labels should be concise target
   domain labels that humans can cite in feedback.
+- The fixed SpecCompass review renderer is not Mermaid-based: it reads structured JSON nodes/edges and draws the review diagram with a native SVG/DAG layout. Do not replace `.specify/review/renderer/speccompass-review-renderer.html` with a Mermaid page during normal `/sp.flow` or `/sp.ui` runs. Mermaid, PlantUML, or Graphviz may still be used as project flow source files or external previews. When generating Mermaid source/previews, do not assume Mermaid + ELK is stable until it is verified in the target project; keep a readable font size between 16px and 18px, set `useMaxWidth: false`, avoid whole-SVG downscaling, and tune `nodeSpacing` and `rankSpacing` so the top-down main trunk and side exception paths remain legible. Sequence diagrams / 时序图 must be detected as `sequenceDiagram`, kept in Mermaid's native sequence syntax, and must not be passed through flowchart label wrapping. In `sequenceDiagram`, every `participant` or `actor` alias that is translated, contains Chinese, whitespace, slash, or punctuation must be emitted as a safe double-quoted alias such as `participant Actor as "管理员角色 / 系统角色"`, with backslashes and quotes escaped, so Mermaid does not mis-parse the sequence chart. External Mermaid preview switching must clear the old SVG, show a `正在渲染` placeholder, and use a render token or equivalent guard so a slow or failed previous render cannot overwrite the current diagram.
+- Flow review page layout must prevent full-page scroll on desktop: the left module navigation scrolls independently, while the center diagram area and right confirmation rail scroll as one review workspace. The right rail must use no sticky/max-height clipping that hides feedback or confirmation controls.
+- Human-focused review pages must show a project business overview / 项目整体业务地图, module summary / 模块简介, and per-flow summary / 流程简介 before detailed confirmation. The center diagram area must include a fullscreen / 全屏 view action for complex Mermaid diagrams. The right confirmation rail must replace legacy bulk approve / 全部通过 and bulk block / 全部阻塞 with batch actions that confirm recommended options / 按推荐确认, mark decision-needed items / 标记需补充决策, and reset the visible batch, plus a panel for the selected diagram, subflow, or node / 选中的图、子流程或节点. Long source previews, current diagram source, or index previews must be collapsible / 可折叠 so they do not waste right-rail height.
+- Module summary / 模块简介 and per-flow summary / 流程简介 must be business-bound, not generic boilerplate / 泛化套话, and must not restate methodology / 不复述方法论. Generate them as a 1-2 sentences / 1-2 句 business snapshot / 业务快照 that says 谁在什么场景处理什么 / who handles what in which business scenario, where the current flow starts, where it ends, and which choices can change the business result. The default center layer should use human labels such as 模块做什么, 这张图看什么, and 重点看哪里. Do not directly concatenate / 不得直接拼接 `businessObject`, `roles`, or `flowResponsibility` into a field-like sentence; translate those fields into one natural business sentence first. The full processing scope / 处理范围, raw field values, file name, node count, and node budget / 文件名、节点数、节点预算 belong only in folded trace details / 只能进入折叠追溯, not the default center summary. Use the target business scenario / 业务场景 such as survey publishing, template application, file access, tenant permission, export delivery, AI drafting/follow-up/analysis, or the current product's real modules. Do not fill these areas with abstract wording that only says the diagram shows paths, decisions, branches, completion checks, or placeholder wording like "current module + business object" / “当前模块 + 业务对象” and "explain how the current business is handled" / “说明当前业务如何处理”.
+- Generate review copy correctly at the source / 必须在生成阶段写对文案. The review page is not a copy cleanup layer / 审核页不是文案清洗器: do not generate technical wording first and then rely on page translation, regex replacement, or HTML rendering to make it readable / 不能先生成技术话术再依赖页面翻译. Business module default copy must not reuse system/architecture fallback wording / 业务模块默认文案不得套用系统/架构兜底. System/architecture wording may only be used for the `system_arch` layer / 系统/架构话术只能用于 `system_arch` 层, and it must say 无需产品确认. Module-level review layer and diagram-level review layer must be judged separately / 模块级和图级层级必须分开判断: do not mark a whole business feature as `system_arch` only because `flows/index.md` mentions direct-neighbor, cross-module, evidence chain, or adjacency checks; those terms can affect a concrete diagram or node, not the whole module. Specific business-context matching / 精确业务语境匹配 must run before broad matching, especially for 通知/模板/开发者门户/API Key/AI modules whose names overlap but whose reviewers and decisions differ.
+- Keep the confirmation rail scoped to the current center view. When the center shows one Mermaid diagram, the node checklist must show only that diagram's nodes; when it shows the index, the checklist may show index-level review labels. The index preview is not authorization for a concrete Mermaid diagram: if the module has Mermaid files, current-flow bulk recommended-option / 当前流程批量按推荐确认 must be disabled while the center is in index mode, with a clear prompt to switch to a concrete flow diagram first. `NOT_APPLICABLE_FOR_UI` means the feature does not proceed to UI review, not that its flow diagrams are hidden; if Mermaid flow files exist, the flow review page must still allow diagram review. The copied/written confirmation summary must still cover the full batch across all diagrams, files, and index-level labels so the authorization record is complete.
+- When a diagram node is selected, the selected node should focus the right rail on that single checkpoint / 右侧节点栏只显示该确认点. Provide a clear "show all checkpoints" action to cancel the selection and restore the full checklist. The left module navigation must show one red pending must-confirm counter / 待处理必审 X/Y for each module, where X is unresolved required confirmations and Y is the total must-confirm / 总必审 count from node-level saved state. This counter must be sourced from diagram-backed nodes only / 只统计图上真实节点: the same nodes that can receive a red marker in the Mermaid SVG. Index-level review labels, file-level fallback confirmations, collapsed source notes, and authorization-summary-only records may be copied into the writeback summary, but they must not enter the left module total. Do not show a second `当前图必审` or `当前视图必审` counter in the left navigation: choosing a module or switching diagrams changes only the center/right current view, not the module-level total. The right confirmation rail must not repeat the module-level `待处理必审 X/Y` counter in module facts, selected-node facts, batch facts, or current-view facts; it may show action feedback for the currently visible nodes, but not a second count that can be mistaken for another source of truth. This counter must refresh in real-time / 实时 after recommended-option saves, non-recommended submits, reselect, and current-flow bulk actions. The diagram must add a red marker / 红色标记 inside the node, preferably the internal top-right corner / 内部右上角, on nodes classified as 必须确认. Selecting a diagram node or right-rail node card must show a clear selected state / 选中态 on both sides. Stable help text that does not change with the selected node should use a collapsible panel, tooltip / 悬浮提示, popover, or button-triggered hint instead of occupying the default rail. Group right-rail information from broad to narrow, keep module-level authorization and module-level batch controls together, and avoid duplicate / 同一信息 repeated displays unless emphasis is required.
+- For `NOT_APPLICABLE_FOR_UI`, still show / 主视图必须显示 reviewable Mermaid flow diagrams whenever flow files exist; only show an empty or not-applicable main view when no flow diagram exists.
+- Support long node labels / 长节点标签 in the native review renderer and Mermaid source/previews. The fixed renderer should wrap visible node text with CSS such as `white-space: normal` and `overflow-wrap`; Mermaid source/previews should wrap labels before render, including `A[long label] --> B[long label]` style lines where nodes and edges share one line. Do not solve long text by shrinking the whole diagram below readable size.
+- Generate stable node IDs, source refs, and review labels so the fixed renderer
+  can provide two-way linkage / 双向联动 between the diagram and the node
+  checklist. The renderer contract owns click handling, selected state, and
+  keyboard accessibility; `/sp.flow` only supplies the data needed for clicking a
+  node card / 点击右侧节点卡 and clicking a diagram node / 点击流程图节点 to target the
+  same checkpoint.
+- If the current diagram has 10 or more business nodes and no visible, specific complex-flow exception reason that covers the cannot-split reason, preconditions, postconditions, segment review order, and segment pass criteria, and no qualified low-risk linear exception / 低风险线性例外, disable the current-flow bulk recommended-option action / 禁用当前流程按推荐批量确认. The page must explain that the reviewer should split the diagram first, add the concrete cannot-split reason, or mark a low-risk linear exception that says there is no high-risk decision, permission, irreversible result, external dependency, or exception branch and provides a collapsible segment checklist. Decision nodes must show a default path / 默认路径 warning in the node card when reviewers need to verify where unclear, missing, rejected, or exceptional outcomes go.
+- Split flow review responsibility into 业务层面 and 系统/架构层面 before asking for confirmation. Business-level flows cover users, business objects, status, approval, exceptions, and outcomes, and are confirmed by the 产品经理. System/architecture flows cover baselines, routing, adjacency checks, evidence chains, cross-module handoffs, or automation governance needed to support business goals, and are confirmed by the 系统负责人 or architecture owner. The product view may explain how system/architecture flows affect the business module, but must mark them as 无需产品确认.
+- Node cards must classify review into 6 类 with a colored dot and short label: 必须确认, 建议确认, 存疑, 关键环节, 已验证, and 系统/架构确认. Use 必须确认 for high-impact business decisions, permissions, state changes, or irreversible results; 建议确认 for low-risk items worth quick human review; 存疑 for incomplete or conflicting facts; 关键环节 for mainline steps reviewers should understand; 已验证 for items already covered by upstream sources; 系统/架构确认 for nodes outside product responsibility. 已 PRD 验证 and 已 spec 验证 must share the same 已验证 level and same color, with the source written only in the remark.
+- Node cards must be human-readable / 说人话 for non-programmer reviewers and use default compact node copy / 默认短句. The default visible layer is a 业务决策卡 / business decision card, not a field table, but 业务决策卡只能作为内部概念 / business decision card is an internal concept; 默认层不得显示可见标题“业务决策卡” / must not display the visible title "business decision card". Reviewers must understand the one business decision / 一句业务判断 within 5 秒 / a 5-second scan and the right-rail top must be a 首屏无技术 / technical-free first screen. The default layer may show only the node name, review level, confirmation owner, status, one action prompt starting with `请判断...`, the recommended choice with one short reason, and 2-4 executable `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices. Node name, review level, confirmation owner, and status are card header metadata / 卡片头部元信息 and must render as one compact single line / 紧凑单行; they must not be split into field-table rows / 不得拆成字段表行. Selected-node facts should use reviewer labels such as 谁确认, 要决定, 推荐选法, 确认状态, and 已写意见 instead of technical field labels. The card body / 卡片正文三行 must stay within three compact rows: `请判断...`, `推荐...`, and option buttons. Do not show separate `这是什么` / `要决定什么` / `怎么选` question rows in the default layer; compress them into the action prompt or move them to folded details. Each default sentence must be short, business-bound, and understandable without reading source files.
+- Node option behavior is owned by the fixed renderer contract in `.specify/review/renderer/README.md`. `/sp.flow` must generate valid review data with 2-4 executable options, `recommended_option`, and `OPTION_B.next_exit` starting with `needs-decision`; it must not restate or reimplement the renderer state machine, browser persistence, summary-copy, navigation-safety, or diagram redraw rules in command output.
+- Node cards must keep supporting material in collapsible supporting copy / 折叠详情, but the visible labels must still be human wording. Do not expose field-table labels such as 对象类型, 判断点, 来源, 主流程图, 节点说明, 审核人要看什么, 关联业务, 为什么存在, 需要判断什么, 不需要确认, 不需要管什么, 节点做什么, 通过标准, 可以通过的标准, 风险提示, or 常见风险 in the default right-rail top. Use reviewer-facing labels such as 节点动作, 审核重点, 业务影响, 审核原因, 无需审核, 继续条件, 常见问题, 依据位置, and 原文摘要 in folded details. Source, original text, remarks, trace IDs, `selected_option`, `recommended_option`, and `next_exit` belong only in folded details or compatibility fields and should be relabeled as 依据位置, 原文摘要, or 确认记录 when visible. Use different wording for FLOW, DEC, ERR, STATE, SEQ, ADJ, EXT, and ROLE nodes. Clean Mermaid brackets, braces, quotes, HTML labels, and raw technical markers before showing the business label.
 - Classify visual review into three tiers before promoting flow artifacts:
   - **No confirmation required**: trivial label, copy, formatting, or docs-only refresh; no new or changed flow semantics; no new nodes, branches, states, permissions, exceptions, or downstream readiness impact; and no visual artifact requires a direction choice. Record why confirmation was not required.
   - **Recommended confirmation**: small non-critical additions or readability/layout changes, including 1-2 non-critical nodes, branches, or labels, where source backing is clear and downstream readiness is not affected. The run may continue as a draft or with a warning, but must state what the user should review by visible label.
@@ -76,10 +98,11 @@ Global rules:
   paths, state changes, UI contracts, system/external steps, draft or inferred
   parts, files to review, and visible labels to reference in feedback.
 - If the flow draft contains a human decision point, explain the background in
-  plain Chinese, give 2-3 options, describe each option's impact, give a
-  recommendation, and state the reason. Keep the flow in `DRAFT_ONLY`,
-  `NEEDS_DECISION`, or `BLOCKED` until the user confirms or chooses a repair
-  option.
+  plain Chinese, give 2-4 decision options, describe each option's consequence
+  and project impact, name the `recommended_option`, explain the reason, and
+  state the `next_exit` that lets later work continue after the selected option.
+  Keep the flow in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user
+  completes confirmation of selected option.
 - Default human confirmation strategy is `confirm_strategy: batch`. For a
   multi-module, multi-workset, or dependency-domain flow generation, generate or
   refresh all in-scope flow drafts first, add them to the batch review manifest,
@@ -93,13 +116,13 @@ Global rules:
   `Batch ID`, `Batch Scope`, `Included Items`, `Excluded Items`, `Source
   Snapshot` or `Evidence Signature`, `Review Owner`, `Batch Review Status`,
   `Scoped Approval Policy`, and `Fallback Strategy`. Scoped approval does not
-  unlock `READY_FOR_UI` unless failed/deferred items are explicitly split into
-  a child batch and dependency impact is recorded.
+  unlock `READY_FOR_UI` unless needs-decision or unresolved decision items are
+  explicitly split into a child batch and dependency impact is recorded.
 - Scoped approval does not authorize the full batch. A `SCOPED_CONFIRMATION` result must
-  name confirmed items, deferred or rejected items, child batch IDs, dependency
-  impact, and the next owner route. Downstream stages may consume only the
-  confirmed scope when unresolved items are isolated and do not affect the
-  requested downstream work.
+  name confirmed items, needs-decision items, unresolved decision items, child
+  batch IDs, dependency impact, and the next owner route. Downstream stages may
+  consume only the confirmed scope when unresolved items are isolated and do not
+  affect the requested downstream work.
 - Batch-related notifications must use a stable field shape when they are shown
   in command output or review pages: `NOTIFY_TYPE`, `MESSAGE`, `WHY_NOW`,
   `IMPACT`, `REQUIRED_ACTION`, `BLOCKS_STAGE`, `NEXT_COMMAND`, `DO_NOT_RUN`,
@@ -119,12 +142,15 @@ document_type: sp_human_confirmation
 command: /sp.flow
 feature: <feature>
 schema_version: 1
-review_artifact: specs/<feature>/flows/review/flow-review.html
-review_artifact_mode: single-file-static | local-writer | server-preview | markdown-only
+review_artifact: .specify/review/renderer/speccompass-review-renderer.html
+review_artifact_mode: fixed-renderer | local-writer | server-preview | markdown-only
+review_data_artifact: specs/<feature>/flows/review/flow-review-data.json
+review_data_schema: .specify/review/schemas/flow-review-data.schema.json
+review_validator: .specify/review/scripts/validate-review-data.mjs
 confirm_strategy: batch | hybrid | rolling
 batch_id: <Batch ID from the review manifest>
 batch_scope: <confirmed flow scope>
-batch_review_status: CONFIRMED | SCOPED_CONFIRMATION | REJECTED | STALE | REVOKED
+batch_review_status: CONFIRMED | SCOPED_CONFIRMATION | NEEDS_REVISION | STALE | REVOKED
 source_artifacts_snapshot:
   - path: specs/<feature>/spec.md
     digest: sha256:<...> | not-computed
@@ -138,15 +164,26 @@ confirmed_by:
   confirmed_at: <ISO-8601 or run label>
 owner_approval:
   required: true | false
-  status: APPROVED | PENDING | NOT_REQUIRED
-human_confirmation: CONFIRMED | NEEDS_REVISION | REJECTED | SCOPED_CONFIRMATION | STALE | REVOKED
+  status: CONFIRMED | PENDING | NOT_REQUIRED
+human_confirmation: CONFIRMED | NEEDS_REVISION | SCOPED_CONFIRMATION | STALE | REVOKED
 authorization_scope: READY_FOR_UI | BLOCKED | <narrow confirmed scope>
-confirmed_items: [<FLOW labels or IDs>]
-deferred_items: [<FLOW labels or IDs>]
-rejected_items: [<FLOW labels or IDs>]
+confirmed_items: [<flow/file-level labels or IDs authorized without node-level choice>]
+needs_decision_items: [<node labels or IDs that selected OPTION_B and need supplemental decision>]
+unresolved_decision_items: [<node labels or IDs with no selected option or no exit path>]
+draft_excluded_items: [<node labels or IDs excluded because they were in DRAFT state at writeback time>]
+decision_recorded_items: [<node labels or IDs with selected OPTION_A/C/D>]
+decision_records:
+  - id: <visible label or stable ID>
+    selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D | NO_DECISION_REQUIRED
+    selected_summary: <plain-language selected action>
+    recommended_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D | NO_DECISION_REQUIRED
+    recommendation_reason: <why this option is recommended>
+    project_impact: <impact on scope, schedule, risk, downstream UI/plan/implementation>
+    next_exit: <next owner route or downstream stage unlocked by this choice>
+    reviewer_note: <optional human note>
 child_batches:
   - batch_id: <child-batch-id>
-    status: pending | confirmed | rejected | stale
+    status: pending | confirmed | needs_revision | stale
     dependency_impact: <what remains blocked>
 items_with_deviation:
   - id: <item-id>
@@ -159,11 +196,41 @@ revocation:
   revoked_at: <ISO-8601-or-None>
 ```
 
+Node-level confirmation fields must use this mapping: `OPTION_A/C/D`
+nodes go to `decision_recorded_items` and `decision_records`; nodes with saved
+`selected_option: OPTION_B` go to `needs_decision_items`; nodes with no selected
+option or no exit path map to `unresolved_decision_items`. Nodes in DRAFT state
+must be listed only in `draft_excluded_items` because draft choices must not
+enter `decision_records` and must not look like authorized or ordinary
+unresolved decisions. Only flow/file-level items authorized without a node-level
+choice go to `confirmed_items`. `OPTION_B` never counts as confirmed and must
+keep downstream authorization blocked unless it is split into a scoped child
+batch with owner route and exit path.
+
 Do not promote flow `Stage Readiness` to `READY_FOR_UI` until this document
 exists, has `human_confirmation: CONFIRMED`, has owner approval when required,
 covers the requested authorization scope, and is not stale. Review manifests,
-HTML local state, screenshots, or browser localStorage are review aids; they are
-not authorization evidence until written to `flow-confirmation.md`.
+HTML draft state, screenshots, or browser-side review aids are not authorization
+evidence until written to `flow-confirmation.md`.
+
+Review pages are rendered by the reusable `speccompass-review-data` toolchain:
+normal `/sp.flow` and `/sp.ui` commands must fill structured review data, must
+not edit the fixed renderer, and must not write HTML/CSS/JS for the confirmation
+surface. The renderer directory `.specify/review/renderer/` is multi-file fixed
+infrastructure / 多文件固定基础设施; `speccompass-review-renderer.html` is only the
+entry page and its `styles/*.css` and `scripts/*.js` are shared renderer assets.
+Use `.specify/review/renderer/speccompass-review-renderer.html` as the fixed
+renderer, write flow data to
+`specs/<feature>/flows/review/flow-review-data.json`, validate it with
+`.specify/review/scripts/validate-review-data.mjs` against
+`.specify/review/schemas/flow-review-data.schema.json`, and keep the result as
+draft when validation fails. 校验失败不能收尾，不能提升 readiness.
+
+Legacy compatibility is read-only: old `owner_approval.status: APPROVED` may be
+read as `CONFIRMED`, and old `REJECTED` may be migrated or interpreted as
+`NEEDS_REVISION`. New writes / 新写入 or newly generated flow confirmation
+records must not use `APPROVED` or `REJECTED`; use the current confirmation
+vocabulary instead.
 
 ## Purpose
 
@@ -261,23 +328,47 @@ not authorization evidence until written to `flow-confirmation.md`.
 - Create or update `specs/<feature>/flows/*.mmd`
 - Create or update `specs/<feature>/flows/review/flow-review-batch.md` or an
   equivalent batch review manifest when confirmation is recommended or required.
-- Create or update `specs/<feature>/flows/review/flow-review.html` and
-  review-data artifacts when the unified confirmation page is available.
+- Create or update structured review data at
+  `specs/<feature>/flows/review/flow-review-data.json` using the
+  `speccompass-review-data` skill when confirmation is recommended or required.
+  Validate it with
+  `.specify/review/scripts/validate-review-data.mjs` and
+  `.specify/review/schemas/flow-review-data.schema.json` before presenting it in
+  the fixed renderer. If validation fails, fix model-fixable data issues first;
+  if the remaining gap requires human input, keep the flow as draft and route the
+  gap explicitly. Review data fields are plain structured data: do not put
+  HTML, CSS, JavaScript, SVG, class names, event handlers, or page layout
+  instructions in any field, including `schema_notes` and `trace_notes`.
 - After the user completes batch confirmation, write or update
   `specs/<feature>/flows/review/flow-confirmation.md` using the Confirmation
   Document Schema above. This Markdown file is the authorization evidence
   downstream commands must read before treating flow artifacts as stable input.
-- When generating `flow-review.html`, use the unified confirmation template:
-  a header titled `SpecCompass — <project> / <feature>` with a short
-  specCompass mechanism note and page title, a main review area with labeled
-  flow diagrams or tables, and a narrow right confirmation sidebar. The right feedback rail is mandatory; if it is missing, the review artifact is invalid
-  and cannot authorize downstream work. The sidebar should be approximately
-  280-320px wide, use Tiffany Blue `#0ABAB5` as the primary color, and include
-  batch summary, selected item details, status banner, feedback textarea,
-  per-item approve/defer/reject/block controls, a Pending Decisions list,
-  blocker/stale list, and a batch confirmation action. The page must show where
-  `flow-confirmation.md` will be written. If HTML review is unavailable, the
-  Markdown batch review manifest must expose the same fields.
+- Present flow review data with the fixed renderer
+  `.specify/review/renderer/speccompass-review-renderer.html`; 普通 `/sp.flow`、`/sp.ui`
+  不得修改 renderer or renderer directory `.specify/review/renderer/` and must
+  only fill structured review data / 只填结构化
+  review data; it must not write HTML/CSS/JS for the confirmation surface /
+  不得为确认页编写 HTML/CSS/JS. The renderer is multi-file fixed infrastructure /
+  多文件固定基础设施; do not modify its HTML entry, CSS files, JavaScript files,
+  layout rules, click handlers, persistence, or summary logic during normal
+  `/sp.flow` and `/sp.ui` runs. The fixed renderer's right feedback rail is mandatory
+  for human confirmation. The fixed renderer owns the unified template,
+  right feedback rail, selected-state behavior, browser draft handling,
+  summary copy, navigation safety, native SVG/DAG review rendering, and
+  accessibility details.
+  `/sp.flow` must instead provide complete data for that renderer: project
+  business overview / 项目整体业务地图, module summary / 模块简介, per-flow summary
+  / 流程简介, fullscreen-capable diagram metadata, stable node IDs, review
+  labels, globally unique `node.id` values across the whole review data file,
+  `review_layer`, `review_level`, owner, `node_kind`, source refs,
+  2-4 `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices,
+  `recommended_option`, required `consequence`, required `project_impact`,
+  required `next_exit`, batch scope, pending-decision routes, blocker/stale
+  reasons, and writeback target `flow-confirmation.md`. Use Tiffany Blue
+  `#0ABAB5` and `huashu-design` only as renderer/design authority metadata in
+  the review data. Page implementation details live in
+  `.specify/review/renderer/README.md`. If HTML review is unavailable, the
+  Markdown batch review manifest must expose the same review data fields.
 - Refresh `specs/<feature>/memory/stable-context.md` only when source-backed or checked flow facts changed, or when routing changed. Draft inferences stay in `flows/*` or `memory/open-items.md`.
 - Refresh `specs/<feature>/memory/trace-index.md` only when stable trace links changed. Draft links stay in `flows/*` or `memory/open-items.md` until checked.
 - Refresh `specs/<feature>/memory/index.md` if routing changes
@@ -302,14 +393,60 @@ not authorization evidence until written to `flow-confirmation.md`.
 - Confirm every Mermaid artifact matches the written description.
 - Confirm flow visuals or renderable Mermaid files show human-review labels and
   that each label maps back to a structured source row or anchor.
-- Confirm every reviewable diagram obeys the node budget: no more than 12
-  business nodes per diagram unless a written exception is justified, 10-12
-  nodes are reviewed for summary-plus-subflows splitting, and anything above 12
-  business nodes is split before approval is requested.
+- Confirm every reviewable diagram obeys the node budget: 5-7 business nodes
+  is the normal target, 8 or more business nodes triggers a split warning, and
+  10 or more business nodes must be split before confirmation unless a visible
+  qualified complex-flow exception reason explains why it cannot be split, the
+  preconditions, postconditions, segment review order, and pass criteria, or a
+  qualified low-risk linear exception says there is no high-risk decision,
+  permission, irreversible result, external dependency, or exception branch and
+  provides a collapsible segment checklist for smaller review chunks.
+- Confirm node granularity is honest: state changes, role handoffs, external
+  calls, permission or approval decisions, user-visible result changes, failure
+  or recovery paths, persistence side effects, and acceptance-evidence changes
+  are not hidden inside one vague node. Confirm any complex-flow exception
+  includes concrete coupling, preconditions, postconditions, segment review
+  order, and segment pass criteria.
+- Confirm the human-focused review page includes a project business overview / 项目整体业务地图, module summary / 模块简介, per-flow summary / 流程简介, fullscreen / 全屏 diagram action, replacement actions for legacy bulk approve / 全部通过 and bulk block / 全部阻塞, selected diagram, subflow, or node details / 选中的图、子流程或节点, and collapsible / 折叠 source or index preview panels. Confirm old bulk approve / 全部通过 and bulk block / 全部阻塞 buttons are removed from node-level primary actions; historical names may appear only in migration notes.
+- Confirm module summaries, flow summaries, node titles, node-card short copy, and option descriptions were already written in human business language at generation stage / 生成阶段, not fixed later by the review page. Confirm the review page is not a copy cleanup layer / 审核页不是文案清洗器, and that the output does not generate technical wording first and then rely on page translation / 不能先生成技术话术再依赖页面翻译. Confirm 业务模块默认文案不得套用系统/架构兜底; 系统/架构话术只能用于 `system_arch` 层. Confirm module-level review layer is not inferred from broad `flows/index.md` words such as direct-neighbor, cross-module, evidence chain, or adjacency checks; feature-level and diagram-level layer checks must be separate. Confirm 精确业务语境匹配 runs before broad matching for 通知/模板/开发者门户/API Key/AI modules.
+- Confirm review data can support selecting a diagram node to focus the right
+  rail on that single checkpoint / 右侧节点栏只显示该确认点, with a visible action to
+  show all checkpoints again. Confirm the left navigation can show one pending
+  must-confirm counter / 待处理必审 X/Y in red for each module, where X is
+  unresolved and Y is the total must-confirm / 总必审 count, with no second
+  `当前图必审` or `当前视图必审` counter; Y must be sourced only from diagram-backed
+  nodes that can display red markers in the diagram, while index-level labels
+  and file-level fallback confirmations stay out of the left total and only
+  appear in authorization summaries. Confirm module switching cannot change Y
+  or imply that the module total changed. Confirm the data has enough stable
+  IDs for real-time / 实时 counter refresh, red marker / 红色标记 rendering inside
+  the node / 内部右上角, selected state / 选中态, collapsible / 折叠 supporting
+  copy, tooltip / 悬浮提示 or popover help, and non-duplicate / 同一信息 grouped
+  right-rail facts. Renderer-specific mechanics stay in the renderer README.
+- Confirm the right confirmation rail is scoped to the current center view while copied/written authorization summaries cover the full batch across every diagram, file, and index-level review label. Confirm index preview mode disables current-flow bulk recommended-option / 当前流程批量按推荐确认 whenever Mermaid flow files exist, and that `NOT_APPLICABLE_FOR_UI` modules with Mermaid files can still enter diagram review.
+- Confirm review data marks which nodes need feedback by default / 节点反馈默认折叠,
+  which nodes are pending reviewer notes, and which current-flow bulk / 当前流程批量
+  recommended-option, needs-decision, and reset actions are in scope. Confirm
+  reset semantics are described as clearing only current-view browser draft
+  choices and never deleting `flow-confirmation.md` authorization.
+- Confirm current-flow bulk recommended-option / 当前流程批量按推荐确认 is disabled / 禁用 when the current diagram has 10 or more business nodes without a specific complex-flow exception reason covering the cannot-split reason, preconditions, postconditions, segment review order, and segment pass criteria, and without a qualified low-risk linear exception that has no high-risk decision, permission, irreversible result, external dependency, or exception branch plus a collapsible segment checklist. Confirm DEC node cards highlight the default path / 默认路径 review warning.
+- Confirm node cards distinguish 业务层面 from 系统/架构层面, route product-facing items to 产品经理, route technical support/governance items to 系统负责人, and mark system/architecture items as 无需产品确认 when shown in product review.
+- Confirm node cards use the 6 类 review levels 必须确认, 建议确认, 存疑, 关键环节, 已验证, and 系统/架构确认. Confirm 已 PRD 验证 and 已 spec 验证 use the same 已验证 color/level and differ only in the remark.
+- Confirm node cards are human-readable / 说人话 and use default compact node copy / 默认短句 at the top. The default layer must be a 业务决策卡 / business decision card that can be understood in 5 秒 / a 5-second scan and follows 首屏无技术 / technical-free first screen. It shows only the node label, review level, owner, status, one `请判断...` action prompt, the recommended choice with one short reason, and executable options. Confirm selected-node facts use 谁确认, 要决定, 推荐选法, 确认状态, and 已写意见. Confirm 业务决策卡只能作为内部概念 and 默认层不得显示可见标题“业务决策卡”. Confirm the card body stays within three compact rows and the top copy is one business decision / 一句业务判断, not a field table. Confirm separate 这是什么 / 要决定什么 / 怎么选 rows do not appear in the default layer. Confirm each option defaults to title plus one short "when to choose this" sentence. Confirm technical/table labels such as 对象类型, 判断点, 来源, 主流程图, 节点说明, 审核人要看什么, 关联业务, 为什么存在, 需要判断什么, 不需要管什么, 节点做什么, 通过标准, 可以通过的标准, 风险提示, and 常见风险 do not appear in the default layer. Supporting copy must use plain labels such as 节点动作, 审核重点, 业务影响, 审核原因, 无需审核, 继续条件, 常见问题, 依据位置, 原文摘要, trace fields, 选择后会发生什么, 项目影响, 推荐理由, 后续出口, 授权追溯, and 确认记录 only in collapsible supporting copy / 折叠详情 or folded feedback controls, with dedicated wording for FLOW, DEC, ERR, STATE, SEQ, ADJ, EXT, and ROLE.
 - Confirm every renderable flow diagram uses a top-down main-trunk layout with
   the mainline centered, exceptions/recovery/blockers side-expanded, stable IDs
   separated from concise visible business labels, and no unnecessary crossing
   lines.
+- Confirm the fixed SpecCompass review renderer is not Mermaid-based and uses structured JSON plus native SVG/DAG layout for the review page. For Mermaid source/previews, confirm readable font size between 16px and 18px, `useMaxWidth: false`, tuned `nodeSpacing` and `rankSpacing`, and no whole-SVG shrink that makes complex diagrams unreadable. Confirm `sequenceDiagram` files render as sequence diagrams without flowchart label wrapping; every translated or punctuation-containing participant/actor alias is safely double-quoted and escaped. Confirm external Mermaid preview switching clears the old SVG, shows `正在渲染`, and uses a render token or equivalent stale-render guard.
+- Confirm the review page uses the required scroll model: left module navigation scrolls independently; center diagram area and right confirmation rail scroll as one review workspace; the right rail has no sticky/max-height clipping.
+- Confirm the right feedback rail includes per-node decision options, per-node feedback input, and an English label glossary for visible terms such as `FLOW`, `DEC`, `ERR`, `STATE`, `ROLE`, `BLOCKED`, and `DRAFT`.
+- Confirm every human-judgment node has 2-4 decision options, a clear `recommended_option`, required `consequence`, required `project_impact`, required `next_exit`, and confirmation of selected option. Confirm `OPTION_A/C/D` write to `decision_recorded_items`, `OPTION_B` writes to `needs_decision_items`, and unresolved nodes write to `unresolved_decision_items`. Do not use approve/defer/reject/block as the node-level primary interaction; statuses such as `BLOCKED` or `NEEDS_DECISION` may appear only as system results with a reason, owner, repair route, and exit path.
+- Confirm long node labels / 长节点标签 wrap before Mermaid render, including same-line node-and-edge Mermaid syntax, and that CSS allows node labels to wrap without shrinking the whole diagram below readability.
+- Confirm diagram-to-rail two-way linkage / 双向联动 is data-addressable:
+  clicking a node card / 点击右侧节点卡 and clicking a diagram node / 点击流程图节点
+  both reference the same stable node ID, source ref, and review label. The
+  renderer README owns selected-state and keyboard behavior such as Enter/Space.
+- Confirm `NOT_APPLICABLE_FOR_UI` modules with Mermaid flow files still show / 主视图必须显示 the reviewable flow diagram, and only show an empty not-applicable main view when no Mermaid flow diagram exists.
 - Confirm blocked, pending decision, and stale statuses are visible both in the
   diagram or table and in the right feedback rail. A non-empty Pending Decisions
   list, any decision node missing an explicit default path, or any undefined branch exit must keep `Stage Readiness.Status` as `NEEDS_DECISION` or

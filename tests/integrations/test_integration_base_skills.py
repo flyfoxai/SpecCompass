@@ -42,7 +42,7 @@ class SkillsIntegrationTests:
     COMMANDS_SUBDIR: str
     REGISTRAR_DIR: str
     CONTEXT_FILE: str
-    HELPER_SKILL_NAMES = {"huashu-design"}
+    HELPER_SKILL_NAMES = {"huashu-design", "speccompass-review-data"}
 
     # -- Registration -----------------------------------------------------
 
@@ -133,19 +133,28 @@ class SkillsIntegrationTests:
 
         assert actual_commands == expected_commands
 
-    def test_setup_installs_bundled_design_skills(self, tmp_path):
+    def test_setup_installs_bundled_helper_skills(self, tmp_path):
         """Skills hosts should get project-local helper skills required by SP methodology."""
         i = get_integration(self.KEY)
         m = IntegrationManifest(self.KEY, tmp_path)
         created = i.setup(tmp_path, m)
 
-        skill_file = i.skills_dest(tmp_path) / "huashu-design" / "SKILL.md"
-        assert skill_file.exists()
-        assert skill_file in created
-        content = skill_file.read_text(encoding="utf-8")
-        assert "name: huashu-design" in content
-        assert "frontend display pages" in content
-        assert "SpecCompass" in content
+        expectations = {
+            "huashu-design": ("name: huashu-design", "frontend display pages", "SpecCompass"),
+            "speccompass-review-data": (
+                "name: speccompass-review-data",
+                "structured review data",
+                "validate-review-data.mjs",
+            ),
+        }
+
+        for skill_name, required_tokens in expectations.items():
+            skill_file = i.skills_dest(tmp_path) / skill_name / "SKILL.md"
+            assert skill_file.exists()
+            assert skill_file in created
+            content = skill_file.read_text(encoding="utf-8")
+            for token in required_tokens:
+                assert token in content
 
     def test_bundled_design_skills_are_included_in_wheel(self):
         """Published wheels must include helper skills, not only source checkouts."""
@@ -585,7 +594,8 @@ class SkillsIntegrationTests:
         # Skill files
         for cmd in self._SKILL_COMMANDS:
             files.append(f"{skills_prefix}/{skill_directory_name(cmd)}/SKILL.md")
-        files.append(f"{skills_prefix}/huashu-design/SKILL.md")
+        for helper_skill_name in sorted(self.HELPER_SKILL_NAMES):
+            files.append(f"{skills_prefix}/{helper_skill_name}/SKILL.md")
 
         for companion_dir in i.companion_skill_dirs(Path(".")):
             companion_prefix = companion_dir.as_posix()

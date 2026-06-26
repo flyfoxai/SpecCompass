@@ -88,13 +88,26 @@ class TestClaudeIntegration:
         manifest = IntegrationManifest("claude", tmp_path)
         created = integration.setup(tmp_path, manifest, script_type="sh")
 
-        skill_file = tmp_path / ".claude" / "skills" / "huashu-design" / "SKILL.md"
-        assert skill_file.exists()
-        assert skill_file in created
-        content = skill_file.read_text(encoding="utf-8")
-        assert "name: huashu-design" in content
-        assert "frontend display pages" in content
-        assert "SpecCompass" in content
+        expectations = {
+            "huashu-design": (
+                "name: huashu-design",
+                "frontend display pages",
+                "SpecCompass",
+            ),
+            "speccompass-review-data": (
+                "name: speccompass-review-data",
+                "structured review data",
+                "validate-review-data.mjs",
+            ),
+        }
+
+        for skill_name, required_tokens in expectations.items():
+            skill_file = tmp_path / ".claude" / "skills" / skill_name / "SKILL.md"
+            assert skill_file.exists()
+            assert skill_file in created
+            content = skill_file.read_text(encoding="utf-8")
+            for token in required_tokens:
+                assert token in content
 
     def test_setup_removes_preexisting_core_skill_variants(self, tmp_path):
         integration = get_integration("claude")

@@ -76,10 +76,10 @@ Global rules:
 - `/sp.ui` must consume `/sp.flow` outputs. If `specs/<feature>/flows/*` is missing or the required flow contract is absent, stop and route to `/sp.flow` instead of inventing UI business behavior.
 - If the UI depends on an unconfirmed flow draft, keep the UI result as draft or register an open item; do not promote it to stable memory, stable trace, gate PASS evidence, or implementation readiness input.
 - Use `huashu-design` for frontend display pages, UI review pages, and
-  project UI previews. This applies to `ui-review.html`, all generated
-  frontend page previews, and any UI confirmation surface that users inspect
-  visually. React + Vite, Storybook, JSON Forms, or a real project dev server
-  are rendering/carrier choices; they do not replace the required design skill.
+  project UI previews. The fixed SpecCompass review renderer and all generated
+  frontend page previews must follow it. React + Vite, Storybook, JSON Forms,
+  or a real project dev server are rendering/carrier choices; they do not
+  replace the required design skill.
 - If the host does not provide the `huashu-design` skill, stop before
   finalizing visual UI artifacts, state the missing skill explicitly, and
   record the fallback as `Design Skill: huashu-design missing`. Do not silently
@@ -100,7 +100,7 @@ Global rules:
   Forms, Vue, Svelte, Lit, Alpine/HTMX, a project dev server, or any adapter may
   render the preview, but the review record must still name the design authority,
   chosen frontend framework, and any PRD override or deviation.
-- Keep review-surface controls isolated: do not use SpecCompass review confirmation rail in business UI. The right confirmation rail, approve/defer/reject controls, authorization writeback UI, and SpecCompass control-plane labels may appear only under `specs/<feature>/ui/review/*` unless the target product explicitly requires an approval side panel as a business feature.
+- Keep review-surface controls isolated: do not use SpecCompass review confirmation rail in business UI. The right confirmation rail, recommended-option controls, needs-decision controls, authorization writeback UI, and SpecCompass control-plane labels may appear only under `specs/<feature>/ui/review/*` unless the target product explicitly requires an approval side panel as a business feature.
 - Classify visual review into three tiers before promoting UI artifacts:
   - **No confirmation required**: trivial copy, label, formatting, or docs-only refresh; no new or changed screens, actions, fields, states, permissions, data binding, validation, or downstream readiness impact; and no visual artifact requires a direction choice. Record why confirmation was not required.
   - **Recommended confirmation**: small non-critical organization, readability, or layout changes, including 1-2 non-critical screens, actions, fields, or states, where flow/source backing is clear and no critical flow, data, permission, or acceptance path is affected. The run may continue as a draft or with a warning, but must state what the user should review by visible label.
@@ -114,8 +114,9 @@ Global rules:
   data sources, permissions/states, known draft or inferred parts, files to
   review, and visible labels to reference in feedback.
 - If the UI draft contains a human decision point, explain the background in
-  plain Chinese, give 2-3 options, describe each option's impact, give a
-  recommendation, and state the reason. Keep the UI in `DRAFT_ONLY`,
+  plain Chinese through the JSON field `when_to_choose` (do not create a
+  separate `background` field), give 2-3 options, describe each option's impact,
+  give a recommendation, and state the reason. Keep the UI in `DRAFT_ONLY`,
   `NEEDS_DECISION`, or `BLOCKED` until the user confirms or chooses a repair
   option.
 - Default human confirmation strategy is `confirm_strategy: batch`. For a
@@ -132,13 +133,13 @@ Global rules:
   Snapshot` or `Evidence Signature`, `Review Owner`, `Batch Review Status`,
   framework approximation/deviation notes, `Partial Approval Policy`, and
   `Fallback Strategy`. Scoped approval does not unlock `READY_FOR_PLAN` unless
-  failed/deferred items are explicitly split into a child batch and dependency
-  impact is recorded.
+  needs-decision or unresolved decision items are explicitly split into a child
+  batch and dependency impact is recorded.
 - Scoped approval does not authorize the full batch. A `SCOPED_CONFIRMATION` result must
-  name confirmed items, deferred or rejected items, child batch IDs, dependency
-  impact, and the next owner route. Downstream stages may consume only the
-  confirmed scope when unresolved items are isolated and do not affect the
-  requested downstream work.
+  name confirmed items, needs-decision items, unresolved decision items, child
+  batch IDs, dependency impact, and the next owner route. Downstream stages may
+  consume only the confirmed scope when unresolved items are isolated and do not
+  affect the requested downstream work.
 - Batch-related notifications must use a stable field shape when they are shown
   in command output or review pages: `NOTIFY_TYPE`, `MESSAGE`, `WHY_NOW`,
   `IMPACT`, `REQUIRED_ACTION`, `BLOCKS_STAGE`, `NEXT_COMMAND`, `DO_NOT_RUN`,
@@ -158,12 +159,15 @@ document_type: sp_human_confirmation
 command: /sp.ui
 feature: <feature>
 schema_version: 1
-review_artifact: specs/<feature>/ui/review/ui-review.html
-review_artifact_mode: single-file-static | local-writer | server-preview | markdown-only
+review_artifact: .specify/review/renderer/speccompass-review-renderer.html
+review_artifact_mode: fixed-renderer | local-writer | server-preview | markdown-only
+review_data_artifact: specs/<feature>/ui/review/ui-review-data.json
+review_data_schema: .specify/review/schemas/ui-review-data.schema.json
+review_validator: .specify/review/scripts/validate-review-data.mjs
 confirm_strategy: batch | hybrid | rolling
 batch_id: <Batch ID from the review manifest>
 batch_scope: <confirmed UI scope>
-batch_review_status: CONFIRMED | SCOPED_CONFIRMATION | REJECTED | STALE | REVOKED
+batch_review_status: CONFIRMED | SCOPED_CONFIRMATION | NEEDS_REVISION | STALE | REVOKED
 source_artifacts_snapshot:
   - path: specs/<feature>/ui/index.md
     digest: sha256:<...> | not-computed
@@ -177,8 +181,8 @@ confirmed_by:
   confirmed_at: <ISO-8601 or run label>
 owner_approval:
   required: true | false
-  status: APPROVED | PENDING | NOT_REQUIRED
-human_confirmation: CONFIRMED | NEEDS_REVISION | REJECTED | SCOPED_CONFIRMATION | STALE | REVOKED
+  status: CONFIRMED | PENDING | NOT_REQUIRED
+human_confirmation: CONFIRMED | NEEDS_REVISION | SCOPED_CONFIRMATION | STALE | REVOKED
 authorization_scope: READY_FOR_PLAN | BLOCKED | <narrow confirmed scope>
 design_authority: huashu-design
 design_scope: review-surface | business-preview | business-production
@@ -195,12 +199,23 @@ implementation_design_requirements:
   - use huashu-design tokens unless PRD override applies
   - preserve confirmed layout hierarchy
   - do not use SpecCompass review confirmation rail in business UI
-confirmed_items: [<SCREEN/ACTION/FIELD labels or IDs>]
-deferred_items: [<SCREEN/ACTION/FIELD labels or IDs>]
-rejected_items: [<SCREEN/ACTION/FIELD labels or IDs>]
+confirmed_items: [<screen/file-level labels or IDs authorized without item-level choice>]
+needs_decision_items: [<SCREEN/ACTION/FIELD labels or IDs with saved selected_option: OPTION_B and supplemental decision route>]
+unresolved_decision_items: [<SCREEN/ACTION/FIELD labels or IDs with no selected option or no exit path>]
+draft_excluded_items: [<SCREEN/ACTION/FIELD labels or IDs in DRAFT state, selected locally but not submitted with review note>]
+decision_recorded_items: [<SCREEN/ACTION/FIELD labels or IDs with selected OPTION_A/C/D>]
+decision_records:
+  - id: <visible label or stable ID>
+    selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D | NO_DECISION_REQUIRED
+    selected_summary: <plain-language selected action>
+    recommended_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D | NO_DECISION_REQUIRED
+    recommendation_reason: <why this option is recommended>
+    project_impact: <impact on scope, schedule, risk, downstream plan/implementation>
+    next_exit: <next owner route or downstream stage unlocked by this choice>
+    reviewer_note: <optional human note>
 child_batches:
   - batch_id: <child-batch-id>
-    status: pending | confirmed | rejected | stale
+    status: pending | confirmed | needs_revision | stale
     dependency_impact: <what remains blocked>
 items_with_deviation:
   - id: <item-id>
@@ -216,8 +231,27 @@ revocation:
 Do not promote UI `Stage Readiness` to `READY_FOR_PLAN` until this document
 exists, has `human_confirmation: CONFIRMED`, has owner approval when required,
 covers the requested authorization scope, and is not stale. Review manifests,
-HTML local state, screenshots, or browser localStorage are review aids; they are
-not authorization evidence until written to `ui-confirmation.md`.
+browser-side draft selections, screenshots, or preview state are review aids;
+they are not authorization evidence until written to `ui-confirmation.md`.
+
+Review pages are rendered by the reusable `speccompass-review-data` toolchain:
+normal `/sp.flow` and `/sp.ui` commands must fill structured review data, must
+not edit the fixed renderer, and must not write HTML/CSS/JS for the confirmation
+surface. The renderer directory `.specify/review/renderer/` is multi-file fixed
+infrastructure / 多文件固定基础设施; `speccompass-review-renderer.html` is only the
+entry page and its `styles/*.css` and `scripts/*.js` are shared renderer assets.
+Use `.specify/review/renderer/speccompass-review-renderer.html` as the fixed
+renderer, write UI data to
+`specs/<feature>/ui/review/ui-review-data.json`, validate it with
+`.specify/review/scripts/validate-review-data.mjs` against
+`.specify/review/schemas/ui-review-data.schema.json`, and keep the result as
+draft when validation fails. 校验失败不能收尾，不能提升 readiness.
+
+Legacy compatibility is read-only: old `owner_approval.status: APPROVED` may be
+read as `CONFIRMED`, and old `REJECTED` may be migrated or interpreted as
+`NEEDS_REVISION`. New writes / 新写入 or newly generated UI confirmation records
+must not use `APPROVED` or `REJECTED`; use the current confirmation vocabulary
+instead.
 
 ## Purpose
 
@@ -325,24 +359,58 @@ not authorization evidence until written to `ui-confirmation.md`.
 - Create or update `specs/<feature>/ui/jsonforms/*` when applicable
 - Create or update `specs/<feature>/ui/review/ui-review-batch.md` or an
   equivalent batch review manifest when confirmation is recommended or required.
-- Create or update `specs/<feature>/ui/review/ui-review.html` and review-data
-  artifacts when the unified confirmation page is available.
+- Create or update structured review data at
+  `specs/<feature>/ui/review/ui-review-data.json` using the
+  `speccompass-review-data` skill when confirmation is recommended or required.
+  Validate it with `.specify/review/scripts/validate-review-data.mjs` and
+  `.specify/review/schemas/ui-review-data.schema.json` before presenting it in
+  the fixed renderer. If validation fails, fix model-fixable data issues first;
+  if the remaining gap requires human input, keep the UI as draft and route the
+  gap explicitly. Review data fields are plain structured data: do not put
+  HTML, CSS, JavaScript, SVG, class names, event handlers, or page layout
+  instructions in any field, including `schema_notes` and `trace_notes`.
+  UI review data is not flow review data / UI 审核数据不是 flow 审核数据:
+  each screen must provide `screen_layout`, `screen_regions`, and visible
+  `components`; optional `states` add screen-state notes. `screen_layout` is the
+  screen layout / 屏幕布局 that tells the reviewer whether this is a form,
+  dashboard, list/detail, wizard, modal, or other screen shape. The `nodes` array is only the right-rail
+  decision and authorization model; it must not replace the middle-screen UI
+  preview. Dynamic marker / 动态标注 behavior must be written as plain text
+  such as `此处数字未来会自动更新`, not as animation, popup code, or renderer
+  instructions. 决策选项需要深度推理: every human decision node needs 2-4
+  executable options with background in `when_to_choose`, consequence, project
+  impact, `next_exit`, and `recommended_option`.
 - After the user completes batch confirmation, write or update
   `specs/<feature>/ui/review/ui-confirmation.md` using the Confirmation
   Document Schema above. This Markdown file is the authorization evidence
   downstream commands must read before treating UI artifacts as stable input.
-- When generating `ui-review.html`, use the unified confirmation template:
-  a header with a short specCompass mechanism note and page title, a main review
-  area with labeled UI screens or an overall project UI overview, and a narrow
-  right confirmation sidebar. The sidebar should be approximately 280-320px
-  wide, use Tiffany Blue `#0ABAB5` as the primary color, and include batch
-  summary, framework approximation/deviation notes, feedback textarea,
-  per-item approve/defer/reject controls, and a batch confirmation action. The
-  page must show where `ui-confirmation.md` will be written. The visual design
-  must come from `huashu-design`; if that skill is missing, mark the page and
-  review data with `Design Skill: huashu-design missing` and keep the result
-  non-authoritative until the user accepts the deviation. If HTML review is
-  unavailable, the Markdown batch review manifest must expose the same fields.
+- Present UI review data with the fixed renderer
+  `.specify/review/renderer/speccompass-review-renderer.html`; 普通 `/sp.flow`、`/sp.ui`
+  不得修改 renderer or renderer directory `.specify/review/renderer/` and must
+  only fill structured review data / 只填结构化
+  review data; it must not write HTML/CSS/JS for the confirmation surface /
+  不得为确认页编写 HTML/CSS/JS. The renderer is multi-file fixed infrastructure /
+  多文件固定基础设施; do not modify its HTML entry, CSS files, JavaScript files,
+  layout rules, click handlers, persistence, or summary logic during normal
+  `/sp.flow` and `/sp.ui` runs. The fixed renderer owns the unified confirmation
+  template, right confirmation sidebar, browser draft handling, decision
+  interactions, summary copy, visual grouping, and accessibility details. `/sp.ui`
+  must instead provide complete data for that renderer: page title, project UI
+  overview, screen map summary, per-screen purpose, stable review IDs, visible
+  labels, globally unique `node.id` values across the whole review data file,
+  `review_layer`, `review_level`, owner, `node_kind`, source refs,
+  framework approximation/deviation notes, design authority metadata, 2-4
+  `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices,
+  `recommended_option`, required `consequence`, required `project_impact`,
+  required `next_exit`, batch scope, pending-decision routes, blocker/stale
+  reasons, and writeback target `ui-confirmation.md`. Use Tiffany Blue
+  `#0ABAB5` and `huashu-design` only as renderer/design authority metadata in
+  the review data. The visual design must come from `huashu-design`; if that
+  skill is missing, mark the review data with
+  `Design Skill: huashu-design missing` and keep the result non-authoritative
+  until the user accepts the deviation. Page implementation details live in
+  `.specify/review/renderer/README.md`. If HTML review is unavailable, the
+  Markdown batch review manifest must expose the same review data fields.
 - Refresh `specs/<feature>/memory/stable-context.md` only when source-backed or checked UI facts changed, or when routing changed. Draft inferences stay in `ui/*` or `memory/open-items.md`.
 - Refresh `specs/<feature>/memory/trace-index.md` only when stable UI trace links changed. Draft links stay in `ui/*` or `memory/open-items.md` until checked.
 - Refresh `specs/<feature>/memory/index.md` if routing changes

@@ -10,9 +10,9 @@ metadata:
 # huashu-design
 
 Use this skill when designing UI specifications, frontend display pages, later
-frontend implementation work, UI confirmation pages, `ui-review.html`, project
-UI previews, module page previews, and any SpecCompass surface that users
-inspect visually before authorization.
+frontend implementation work, UI confirmation pages, the fixed SpecCompass
+review renderer, project UI previews, module page previews, and any
+SpecCompass surface that users inspect visually before authorization.
 
 Apply a restrained, work-focused UI style:
 
@@ -30,8 +30,8 @@ rules, and acceptance checks.
 Use three scopes:
 
 - `review-surface`: SpecCompass confirmation pages. Huashu is mandatory and the
-  right confirmation rail, approve/defer/reject controls, authorization
-  writeback, and SpecCompass labels belong here.
+  right confirmation rail, recommended-option controls, needs-decision controls,
+  feedback input, authorization writeback, and SpecCompass labels belong here.
 - `business-preview`: target product UI previews generated for human review.
   Huashu is the default design authority unless the PRD names a stronger
   product design system.
@@ -47,5 +47,6 @@ the deviation, reason, and affected scope.
 
 Never copy review-surface controls into business UI unless the target product
 explicitly requires that business feature. The right confirmation rail,
-approve/defer/reject controls, authorization writeback UI, and SpecCompass
-control-plane labels are for SpecCompass review surfaces only.
+recommended-option controls, needs-decision controls, authorization writeback
+UI, and SpecCompass control-plane labels are for SpecCompass review surfaces
+only.

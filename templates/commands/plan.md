@@ -80,7 +80,7 @@ Execution flow:
    - Confirm routing identifies one active feature and the required `bundle.md` is current enough for planning.
    - Check whether user input changes product goal, requirements, acceptance, flow, UI, workset boundary, architecture boundary, or implementation-readiness expectations. Route upstream before planning if the change belongs to PRD/spec/clarify/flow/ui.
    - Confirm upstream flow and UI contracts needed by the requested workset are present or explicitly tracked as open items. If delivery planning would have to invent flow state, UI behavior, data binding, permission, acceptance, or source facts, stop and route to `/sp.flow`, `/sp.ui`, `/sp.specify`, or `/sp.clarify`.
-   - Confirm flow/UI batch confirmation is complete before treating those artifacts as planning input. If flow or UI readiness is `WAITING_FOR_BATCH_REVIEW`, partial, rejected, stale, or missing batch confirmation evidence, stop and route to the relevant `/sp.flow` or `/sp.ui` batch review path instead of creating implementation readiness.
+   - Confirm flow/UI batch confirmation is complete before treating those artifacts as planning input. If flow or UI readiness is `WAITING_FOR_BATCH_REVIEW`, `NEEDS_REVISION`, stale, missing batch confirmation evidence, or still has consumed `needs_decision_items` / `unresolved_decision_items`, stop and route to the relevant `/sp.flow` or `/sp.ui` batch review path instead of creating implementation readiness.
    - For frontend work, read the UI confirmation design fields before planning
      implementation: `design_authority`, `design_scope`, `frontend_framework`,
      `brand_override`, `design_deviation_items`, and

@@ -248,6 +248,15 @@ class TestInitIntegrationFlag:
         custom_template = "# stale spec-template\n/sp-tasks\n/speckit.plan\n"
         (templates_dir / "spec-template.md").write_text(custom_template, encoding="utf-8")
 
+        # Pre-create a fixed review renderer support file with stale content.
+        review_renderer_dir = project / ".specify" / "review" / "renderer"
+        review_renderer_dir.mkdir(parents=True)
+        stale_renderer_readme = "# stale review renderer\n"
+        (review_renderer_dir / "README.md").write_text(
+            stale_renderer_readme,
+            encoding="utf-8",
+        )
+
         memory_dir = project / ".specify" / "memory"
         memory_dir.mkdir(parents=True)
         memory_file = memory_dir / "project-index.md"
@@ -285,6 +294,10 @@ class TestInitIntegrationFlag:
         assert "/speckit.specify" not in powershell_prereqs
         assert "/speckit.plan" not in powershell_prereqs
         assert "/speckit.tasks" not in powershell_prereqs
+        renderer_readme = (review_renderer_dir / "README.md").read_text(encoding="utf-8")
+        assert renderer_readme != stale_renderer_readme
+        assert "SpecCompass Review Renderer" in renderer_readme
+        assert "fixed renderer" in renderer_readme
         memory_content = memory_file.read_text(encoding="utf-8")
         assert "Business-specific content stays." in memory_content
         assert "/sp.specify" in memory_content

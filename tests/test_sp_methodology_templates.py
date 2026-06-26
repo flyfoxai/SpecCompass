@@ -1,7 +1,12 @@
 """Regression tests for SP methodology rules embedded in command templates."""
 
+import json
+import re
+import shutil
+import subprocess
 from pathlib import Path
 
+import pytest
 import yaml
 
 
@@ -11,6 +16,26 @@ FEATURE_MEMORY_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "temp
 FEATURE_TEMPLATE_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature"
 PROJECT_MEMORY_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "memory"
 METHODOLOGY_DOC = PROJECT_ROOT / "docs" / "reference" / "sp-project-methodology.md"
+REVIEW_ROOT = PROJECT_ROOT / "templates" / "project" / ".specify" / "review"
+FLOW_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "flow-review-data.schema.json"
+UI_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "ui-review-data.schema.json"
+REVIEW_DATA_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-review-data.mjs"
+REVIEW_PAGE_RENDERER = REVIEW_ROOT / "renderer" / "speccompass-review-renderer.html"
+RENDERER_README = REVIEW_ROOT / "renderer" / "README.md"
+REVIEW_RENDERER_STYLE_FILES = (
+    REVIEW_ROOT / "renderer" / "styles" / "tokens.css",
+    REVIEW_ROOT / "renderer" / "styles" / "layout.css",
+    REVIEW_ROOT / "renderer" / "styles" / "review-ui.css",
+)
+REVIEW_RENDERER_SCRIPT_FILES = (
+    REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "state-store.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "ui-preview-renderer.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "review-rail.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js",
+)
+REVIEW_DATA_SKILL = PROJECT_ROOT / "templates" / "skills" / "speccompass-review-data" / "SKILL.md"
 BASH_PREREQ = PROJECT_ROOT / "scripts" / "bash" / "check-prerequisites.sh"
 POWERSHELL_PREREQ = PROJECT_ROOT / "scripts" / "powershell" / "check-prerequisites.ps1"
 TEMPLATE_BASH_PREREQ = PROJECT_ROOT / "templates" / "project" / "scripts" / "bash" / "check-prerequisites.sh"
@@ -88,6 +113,13 @@ def _command(name: str) -> str:
     return (COMMANDS_DIR / f"{name}.md").read_text(encoding="utf-8")
 
 
+def _review_renderer_bundle() -> str:
+    renderer_parts = [REVIEW_PAGE_RENDERER.read_text(encoding="utf-8")]
+    renderer_parts.extend(path.read_text(encoding="utf-8") for path in REVIEW_RENDERER_STYLE_FILES)
+    renderer_parts.extend(path.read_text(encoding="utf-8") for path in REVIEW_RENDERER_SCRIPT_FILES)
+    return "\n".join(renderer_parts)
+
+
 def _paragraph_containing(content: str, needle: str) -> str:
     for paragraph in content.split("\n\n"):
         if needle in paragraph:
@@ -114,6 +146,23 @@ def _fenced_block_containing(content: str, needle: str) -> str:
     start = content.rfind("```", 0, needle_position)
     end = content.index("```", needle_position)
     return content[start : end + 3]
+
+
+def test_review_data_tests_do_not_depend_on_external_demo_projects():
+    """Review renderer contracts must be tested from repository assets only."""
+    checked_texts = [Path(__file__).read_text(encoding="utf-8")]
+    if REVIEW_ROOT.exists():
+        checked_texts.extend(
+            path.read_text(encoding="utf-8")
+            for path in REVIEW_ROOT.rglob("*")
+            if path.is_file() and path.suffix in {".md", ".html", ".json", ".mjs", ".js", ".css"}
+        )
+    test_source = "\n".join(checked_texts)
+    external_demo_root = "/Users/hula/workspace" + "/ASK"
+    external_demo_symbol = "ASK_" + "FLOW_REVIEW"
+
+    assert external_demo_root not in test_source
+    assert external_demo_symbol not in test_source
 
 
 def test_risk_sensitive_commands_read_open_items_before_deciding():
@@ -1665,12 +1714,40 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "**Required confirmation**" in flow
     assert "first-time stable flow generation" in flow
     assert "3 or more new flow nodes" in flow
-    assert "single reviewable flow diagram should normally contain no more than 12 business nodes" in flow
-    assert "At 10-12 nodes, prefer a summary diagram plus subflows" in flow
-    assert "Above 12 business nodes, split into subflows before asking for approval" in flow
+    assert "single reviewable flow diagram should normally contain 5-7 business nodes" in flow
+    assert "8 or more business nodes" in flow
+    assert "10 or more business nodes" in flow
+    assert "complex-flow exception reason" in flow
+    assert "low-risk linear exception" in flow
+    assert "no high-risk decision, permission, irreversible result, external dependency, or exception branch" in flow
+    assert "collapsible segment checklist" in flow
+    assert "Do not merge real business steps just to satisfy the 5-7 node budget" in flow
+    assert "preconditions" in flow
+    assert "postconditions" in flow
+    assert "segment-by-segment review order" in flow
     assert "top-down main-trunk layout" in flow
-    assert "SpecCompass — <project> / <feature>" in flow
+    assert "fixed SpecCompass review renderer is not Mermaid-based" in flow
+    assert "native SVG/DAG layout" in flow
+    assert "font size between 16px and 18px" in flow
+    assert "useMaxWidth: false" in flow
+    assert "nodeSpacing" in flow
+    assert "rankSpacing" in flow
+    assert "left module navigation scrolls independently" in flow
+    assert "center diagram area and right confirmation rail scroll as one review workspace" in flow
+    assert "no sticky/max-height clipping" in flow
+    assert "project business overview / 项目整体业务地图" in flow
+    assert "module summary / 模块简介" in flow
+    assert "per-flow summary" in flow
     assert "right feedback rail is mandatory" in flow
+    assert "per-node decision options" in flow
+    assert "2-4 decision options" in flow
+    assert "`OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices" in flow
+    assert "recommended_option" in flow
+    assert "next_exit" in flow
+    assert "confirmation of selected option" in flow
+    assert "per-node approve/defer/reject/block controls" not in flow
+    assert "per-node feedback input" in flow
+    assert "English label glossary" in flow
     assert "blocked, pending decision, and stale statuses" in flow
     assert "Pending Decisions" in flow
     assert "decision node has an explicit default path" in flow
@@ -1755,11 +1832,38 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "ui-confirmation.md" in implement
     assert "right confirmation rail" in implement
 
-    assert "单张可审核流程图通常不超过 12 个业务节点" in methodology
-    assert "10-12 个节点时优先拆成 overview 加子流程" in methodology
-    assert "超过 12 个业务节点时必须先拆成子流程" in methodology
+    assert "单张可审核流程图通常控制在 5-7 个业务节点" in methodology
+    assert "8 个及以上业务节点" in methodology
+    assert "10 个及以上业务节点" in methodology
+    assert "复杂流程例外理由" in methodology
+    assert "低风险线性例外" in methodology
+    assert "不包含高风险判断、权限、不可逆结果、外部依赖或异常分支" in methodology
+    assert "分段折叠清单" in methodology
+    assert "不能为了满足 5-7 个节点预算而被粗暴合并" in methodology
+    assert "前置依赖" in methodology
+    assert "后置输出" in methodology
+    assert "分段审核顺序" in methodology
     assert "自上而下的主干优先布局" in methodology
+    assert "固定 SpecCompass review renderer 不是 Mermaid renderer" in methodology
+    assert "原生 SVG/DAG 布局" in methodology
+    assert "字体控制在 16px 到 18px" in methodology
+    assert "useMaxWidth: false" in methodology
+    assert "nodeSpacing" in methodology
+    assert "rankSpacing" in methodology
+    assert "左侧模块导航独立滚动" in methodology
+    assert "中间图形区和右侧确认栏作为同一个审核工作区滚动" in methodology
+    assert "禁止 sticky/max-height 裁剪右栏控件" in methodology
     assert "右侧反馈确认栏是 flow 确认页的合格条件" in methodology
+    assert "索引预览不能替代具体图的授权" in methodology
+    assert "不表示 flow 图不需要审核" in methodology
+    assert "逐节点决策选项卡" in methodology
+    assert "每个需要人工判断的节点" in methodology
+    assert "2-4 个可执行选项" in methodology
+    assert "推荐选项" in methodology
+    assert "后续出口" in methodology
+    assert "逐节点 approve/defer/reject/block 控件" not in methodology
+    assert "逐节点反馈输入框" in methodology
+    assert "英文标签说明" in methodology
     assert "阻塞、待决策和 stale 状态必须同时出现在图和右侧确认栏" in methodology
     assert "前端展示页面的设计必须使用 `huashu-design` skill" in methodology
     assert "宿主没有提供 `huashu-design` skill" in methodology
@@ -2876,3 +2980,974 @@ def test_flow_ui_next_prompts_require_visual_review_before_downstream():
     assert "which viewer to use" in ui
     assert "ACTION A2 on SCREEN S1" in ui
     assert "do not present `/sp.gate` as the immediate next" in ui
+
+
+def test_flow_methodology_requires_human_focused_review_page_contract():
+    """Flow methodology should keep confirmation pages compact and review-efficient."""
+    flow = _command("flow")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+
+    for content, label in ((flow, "flow command"), (methodology, "methodology")):
+        assert "project business overview" in content or "项目整体业务地图" in content, label
+        assert "module summary" in content or "模块简介" in content, label
+        assert "per-flow summary" in content or "流程简介" in content, label
+        assert "fullscreen" in content or "全屏" in content, label
+        assert "bulk approve" in content or "全部通过" in content, label
+        assert "bulk block" in content or "全部阻塞" in content, label
+        assert "selected diagram, subflow, or node" in content or "选中的图、子流程或节点" in content, label
+        assert "selected node should focus the right rail on that single checkpoint" in content or "右侧节点栏只显示该确认点" in content, label
+        assert "待处理必审" in content, label
+        assert "total must-confirm" in content or "总必审" in content, label
+        assert "必须审核总数" not in content, label
+        assert "实时" in content or "real-time" in content, label
+        assert "red marker" in content or "红色标记" in content, label
+        assert "内部右上角" in content or "inside the node" in content, label
+        assert "选中态" in content or "selected state" in content, label
+        assert "悬浮提示" in content or "tooltip" in content or "popover" in content, label
+        assert "同一信息" in content or "duplicate" in content, label
+        assert "collapsible" in content or "折叠" in content, label
+        assert "node feedback is collapsed by default" in content or "节点反馈默认折叠" in content, label
+        assert "current-flow bulk" in content or "当前流程批量" in content, label
+        assert "当前流程批量（current-flow bulk）通过、阻塞" not in content, label
+        assert "current-flow bulk recommended-option" in content or "当前流程批量按推荐确认" in content, label
+        assert "index preview" in content or "索引预览" in content, label
+        assert "NOT_APPLICABLE_FOR_UI" in content, label
+        assert "5-7" in content, label
+        assert "8 or more" in content or "8 个及以上" in content, label
+        assert "10 or more" in content or "10 个及以上" in content, label
+        assert "complex-flow exception reason" in content or "复杂流程例外理由" in content, label
+        assert "low-risk linear exception" in content or "低风险线性例外" in content, label
+        assert "collapsible segment checklist" in content or "分段折叠清单" in content, label
+        assert "disable" in content or "禁用" in content, label
+        assert "default path" in content or "默认路径" in content, label
+        assert "human-readable" in content or "人话" in content, label
+        assert "业务层面" in content, label
+        assert "系统/架构层面" in content, label
+        assert "产品经理" in content, label
+        assert "系统负责人" in content, label
+        assert "6 类" in content or "six" in content.lower(), label
+        assert "必须确认" in content, label
+        assert "建议确认" in content, label
+        assert "存疑" in content, label
+        assert "关键环节" in content, label
+        assert "已验证" in content, label
+        assert "系统/架构确认" in content, label
+        assert "已 PRD 验证" in content, label
+        assert "已 spec 验证" in content, label
+        assert "同一颜色" in content or "same color" in content.lower(), label
+        assert "默认短句" in content or "default compact" in content, label
+        assert "请判断" in content, label
+        assert "推荐方案" in content or "recommended option" in content, label
+        assert "业务决策卡" in content or "business decision card" in content, label
+        assert "业务决策卡只能作为内部概念" in content or "business decision card is an internal concept" in content, label
+        assert "默认层不得显示可见标题“业务决策卡”" in content or "must not display the visible title" in content, label
+        assert "5 秒" in content or "5-second" in content, label
+        assert "首屏无技术" in content or "technical-free first screen" in content, label
+        assert "卡片头部元信息" in content or "card header metadata" in content, label
+        assert "紧凑单行" in content or "compact single line" in content, label
+        assert "卡片正文三行" in content or "three body rows" in content, label
+        assert "不得拆成字段表行" in content or "must not be split into field-table rows" in content, label
+        assert "依据位置" in content, label
+        assert "字段表" in content or "field table" in content, label
+        assert "一句业务判断" in content or "one business decision" in content, label
+        assert "决策卡" in content or "decision card" in content, label
+        assert "白名单" in content or "may show only" in content, label
+        assert "separate 这是什么 / 要决定什么 / 怎么选 rows do not appear in the default layer" in content or "不要把 `这是什么`、`要决定什么`、`怎么选` 三段问答平铺在默认层" in content, label
+        assert "折叠详情" in content or "collapsible supporting" in content, label
+        assert "关联业务" in content, label
+        assert "为什么存在" in content, label
+        assert "需要判断什么" in content, label
+        assert "不需要确认" in content or "不需要管什么" in content, label
+        assert "模块简介" in content, label
+        assert "流程简介" in content, label
+        assert "业务对象" in content, label
+        assert "角色" in content, label
+        assert "当前图职责" in content or "处理范围" in content, label
+        assert "文件名、节点数、节点预算" in content or "file name, node count, and node budget" in content, label
+        assert "只能进入折叠追溯" in content or "belong only in folded trace details" in content, label
+        assert "业务快照" in content or "business snapshot" in content, label
+        assert "1-2 句" in content or "1-2 sentences" in content, label
+        assert "不复述方法论" in content or "must not restate methodology" in content, label
+        assert "谁在什么场景处理什么" in content or "who handles what in which business scenario" in content, label
+        assert "不得直接拼接" in content or "must not directly concatenate" in content, label
+        assert "`businessObject`" in content, label
+        assert "`roles`" in content, label
+        assert "`flowResponsibility`" in content, label
+        assert "业务场景" in content or "business scenario" in content, label
+        assert "当前模块 + 业务对象" in content or "current module + business object" in content, label
+        assert (
+            "说明当前业务如何处理" in content
+            or "说明当前业务怎样被处理" in content
+            or "explain how the current business is handled" in content
+        ), label
+        assert "生成阶段" in content or "generation stage" in content, label
+        assert "审核页不是文案清洗器" in content or "review page is not a copy cleanup layer" in content, label
+        assert "不能先生成技术话术再依赖页面翻译" in content or "must not generate technical wording first" in content, label
+        assert "业务模块默认文案不得套用系统/架构兜底" in content, label
+        assert "系统/架构话术只能用于" in content, label
+        assert "精确业务语境匹配" in content or "specific business-context matching" in content, label
+        assert "通知/模板/开发者门户/API Key/AI" in content, label
+        assert "主业务路径、关键判断、异常分支和完成条件" not in content, label
+        assert "泛化套话" in content or "generic boilerplate" in content, label
+        assert "long node labels" in content or "长节点标签" in content, label
+        assert "wrap" in content or "换行" in content, label
+        assert "two-way linkage" in content or "双向联动" in content, label
+        assert "clicking a node card" in content or "点击右侧节点卡" in content, label
+        assert "clicking a diagram node" in content or "点击流程图节点" in content, label
+        assert "data-addressable" in content or "数据" in content or "stable node ID" in content, label
+        assert "Enter/Space" in content or "renderer README" in content or "renderer-specific mechanics" in content, label
+        assert "NOT_APPLICABLE_FOR_UI" in content and ("still show" in content or "主视图必须显示" in content), label
+        assert "deferred_items:" not in content, label
+        assert "rejected_items:" not in content, label
+        assert "failed/deferred items" not in content, label
+        assert "deferred or rejected items" not in content, label
+        assert "owner_approval:" in content, label
+        assert "status: CONFIRMED | PENDING | NOT_REQUIRED" in content, label
+        assert "human_confirmation: CONFIRMED | NEEDS_REVISION | SCOPED_CONFIRMATION | STALE | REVOKED" in content, label
+        assert "confirmed_items: [<flow/file-level labels or IDs authorized without node-level choice>]" in content, label
+        assert "needs_decision_items:" in content, label
+        assert "OPTION_B" in content and "needs_decision_items" in content, label
+        assert "unresolved_decision_items:" in content, label
+        assert "decision_recorded_items:" in content, label
+        assert "OPTION_A/C/D" in content and "decision_recorded_items" in content, label
+        assert (
+            "OPTION_B" in content
+            and (
+                ("never counts as" in content and "confirmed" in content)
+                or "不能被统计为已确认" in content
+            )
+        ), label
+
+    for content, label in ((methodology, "methodology"), (renderer_readme, "renderer README")):
+        assert "aria-pressed" in content, label
+        assert 'role="button"' in content, label
+        assert 'tabindex="0"' in content, label
+        assert "Enter/Space" in content, label
+
+    for content, label in ((methodology, "methodology"), (renderer_readme, "renderer README")):
+        assert "推荐选项点击即保存" in content or "recommended-option click saves immediately" in content, label
+        assert "重新选择" in content or "reselect" in content, label
+        assert "非推荐选项" in content or "non-recommended option" in content, label
+        assert "审核意见" in content or "review note" in content, label
+        assert "提交选择" in content or "submit choice" in content, label
+        assert "草稿不能进入 `decision_records`" in content or "draft choices must not enter `decision_records`" in content, label
+        assert "MISSING | DRAFT | SAVED_RECOMMENDED | SAVED_SUBMITTED" in content, label
+        assert "重新选择清空正式选择和草稿，回到未选择" in content or "reselect clears saved selection" in content, label
+        assert "draft_excluded_items:" in content, label
+        assert "DRAFT nodes must be listed only in `draft_excluded_items`" in content or "待提交草稿节点只能进入 `draft_excluded_items`" in content or "仍处于 `DRAFT` 的待提交草稿只能进入 `draft_excluded_items`" in content, label
+        assert "ordinary unresolved" in content or "普通 unresolved" in content or "普通未处理决策" in content, label
+        assert "复制摘要前" in content or "copy-summary" in content, label
+        assert "离开页面" in content or "beforeunload" in content or "navigation/close" in content, label
+        assert "草稿不具备授权意义" in content or "draft choices do not authorize" in content, label
+        assert "批量按推荐确认不能覆盖" in content or "bulk recommended-option must not overwrite" in content, label
+        assert "跳过" in content and ("草稿" in content or "draft" in content), label
+        assert "输入框下方" in content or "under the input" in content or "textarea" in content, label
+        assert "即时可见反馈" in content or "immediate visible feedback" in content, label
+        assert "saved `selected_option: OPTION_B`" in content or "已提交的 `OPTION_B`" in content, label
+        assert "nodes in DRAFT state" in content or "DRAFT 状态" in content, label
+        assert "nodes with no selected option" in content or "没有选择" in content, label
+        assert "Reset controls clear only the current view's browser local state back to MISSING" in content or "重置动作只清除当前视图 localStorage 中的临时选择" in content, label
+
+    assert "Node option interaction must be explicit" not in flow
+    assert "MISSING | DRAFT | SAVED_RECOMMENDED | SAVED_SUBMITTED" not in flow
+    assert "beforeunload" not in flow
+    assert "copy-summary" not in flow
+    assert "Node-level option actions must update only" not in flow
+
+
+def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
+    """Flow/UI commands should fill structured review data instead of rewriting page code."""
+    flow = _command("flow")
+    ui = _command("ui")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+
+    for content, label in (
+        (flow, "flow command"),
+        (ui, "ui command"),
+        (methodology, "methodology"),
+        (skill, "review-data skill"),
+    ):
+        assert "speccompass-review-data" in content, label
+        assert "structured review data" in content or "结构化 review data" in content, label
+        assert "fixed renderer" in content or "固定 renderer" in content, label
+        assert ".specify/review/renderer/speccompass-review-renderer.html" in content, label
+        assert "renderer directory" in content or "renderer 目录" in content or "多文件固定基础设施" in content, label
+        assert "validate-review-data.mjs" in content, label
+        assert "schema" in content.lower() or "Schema" in content, label
+        assert "普通 `/sp.flow`、`/sp.ui`" in content or "normal `/sp.flow` and `/sp.ui`" in content, label
+        assert "不得修改 renderer" in content or "must not edit the renderer" in content, label
+        assert "校验失败" in content or "validation fails" in content, label
+        assert "不能收尾" in content or "must not finish" in content, label
+        assert "不能提升 readiness" in content or "must not promote readiness" in content, label
+
+    assert "specs/<feature>/flows/review/flow-review-data.json" in flow
+    assert "flow-review-data.schema.json" in flow
+    assert "specs/<feature>/ui/review/ui-review-data.json" in ui
+    assert "ui-review-data.schema.json" in ui
+    assert "只填数据" in skill or "fill only" in skill
+    assert "说人话" in skill
+    assert "不要编写 HTML/CSS/JS" in skill or "Do not write HTML/CSS/JS" in skill
+    assert "2-4" in skill and "recommended_option" in skill
+    assert "5-7" in skill and "8+" in skill and "10+" in skill
+    assert "localStorage" in renderer_readme
+    assert "授权" in renderer_readme or "authorization" in renderer_readme
+    assert "huashu-design" in renderer_readme
+    assert "OPTION_B.next_exit" in skill
+    assert "needs-decision" in skill
+    assert "confirmed_items" in skill and "decision_recorded_items" in skill
+    assert "最小完整 JSON" in skill or "Minimal complete JSON" in skill
+    assert "window.SPECCOMPASS_REVIEW_DATA" in renderer_readme
+    assert "file input" in renderer_readme or "本地 JSON 文件" in renderer_readme
+    assert "colocated `flow-review-data.json`" in renderer_readme or "同目录" in renderer_readme
+    assert "flow-confirmation.md" in renderer_readme
+    assert "ui-confirmation.md" in renderer_readme
+    assert "DO NOT EDIT in normal /sp.flow or /sp.ui runs" in renderer_readme
+    assert "fixed shared infrastructure for both flow and UI review" in renderer_readme
+    assert "multi-file fixed infrastructure" in renderer_readme or "多文件固定基础设施" in renderer_readme
+    assert "normal `/sp.flow` and `/sp.ui` commands still only fill structured review data" in renderer_readme
+    assert "native SVG/DAG flow diagram" in renderer_readme
+    assert "fixed renderer is not Mermaid-based" in renderer_readme
+    assert "no complex animation" in renderer_readme or "不使用复杂动画" in renderer_readme
+    assert "plain text markers" in renderer_readme or "纯文本标注" in renderer_readme
+    assert "position, size, click choices, right rail, persistence, and summary" in renderer_readme
+    assert "Renderer changes require a separate implementation task with tests" in renderer_readme
+    assert "Prohibited in /sp.flow and /sp.ui runs" in renderer_readme
+    assert "Do not edit `.specify/review/renderer/speccompass-review-renderer.html`" in renderer_readme
+    assert "Do not add or modify CSS classes" in renderer_readme
+    assert "Do not add or modify JavaScript functions" in renderer_readme
+    assert "Do not change the interaction state machine" in renderer_readme
+    assert "Every option requires" in skill
+    assert "`consequence` (required)" in skill
+    assert "`project_impact` (required)" in skill
+    assert "`next_exit` (required)" in skill
+
+
+def test_review_confirmation_legacy_vocabulary_is_compatibly_migrated():
+    """New docs should explain old approval words without letting new outputs write them."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    flow = _command("flow")
+    ui = _command("ui")
+
+    for content, label in (
+        (methodology, "methodology"),
+        (flow, "flow command"),
+        (ui, "ui command"),
+    ):
+        assert "legacy" in content.lower() or "历史" in content or "旧" in content, label
+        assert "`APPROVED`" in content and "`CONFIRMED`" in content, label
+        assert "`REJECTED`" in content and "`NEEDS_REVISION`" in content, label
+        assert "new write" in content.lower() or "新写入" in content or "新生成" in content, label
+
+
+def test_downstream_commands_use_current_confirmation_decision_vocabulary():
+    """Downstream stages should consume the current flow/UI confirmation contract."""
+    for command in ("analyze", "gate", "implement", "plan", "tasks"):
+        content = _command(command)
+        flow_ui_blocks = [
+            block
+            for block in re.split(r"\n\s*\n", content)
+            if (
+                "flow/UI" in block
+                or "Flow/UI" in block
+                or "flow confirmation" in block
+                or "UI confirmation" in block
+                or "batch confirmation" in block
+                or "SCOPED_CONFIRMATION" in block
+            )
+        ]
+        flow_ui_contract = "\n\n".join(flow_ui_blocks)
+
+        if command in {"implement", "tasks"}:
+            assert "owner approval is `CONFIRMED` or `NOT_REQUIRED`" in content, command
+        assert (
+            "needs-decision" in flow_ui_contract
+            or "needs_decision_items" in flow_ui_contract
+            or "unresolved" in flow_ui_contract
+            or "unresolved_decision_items" in flow_ui_contract
+        ), command
+        assert "needs revision" in flow_ui_contract or "NEEDS_REVISION" in flow_ui_contract, command
+        assert "deferred or rejected items" not in flow_ui_contract, command
+        assert "deferred or rejected siblings" not in flow_ui_contract, command
+        assert "partial, rejected" not in flow_ui_contract, command
+        assert "partial, `rejected`" not in flow_ui_contract, command
+        assert "owner approval is `APPROVED`" not in flow_ui_contract, command
+        assert "approve/defer/reject controls" not in content, command
+
+
+def test_review_data_template_assets_exist_and_describe_reusable_renderer_contract():
+    """Project templates should ship the reusable SpecCompass review data toolchain."""
+    for path in (
+        FLOW_REVIEW_SCHEMA,
+        UI_REVIEW_SCHEMA,
+        REVIEW_DATA_VALIDATOR,
+        REVIEW_PAGE_RENDERER,
+        RENDERER_README,
+        REVIEW_DATA_SKILL,
+        *REVIEW_RENDERER_STYLE_FILES,
+        *REVIEW_RENDERER_SCRIPT_FILES,
+    ):
+        assert path.exists(), path
+
+    flow_schema = json.loads(FLOW_REVIEW_SCHEMA.read_text(encoding="utf-8"))
+    ui_schema = json.loads(UI_REVIEW_SCHEMA.read_text(encoding="utf-8"))
+    validator = REVIEW_DATA_VALIDATOR.read_text(encoding="utf-8")
+    renderer_entry = REVIEW_PAGE_RENDERER.read_text(encoding="utf-8")
+    renderer = _review_renderer_bundle()
+
+    assert flow_schema["properties"]["review_type"]["const"] == "flow"
+    assert ui_schema["properties"]["review_type"]["const"] == "ui"
+    for schema, label in ((flow_schema, "flow"), (ui_schema, "ui")):
+        properties = json.dumps(schema, ensure_ascii=False)
+        assert schema["properties"]["schema_version"] == {"type": "integer", "const": 1}, label
+        assert schema["additionalProperties"] is False, label
+        assert schema["properties"]["project"]["additionalProperties"] is False, label
+        assert schema["properties"]["source_snapshot"]["items"]["additionalProperties"] is False, label
+        assert schema["$defs"]["module"]["additionalProperties"] is False, label
+        assert schema["$defs"]["review_item"]["additionalProperties"] is False, label
+        assert schema["$defs"]["node"]["additionalProperties"] is False, label
+        assert schema["$defs"]["option"]["additionalProperties"] is False, label
+        assert schema["$defs"]["edge"]["additionalProperties"] is False, label
+        assert "OPTION_B.next_exit must start with 'needs-decision'" in properties, label
+        for token in (
+            "batch_id",
+            "confirm_strategy",
+            "project",
+            "modules",
+            "review_level",
+            "recommended_option",
+            "consequence",
+            "next_exit",
+            "human_judgment",
+            "must_confirm",
+            "system_arch",
+        ):
+            assert token in properties, (label, token)
+        option_required = schema["$defs"]["option"]["required"]
+        assert "consequence" in option_required, label
+
+    for token in (
+        "allowedReviewLevels",
+        "allowedNodeKinds",
+        "allowedFlowItemTypes",
+        "allowedUiItemTypes",
+        "duplicate node id",
+        "recommended_option",
+        "consequence",
+        "2-4 options",
+        "10+ business nodes",
+        "complex_flow_exception",
+        "low_risk_linear_exception",
+        "OPTION_B",
+        "OPTION_B.next_exit must start with needs-decision",
+        "needs-decision",
+        "APPROVED",
+        "REJECTED",
+        "对象类型",
+        "Top Level Baseline",
+        "关联业务",
+        "为什么存在",
+        "需要判断什么",
+        "不需要管什么",
+        "审核人要看什么",
+        "forbidden review-data key",
+        "forbiddenReviewDataValuePatterns",
+        "forbidden page code in review-data value",
+        "business nodes",
+        "node ids must be global within review data",
+    ):
+        assert token in validator
+
+    assert "SpecCompass" in renderer
+    assert "#0ABAB5" in renderer
+    assert "right-rail" in renderer
+    assert renderer_entry.lstrip().lower().startswith("<!doctype html>")
+    assert '<html lang="zh-CN">' in renderer_entry
+    assert "<body>" in renderer_entry and "</body>" in renderer_entry and "</html>" in renderer_entry
+    assert renderer_entry.index("<body>") < renderer_entry.index("</body>") < renderer_entry.index("</html>")
+    assert "<style>" not in renderer_entry and "</style>" not in renderer_entry
+    assert "type=\"module\"" not in renderer_entry
+    for path in REVIEW_RENDERER_STYLE_FILES:
+        relative_path = path.relative_to(REVIEW_PAGE_RENDERER.parent).as_posix()
+        assert re.search(rf'href="{re.escape(relative_path)}(?:\?[^"]*)?"', renderer_entry)
+    for path in REVIEW_RENDERER_SCRIPT_FILES:
+        relative_path = path.relative_to(REVIEW_PAGE_RENDERER.parent).as_posix()
+        assert re.search(rf'defer src="{re.escape(relative_path)}(?:\?[^"]*)?"', renderer_entry)
+    assert renderer_entry.count("<script") == len(REVIEW_RENDERER_SCRIPT_FILES)
+    assert "localStorage" in renderer
+    assert "flow-review-data.json" in renderer
+    assert "ui-review-data.json" in renderer
+    assert "window.SPECCOMPASS_REVIEW_DATA" in renderer
+    assert "SUPPORTED_SCHEMA_VERSION" in renderer
+    assert "draft_excluded_items" in renderer
+    assert "decision_records" in renderer
+    assert "needs_decision_items" in renderer
+    assert "unresolved_decision_items" in renderer
+    assert "beforeunload" in renderer
+    assert "reviewDataIdentifier" in renderer
+    assert "source_snapshot" in renderer
+    assert "summaryFingerprint" in renderer
+    assert "copied_fingerprint" in renderer
+    assert "runtimeValidateReviewData" in renderer
+    assert "runtimeErrors" in renderer
+    assert "rejectReviewData" in renderer
+    assert "重复 node id 会导致本地选择串到其他确认点" in renderer
+    for option_field in ("when_to_choose", "consequence", "project_impact", "next_exit"):
+        assert option_field in renderer
+    assert "review data 结构存在阻断问题" in renderer
+    assert "authorization-steps" in renderer
+    assert "本地选择" in renderer and "复制摘要" in renderer and "写回确认文档" in renderer
+    assert "localStorageAvailable" in renderer
+    assert "storageStatusWarning" in renderer
+    assert "review_data_id" in renderer
+    assert "for hand-edited JSON" in renderer or "数据提示" in renderer
+    assert "pendingFocusNodeId" in renderer
+    assert "nodeState(node.id).draft_option" in renderer
+    assert "button.innerHTML =" not in renderer
+    assert "card.innerHTML =" not in renderer
+    assert "option.innerHTML =" not in renderer
+    assert "innerHTML =" not in renderer
+    assert "complex animation" in renderer or "复杂动画" in renderer or "No complex animation" in renderer
+    assert "动态效果用文字标注" in renderer or "plain text markers" in renderer
+    assert "SpecCompassOverlay" in renderer
+    assert "SpecCompassDom" in renderer
+    assert "window.SpecCompassDom" in renderer
+    assert "window.SpecCompassDom.appendText = appendText" in renderer
+    assert "showInfoDialog" in renderer
+    assert "speccompass-dialog" in renderer
+    assert "returnFocusTo" in renderer
+    simple_overlays = (REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js").read_text(encoding="utf-8")
+    assert "appendText(" not in simple_overlays
+    assert "只用于说明和预览" in renderer
+    assert "max-height: calc(100vh - 48px)" in renderer
+    assert "overflow-y: auto" in renderer
+    assert "overflow-wrap: anywhere" in renderer
+    assert "dialog.innerHTML" not in renderer
+    assert "用于推荐/非推荐选择" not in renderer
+    assert "无需人工操作" in renderer
+    assert "option recommended" in renderer
+    assert "为什么这样建议" in renderer
+    assert "ui-component resolved" in renderer
+    assert ".ui-component.has-decision:hover" in renderer
+    assert ".ui-component.resolved.has-decision:hover" in renderer
+    assert ".ui-component.selected.has-decision:hover" in renderer
+    assert ".option.recommended" in renderer
+    assert ".option.recommended:hover" in renderer
+    assert ".option:active" in renderer
+    assert "button.primary:hover" in renderer
+    assert "isNeedsDecisionExit" in renderer
+    assert "startsWith(\"needs-decision\")" in renderer
+    assert "saved.option === \"OPTION_B\" && isNeedsDecisionExit(option)" in renderer
+    assert "requiresNodeDecision(node)" in renderer
+    assert "skippedMissingRecommendation" in renderer
+
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+    for content, label in ((skill, "review-data skill"), (renderer_readme, "renderer README")):
+        assert "node.id" in content, label
+        assert "globally unique" in content, label
+        assert "browser" in content and "state" in content, label
+        assert "review data version" in content or "source snapshot" in content, label
+        assert "schema_notes" in content and "trace_notes" in content, label
+        assert "HTML" in content and "CSS" in content and "JavaScript" in content, label
+        assert "SVG" in content, label
+        assert "system/architecture support concern" in content, label
+        assert "split it into two" in content, label
+        assert "product manager's decision" in content or "product reviewer owns" in content, label
+        assert "technical owner" in content or "architecture owner" in content or "system or architecture owner" in content, label
+        assert "renderer directory" in content or "renderer 目录" in content or "多文件固定基础设施" in content, label
+        assert "only write" in content or "只填" in content, label
+        assert "flow-review-data.json" in content and "ui-review-data.json" in content, label
+
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    for content, label in ((methodology, "methodology"), (renderer_readme, "renderer README")):
+        assert "native `<dialog>`" in content, label
+        assert "only for explanation or preview" in content or "只用于说明或预览" in content, label
+        assert "must not carry recommendation choices" in content or "不得承载推荐/非推荐选择" in content, label
+
+    assert "style\\s*=" in validator
+    assert "data\\s*:\\s*text\\/html" in validator
+    assert "img" in validator and "table" in validator
+
+    assert "clipboard call fails" in renderer_readme
+    assert "not authorization" in renderer_readme
+    assert "must still run `validate-review-data.mjs`" in renderer_readme
+    assert "native `<dialog>`" in renderer_readme
+    assert "説明" not in renderer_readme
+    assert "only for explanation or preview" in renderer_readme or "只用于说明或预览" in renderer_readme
+    assert "must not carry recommendation choices" in renderer_readme or "不得承载推荐/非推荐选择" in renderer_readme
+
+
+def test_ui_review_data_has_independent_screen_contract():
+    """UI review data should describe screens, not reuse flow diagrams with renamed keys."""
+    ui_schema = json.loads(UI_REVIEW_SCHEMA.read_text(encoding="utf-8"))
+    schema_text = json.dumps(ui_schema, ensure_ascii=False)
+    validator = REVIEW_DATA_VALIDATOR.read_text(encoding="utf-8")
+    renderer = _review_renderer_bundle()
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    ui_command = _command("ui")
+
+    review_item = ui_schema["$defs"]["review_item"]
+    assert "screen_layout" in review_item["required"]
+    assert "screen_regions" in review_item["required"]
+    assert "screen_region" in ui_schema["$defs"]
+    assert "ui_component" in ui_schema["$defs"]
+    assert "ui_state" in ui_schema["$defs"]
+    assert "components" in ui_schema["$defs"]["screen_region"]["required"]
+    assert "dynamic_marker" in schema_text
+    assert "future_behavior_note" in schema_text
+
+    for token in (
+        "allowedUiLayouts",
+        "allowedUiComponentKinds",
+        "allowedUiRegionPositions",
+        "screen_regions",
+        "components",
+        "states",
+        "dynamic_marker",
+        "duplicate component id",
+        "UI review data requires screen_regions",
+        "UI review data must describe UI screen regions/components; optional states may add screen-state notes, but review nodes alone are not enough",
+    ):
+        assert token in validator
+
+    for token in (
+        "renderUiScreen",
+        "ui-screen-preview",
+        "ui-region",
+        "ui-component",
+        "ui-state-note",
+        "dynamic marker",
+    ):
+        assert token in renderer
+
+    for content, label in ((skill, "skill"), (methodology, "methodology"), (ui_command, "ui command")):
+        assert "UI review data is not flow review data" in content or "UI 审核数据不是 flow 审核数据" in content, label
+        assert "screen_regions" in content and "components" in content and "states" in content, label
+        assert "screen layout" in content or "屏幕布局" in content, label
+        assert "dynamic marker" in content or "动态标注" in content or "纯文本标注" in content, label
+        assert "decision options require deeper reasoning" in content or "决策选项需要深度推理" in content, label
+        assert "when_to_choose" in content, label
+        assert "background" in content, label
+
+
+def _review_validator_sample(review_type: str, *, node_count: int = 3, include_exception: bool = True) -> dict:
+    if review_type == "flow":
+        artifact = "specs/example/flows/review/flow-review-data.json"
+        items_key = "diagrams"
+        item_type = "flowchart"
+    else:
+        artifact = "specs/example/ui/review/ui-review-data.json"
+        items_key = "screens"
+        item_type = "screen"
+
+    nodes = []
+    for index in range(1, node_count + 1):
+        node_id = f"N{index}"
+        nodes.append(
+            {
+                "id": node_id,
+                "label": f"审核业务信息 {index}",
+                "plain_summary": f"请判断第 {index} 个业务环节是否符合当前需求。",
+                "review_layer": "business",
+                "review_level": "must_confirm" if index == 1 else "verified",
+                "owner": "产品经理" if index == 1 else "无需产品确认",
+                "node_kind": "human_judgment" if index == 1 else "flow",
+                "source_ref": "specs/example/spec.md#business",
+                "options": [
+                    {
+                        "id": "OPTION_A",
+                        "label": "按现有规则继续",
+                        "when_to_choose": "需求已经覆盖这个业务判断。",
+                        "consequence": "继续使用当前业务规则作为后续设计依据。",
+                        "project_impact": "后续界面和计划可以按当前路径继续。",
+                        "next_exit": "continue",
+                        "recommended": True,
+                    },
+                    {
+                        "id": "OPTION_B",
+                        "label": "补充业务决策",
+                        "when_to_choose": "当前资料还不能判断。",
+                        "consequence": "暂停该节点下游设计，先补充业务判断。",
+                        "project_impact": "需要先补充决策，相关实现暂不推进。",
+                        "next_exit": "needs-decision",
+                    },
+                ],
+                "recommended_option": "OPTION_A",
+            }
+        )
+
+    edges = [{"from": f"N{index}", "to": f"N{index + 1}"} for index in range(1, node_count)]
+    item = {
+        "id": "D1" if review_type == "flow" else "S1",
+        "title": "问卷发布确认" if review_type == "flow" else "问卷发布页面",
+        "summary": "产品经理检查问卷从编辑到发布的关键选择。",
+        "source_path": "specs/example/flows/publish.mmd" if review_type == "flow" else "specs/example/ui/publish.md",
+        "item_type": item_type,
+        "nodes": nodes,
+        "edges": edges,
+    }
+    if review_type == "ui":
+        item.update(
+            {
+                "screen_layout": "form",
+                "screen_regions": [
+                    {
+                        "id": "publish-form",
+                        "title": "发布信息区",
+                        "purpose": "让运营人员检查问卷发布前必须填写的信息。",
+                        "position": "main",
+                        "components": [
+                            {
+                                "id": "publish-title",
+                                "kind": "input",
+                                "label": "问卷标题",
+                                "purpose": "填写用户看到的问卷名称。",
+                                "source_ref": "specs/example/spec.md#问卷发布",
+                            },
+                            {
+                                "id": "publish-button",
+                                "kind": "button",
+                                "label": "发布问卷",
+                                "purpose": "确认信息无误后进入发布。",
+                                "source_ref": "specs/example/spec.md#问卷发布",
+                                "action_ref": "DEC1",
+                            },
+                        ],
+                    }
+                ],
+                "states": [
+                    {
+                        "id": "publish-count",
+                        "label": "预计触达人数",
+                        "state_type": "dynamic_marker",
+                        "plain_note": "此处数字未来会自动更新。",
+                        "source_ref": "specs/example/spec.md#问卷发布",
+                    }
+                ],
+            }
+        )
+    if include_exception:
+        item["complex_flow_exception"] = "该演示样例用于校验 10+ 节点例外，按线性清单逐段审核。"
+
+    return {
+        "schema_version": 1,
+        "review_type": review_type,
+        "artifact_path": artifact,
+        "confirm_strategy": "batch",
+        "batch_id": "BATCH-001",
+        "project": {
+            "name": "Example",
+            "feature": "example-feature",
+            "business_overview": "问卷团队确认发布前后的业务规则和界面入口。",
+        },
+        "source_snapshot": [
+            {
+                "path": "specs/example/spec.md",
+                "anchors": ["业务规则"],
+                "semantic_scope": ["requirements"],
+            }
+        ],
+        "modules": [
+            {
+                "id": "survey",
+                "title": "问卷管理",
+                "summary": "运营人员在这里配置、审核并发布问卷。",
+                items_key: [item],
+            }
+        ],
+    }
+
+
+def test_review_data_validator_accepts_valid_flow_and_ui_samples(tmp_path):
+    """The deterministic validator should accept minimal valid review data."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    for review_type in ("flow", "ui"):
+        sample_path = tmp_path / f"{review_type}-review-data.json"
+        sample_path.write_text(
+            json.dumps(_review_validator_sample(review_type), ensure_ascii=False),
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            ["node", str(REVIEW_DATA_VALIDATOR), str(sample_path)],
+            cwd=PROJECT_ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert result.returncode == 0, result.stderr + result.stdout
+        assert "review data validation passed" in result.stdout
+
+
+def test_review_data_validator_rejects_missing_recommendation_and_unsplit_large_diagram(tmp_path):
+    """Validator should catch the two most important low-capability agent failures."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    missing_recommendation = _review_validator_sample("flow")
+    missing_recommendation["modules"][0]["diagrams"][0]["nodes"][0].pop("recommended_option")
+    missing_path = tmp_path / "missing-recommendation.json"
+    missing_path.write_text(json.dumps(missing_recommendation, ensure_ascii=False), encoding="utf-8")
+
+    result = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(missing_path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "recommended_option" in result.stderr + result.stdout
+
+    unsplit_large = _review_validator_sample("flow", node_count=10, include_exception=False)
+    large_path = tmp_path / "unsplit-large-flow.json"
+    large_path.write_text(json.dumps(unsplit_large, ensure_ascii=False), encoding="utf-8")
+
+    result = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(large_path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "10+ business nodes" in result.stderr + result.stdout
+
+
+def test_review_data_validator_rejects_duplicate_node_ids_across_items(tmp_path):
+    """Renderer browser state is keyed by node id, so IDs must be globally unique."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    duplicate_local_node = _review_validator_sample("flow")
+    first_item_nodes = duplicate_local_node["modules"][0]["diagrams"][0]["nodes"]
+    first_item_nodes[1]["id"] = first_item_nodes[0]["id"]
+    result = _run_review_validator(
+        duplicate_local_node,
+        tmp_path / "duplicate-local-node-id.json",
+    )
+    assert result.returncode != 0
+    assert "duplicate node id" in result.stderr + result.stdout
+
+    duplicate_global_node = _review_validator_sample("flow")
+    first_item = duplicate_global_node["modules"][0]["diagrams"][0]
+    second_item = json.loads(json.dumps(first_item))
+    second_item["id"] = "D2"
+    second_item["title"] = "问卷发布二次确认"
+    second_item["nodes"][0]["id"] = first_item["nodes"][0]["id"]
+    duplicate_global_node["modules"][0]["diagrams"].append(second_item)
+
+    result = _run_review_validator(
+        duplicate_global_node,
+        tmp_path / "duplicate-global-node-id.json",
+    )
+    assert result.returncode != 0
+    assert "duplicate node id" in result.stderr + result.stdout
+    assert "global" in result.stderr + result.stdout
+
+
+def test_review_data_validator_rejects_flow_like_ui_without_screen_structure(tmp_path):
+    """UI data must contain screen regions/components/states, not only review nodes."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    flow_like_ui = _review_validator_sample("ui")
+    screen = flow_like_ui["modules"][0]["screens"][0]
+    screen.pop("screen_layout")
+    screen.pop("screen_regions")
+    result = _run_review_validator(flow_like_ui, tmp_path / "flow-like-ui.json")
+    assert result.returncode != 0
+    assert "UI review data requires screen_regions" in result.stderr + result.stdout
+
+    duplicate_component = _review_validator_sample("ui")
+    components = duplicate_component["modules"][0]["screens"][0]["screen_regions"][0]["components"]
+    components[1]["id"] = components[0]["id"]
+    result = _run_review_validator(duplicate_component, tmp_path / "duplicate-ui-component.json")
+    assert result.returncode != 0
+    assert "duplicate component id" in result.stderr + result.stdout
+
+
+def _run_review_validator(sample: dict, path: Path) -> subprocess.CompletedProcess[str]:
+    path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+    return subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
+def test_review_data_validator_rejects_invalid_enums_and_missing_consequence(tmp_path):
+    """Validator should catch schema-level review data drift even without a JSON Schema runtime."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    enum_cases = (
+        ("review-level", ["modules", 0, "diagrams", 0, "nodes", 0, "review_level"], "approve"),
+        ("node-kind", ["modules", 0, "diagrams", 0, "nodes", 0, "node_kind"], "gateway"),
+        ("item-type", ["modules", 0, "diagrams", 0, "item_type"], "flow"),
+    )
+
+    for case_name, path_tokens, invalid_value in enum_cases:
+        sample = _review_validator_sample("flow")
+        target = sample
+        for token in path_tokens[:-1]:
+            target = target[token]
+        target[path_tokens[-1]] = invalid_value
+        result = _run_review_validator(sample, tmp_path / f"{case_name}.json")
+        assert result.returncode != 0, case_name
+        assert path_tokens[-1] in result.stderr + result.stdout
+
+    missing_consequence = _review_validator_sample("ui")
+    missing_consequence["modules"][0]["screens"][0]["nodes"][0]["options"][0].pop("consequence")
+    result = _run_review_validator(missing_consequence, tmp_path / "missing-consequence.json")
+    assert result.returncode != 0
+    assert "consequence" in result.stderr + result.stdout
+
+    empty_impact = _review_validator_sample("flow")
+    empty_impact["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]["project_impact"] = "   "
+    result = _run_review_validator(empty_impact, tmp_path / "empty-project-impact.json")
+    assert result.returncode != 0
+    assert "project_impact" in result.stderr + result.stdout
+
+    loose_option_b_exit = _review_validator_sample("flow")
+    loose_option_b_exit["modules"][0]["diagrams"][0]["nodes"][0]["options"][1]["next_exit"] = "continue-after-needs-decision"
+    result = _run_review_validator(loose_option_b_exit, tmp_path / "loose-option-b-exit.json")
+    assert result.returncode != 0
+    assert "OPTION_B.next_exit must start with needs-decision" in result.stderr + result.stdout
+
+
+def test_review_data_validator_requires_system_arch_owner_route_and_current_vocabulary(tmp_path):
+    """System/architecture confirmations and current decision vocabulary should be machine-checked."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    bad_system_arch = _review_validator_sample("flow")
+    node = bad_system_arch["modules"][0]["diagrams"][0]["nodes"][1]
+    node["review_layer"] = "system_arch"
+    node["review_level"] = "system_arch"
+    node["owner"] = "产品经理"
+    node["plain_summary"] = "请确认这项支持流程。"
+    result = _run_review_validator(bad_system_arch, tmp_path / "bad-system-arch.json")
+    assert result.returncode != 0
+    assert "system_arch" in result.stderr + result.stdout
+    assert "无需产品确认" in result.stderr + result.stdout or "系统" in result.stderr + result.stdout
+
+    legacy_status = _review_validator_sample("flow")
+    legacy_status["modules"][0]["diagrams"][0]["nodes"][0]["review_level"] = "APPROVED"
+    result = _run_review_validator(legacy_status, tmp_path / "legacy-review-level.json")
+    assert result.returncode != 0
+    assert "new review data must not use legacy confirmation value APPROVED" in result.stderr + result.stdout
+    assert "APPROVED" in result.stderr + result.stdout
+
+
+def test_review_data_validator_rejects_embedded_page_code_and_technical_copy(tmp_path):
+    """Generated review data must not smuggle renderer code or field-table copy into JSON."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    page_code = _review_validator_sample("flow")
+    page_code["modules"][0]["diagrams"][0]["nodes"][0]["html"] = "<button>approve</button>"
+    result = _run_review_validator(page_code, tmp_path / "embedded-page-code.json")
+    assert result.returncode != 0
+    assert "forbidden review-data key html" in result.stderr + result.stdout
+
+    schema_note_script = _review_validator_sample("flow")
+    schema_note_script["schema_notes"] = ["<script>alert(1)</script>"]
+    result = _run_review_validator(schema_note_script, tmp_path / "schema-note-script.json")
+    assert result.returncode != 0
+    assert "forbidden page code in review-data value" in result.stderr + result.stdout
+
+    embedded_page_code_variants = (
+        ("mixed-case-div-class", '<DiV class = "layout">审核</DiV>'),
+        ("svg-value", '<svg viewBox="0 0 1 1"></svg>'),
+        ("js-url", "javascript:saveChoice()"),
+        ("data-html-url", "data:text/html,<script>alert(1)</script>"),
+        ("inline-style-attribute", '<p style="color:red">保存</p>'),
+        ("event-handler", '<button\nOnClick = "save()">保存</button>'),
+        ("form-tag", '<form action="/save">保存</form>'),
+        ("anchor-tag", '<a href="javascript:save()">保存</a>'),
+        ("image-error-handler", '<img src=x onerror="save()">'),
+        ("list-tag", "<ul><li>保存</li></ul>"),
+        ("table-tag", "<table><tr><td>保存</td></tr></table>"),
+    )
+    for case_name, injected_value in embedded_page_code_variants:
+        variant = _review_validator_sample("flow")
+        variant["schema_notes"] = [injected_value]
+        result = _run_review_validator(variant, tmp_path / f"{case_name}.json")
+        assert result.returncode != 0, case_name
+        assert "forbidden page code in review-data value" in result.stderr + result.stdout
+
+    trace_note_handler = _review_validator_sample("ui")
+    trace_note_handler["modules"][0]["trace_notes"] = ['<button onclick="save()">保存</button>']
+    result = _run_review_validator(trace_note_handler, tmp_path / "trace-note-handler.json")
+    assert result.returncode != 0
+    assert "forbidden page code in review-data value" in result.stderr + result.stdout
+
+    unknown_field = _review_validator_sample("flow")
+    unknown_field["modules"][0]["diagrams"][0]["renderer_instruction"] = "draw a custom button"
+    result = _run_review_validator(unknown_field, tmp_path / "unknown-review-data-field.json")
+    assert result.returncode != 0
+    assert "unknown review-data key renderer_instruction" in result.stderr + result.stdout
+
+    technical_copy = _review_validator_sample("ui")
+    technical_copy["modules"][0]["screens"][0]["nodes"][0]["plain_summary"] = "关联业务：问卷发布。为什么存在：判断点。"
+    result = _run_review_validator(technical_copy, tmp_path / "technical-copy.json")
+    assert result.returncode != 0
+    assert "关联业务" in result.stderr + result.stdout
+
+
+def test_review_data_validator_counts_only_business_nodes_for_flow_budget(tmp_path):
+    """System/architecture support nodes should not make a business flow fail the split budget."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    mixed_nodes = _review_validator_sample("flow", node_count=10, include_exception=False)
+    nodes = mixed_nodes["modules"][0]["diagrams"][0]["nodes"]
+    for node in nodes[5:]:
+        node["review_layer"] = "system_arch"
+        node["review_level"] = "system_arch"
+        node["owner"] = "系统负责人"
+        node["plain_summary"] = "系统负责人确认支撑规则，无需产品确认。"
+    result = _run_review_validator(mixed_nodes, tmp_path / "mixed-business-system-nodes.json")
+    assert result.returncode == 0, result.stderr + result.stdout
+
+
+def test_flow_ui_command_templates_do_not_embed_renderer_implementation_state_machine():
+    """Routine commands should describe data obligations, leaving page behavior in the renderer README."""
+    flow = _command("flow")
+    ui = _command("ui")
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+
+    forbidden_in_commands = (
+        "aria-pressed",
+        'role="button"',
+        'tabindex="0"',
+        "beforeunload",
+        "copy-summary",
+        "MISSING | DRAFT | SAVED_RECOMMENDED | SAVED_SUBMITTED",
+        "localStorage",
+        "280-320px",
+    )
+    for content, label in ((flow, "flow"), (ui, "ui")):
+        for token in forbidden_in_commands:
+            assert token not in content, (label, token)
+        assert "只填结构化 review data" in content or "fill structured review data" in content
+        assert "不得为确认页编写 HTML/CSS/JS" in content or "must not write HTML/CSS/JS" in content
+        assert "globally unique `node.id` values across the whole review data file" in content
+
+    for token in (
+        "aria-pressed",
+        'role="button"',
+        'tabindex="0"',
+        "beforeunload",
+        "MISSING | DRAFT | SAVED_RECOMMENDED | SAVED_SUBMITTED",
+        "localStorage",
+    ):
+        assert token in renderer_readme

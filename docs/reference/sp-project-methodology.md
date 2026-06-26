@@ -1497,7 +1497,7 @@ Flow/UI 的默认人工确认策略是 `batch`，也就是先集中确认当前 
 5. 用户集中完成 UI batch 确认；确认文档写入 `ui-confirmation.md`。
 6. 只有 UI batch 已确认且未 stale 时，`/sp.ui` 才能把 readiness 提升为 `READY_FOR_PLAN`。
 
-每个 batch 必须有可追溯边界：`Batch ID`、`Batch Scope`、`Batch Created From`、`Source Snapshot` 或 `Evidence Signature`、`Included Items`、`Excluded Items`、`Review Owner`、`Confirmation Deadline` 或有效期提示、`Scoped Approval Policy` 和 `Fallback Strategy`。部分通过默认不能直接解锁下游；未通过项要么拆成明确的子 batch 并更新依赖关系，要么保持整个 batch 为 `WAITING_FOR_BATCH_REVIEW` / `NEEDS_DECISION`。`SCOPED_CONFIRMATION` 只能授权明确列入 `confirmed_items` 的范围；任何依赖 `deferred_items`、`rejected_items` 或未解决 child batch 的下游计划、任务和实现都必须阻断。
+每个 batch 必须有可追溯边界：`Batch ID`、`Batch Scope`、`Batch Created From`、`Source Snapshot` 或 `Evidence Signature`、`Included Items`、`Excluded Items`、`Review Owner`、`Confirmation Deadline` 或有效期提示、`Scoped Approval Policy` 和 `Fallback Strategy`。部分通过默认不能直接解锁下游；未通过项要么拆成明确的子 batch 并更新依赖关系，要么保持整个 batch 为 `WAITING_FOR_BATCH_REVIEW` / `NEEDS_DECISION`。`SCOPED_CONFIRMATION` 只能授权明确列入 `confirmed_items` 或 `decision_recorded_items` 的范围；任何依赖 `needs_decision_items`、`unresolved_decision_items` 或未解决 child batch 的下游计划、任务和实现都必须阻断。
 
 确认结果必须写入仓库内 Markdown 授权文档：flow 使用 `specs/<feature>/flows/review/flow-confirmation.md`，UI 使用 `specs/<feature>/ui/review/ui-confirmation.md`。浏览器 localStorage、临时 DOM 状态、截图、review manifest 或 HTML 页面本身都不是授权证据；它们只有在结果被写入确认文档，并被 `Stage Readiness` 的 `Visual/Human Review` 或 `Confirmation Artifact` 引用后，才可被下游命令消费。
 
@@ -1508,12 +1508,15 @@ document_type: sp_human_confirmation
 command: /sp.flow | /sp.ui
 feature: <feature>
 schema_version: 1
-review_artifact: <flow-review.html or ui-review.html>
-review_artifact_mode: single-file-static | local-writer | server-preview | markdown-only
+review_artifact: .specify/review/renderer/speccompass-review-renderer.html
+review_artifact_mode: fixed-renderer | local-writer | server-preview | markdown-only
+review_data_artifact: specs/<feature>/flows/review/flow-review-data.json | specs/<feature>/ui/review/ui-review-data.json
+review_data_schema: .specify/review/schemas/flow-review-data.schema.json | .specify/review/schemas/ui-review-data.schema.json
+review_validator: .specify/review/scripts/validate-review-data.mjs
 confirm_strategy: batch | hybrid | rolling
 batch_id: <Batch ID>
 batch_scope: <confirmed scope>
-batch_review_status: CONFIRMED | SCOPED_CONFIRMATION | REJECTED | STALE | REVOKED
+batch_review_status: CONFIRMED | SCOPED_CONFIRMATION | NEEDS_REVISION | STALE | REVOKED
 source_artifacts_snapshot:
   - path: <source artifact>
     digest: sha256:<...> | not-computed
@@ -1526,15 +1529,17 @@ confirmed_by:
   confirmed_at: <ISO-8601 or run label>
 owner_approval:
   required: true | false
-  status: APPROVED | PENDING | NOT_REQUIRED
-human_confirmation: CONFIRMED | NEEDS_REVISION | REJECTED | SCOPED_CONFIRMATION | STALE | REVOKED
+  status: CONFIRMED | PENDING | NOT_REQUIRED
+human_confirmation: CONFIRMED | NEEDS_REVISION | SCOPED_CONFIRMATION | STALE | REVOKED
 authorization_scope: READY_FOR_UI | READY_FOR_PLAN | BLOCKED | <narrow confirmed scope>
-confirmed_items: [<visible labels or stable IDs>]
-deferred_items: [<visible labels or stable IDs>]
-rejected_items: [<visible labels or stable IDs>]
+confirmed_items: [<flow/file-level labels or IDs authorized without node-level choice>]
+needs_decision_items: [<node labels or IDs that selected OPTION_B and need supplemental decision>]
+unresolved_decision_items: [<node labels or IDs with no selected option or no exit path>]
+draft_excluded_items: [<node labels or IDs excluded because they were in DRAFT state at writeback time>]
+decision_recorded_items: [<node labels or IDs with selected OPTION_A/C/D>]
 child_batches:
   - batch_id: <child-batch-id>
-    status: pending | confirmed | rejected | stale
+    status: pending | confirmed | needs_revision | stale
     dependency_impact: <what remains blocked>
 items_with_deviation:
   - id: <item-id>
@@ -1547,13 +1552,39 @@ revocation:
   revoked_at: <ISO-8601-or-None>
 ```
 
-下游命令必须把确认文档当作授权链的一部分，而不是只相信上游口头结论。`/sp.plan`、`/sp.tasks`、`/sp.implement`、`/sp.analyze` 和 `/sp.gate` 消费 flow/UI 事实时，必须检查确认文档是否存在、`human_confirmation` 是否为 `CONFIRMED`、owner approval 是否满足、`authorization_scope` 是否覆盖当前用途、source snapshot 是否未 stale。缺失、等待确认、部分确认未拆分、拒绝、撤销或 stale 都不能支撑 `READY_FOR_PLAN`、任务包、实现准入、gate PASS 或风险关闭。
+历史兼容只允许发生在读取旧确认材料时：旧 `owner_approval.status: APPROVED` 可以兼容解释为 `CONFIRMED`，旧 `REJECTED` 可以迁移或解释为 `NEEDS_REVISION`。新写入或新生成的 flow/UI 确认文档不得继续使用 `APPROVED` 或 `REJECTED` 表示确认结果，必须使用 `CONFIRMED`、`NEEDS_REVISION`、`SCOPED_CONFIRMATION`、`STALE` 或 `REVOKED`。
+
+Flow/UI 确认页由可复用的 `speccompass-review-data` 工具链驱动：普通 `/sp.flow`、`/sp.ui` 只填结构化 review data / structured review data，不得修改 renderer，也不得为确认页编写 HTML/CSS/JS。renderer directory / renderer 目录 `.specify/review/renderer/` 是 multi-file fixed infrastructure / 多文件固定基础设施：`speccompass-review-renderer.html` 只是入口页，`styles/*.css` 与 `scripts/*.js` 是共享页面基础设施；普通命令不得修改 HTML 入口、CSS、JavaScript、布局规则、点击处理、localStorage 草稿、复制摘要或右侧确认栏状态机。固定 renderer 是 `.specify/review/renderer/speccompass-review-renderer.html`；flow 数据写入 `specs/<feature>/flows/review/flow-review-data.json` 并使用 `.specify/review/schemas/flow-review-data.schema.json`；UI 数据写入 `specs/<feature>/ui/review/ui-review-data.json` 并使用 `.specify/review/schemas/ui-review-data.schema.json`；两者都必须用 `.specify/review/scripts/validate-review-data.mjs` 校验。校验失败不能收尾，不能提升 readiness；模型可修的问题必须继续修复，确实需要人工信息或授权的缺口才写成带 owner route 的 blocker。
+
+UI review data is not flow review data / UI 审核数据不是 flow 审核数据。UI 的中间预览必须由 `screens[].screen_layout`、`screen_regions` 和可见 `components` 描述；可选 `states` 只补充屏幕状态说明；`nodes` 只用于右侧确认栏的决策和授权模型，不能用一组 flow 节点/边冒充界面。屏幕布局 / screen layout 要说明这是表单、看板、列表详情、向导、详情、设置、页面地图、弹窗或自定义结构；每个区域要写清位置、用途和组件；按钮、输入框、表格、卡片、导航、空态、错误提示、徽标、图表说明等都要作为结构化组件出现。确实重要的动态行为使用 dynamic marker / 动态标注或纯文本标注，例如“此处数字未来会自动更新”，不得写动画、弹窗实现或 renderer 指令。决策选项需要深度推理 / decision options require deeper reasoning：每个需要人工判断的 UI 节点都必须用人话说明背景，背景写入 `when_to_choose` 字段，不要另造 `background` 字段；同时给出 2-4 个可执行选择，写清后果、项目影响、后续出口 `next_exit` 和推荐选项 `recommended_option`，让非技术 reviewer 能判断这个选择会解锁、延后或阻断哪些后续工作。
+
+确认页页面代码是共享基础设施，不是每次命令生成物。普通 `/sp.flow`、`/sp.ui` 不得把 HTML、CSS、JavaScript、SVG、CSS class、事件处理器或页面布局指令写进任何 review data 字段；`schema_notes`、`trace_notes` 等自由文本备注也只能写纯文本业务说明。确认页不追求复杂动画 / no complex animation，不使用复杂弹窗；展示位置、尺寸、点击选项、右侧确认栏、持久化草稿与复制摘要稳定性优先。固定 renderer 可以使用极简 native `<dialog>`，但 only for explanation or preview / 只用于说明或预览，必须使用安全 DOM/text API 而不是 `innerHTML`，并且 must not carry recommendation choices / 不得承载推荐/非推荐选择、审核意见、授权确认、复制摘要或全局通知；审核选择、意见、授权写回和摘要复制仍只能在右侧确认栏、localStorage 草稿、复制摘要和确认文档链路中完成。确实重要但当前 renderer 不承载的动态效果，应在数据里用纯文本标注 / plain text markers 说明，例如“此处数字未来会自动更新”，不能写成实现指令。固定 renderer 可以在打开页面时运行轻量 runtime validation：重复或缺失 `node.id` 是阻断错误，因为会让本地选择串到其他确认点；缺失推荐项、选项数量异常或浏览器未开放 localStorage 只能作为可见警告。这只是防护栏；命令收尾前仍必须运行 `validate-review-data.mjs`。浏览器本地选择按 review type、artifact path、batch id、source snapshot 和当前 module/item/node 结构隔离，防止旧 review data version 的草稿静默串用；但 localStorage 仍不是授权证据。复制摘要失败时不能标记为已导出；存在已保存但未写回 `flow-confirmation.md` 或 `ui-confirmation.md` 的选择时，页面应在离开、关闭或刷新前提醒。右侧确认栏必须把授权路径拆成“本地选择 → 复制摘要 → 写回确认文档”三步，避免把浏览器草稿或按钮点击误当成 git 跟踪的正式授权。
+
+节点级确认字段必须按固定映射写入：`OPTION_A/C/D` 节点进入 `decision_recorded_items` 和 `decision_records`；已提交的 `OPTION_B` / saved `selected_option: OPTION_B` 节点进入 `needs_decision_items`；没有选择或没有出口路径的节点 / nodes with no selected option or no exit path 进入 `unresolved_decision_items`；仍处于 DRAFT 状态 / nodes in DRAFT state 的待提交草稿只能进入 `draft_excluded_items`，因为草稿不能进入 `decision_records`，不能被当成普通未处理决策，也不具备授权意义。确认摘要可以提示 DRAFT 节点存在，并只能把它们列入 `draft_excluded_items` 排除清单，不得把草稿选项写成已授权节点决策。已验证或无需节点级选择的流程/文件级授权才进入 `confirmed_items`。`OPTION_B` 不能被统计为已确认；只有在它被拆成 child batch、补齐 owner route 和退出路径后，下游才可以在窄范围内继续。
+
+下游命令必须把确认文档当作授权链的一部分，而不是只相信上游口头结论。`/sp.plan`、`/sp.tasks`、`/sp.implement`、`/sp.analyze` 和 `/sp.gate` 消费 flow/UI 事实时，必须检查确认文档是否存在、`human_confirmation` 是否为 `CONFIRMED`、owner approval 是否满足、`authorization_scope` 是否覆盖当前用途、source snapshot 是否未 stale。缺失、等待确认、部分确认未拆分、需要修订、撤销或 stale 都不能支撑 `READY_FOR_PLAN`、任务包、实现准入、gate PASS 或风险关闭。
 
 `/sp.tasks` 是实现任务授权链上的最后一个拆分点，不能把未确认的 flow/UI 草稿事实转换成 `Mode: impl` task packet。它生成任务前必须同时核对 `plan.md` 的 `Implementation Readiness`、flow/UI 的 `Stage Readiness`、对应确认文档、授权范围和 source snapshot；如果 flow/UI 采用默认 batch 策略，则只有 `flow-confirmation.md` 与 `ui-confirmation.md` 均满足确认、owner approval、未 stale 且覆盖当前任务范围时，才允许生成消费这些事实的实现任务。`SCOPED_CONFIRMATION` 只能在未确认部分已经拆成 child batch、依赖边界清楚、当前任务不消费未确认范围时，作为窄范围输入继续。
 
 提示机制也要服务批量确认：首次进入确认范围时用 `INFO` 说明默认 batch-first 原因；批次生成完成时用 `AUTH` 提示集中确认；上游变化导致批次基线失效时用 root `STALE` 折叠派生 stale；下游命令试图越过待确认 batch 时用 `BLOCK` 指向 owner route。重要提示应稳定输出这些字段：`NOTIFY_TYPE`、`MESSAGE`、`WHY_NOW`、`IMPACT`、`REQUIRED_ACTION`、`BLOCKS_STAGE`、`NEXT_COMMAND`、`DO_NOT_RUN` 和 `WRITE_BACK`。
 
-Flow/UI 确认页采用统一模板：顶部显示 `SpecCompass — <项目名> / <feature>`、简短 specCompass 机制说明和页面标题；左侧或中部展示带可见标签的 flow 图、流程表、UI 屏幕或项目 UI 全貌；右侧是一条约 280-320px 的窄确认栏，使用 Tiffany Blue `#0ABAB5` 作为主色，包含 batch 摘要、选中项详情、状态提示、意见输入、逐项 approve/defer/reject/block 控件、待决策列表、阻塞或 stale 列表和批量确认按钮。右侧反馈确认栏是 flow 确认页的合格条件；缺失时，该 review artifact 不能作为授权证据，也不能支撑下游 `READY_FOR_UI` 或实现准入。确认页必须显示写回路径，并能让用户清楚知道确认结果需要进入 git 跟踪。
+Flow/UI 确认页采用统一模板：顶部显示 `SpecCompass — <项目名> / <feature>`、简短 specCompass 机制说明和页面标题；左侧或中部展示带可见标签的 flow 图、流程表、UI 屏幕或项目 UI 全貌；右侧是一条约 280-320px 的窄确认栏，使用 Tiffany Blue `#0ABAB5` 作为主色，包含 batch 摘要、选中项详情、状态提示、意见输入、逐节点决策选项卡、逐节点反馈输入框、待决策列表、阻塞或 stale 列表和批量确认按钮。每个需要人工判断的节点必须提供 2-4 个可执行选项，默认只展示选项名称、推荐标记和一句“什么时候选它”的人话说明；选择后果、项目影响、推荐理由、后续出口、授权追溯和确认所选方案必须放入折叠详情或确认记录中。不能把“通过 / 暂缓 / 退回 / 阻塞”作为节点级主按钮。右侧反馈确认栏是 flow 确认页的合格条件；缺失时，该 review artifact 不能作为授权证据，也不能支撑下游 `READY_FOR_UI` 或实现准入。确认页必须显示写回路径，并能让用户清楚知道确认结果需要进入 git 跟踪。
+
+面向人工效率的 flow 确认页还必须显示 project business overview / 项目整体业务地图、module summary / 模块简介和 per-flow summary / 流程简介，让 reviewer 先理解整个项目包含哪些业务模块、当前模块负责什么、当前流程处理什么，再进入节点级确认。中间图形区必须提供 fullscreen / 全屏查看动作，便于复杂 Mermaid 图放大核对。右侧确认栏必须提供“按推荐确认”“标记需补充决策”“重置可见项”等批量按钮，并始终显示 selected diagram, subflow, or node / 选中的图、子流程或节点的确认状态与反馈。旧的 bulk approve / 全部通过 和 bulk block / 全部阻塞 按钮必须从节点级主交互中移除，不能继续作为节点卡操作按钮；历史页面或文档中出现这些名字时，只能在迁移说明中解释为新机制的“按推荐确认”和“标记需补充决策”。“重置可见项”只清除当前视图的浏览器本地状态，使节点回到未选择（MISSING），不删除已经写入 `flow-confirmation.md` 的正式授权记录。索引预览、当前图源文和长源文必须使用 collapsible / 折叠面板，避免右侧栏被固定源文占满而无法完成确认。
+
+右侧确认栏必须跟随中间当前视图，而不是默认堆满整个模块的所有节点。中间显示单张 Mermaid 图时，右栏节点清单只显示该图节点；中间显示索引预览时，右栏才显示索引级 review 标签或文件级确认项。索引预览只适合阅读和索引级确认，不能代表某一张具体 Mermaid 图的授权；只要当前模块存在 Mermaid 图，索引模式下必须禁用“当前图按推荐确认”，并提示 reviewer 先切换到具体流程图。复制或写回的确认摘要仍必须覆盖整个 batch 的所有模块、所有图文件、所有索引级标签和所有节点级反馈，避免为了降低当前审核负担而遗漏授权范围。
+
+点击主流程图节点后，右侧节点栏只显示该确认点，并提供清晰的“显示全部确认点”动作来取消点选、恢复完整清单。左侧集中审核台必须为每个模块只显示一个红色的“待处理必审 X/Y”，其中 X 是未完成的必审节点，Y 是总必审数量 / total must-confirm，且必须来自节点级保存状态和图上真实节点的同一来源；也就是说，Y 只统计能够在 Mermaid SVG 中显示红色必审标记的 diagram-backed 节点。索引级确认项、文件级兜底确认项、折叠源文提示和只用于授权摘要的记录仍可进入复制/写回摘要，但不得进入左侧模块总数。左侧不得再叠加“当前图必审”或“当前视图必审”第二口径。右侧确认栏、模块事实区、选中节点事实区、批次事实区和当前视图区也不得重复显示模块级“待处理必审 X/Y”；右侧可以显示当前可见节点的操作反馈，但不能形成第二个统计口径。点击模块或切换图只改变中间和右侧的当前视图，不能改变 Y，也不能让 reviewer 误以为模块总必审发生变化；推荐选项保存、非推荐选项提交、重新选择、重置和当前流程批量操作后都要实时刷新 X。主流程图中所有被归类为“必须确认”的节点必须在节点内部右上角带红色标记，避免高风险判断藏在普通节点里；节点已处理后，标记可以弱化或切换为 Tiffany Blue。点击主流程图节点或右侧节点卡时，两侧都必须出现清晰选中态并同步 `aria-pressed`。不会随节点变化的信息应使用折叠、tooltip / 悬浮提示、popover 或按钮提示，不要常驻挤占右栏；右栏信息必须按整体到细分分组，同类内容放在一起，同一信息除非需要强调只显示一次。
+
+右侧节点确认项必须保持紧凑：node feedback is collapsed by default / 节点反馈默认折叠，只在 reviewer 需要记录具体修改意见、需补充决策原因或确认条件时展开输入框。右侧确认栏还必须提供 current-flow bulk / 当前流程批量 操作，用于对中间当前图的节点一次性按推荐确认、标记需补充决策或重置；这些按钮只能作用于当前图或当前索引视图，不能误改同模块其他流程图的节点状态。
+
+主流程图和节点逐项确认必须建立 two-way linkage / 双向联动。点击右侧节点卡（clicking a node card）时，中间 Mermaid 图中的对应节点必须使用 Tiffany Blue 高亮、更新 `aria-pressed`，并在选中详情中显示该节点说明；点击流程图节点（clicking a diagram node）时，右侧对应节点卡必须变色、同步 `aria-pressed` 并滚动到可见。节点卡必须支持 `role="button"`、`tabindex="0"` 和 `Enter/Space` 键盘选择。长节点标签（long node labels）必须在 Mermaid 渲染前进行 wrap / 换行，包含 `A[长节点] --> B[长节点]` 这类节点和连线同一行的写法；CSS 还必须设置 `white-space: normal`、`overflow-wrap` 或等价规则，禁止通过缩小整张图字体来掩盖文字过长问题。时序图必须识别为 `sequenceDiagram` 并保留 Mermaid 原生时序语法，只翻译可读消息文本，不得套用 flowchart 节点换行包装；`participant` 或 `actor` 的中文、空格、斜杠、标点或翻译后别名必须输出为安全双引号形式，例如 `participant Actor as "管理员角色 / 系统角色"`，并转义反斜杠和双引号，避免 Mermaid 解析失败。切换图时必须先清空旧 SVG、显示“正在渲染”，并使用 render token 或等价机制阻止旧的异步渲染结果覆盖当前图。
+
+flow 确认页必须先区分业务层面与系统/架构层面。业务层面流程说明用户、业务对象、状态、审批、异常和完成结果，默认由产品经理确认；系统/架构层面流程说明为了支撑业务目标而存在的基线、路由、邻接检查、证据链、跨模块交接或自动化治理，默认由系统负责人或架构负责人确认。产品经理视图可以看到系统/架构层与业务模块的关系，但必须明确写出“无需产品确认”，避免把不属于业务负责人的技术保障流程变成形式化确认。
+
+flow 确认文案必须在生成阶段就按审核对象说人话：业务层面的模块简介、流程简介、节点标题、节点卡短句和选项说明必须先输出产品经理能理解的业务语言；系统/架构层面才使用系统负责人或架构负责人语境。审核页不是文案清洗器，不能先生成技术话术再依赖页面翻译、正则替换或 HTML 展示层清理；页面最多做轻量术语归一、换行和折叠展示。业务模块默认文案不得套用系统/架构兜底；系统/架构话术只能用于 `system_arch` 层，并必须写明“无需产品确认”。模块整体的业务/系统架构层级必须由 feature 身份或明确层级标记决定，不能因为 `flows/index.md` 里出现 direct-neighbor、cross-module、证据链、邻接检查等泛词，就把整个业务模块改判为系统/架构层；这些词只可用于单张图或单个节点的系统/架构提示。精确业务语境匹配必须早于泛匹配，尤其通知/模板/开发者门户/API Key/AI 等名称相近但审核对象不同的模块，必须先匹配真实业务场景，再生成模块和节点说明。
+
+节点逐项确认应收敛为 6 类审核层级，并用颜色小点和短标签展示：`必须确认`、`建议确认`、`存疑`、`关键环节`、`已验证`、`系统/架构确认`。`必须确认`用于影响主业务路径、高风险决策、权限、状态变化或不可逆结果的节点；`建议确认`用于影响较小但值得人工快速核对的节点；`存疑`用于信息不足、来源冲突或需要业务补充意见的节点；`关键环节`用于主流程上的重要步骤，要求 reviewer 理解但不一定逐项授权；`已验证`用于已由上游文档覆盖且无需重复确认的节点；`系统/架构确认`用于超出业务确认范围、由系统负责人处理的节点。已 PRD 验证和已 spec 验证必须合并到同一层级、使用同一颜色，只在备注中写明“已 PRD 验证”或“已 spec 验证”，不能再拆成两种颜色增加审核负担。
 
 ### `/sp.flow`：建立业务流程和界面契约
 
@@ -1570,8 +1601,21 @@ Flow/UI 确认页采用统一模板：顶部显示 `SpecCompass — <项目名> 
 执行要求：
 
 - `/sp.flow` 必须先做恰当的环节拆解，再生成图或表。拆解顺序应自上而下：业务目标、参与角色、生命周期状态、主流程阶段、决策点、异常/恢复路径、非 UI 的系统/外部/定时/人工步骤、UI 契约和验证证据。不能因为用户只说了一句粗略需求，就只生成一个“开始-处理-结束”的空流程。
-- `/sp.flow` 的流程图必须降低人工审核负担。单张可审核流程图通常不超过 12 个业务节点；10-12 个节点时优先拆成 overview 加子流程；超过 12 个业务节点时必须先拆成子流程，再请求用户确认。overview 只展示主阶段、子流程交接、跨角色交接和未解决 blocker；子流程必须单一职责、输入输出边界清楚，并带可见 review 标签。
+- `/sp.flow` 的流程图必须降低人工审核负担。单张可审核流程图通常控制在 5-7 个业务节点；8 个及以上业务节点必须提示拆分，并优先拆成 overview 加子流程；10 个及以上业务节点默认不得直接进入确认，必须先拆成子流程，或写明合格的“复杂流程例外理由”。合格例外理由必须同时说明为什么不能拆、前置依赖、后置输出、分段审核顺序和每段通过标准。低风险线性例外（low-risk linear exception）只能用于没有高风险判断、权限、不可逆结果、外部依赖或异常分支的纯线性流程，并且必须写明“不包含高风险判断、权限、不可逆结果、外部依赖或异常分支”，同时提供分段折叠清单（collapsible segment checklist），让 reviewer 按小段核对。复杂流程确实必须放在同一张图中展示时可以接受，但例外理由必须可见、具体、可审查，并且不能把认知负担转嫁给审核人。overview 只展示主阶段、子流程交接、跨角色交接和未解决 blocker；子流程必须单一职责、输入输出边界清楚，并带可见 review 标签。
+- 业务节点不能为了满足 5-7 个节点预算而被粗暴合并。只要一个步骤发生业务状态变化、跨角色交接、跨系统交互、权限或审批判断、用户可见结果变化、失败/补偿/恢复路径、持久化副作用或验收证据变化，就应视为独立业务节点或拆到子流程中。复杂流程例外理由不能写成“业务复杂”“不可拆”等套话，必须说明不能拆的具体业务耦合点、前置依赖、后置输出、分段审核顺序和每段通过标准；拆成子流程后，也必须检查每段的前置条件和后置输出是否能对接，避免局部通过但整体断链。
 - `/sp.flow` 的图形布局采用自上而下的主干优先布局：主成功路径纵向居中，异常、驳回、补偿、回滚、阻塞和恢复路径向侧边展开；尽量避免交叉线，不为了视觉对称增加无业务意义节点；稳定节点 ID 与图上业务标签分离，图上标签使用简洁业务中文或目标领域用语，便于人工在反馈中引用。
+- 固定 SpecCompass review renderer 不是 Mermaid renderer，而是读取结构化 JSON 节点/边并使用原生 SVG/DAG 布局绘制确认页流程图；普通 `/sp.flow`、`/sp.ui` 不能把 `.specify/review/renderer/speccompass-review-renderer.html` 替换成 Mermaid 页面。Mermaid、PlantUML、Graphviz 仍可作为项目流程源文件或外部预览工具。生成 Mermaid 源文件或预览时，不在未验证目标项目接入方式前假设 Mermaid + ELK 可稳定启用；必须把字体控制在 16px 到 18px，设置 `useMaxWidth: false`，禁止整张 SVG 因自适应缩小到不可读，并通过 `nodeSpacing`、`rankSpacing` 等布局参数拉开节点和层级，让主干、分支、异常路径更容易阅读。`sequenceDiagram` 文件必须按时序图渲染，不得被流程图标签换行器改写；其中 `participant`/`actor` alias 只要包含中文、空格、斜杠、标点或经过翻译，就必须安全双引号包裹并转义，避免时序图显示异常；外部 Mermaid 预览切换图时要清除旧 SVG、显示“正在渲染”，并用 render token 或等价 stale-render guard 防止慢返回或失败的旧渲染覆盖当前图。
+- flow 确认页在桌面端必须采用固定视口审核壳：左侧模块导航独立滚动；中间图形区和右侧确认栏作为同一个审核工作区滚动，保持图和确认项的对应关系；禁止 sticky/max-height 裁剪右栏控件，不能让反馈框、逐项按钮或复制摘要按钮被右侧边栏自身高度截断。
+- flow 确认页右侧确认栏必须只对应中间当前视图：单图模式只列当前图节点，索引模式才列索引级标签或文件级确认项；但索引预览不能替代具体图的授权，只要模块存在 Mermaid 图，索引模式必须禁用当前流程“按推荐确认”，并提示先切换到具体流程图。左侧集中审核台只保留一个“待处理必审 X/Y”，且 Y 必须与 Mermaid 图中可显示红色必审标记的 diagram-backed 节点同源；索引级标签、文件级 fallback 和授权摘要项不进入左侧总数。`NOT_APPLICABLE_FOR_UI` 只表示不进入 UI 阶段，不表示 flow 图不需要审核；如果该模块存在 Mermaid flow 图，flow 确认页仍应允许进入图形审核。复制摘要和写回授权文档必须覆盖整个 batch 的全部图、文件、索引标签和节点反馈。
+- `NOT_APPLICABLE_FOR_UI` 模块只在没有 Mermaid flow 图时允许主视图显示空态；只要存在 flow 图，主视图必须显示（still show）可审核流程图，不能因为 UI 阶段不适用而空白。
+- flow 确认页必须处理长节点标签（long node labels）：生成 Mermaid 审核页时要在渲染前对过长业务标签进行 wrap / 换行，包含节点和连线写在同一行的常见 Mermaid 写法，并用 CSS 允许标签正常换行。该换行处理只适用于 flowchart/graph 类流程图；时序图（sequenceDiagram）必须保持 participant/message/activation 等原生结构。不能把字体缩到不可读来容纳长文案。
+- flow 确认页必须实现图和右侧节点卡的 two-way linkage / 双向联动：点击右侧节点卡（clicking a node card）时高亮中间图节点，点击流程图节点（clicking a diagram node）时选中右侧节点卡并滚动到可见；两侧都必须同步 `aria-pressed`，右侧节点卡支持 `role="button"`、`tabindex="0"` 和 `Enter/Space`。
+- flow 确认页的节点反馈默认折叠（node feedback is collapsed by default），右栏以节点状态、标签、来源和轻量按钮为主，避免 textarea 全量展开造成右栏高度远超中间图；但 DRAFT 节点必须在渲染、刷新或切换模块回来后自动展开反馈输入区，保证“填写意见并提交”的路径始终可见。页面必须提供当前流程批量按推荐确认（current-flow bulk recommended-option）、标记需补充决策（needs-decision）和重置动作，并保证这些动作只影响中间当前显示的流程图或索引节点；重置动作只清除当前视图 localStorage 中的临时选择和临时反馈，使节点回到未选择状态，不影响已经写回的授权文档。若当前图达到 10 个及以上业务节点，且既没有可见、具体的复杂流程例外理由，也没有合格的低风险线性例外，页面必须禁用当前流程“按推荐批量确认”，并提示先拆分，或补充不能拆、前置依赖、后置输出、分段审核办法和通过标准，或标记不包含高风险判断、权限、不可逆结果、外部依赖或异常分支且带分段折叠清单的低风险线性例外。判断点（DEC）必须在节点卡上高亮提醒审核默认路径，不能只把默认路径缺失藏在图源文里。
+- flow 确认页的节点逐项确认必须说人话，并采用 `默认短句 / default compact node copy`。节点卡默认层必须是业务决策卡 / business decision card，不是字段表；但业务决策卡只能作为内部概念或无障碍语义，默认层不得显示可见标题“业务决策卡”，避免 reviewer 看到控制面术语而忽略业务判断。审核人应能在 5 秒内看懂这一项要做的一句业务判断，并遵守“首屏无技术”：右栏顶部不展示接口、字段、trace、来源表、对象类型或长背景；默认层白名单只包括业务动作、谁确认、要决定什么、推荐选法、确认状态、已写意见和 2-4 个 A/B/C/D 可执行选项。节点名、审核层级、确认责任、状态和业务/系统层级属于卡片头部元信息（card header metadata），只能渲染为紧凑单行（compact single line），不得拆成字段表行（must not be split into field-table rows）。卡片正文三行（three body rows）只放“请判断……”“推荐……”，以及选项按钮。每个选项默认只展示选项名、推荐标记和一句“什么时候选它”的短说明，推荐旁必须有一句简短依据。不要把 `这是什么`、`要决定什么`、`怎么选` 三段问答平铺在默认层；这些内容只能被压缩成一句行动提示，或进入折叠详情。每项默认说明必须是一句产品经理能读懂的话，避免把对象类型、判断点、来源、备注、追溯 ID、技术字段或长段背景直接铺在右栏顶部。
+- flow 确认页的节点选项必须采用两步授权交互。情况 A：推荐选项点击即保存 / recommended-option click saves immediately，点击推荐项后立即写入本地选择，卡片必须先显示“正在保存推荐选择”一类即时可见反馈 / immediate visible feedback，再显示“已按推荐保存，可重新选择”和“重新选择”按钮，允许修复误操作；该状态区必须用 `aria-live` 或等价方式对保存结果做可访问提示。推荐保存函数必须重新计算 `recommended_option` 并校验点击项仍然等于推荐项；如果不一致，必须降级为非推荐 DRAFT 路径，不能绕过审核意见直接写授权。提示语必须区分“本地正式记录”和“复制摘要并写回确认文档后的外部授权记录”，并明确正式授权必须复制摘要并写回 `flow-confirmation.md`。情况 B：非推荐选项 / non-recommended option 不能直接保存为授权，点击后只进入“待提交草稿”，卡片必须立即显示“非推荐选项已暂存为草稿”，右侧栏必须打开并聚焦该节点的审核意见输入框；审核人填写原因后点击贴近输入框的“提交选择”才允许保存。节点级点击必须先完成当前卡片的局部反馈，只允许局部更新状态块、选项按钮、输入框、选中节点摘要和图上高亮；节点级操作不得触发 Mermaid 完整重绘、整页 `render()` 或整条右栏重建。左侧统计、模块列表或批量摘要可以在局部反馈出现后用短延迟刷新。已持久化的 DRAFT 在页面刷新、重新渲染或切换模块返回后，也必须自动展开审核意见区。未填写原因时必须显示“请先填写审核意见”之类的行内错误，并在输入框下方同步显示，不能只放在卡片顶部，也不得使用弹窗替代右栏输入。节点状态机必须显式区分 `MISSING | DRAFT | SAVED_RECOMMENDED | SAVED_SUBMITTED`：`MISSING` 是未选择，`DRAFT` 是非推荐选项已点选但未提交意见，`SAVED_RECOMMENDED` 是推荐项已本地保存，`SAVED_SUBMITTED` 是非推荐项带意见提交。重新选择清空正式选择和草稿，回到未选择。草稿不能进入 `decision_records`，不能被统计为已确认，不能支撑 `READY_FOR_UI`、gate PASS 或下游实现准入；未选择或没有出口路径的节点进入 `unresolved_decision_items`，待提交草稿节点只能进入 `draft_excluded_items` 排除清单，因为草稿不具备授权意义。复制摘要前如果存在待提交草稿，页面必须先在复制按钮旁或邻近位置提示“草稿不具备授权意义，复制摘要前请先处理草稿”，把按钮改成“仍要复制摘要”，且第一次提示不得重建右栏、不得丢失当前输入、不得触发 Mermaid 重绘、不得调用整页 `render()` 或把该警告写进当前流程图提示区；用户再次明确继续时才允许复制。即使用户继续复制，确认摘要也只能把草稿列入 `draft_excluded_items` 排除清单，不能把草稿选项放入正式授权明细或普通 unresolved 清单，并且摘要顶部必须保留醒目的 `[WARNING: N 个节点仍是待提交草稿，未正式授权]`，避免导出的文本被误当成完整授权。离开页面、关闭页面或刷新时也必须用 beforeunload / navigation/close 提醒。批量按推荐确认不能覆盖已保存选择、已提交的非推荐选择或待提交草稿；批量动作后必须在右侧栏提示保存了几个、跳过几个已有选择、跳过几个待提交草稿，避免审核人误以为所有节点都已被覆盖。重置动作只清除当前视图 localStorage 中的临时选择，并应提示正式授权仍以写回确认文档为准。
+- 节点卡必须保留 `折叠详情 / collapsible supporting copy` 用于追溯，但折叠详情也要使用人能马上理解的标签。默认层黑名单包括“对象类型、判断点、来源、主流程图、节点说明、审核人要看什么、关联业务、为什么存在、需要判断什么、不需要确认、不需要管什么、节点做什么、通过标准、可以通过的标准、风险提示、常见风险”等字段表口径；这些内容只能折叠展示，并改成“节点动作、审核重点、业务影响、审核原因、无需审核、继续条件、常见问题”等更自然的标签。来源、原始说明、备注、`选择后会发生什么`、`项目影响`、`推荐理由`、`后续出口`、授权追溯、`selected_option`、`recommended_option` 和 `next_exit` 只能作为折叠详情或兼容字段展示；可见标签应写成“依据位置”“原文摘要”“确认记录”等审核口径，不能默认展开压住主要决策。
+- flow 确认页的模块简介和流程简介必须绑定业务上下文，不得使用泛化套话 / generic boilerplate，也不复述方法论。中间区默认只展示 1-2 句面向业务的摘要，默认标签应类似“模块做什么”“这张图看什么”“重点看哪里”，按业务快照生成：谁在什么场景处理什么 / who handles what in which business scenario；这张图从哪个业务触发开始，到哪个业务结果结束，哪些选择会改变结果。不得直接拼接 / must not directly concatenate `businessObject`、`roles` 或 `flowResponsibility` 形成字段式句子；这些字段只能作为生成自然业务陈述的素材，完整字段值、处理范围、文件名、节点数、节点预算只能进入折叠追溯详情。摘要必须紧贴目标模块和业务场景，例如问卷发布、模板应用、文件访问、租户权限、导出交付、AI 起草、AI 追问或 AI 分析；禁止只写“展示路径、判断、分支和完成条件”，也禁止用“当前模块 + 业务对象”“说明当前业务怎样被处理”这类抽象占位话术替代真实业务说明。系统/架构层流程可以说明它影响哪些业务模块，但必须标明无需产品经理确认内部实现细节。
+- 这些简介、节点标题和节点卡短句必须在 `/sp.flow` 产物生成阶段完成业务化表达；审核页不是文案清洗器，不能先生成技术话术再依赖页面翻译。业务模块默认文案不得套用系统/架构兜底，系统/架构话术只能用于 `system_arch` 层。模块级 review layer 必须和图级 review layer 分开判断：模块级只能根据 feature 身份或明确层级标记判定；图级或节点级才允许根据 `adjacency.mmd`、direct-neighbor、cross-module 等局部证据提示系统/架构确认。精确业务语境匹配必须早于泛匹配，尤其通知/模板/开发者门户/API Key/AI 等相近模块，避免把通知模板误归入问卷模板库，或把 API Key 生命周期误写成开发者门户总览。
 - 如果输入信息偏粗，但业务域、用户角色、业务目标和 feature 边界是清楚的，模型可以使用受控推理补齐常见业务环节，避免流程过于简单。允许推理的内容包括常见生命周期、申请/审核/通过/驳回/撤回/重试/审计、空状态或失败分支、超时/重试、通知/审计副作用和验证点。禁止推理的内容包括新业务规则、权限边界、定价/结算、数据保留/合规、不可逆删除、租户/安全权限和验收降级。
 - 推理补齐的内容必须标记为 `Source: model-inferred` 或挂到 `OPEN-*`，只能作为草稿方案。它可以用于帮助用户 review，但不能直接关闭风险、替代人工决策、写入稳定 trace 或支撑 gate PASS。
 - 如果粗略输入对应多种合理流程方案，模型应给出 2-3 个方案，说明影响、取舍、推荐方案和下一步 `/sp.clarify` 或 `/sp.flow` 路线，让用户选择；不能静默选择一个会改变业务过程的方案。
@@ -1583,6 +1627,7 @@ Flow/UI 确认页采用统一模板：顶部显示 `SpecCompass — <项目名> 
 - 不设计具体 screen 布局，不决定视觉组件，不给按钮、字段或内部小步骤分配深层主坐标。
 - flow 产物在通过 analyze/gate 或等价检查前只能作为草稿，不直接写成稳定 trace 结论，也不能用来关闭风险。
 - `/sp.flow` 首选 Mermaid、PlantUML、Graphviz 等可渲染文本图，不首选普通位图图片。如果从这些源文件导出图片或预览，图上必须显示便于人工反馈的可见标签或名称，例如 `FLOW A1`、`FLOW A1-3`、`DEC D2`、`ERR E1`。这些标签要能回到结构化源文件中的行、表格或锚点，方便用户说“请调整 FLOW A1-3 的分流处理”时，模型能准确定位并回写。
+- 右侧反馈确认栏除模块级确认外，还必须包含逐节点决策选项卡和逐节点反馈输入框；节点项应使用图上的可见标签或从流程表提取的 `FLOW`、`DEC`、`ERR`、`STATE` 等标签。每个需要人工判断的节点必须提供 2-4 个可执行选项，默认层包含“请判断……”行动提示、推荐方案、推荐依据和选项短说明；“这是什么”“要决定什么”“怎么选”“选择后会发生什么”“项目影响”“推荐理由”“后续出口”和“确认所选方案”必须进入折叠详情、反馈控件或写回记录，不能挤在右栏顶部。页面还必须提供英文标签说明，例如 `FLOW` 表示流程项、`DEC` 表示判断点、`ERR` 表示异常路径，避免中英文混排时用户不知道英文片段含义。
 - 阻塞、待决策和 stale 状态必须同时出现在图和右侧确认栏。`Pending Decisions` 非空、决策节点没有明确默认路径、分支出口指向未定义状态或未定义子流程时，不能把 flow 提升为 `READY_FOR_UI`，应保持 `NEEDS_DECISION` 或 `BLOCKED`，并把 owner route 写入 Stage Readiness、确认页右栏和 `memory/open-items.md`。
 - `/sp.flow` 收尾时应明确提示用户：流程图源文件、渲染预览或导出图已经准备好，请核对；说明应使用 GitHub Markdown、VS Code Mermaid preview、Mermaid Live Editor、mermaid-cli、PlantUML 或 Graphviz 等对应工具查看；同时提醒修改意见应引用图上标签，并先回写结构化流程文件再重新渲染或导出。
 - `/sp.flow` 首次生成流程、重大分支/状态/权限/异常变化、一次新增 3 个以上流程节点、用户显式要求 review，或模型无法确认用户是否认可方向时，必须把结果作为草稿收尾，并进入默认 `batch` 确认策略：把当前确认范围内的 flow 项加入 batch review manifest，状态写为 `WAITING_FOR_BATCH_REVIEW`，请求用户在批量确认页按图上标签集中确认或反馈修改。确认前不得把草稿提升为稳定 memory、稳定 trace、gate PASS 证据、`READY_FOR_UI` 或实现准入依据。
@@ -1604,10 +1649,10 @@ Flow/UI 确认页采用统一模板：顶部显示 `SpecCompass — <项目名> 
 执行要求：
 
 - `/sp.ui` 必须消费 `/sp.flow` 的流程契约后再做界面拆解。拆解顺序应自上而下：用户角色、任务入口、screen map、每个 screen 的业务目的、区块、字段、动作、状态、校验、权限、反馈、错误/恢复行为和验证证据。不能把粗略需求直接变成几个泛泛的页面名，也不能把流程图本身当成 UI。
-- 前端展示页面的设计必须使用 `huashu-design` skill。适用范围包括 `ui-review.html`、UI 确认页、项目 UI 全貌预览、模块页面预览、业务 UI 预览，以及后期前端开发中的主题 token、CSS 变量、组件样式、布局规则和验收检查。React + Vite、Storybook、JSON Forms、真实项目 dev server、Vue、Svelte 或其他框架只是渲染/承载方式，不能替代 `huashu-design` 的设计规范入口。
-- `huashu-design` 按三层执行：`review-surface` 是 SpecCompass 确认页外壳，必须使用统一 Tiffany blue 模板、右侧确认栏、反馈输入和 approve/defer/reject 控件；`business-preview` 是目标产品业务界面的可视化预览，默认以 `huashu-design` 作为设计权威；`business-production` 是真实业务前端实现，默认继承 `huashu-design` 作为设计基线和验收约束。
+- 前端展示页面的设计必须使用 `huashu-design` skill。适用范围包括固定 SpecCompass review renderer、UI 确认页、项目 UI 全貌预览、模块页面预览、业务 UI 预览，以及后期前端开发中的主题 token、CSS 变量、组件样式、布局规则和验收检查。React + Vite、Storybook、JSON Forms、真实项目 dev server、Vue、Svelte 或其他框架只是渲染/承载方式，不能替代 `huashu-design` 的设计规范入口。
+- `huashu-design` 按三层执行：`review-surface` 是 SpecCompass 确认页外壳，必须使用统一 Tiffany blue 模板、右侧确认栏、反馈输入、逐节点推荐选项、需补充决策标记和授权写回控件；`business-preview` 是目标产品业务界面的可视化预览，默认以 `huashu-design` 作为设计权威；`business-production` 是真实业务前端实现，默认继承 `huashu-design` 作为设计基线和验收约束。
 - 如果 PRD 或已确认的目标产品设计系统对业务前端有明确品牌、组件库、交互范式或框架要求，它可以覆盖 `business-preview` 或 `business-production` 中与 `huashu-design` 冲突的部分，但必须在确认文档、Stage Readiness 或 plan 中记录覆盖来源、影响范围和偏差项。框架选择只是实现载体，不是设计权威；“用了 React/Vue/Svelte”不能替代设计授权。
-- 右侧确认栏、approve/defer/reject 控件、授权写回 UI 和 SpecCompass 控制面标签只属于确认页和 `specs/<feature>/ui/review/*`。它们不能泄漏到业务前端实现中，除非目标产品本身明确要求一个业务审批侧栏；即便如此，也必须按目标产品的业务术语、权限和数据重新建模，不能直接复用 SpecCompass 的确认控件。
+- 右侧确认栏、逐节点推荐选项、需补充决策控件、授权写回 UI 和 SpecCompass 控制面标签只属于确认页和 `specs/<feature>/ui/review/*`。它们不能泄漏到业务前端实现中，除非目标产品本身明确要求一个业务审批侧栏；即便如此，也必须按目标产品的业务术语、权限和数据重新建模，不能直接复用 SpecCompass 的确认控件。
 - 如果宿主没有提供 `huashu-design` skill，命令必须显式提示缺失，并把确认页或前端预览标记为 `Design Skill: huashu-design missing`。除非用户明确接受降级，否则不得把通用前端样式当作最终设计依据；降级预览只能作为非授权草稿，并需在 batch review manifest、确认摘要和确认文档中记录设计偏差。
 - `/sp.ui` 必须把设计授权写入 `ui-confirmation.md` 或 UI Stage Readiness，包括 `design_authority: huashu-design`、`design_scope`、`frontend_framework`、`brand_override`、`design_deviation_items` 和 `implementation_design_requirements`。`/sp.plan` 必须把这些字段整理为 `Frontend Design Authority`；`/sp.tasks` 必须在前端 `Mode: impl` 任务中加入 `Design Constraint`；`/sp.implement` 必须在改动业务前端代码前读取这些字段，并把它们转换成 theme token、CSS 变量、组件样式、布局规则和检查项。
 - 如果 flow 契约和业务域清楚，但 UI 信息偏粗，模型可以使用受控推理补齐常见界面结构，避免界面方案过于简单。允许推理的内容包括常见新建/查看/编辑/审核/结果页、空/加载/错误/成功状态、风险动作确认、明显需要的数据集搜索/筛选/排序、已有字段规则的校验展示和审计/结果反馈。禁止推理的内容包括新增业务事件、新权限、新数据校验规则、数据保留/合规、不可逆动作、定价/结算和验收降级。

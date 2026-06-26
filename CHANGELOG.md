@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.20] - 2026-06-26
+
+### Changed
+
+- Published the main SP methodology as the release focus.
+- Added the reusable SpecCompass review data renderer and validation contract for flow and UI confirmation pages.
+- Added structured review data examples and the `speccompass-review-data` skill so future commands fill JSON data instead of rewriting the review UI.
+- Strengthened flow and UI command templates with business-readable decision options, required exits, review levels, and fixed-renderer handoff rules.
+
 ## [0.10.19] - 2026-06-23
 
 ### Changed

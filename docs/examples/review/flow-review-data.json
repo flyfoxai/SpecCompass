@@ -1,0 +1,429 @@
+{
+  "schema_version": 1,
+  "review_type": "flow",
+  "artifact_path": "specs/ask-survey/flows/review/flow-review-data.json",
+  "confirm_strategy": "batch",
+  "batch_id": "ask-survey-flow-2026-06-25",
+  "project": {
+    "name": "ASK",
+    "feature": "问卷与文档协同",
+    "business_overview": "ASK 示例把问卷、文档和租户管理放在同一轮集中审核里。审核人先看每个模块要解决什么业务问题，再处理少数必须人工决定的选择。",
+    "review_goal": "确认问卷发布、文档关联和租户权限这些业务路径是否清楚，避免后续开发按错误规则推进。"
+  },
+  "source_snapshot": [
+    {
+      "path": "specs/ask-survey/prd.md",
+      "anchors": ["问卷发布", "文档关联", "租户管理"],
+      "semantic_scope": ["业务规则", "审核责任", "开发授权"]
+    }
+  ],
+  "modules": [
+    {
+      "id": "survey-management",
+      "title": "问卷管理",
+      "summary": "处理问卷从草稿到发布、回收和关闭的业务过程。产品经理重点确认发布条件和异常处理方式。",
+      "review_layer": "business",
+      "must_confirm_total": 2,
+      "diagrams": [
+        {
+          "id": "survey-draft-publish",
+          "title": "问卷从草稿到发布",
+          "summary": "这个流程说明运营创建问卷后，系统如何检查发布条件，并在信息不足时把问题退回给运营补齐。",
+          "source_path": "specs/ask-survey/flows/survey-draft-publish.md",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "survey-draft-publish-start",
+              "label": "运营创建问卷草稿",
+              "plain_summary": "运营先录入问卷名称、题目和预计回收范围，草稿阶段不会影响真实用户。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "flow",
+              "source_ref": "prd.md#问卷草稿"
+            },
+            {
+              "id": "survey-draft-publish-edit",
+              "label": "补齐题目和说明",
+              "plain_summary": "题目、选项和说明要能让被调查人看懂；这一步已由 PRD 说明，通常不需要重复确认。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "flow",
+              "source_ref": "prd.md#题目编辑"
+            },
+            {
+              "id": "survey-draft-publish-readiness",
+              "label": "确认发布前必须检查哪些内容",
+              "plain_summary": "发布前要不要强制检查题目、回收范围和截止时间，会直接影响问卷能否被误发布。",
+              "action_prompt": "请选择发布前的强制检查范围。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品经理",
+              "node_kind": "human_judgment",
+              "source_ref": "prd.md#发布条件",
+              "recommended_option": "OPTION_A",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "必须检查题目、回收范围和截止时间",
+                  "when_to_choose": "如果希望减少误发布和无效回收，这个选项最稳妥。",
+                  "consequence": "系统会在发布前拦截缺题目、缺目标人群或缺截止时间的问卷。",
+                  "project_impact": "开发需要实现三项发布前校验，但后续运营事故风险最低。",
+                  "next_exit": "continue: 进入发布确认",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "暂不固定检查范围，先人工判断",
+                  "when_to_choose": "如果业务还没有决定发布前必须检查什么，可以先选这个。",
+                  "consequence": "流程不会继续授权开发发布校验，后续要补一次产品决策。",
+                  "project_impact": "会延后发布功能开发，避免开发出错误规则。",
+                  "next_exit": "needs-decision: 产品经理补充发布前校验范围"
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "只检查题目是否完整",
+                  "when_to_choose": "如果当前阶段只关心问卷内容，回收范围和截止时间可以由运营线下把关。",
+                  "consequence": "系统只拦截题目不完整的问卷，其他发布风险交给运营承担。",
+                  "project_impact": "开发更快，但误发给错误人群或无限期回收的风险更高。",
+                  "next_exit": "continue: 发布校验缩小为题目完整性"
+                }
+              ]
+            },
+            {
+              "id": "survey-draft-publish-release",
+              "label": "问卷上线",
+              "plain_summary": "通过检查后，问卷进入可填写状态，目标用户可以开始提交答卷。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "产品经理",
+              "node_kind": "flow",
+              "source_ref": "prd.md#问卷上线"
+            },
+            {
+              "id": "survey-draft-publish-gap",
+              "label": "信息不足时退回补齐",
+              "plain_summary": "如果发布前发现信息缺失，系统要告诉运营缺什么，避免只显示笼统失败。",
+              "action_prompt": "请选择信息不足时的处理方式。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品经理",
+              "node_kind": "human_judgment",
+              "source_ref": "prd.md#发布失败提示",
+              "recommended_option": "OPTION_A",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "明确列出缺失项并停留在编辑页",
+                  "when_to_choose": "如果希望运营当场修好问题，应该选择这个方式。",
+                  "consequence": "用户能看到缺少题目、范围或截止时间中的哪一项，并直接返回编辑。",
+                  "project_impact": "需要开发更清楚的提示，但能明显降低沟通成本。",
+                  "next_exit": "continue: 返回草稿编辑页",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "先不定义提示方式",
+                  "when_to_choose": "如果提示文案和责任边界还没有定下来，可以先暂停这项授权。",
+                  "consequence": "开发不能确定失败页或错误提示怎么做。",
+                  "project_impact": "会影响发布体验开发排期，需要补充产品文案。",
+                  "next_exit": "needs-decision: 产品经理补充发布失败提示规则"
+                }
+              ]
+            },
+            {
+              "id": "survey-draft-publish-audit-log",
+              "label": "系统记录发布结果",
+              "plain_summary": "系统保存谁在什么时候发布或被拦截。该记录用于追踪问题，无需产品经理确认。",
+              "action_prompt": "系统/架构负责人确认审计记录保存方式；无需产品确认。",
+              "review_layer": "system_arch",
+              "review_level": "system_arch",
+              "owner": "系统架构负责人",
+              "node_kind": "system",
+              "source_ref": "architecture.md#审计记录"
+            }
+          ],
+          "edges": [
+            {"from": "survey-draft-publish-start", "to": "survey-draft-publish-edit", "label": "录入内容"},
+            {"from": "survey-draft-publish-edit", "to": "survey-draft-publish-readiness", "label": "准备发布"},
+            {"from": "survey-draft-publish-readiness", "to": "survey-draft-publish-release", "label": "符合条件"},
+            {"from": "survey-draft-publish-readiness", "to": "survey-draft-publish-gap", "label": "信息不足"},
+            {"from": "survey-draft-publish-release", "to": "survey-draft-publish-audit-log", "label": "记录结果"},
+            {"from": "survey-draft-publish-gap", "to": "survey-draft-publish-edit", "label": "补齐后重试"}
+          ],
+          "trace_notes": [
+            "此示例把必须人工决定的点控制在两个，便于集中审核。"
+          ]
+        },
+        {
+          "id": "survey-response-close",
+          "title": "问卷回收和关闭",
+          "summary": "这个流程说明问卷发布后如何接收答卷，并在到期或人工关闭后停止继续回收。",
+          "source_path": "specs/ask-survey/flows/survey-response-close.md",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "survey-response-open",
+              "label": "用户提交答卷",
+              "plain_summary": "问卷处于开放状态时，目标用户可以填写并提交答卷。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "flow",
+              "source_ref": "prd.md#答卷提交"
+            },
+            {
+              "id": "survey-response-duplicate",
+              "label": "重复提交怎么处理",
+              "plain_summary": "同一用户是否允许重复提交，会影响统计结果和用户体验。",
+              "action_prompt": "请选择重复提交的业务规则。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品经理",
+              "node_kind": "human_judgment",
+              "source_ref": "prd.md#重复提交",
+              "recommended_option": "OPTION_A",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "默认每人只保留一份有效答卷",
+                  "when_to_choose": "如果统计口径要求一人一票，应选择这个选项。",
+                  "consequence": "用户再次提交时会覆盖旧答卷或被提示不可重复，具体文案后续可细化。",
+                  "project_impact": "统计结果更稳定，开发需要识别用户身份。",
+                  "next_exit": "continue: 按一人一份继续设计",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "暂不决定重复提交规则",
+                  "when_to_choose": "如果问卷类型不同，暂时无法统一规则，可以先暂停。",
+                  "consequence": "答卷统计和权限判断不能进入开发授权。",
+                  "project_impact": "会影响答卷表结构和统计口径，需要补充产品决策。",
+                  "next_exit": "needs-decision: 产品经理确认重复提交规则"
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "允许重复提交并全部保留",
+                  "when_to_choose": "如果问卷用于多次反馈或过程记录，可以选择全部保留。",
+                  "consequence": "统计结果会按提交次数计算，用户可能有多份答卷。",
+                  "project_impact": "开发较简单，但报表解释成本更高。",
+                  "next_exit": "continue: 按多份答卷继续设计"
+                }
+              ]
+            },
+            {
+              "id": "survey-response-count",
+              "label": "统计回收数量",
+              "plain_summary": "系统展示已提交答卷数量，帮助运营判断是否需要提醒用户继续填写。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "产品经理",
+              "node_kind": "state",
+              "source_ref": "prd.md#回收统计"
+            },
+            {
+              "id": "survey-response-close",
+              "label": "到期或人工关闭",
+              "plain_summary": "问卷到截止时间，或运营手动关闭后，不再接收新答卷。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "flow",
+              "source_ref": "prd.md#问卷关闭"
+            },
+            {
+              "id": "survey-response-archive",
+              "label": "系统归档答卷",
+              "plain_summary": "系统归档关闭后的答卷数据，供报表和后续导出使用；无需产品确认。",
+              "action_prompt": "系统/架构负责人确认归档方式和数据留存策略；无需产品确认。",
+              "review_layer": "system_arch",
+              "review_level": "system_arch",
+              "owner": "系统架构负责人",
+              "node_kind": "system",
+              "source_ref": "architecture.md#答卷归档"
+            }
+          ],
+          "edges": [
+            {"from": "survey-response-open", "to": "survey-response-duplicate", "label": "收到答卷"},
+            {"from": "survey-response-duplicate", "to": "survey-response-count", "label": "答卷有效"},
+            {"from": "survey-response-count", "to": "survey-response-close", "label": "继续回收或到期"},
+            {"from": "survey-response-close", "to": "survey-response-archive", "label": "停止回收"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "document-management",
+      "title": "文档管理",
+      "summary": "处理文档上传、解析和问卷关联。产品经理主要确认文档解析失败时是否允许继续发布。",
+      "review_layer": "mixed",
+      "must_confirm_total": 1,
+      "diagrams": [
+        {
+          "id": "document-link-survey",
+          "title": "文档上传并关联问卷",
+          "summary": "这个流程说明运营上传说明文档后，系统如何解析文件并把它挂到对应问卷上。",
+          "source_path": "specs/ask-survey/flows/document-link-survey.md",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "document-link-upload",
+              "label": "运营上传说明文档",
+              "plain_summary": "运营把制度说明、培训材料或答题参考上传到系统。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "flow",
+              "source_ref": "prd.md#文档上传"
+            },
+            {
+              "id": "document-link-parse",
+              "label": "系统解析文档内容",
+              "plain_summary": "系统提取标题、页数和可检索文本，供问卷关联和后续搜索使用；无需产品确认。",
+              "action_prompt": "系统/架构负责人确认解析队列和失败重试；无需产品确认。",
+              "review_layer": "system_arch",
+              "review_level": "system_arch",
+              "owner": "系统架构负责人",
+              "node_kind": "system",
+              "source_ref": "architecture.md#文档解析"
+            },
+            {
+              "id": "document-link-failure-policy",
+              "label": "解析失败是否允许继续发布",
+              "plain_summary": "如果文档解析失败，问卷还能不能带着原文件继续发布，需要产品明确。",
+              "action_prompt": "请选择文档解析失败时的业务策略。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品经理",
+              "node_kind": "human_judgment",
+              "source_ref": "prd.md#文档关联",
+              "recommended_option": "OPTION_A",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "允许发布，但提示文档暂不可搜索",
+                  "when_to_choose": "如果文档只是辅助材料，不希望因为解析失败阻断问卷发布，选择这个。",
+                  "consequence": "用户仍能看到原文件，但暂时不能搜索文档内容。",
+                  "project_impact": "发布效率更高，开发需要清楚显示解析状态。",
+                  "next_exit": "continue: 按可发布但提示状态继续设计",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "暂不决定失败策略",
+                  "when_to_choose": "如果文档对问卷是否能发布影响很大，但规则还没定，选择这个。",
+                  "consequence": "文档关联和问卷发布之间的关系不能授权开发。",
+                  "project_impact": "会影响发布流程和错误提示，需要补充产品判断。",
+                  "next_exit": "needs-decision: 产品经理确认文档解析失败策略"
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "解析失败就禁止发布",
+                  "when_to_choose": "如果问卷必须依赖文档内容检索或阅读，选择这个。",
+                  "consequence": "文档解析失败时问卷不能上线，运营必须换文件或等待重试。",
+                  "project_impact": "业务风险较低，但发布被技术处理结果影响更大。",
+                  "next_exit": "continue: 发布前强制检查文档解析状态"
+                }
+              ]
+            },
+            {
+              "id": "document-link-attach",
+              "label": "关联到问卷",
+              "plain_summary": "文档通过规则后，运营可以把它作为问卷说明材料展示给填写用户。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "产品经理",
+              "node_kind": "flow",
+              "source_ref": "prd.md#文档关联"
+            },
+            {
+              "id": "document-link-visible",
+              "label": "填写页显示文档入口",
+              "plain_summary": "用户填写问卷时能看到文档入口，知道在哪里查看补充说明。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "ui",
+              "source_ref": "prd.md#填写页说明"
+            }
+          ],
+          "edges": [
+            {"from": "document-link-upload", "to": "document-link-parse", "label": "上传成功"},
+            {"from": "document-link-parse", "to": "document-link-failure-policy", "label": "解析失败"},
+            {"from": "document-link-parse", "to": "document-link-attach", "label": "解析成功"},
+            {"from": "document-link-failure-policy", "to": "document-link-attach", "label": "允许继续"},
+            {"from": "document-link-attach", "to": "document-link-visible", "label": "保存关联"}
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tenant-management",
+      "title": "租户管理",
+      "summary": "处理租户开通、角色分配和停用。示例中大部分规则已从 PRD 得到确认，只保留系统权限校验给架构侧。",
+      "review_layer": "mixed",
+      "must_confirm_total": 0,
+      "diagrams": [
+        {
+          "id": "tenant-open-close",
+          "title": "租户开通和停用",
+          "summary": "这个流程说明管理员如何开通租户，并在租户停用后停止其继续创建问卷。",
+          "source_path": "specs/ask-survey/flows/tenant-open-close.md",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "tenant-open-create",
+              "label": "管理员创建租户",
+              "plain_summary": "平台管理员录入租户名称、联系人和启用时间。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "flow",
+              "source_ref": "prd.md#租户创建"
+            },
+            {
+              "id": "tenant-open-role",
+              "label": "分配租户管理员",
+              "plain_summary": "租户管理员负责本租户内的问卷和文档管理。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "role",
+              "source_ref": "prd.md#租户角色"
+            },
+            {
+              "id": "tenant-open-permission",
+              "label": "系统隔离租户数据",
+              "plain_summary": "系统确保一个租户看不到另一个租户的问卷、文档和答卷；无需产品确认。",
+              "action_prompt": "系统/架构负责人确认租户隔离方案；无需产品确认。",
+              "review_layer": "system_arch",
+              "review_level": "system_arch",
+              "owner": "系统架构负责人",
+              "node_kind": "system",
+              "source_ref": "architecture.md#租户隔离"
+            },
+            {
+              "id": "tenant-open-disable",
+              "label": "停用后禁止新操作",
+              "plain_summary": "租户停用后不能再创建问卷或上传文档，历史数据按约定保留。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品经理",
+              "node_kind": "state",
+              "source_ref": "prd.md#租户停用"
+            }
+          ],
+          "edges": [
+            {"from": "tenant-open-create", "to": "tenant-open-role", "label": "创建成功"},
+            {"from": "tenant-open-role", "to": "tenant-open-permission", "label": "角色生效"},
+            {"from": "tenant-open-permission", "to": "tenant-open-disable", "label": "租户停用时"}
+          ]
+        }
+      ]
+    }
+  ],
+  "schema_notes": [
+    "示例只用于查看确认页效果，不代表真实 ASK 项目已经完成授权。"
+  ]
+}
