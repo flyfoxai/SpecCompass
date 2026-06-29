@@ -3799,10 +3799,12 @@ def test_review_data_validator_accepts_valid_flow_and_ui_samples(tmp_path):
             ["node", str(REVIEW_DATA_VALIDATOR), str(sample_path)],
             cwd=PROJECT_ROOT,
             text=True,
+            encoding="utf-8",
+            errors="replace",
             capture_output=True,
             check=False,
         )
-        assert result.returncode == 0, result.stderr + result.stdout
+        assert result.returncode == 0, _review_validator_output(result)
         assert "review data validation passed" in result.stdout
 
 
@@ -3820,11 +3822,13 @@ def test_review_data_validator_rejects_missing_recommendation_and_unsplit_large_
         ["node", str(REVIEW_DATA_VALIDATOR), str(missing_path)],
         cwd=PROJECT_ROOT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         check=False,
     )
     assert result.returncode != 0
-    assert "recommended_option" in result.stderr + result.stdout
+    assert "recommended_option" in _review_validator_output(result)
 
     unsplit_large = _review_validator_sample("flow", node_count=10, include_exception=False)
     large_path = tmp_path / "unsplit-large-flow.json"
@@ -3834,11 +3838,13 @@ def test_review_data_validator_rejects_missing_recommendation_and_unsplit_large_
         ["node", str(REVIEW_DATA_VALIDATOR), str(large_path)],
         cwd=PROJECT_ROOT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         check=False,
     )
     assert result.returncode != 0
-    assert "10+ business nodes" in result.stderr + result.stdout
+    assert "10+ business nodes" in _review_validator_output(result)
 
 
 def test_review_data_validator_rejects_duplicate_node_ids_across_items(tmp_path):
@@ -3854,7 +3860,7 @@ def test_review_data_validator_rejects_duplicate_node_ids_across_items(tmp_path)
         tmp_path / "duplicate-local-node-id.json",
     )
     assert result.returncode != 0
-    assert "duplicate node id" in result.stderr + result.stdout
+    assert "duplicate node id" in _review_validator_output(result)
 
     duplicate_global_node = _review_validator_sample("flow")
     first_item = duplicate_global_node["modules"][0]["diagrams"][0]
@@ -3869,8 +3875,8 @@ def test_review_data_validator_rejects_duplicate_node_ids_across_items(tmp_path)
         tmp_path / "duplicate-global-node-id.json",
     )
     assert result.returncode != 0
-    assert "duplicate node id" in result.stderr + result.stdout
-    assert "global" in result.stderr + result.stdout
+    assert "duplicate node id" in _review_validator_output(result)
+    assert "global" in _review_validator_output(result)
 
 
 def test_review_data_validator_rejects_flow_like_ui_without_screen_structure(tmp_path):
@@ -3884,14 +3890,14 @@ def test_review_data_validator_rejects_flow_like_ui_without_screen_structure(tmp
     screen.pop("screen_regions")
     result = _run_review_validator(flow_like_ui, tmp_path / "flow-like-ui.json")
     assert result.returncode != 0
-    assert "UI review data requires screen_regions" in result.stderr + result.stdout
+    assert "UI review data requires screen_regions" in _review_validator_output(result)
 
     duplicate_component = _review_validator_sample("ui")
     components = duplicate_component["modules"][0]["screens"][0]["screen_regions"][0]["components"]
     components[1]["id"] = components[0]["id"]
     result = _run_review_validator(duplicate_component, tmp_path / "duplicate-ui-component.json")
     assert result.returncode != 0
-    assert "duplicate component id" in result.stderr + result.stdout
+    assert "duplicate component id" in _review_validator_output(result)
 
 
 def _run_review_validator(sample: dict, path: Path) -> subprocess.CompletedProcess[str]:
@@ -3900,9 +3906,15 @@ def _run_review_validator(sample: dict, path: Path) -> subprocess.CompletedProce
         ["node", str(REVIEW_DATA_VALIDATOR), str(path)],
         cwd=PROJECT_ROOT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         check=False,
     )
+
+
+def _review_validator_output(result: subprocess.CompletedProcess[str]) -> str:
+    return (result.stderr or "") + (result.stdout or "")
 
 
 def test_review_data_validator_rejects_invalid_enums_and_missing_consequence(tmp_path):
@@ -3924,25 +3936,25 @@ def test_review_data_validator_rejects_invalid_enums_and_missing_consequence(tmp
         target[path_tokens[-1]] = invalid_value
         result = _run_review_validator(sample, tmp_path / f"{case_name}.json")
         assert result.returncode != 0, case_name
-        assert path_tokens[-1] in result.stderr + result.stdout
+        assert path_tokens[-1] in _review_validator_output(result)
 
     missing_consequence = _review_validator_sample("ui")
     missing_consequence["modules"][0]["screens"][0]["nodes"][0]["options"][0].pop("consequence")
     result = _run_review_validator(missing_consequence, tmp_path / "missing-consequence.json")
     assert result.returncode != 0
-    assert "consequence" in result.stderr + result.stdout
+    assert "consequence" in _review_validator_output(result)
 
     empty_impact = _review_validator_sample("flow")
     empty_impact["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]["project_impact"] = "   "
     result = _run_review_validator(empty_impact, tmp_path / "empty-project-impact.json")
     assert result.returncode != 0
-    assert "project_impact" in result.stderr + result.stdout
+    assert "project_impact" in _review_validator_output(result)
 
     loose_option_b_exit = _review_validator_sample("flow")
     loose_option_b_exit["modules"][0]["diagrams"][0]["nodes"][0]["options"][1]["next_exit"] = "continue-after-needs-decision"
     result = _run_review_validator(loose_option_b_exit, tmp_path / "loose-option-b-exit.json")
     assert result.returncode != 0
-    assert "OPTION_B.next_exit must start with needs-decision" in result.stderr + result.stdout
+    assert "OPTION_B.next_exit must start with needs-decision" in _review_validator_output(result)
 
 
 def test_review_data_validator_requires_system_arch_owner_route_and_current_vocabulary(tmp_path):
@@ -3958,15 +3970,15 @@ def test_review_data_validator_requires_system_arch_owner_route_and_current_voca
     node["plain_summary"] = "请确认这项支持流程。"
     result = _run_review_validator(bad_system_arch, tmp_path / "bad-system-arch.json")
     assert result.returncode != 0
-    assert "system_arch" in result.stderr + result.stdout
-    assert "无需产品确认" in result.stderr + result.stdout or "系统" in result.stderr + result.stdout
+    assert "system_arch" in _review_validator_output(result)
+    assert "无需产品确认" in _review_validator_output(result) or "系统" in _review_validator_output(result)
 
     legacy_status = _review_validator_sample("flow")
     legacy_status["modules"][0]["diagrams"][0]["nodes"][0]["review_level"] = "APPROVED"
     result = _run_review_validator(legacy_status, tmp_path / "legacy-review-level.json")
     assert result.returncode != 0
-    assert "new review data must not use legacy confirmation value APPROVED" in result.stderr + result.stdout
-    assert "APPROVED" in result.stderr + result.stdout
+    assert "new review data must not use legacy confirmation value APPROVED" in _review_validator_output(result)
+    assert "APPROVED" in _review_validator_output(result)
 
 
 def test_review_data_validator_rejects_embedded_page_code_and_technical_copy(tmp_path):
@@ -3978,13 +3990,13 @@ def test_review_data_validator_rejects_embedded_page_code_and_technical_copy(tmp
     page_code["modules"][0]["diagrams"][0]["nodes"][0]["html"] = "<button>approve</button>"
     result = _run_review_validator(page_code, tmp_path / "embedded-page-code.json")
     assert result.returncode != 0
-    assert "forbidden review-data key html" in result.stderr + result.stdout
+    assert "forbidden review-data key html" in _review_validator_output(result)
 
     schema_note_script = _review_validator_sample("flow")
     schema_note_script["schema_notes"] = ["<script>alert(1)</script>"]
     result = _run_review_validator(schema_note_script, tmp_path / "schema-note-script.json")
     assert result.returncode != 0
-    assert "forbidden page code in review-data value" in result.stderr + result.stdout
+    assert "forbidden page code in review-data value" in _review_validator_output(result)
 
     embedded_page_code_variants = (
         ("mixed-case-div-class", '<DiV class = "layout">审核</DiV>'),
@@ -4004,25 +4016,25 @@ def test_review_data_validator_rejects_embedded_page_code_and_technical_copy(tmp
         variant["schema_notes"] = [injected_value]
         result = _run_review_validator(variant, tmp_path / f"{case_name}.json")
         assert result.returncode != 0, case_name
-        assert "forbidden page code in review-data value" in result.stderr + result.stdout
+        assert "forbidden page code in review-data value" in _review_validator_output(result)
 
     trace_note_handler = _review_validator_sample("ui")
     trace_note_handler["modules"][0]["trace_notes"] = ['<button onclick="save()">保存</button>']
     result = _run_review_validator(trace_note_handler, tmp_path / "trace-note-handler.json")
     assert result.returncode != 0
-    assert "forbidden page code in review-data value" in result.stderr + result.stdout
+    assert "forbidden page code in review-data value" in _review_validator_output(result)
 
     unknown_field = _review_validator_sample("flow")
     unknown_field["modules"][0]["diagrams"][0]["renderer_instruction"] = "draw a custom button"
     result = _run_review_validator(unknown_field, tmp_path / "unknown-review-data-field.json")
     assert result.returncode != 0
-    assert "unknown review-data key renderer_instruction" in result.stderr + result.stdout
+    assert "unknown review-data key renderer_instruction" in _review_validator_output(result)
 
     technical_copy = _review_validator_sample("ui")
     technical_copy["modules"][0]["screens"][0]["nodes"][0]["plain_summary"] = "关联业务：问卷发布。为什么存在：判断点。"
     result = _run_review_validator(technical_copy, tmp_path / "technical-copy.json")
     assert result.returncode != 0
-    assert "关联业务" in result.stderr + result.stdout
+    assert "关联业务" in _review_validator_output(result)
 
 
 def test_review_data_validator_counts_only_business_nodes_for_flow_budget(tmp_path):
@@ -4038,7 +4050,7 @@ def test_review_data_validator_counts_only_business_nodes_for_flow_budget(tmp_pa
         node["owner"] = "系统负责人"
         node["plain_summary"] = "系统负责人确认支撑规则，无需产品确认。"
     result = _run_review_validator(mixed_nodes, tmp_path / "mixed-business-system-nodes.json")
-    assert result.returncode == 0, result.stderr + result.stdout
+    assert result.returncode == 0, _review_validator_output(result)
 
 
 def test_flow_ui_command_templates_do_not_embed_renderer_implementation_state_machine():
