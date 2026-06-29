@@ -3225,6 +3225,128 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     assert "`next_exit` (required)" in skill
 
 
+def test_flow_ui_review_feedback_exports_revision_requests_without_direct_editing():
+    """Review pages should collect model-actionable revision requests instead of editing designs directly."""
+    flow = _command("flow")
+    ui = _command("ui")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+    renderer = _review_renderer_bundle()
+    readmes = {
+        "README.md": (PROJECT_ROOT / "README.md").read_text(encoding="utf-8"),
+        "README.zh-CN.md": (PROJECT_ROOT / "README.zh-CN.md").read_text(encoding="utf-8"),
+    }
+
+    for content, label in (
+        (flow, "flow command"),
+        (ui, "ui command"),
+        (methodology, "methodology"),
+        (skill, "review-data skill"),
+        (renderer_readme, "renderer README"),
+    ):
+        assert "revision_requests" in content, label
+        assert "review data 是待审内容" in content or "review data is draft review content" in content, label
+        assert "confirmation document" in content or "确认文档" in content, label
+        assert "自然语言修改意见" in content or "natural-language revision" in content, label
+        assert "不是编辑器" in content or "not an editor" in content, label
+        assert "不直接修改 flow 或 UI 设计" in content or "does not directly edit flow or UI design" in content, label
+
+    for label, content in readmes.items():
+        assert "revision request" in content or "修改请求" in content, label
+        assert "not an editor" in content or "不是编辑器" in content, label
+        assert "confirmation document" in content or "确认文档" in content, label
+
+    for content, label in ((flow, "flow command"), (skill, "review-data skill"), (renderer_readme, "renderer README")):
+        for token in (
+            "ADD_NODE",
+            "DELETE_NODE",
+            "MODIFY_NODE",
+            "MODIFY_BRANCH",
+            "ADD_EXCEPTION_PATH",
+            "SPLIT_SUBFLOW",
+            "MERGE_SIMPLIFY",
+            "ADD_ENTRY_EXIT",
+        ):
+            assert token in content, (label, token)
+
+    for content, label in ((ui, "ui command"), (skill, "review-data skill"), (renderer_readme, "renderer README")):
+        for token in (
+            "ADD_SCREEN",
+            "DELETE_SCREEN",
+            "MODIFY_SCREEN_STRUCTURE",
+            "ADD_REGION",
+            "MODIFY_REGION_LAYOUT",
+            "ADD_COMPONENT",
+            "DELETE_COMPONENT",
+            "MODIFY_FIELD_ACTION_COPY",
+            "ADD_STATE",
+            "MODIFY_INTERACTION",
+            "ADD_PERMISSION_DISPLAY",
+        ):
+            assert token in content, (label, token)
+
+    for token in (
+        "changeTypeOptions",
+        "flowChangeTypes",
+        "uiChangeTypes",
+        "change_type",
+        "revision_requests",
+        "buildRevisionRequest",
+        "isSubmittedRevisionRequest",
+        "saved.option !== node.recommended_option",
+        "expected_model_action",
+        "target_ref",
+        "target_label",
+        "reviewer_note",
+        "summaryText",
+        "summaryScalar",
+        "JSON.stringify(summaryText(value))",
+        "replace(/\\s+/g, \" \")",
+    ):
+        assert token in renderer, token
+
+
+def test_flow_ui_review_pages_use_short_url_parameters_as_primary_entry():
+    """Flow/UI review should open the web renderer directly and auto-load data from short URL params."""
+    flow = _command("flow")
+    ui = _command("ui")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+    data_loader = (REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js").read_text(encoding="utf-8")
+
+    assert ".specify/review/renderer/speccompass-review-renderer.html?flow=<feature>" in flow
+    assert ".specify/review/renderer/speccompass-review-renderer.html?ui=<feature>" in ui
+    assert "flow-review-batch.md` 作为主入口" in flow or "flow-review-batch.md` as the primary entry" in flow
+    assert "ui-review-batch.md` 作为主入口" in ui or "ui-review-batch.md` as the primary entry" in ui
+    assert "备用" in _paragraph_containing(flow, "flow-review-batch.md")
+    assert "备用" in _paragraph_containing(ui, "ui-review-batch.md")
+
+    for content, label in (
+        (skill, "review-data skill"),
+        (methodology, "methodology"),
+        (renderer_readme, "renderer readme"),
+    ):
+        assert ".specify/review/renderer/speccompass-review-renderer.html?flow=<feature>" in content, label
+        assert ".specify/review/renderer/speccompass-review-renderer.html?ui=<feature>" in content, label
+        assert "短参数" in content or "short URL" in content, label
+        assert "fallback" in content.lower() or "兜底" in content, label
+
+    assert "URLSearchParams(window.location.search)" in data_loader
+    assert 'params.get("flow")' in data_loader
+    assert 'params.get("ui")' in data_loader
+    assert "URL 只能包含 flow 或 ui 其中一个短参数" in data_loader
+    assert "validateFeatureId" in data_loader
+    assert "includes(\"..\")" in data_loader
+    assert "new URL(relativePath, window.location.href)" in data_loader
+    assert "../../../specs/${encodeURIComponent(feature)}/flows/review/flow-review-data.json" in data_loader
+    assert "../../../specs/${encodeURIComponent(feature)}/ui/review/ui-review-data.json" in data_loader
+    assert "window.location.protocol === \"file:\"" in data_loader
+    assert "path.sep" not in data_loader
+    assert "\\\\" not in data_loader
+
+
 def test_review_confirmation_legacy_vocabulary_is_compatibly_migrated():
     """New docs should explain old approval words without letting new outputs write them."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")

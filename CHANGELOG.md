@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.21] - 2026-06-29
+
+### Changed
+
+- Improved the fixed Flow/UI review pages with short URL auto-loading, structured natural-language revision requests, and separate Flow/UI change types.
+- Updated `/sp.flow` and `/sp.ui` command templates so reviewers open the Web confirmation page first and use confirmation documents as the authorization record.
+- Clarified README guidance for recommendation acceptance, non-recommended revision requests, and the non-editor role of review pages.
+- Added regression coverage for review-data contracts, short URL loading, and exported `revision_requests`.
+
 ## [0.10.20] - 2026-06-26
 
 ### Changed

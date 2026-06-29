@@ -44,13 +44,16 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## SP Main Methodology
+          ## Flow/UI Review Confirmation
 
-          This release publishes the maintained SP methodology as the release focus:
+          This release improves the SpecCompass Flow/UI review workflow:
 
-          - [SP Project Methodology](https://github.com/flyfoxai/SpecCompass/blob/${VERSION}/docs/reference/sp-project-methodology.md)
+          - Flow and UI review pages open through the fixed Web renderer with short auto-load parameters.
+          - Reviewers can accept recommendations or submit structured natural-language revision requests.
+          - The review page remains a confirmation surface, not a direct Flow/UI editor.
+          - Flow and UI use separate review data contracts and change-type lists.
 
-          Release notes intentionally summarize the main methodology only. Implementation fixes, workflow maintenance, tests, and other support commits are tracked in git history and CHANGELOG.md, but are not promoted as release themes.
+          Release notes intentionally summarize shipped review tooling and user-facing behavior. Methodology documents are not published as the release theme; supporting documentation, tests, and maintenance commits remain tracked in git history and CHANGELOG.md.
 
           ## Install
 

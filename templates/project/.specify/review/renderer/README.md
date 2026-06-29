@@ -58,6 +58,10 @@ instead. Renderer changes require a separate implementation task with tests.
 - UI data path: `specs/<feature>/ui/review/ui-review-data.json`
 - Renderer directory: `.specify/review/renderer/`
 - Renderer path: `.specify/review/renderer/speccompass-review-renderer.html`
+- Flow review Web entry:
+  `.specify/review/renderer/speccompass-review-renderer.html?flow=<feature>`
+- UI review Web entry:
+  `.specify/review/renderer/speccompass-review-renderer.html?ui=<feature>`
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
 - Schemas: `.specify/review/schemas/flow-review-data.schema.json` and
   `.specify/review/schemas/ui-review-data.schema.json`
@@ -69,12 +73,56 @@ is useful for server previews or generated wrapper pages; local files are useful
 for static review from `file://`; colocated JSON is a convenience only and must
 not be treated as a persistence guarantee.
 
+The primary reviewer-facing entry uses short URL parameters / 短参数. Opening
+`speccompass-review-renderer.html?flow=<feature>` auto-loads
+`specs/<feature>/flows/review/flow-review-data.json`; opening
+`speccompass-review-renderer.html?ui=<feature>` auto-loads
+`specs/<feature>/ui/review/ui-review-data.json`. The renderer resolves these
+locations with browser URL paths and `new URL(..., window.location.href)`, not
+operating-system file separators, so the same contract applies on macOS,
+Windows, and Linux. The feature parameter must be a simple feature directory
+name only: letters, numbers, dot, underscore, and dash are allowed; path
+separators and `..` are rejected. When no short parameter is present, the page
+must show a visible fallback / 兜底 prompt and keep the manual load buttons.
+If `file://` browser restrictions block JSON fetch, use a local server preview
+or the manual JSON file selector.
+
 Browser `localStorage` is only a draft convenience for review selections. It is
 scoped by review type, artifact path, batch id, source snapshot, and the current
 module/item/node structure so a later review-data version does not silently reuse
 an older local draft. It is not authorization. Authorization is the copied or
 written confirmation summary in `flow-confirmation.md` or `ui-confirmation.md`
 and must be tracked with the project.
+
+review data 是待审内容 / review data is draft review content. The review page is
+not an editor / 不是编辑器 and does not directly edit flow or UI design /
+不直接修改 flow 或 UI 设计. Reviewers either accept the recommended option or submit
+a structured natural-language revision / 自然语言修改意见. Submitted
+non-recommended choices are exported as `revision_requests` in the confirmation
+document / 确认文档, then the next `/sp.flow` or `/sp.ui` run applies those
+requests to the structured review data and regenerates the page.
+
+`revision_requests` entries use this minimum shape:
+
+```yaml
+- target_ref: <module:item:node>
+  target_label: <visible module / flow-or-screen / node label>
+  review_type: flow | ui
+  change_type: <FlowChangeType | UiChangeType>
+  selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D
+  reviewer_note: <natural-language revision request>
+  expected_model_action: <what the next model run should revise>
+  next_exit: <owner route or next stage>
+```
+
+Flow change types: `ADD_NODE`, `DELETE_NODE`, `MODIFY_NODE`,
+`MODIFY_BRANCH`, `ADD_EXCEPTION_PATH`, `SPLIT_SUBFLOW`, `MERGE_SIMPLIFY`,
+`ADD_ENTRY_EXIT`, `OTHER`.
+
+UI change types: `ADD_SCREEN`, `DELETE_SCREEN`, `MODIFY_SCREEN_STRUCTURE`,
+`ADD_REGION`, `MODIFY_REGION_LAYOUT`, `ADD_COMPONENT`, `DELETE_COMPONENT`,
+`MODIFY_FIELD_ACTION_COPY`, `ADD_STATE`, `MODIFY_INTERACTION`,
+`ADD_PERMISSION_DISPLAY`, `OTHER`.
 
 Every `node.id` must be globally unique inside one review data file because the
 renderer scopes browser draft state to one review data version and then keys the

@@ -118,7 +118,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Published the main SP methodology as the release focus." \
+              "- Published Flow/UI review confirmation improvements as the release focus." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

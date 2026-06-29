@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import re
-import tomllib
 from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 compatibility
+    import tomli as tomllib
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -22,13 +26,15 @@ def test_project_version_matches_latest_changelog_entry():
     assert latest_entry.group(1) == version
 
 
-def test_release_notes_publish_main_methodology_only():
-    """GitHub Release notes should not promote commit lists as release themes."""
+def test_release_notes_publish_user_facing_release_theme():
+    """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## SP Main Methodology" in release_workflow
-    assert "docs/reference/sp-project-methodology.md" in release_workflow
-    assert "Release notes intentionally summarize the main methodology only" in release_workflow
+    assert "## Flow/UI Review Confirmation" in release_workflow
+    assert "structured natural-language revision requests" in release_workflow
+    assert "The review page remains a confirmation surface" in release_workflow
+    assert "Methodology documents are not published as the release theme" in release_workflow
+    assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "CHANGELOG.md" in release_workflow
     assert "`CHANGELOG.md`" not in release_workflow
     assert "## What's Changed" not in release_workflow
@@ -55,4 +61,5 @@ def test_release_process_documents_policy():
 
     assert "Every release must bump the public version above the latest `v*` tag" in release_process
     assert "Manual versions must be strictly greater than the latest release tag" in release_process
-    assert "GitHub Release notes publish only the maintained main SP methodology entry point" in release_process
+    assert "GitHub Release notes publish the current user-facing release focus" in release_process
+    assert "Methodology documents are supporting references" in release_process

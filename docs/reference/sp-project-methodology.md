@@ -1537,6 +1537,15 @@ needs_decision_items: [<node labels or IDs that selected OPTION_B and need suppl
 unresolved_decision_items: [<node labels or IDs with no selected option or no exit path>]
 draft_excluded_items: [<node labels or IDs excluded because they were in DRAFT state at writeback time>]
 decision_recorded_items: [<node labels or IDs with selected OPTION_A/C/D>]
+revision_requests:
+  - target_ref: <module:item:node stable reference>
+    target_label: <visible module / flow-or-screen / node label>
+    review_type: flow | ui
+    change_type: <flow-or-ui revision type>
+    selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D
+    reviewer_note: <natural-language revision request / 自然语言修改意见>
+    expected_model_action: <what the next /sp.flow or /sp.ui run should revise>
+    next_exit: <owner route or next stage>
 child_batches:
   - batch_id: <child-batch-id>
     status: pending | confirmed | needs_revision | stale
@@ -1554,7 +1563,7 @@ revocation:
 
 历史兼容只允许发生在读取旧确认材料时：旧 `owner_approval.status: APPROVED` 可以兼容解释为 `CONFIRMED`，旧 `REJECTED` 可以迁移或解释为 `NEEDS_REVISION`。新写入或新生成的 flow/UI 确认文档不得继续使用 `APPROVED` 或 `REJECTED` 表示确认结果，必须使用 `CONFIRMED`、`NEEDS_REVISION`、`SCOPED_CONFIRMATION`、`STALE` 或 `REVOKED`。
 
-Flow/UI 确认页由可复用的 `speccompass-review-data` 工具链驱动：普通 `/sp.flow`、`/sp.ui` 只填结构化 review data / structured review data，不得修改 renderer，也不得为确认页编写 HTML/CSS/JS。renderer directory / renderer 目录 `.specify/review/renderer/` 是 multi-file fixed infrastructure / 多文件固定基础设施：`speccompass-review-renderer.html` 只是入口页，`styles/*.css` 与 `scripts/*.js` 是共享页面基础设施；普通命令不得修改 HTML 入口、CSS、JavaScript、布局规则、点击处理、localStorage 草稿、复制摘要或右侧确认栏状态机。固定 renderer 是 `.specify/review/renderer/speccompass-review-renderer.html`；flow 数据写入 `specs/<feature>/flows/review/flow-review-data.json` 并使用 `.specify/review/schemas/flow-review-data.schema.json`；UI 数据写入 `specs/<feature>/ui/review/ui-review-data.json` 并使用 `.specify/review/schemas/ui-review-data.schema.json`；两者都必须用 `.specify/review/scripts/validate-review-data.mjs` 校验。校验失败不能收尾，不能提升 readiness；模型可修的问题必须继续修复，确实需要人工信息或授权的缺口才写成带 owner route 的 blocker。
+Flow/UI 确认页由可复用的 `speccompass-review-data` 工具链驱动：普通 `/sp.flow`、`/sp.ui` 只填结构化 review data / structured review data，不得修改 renderer，也不得为确认页编写 HTML/CSS/JS。review data 是待审内容 / review data is draft review content；确认页不是编辑器 / not an editor，不直接修改 flow 或 UI 设计 / does not directly edit flow or UI design。审核人接受推荐时写入本地选择并复制确认摘要；审核人不接受推荐时，必须选择 Flow 或 UI 专属 `change_type`，写自然语言修改意见 / natural-language revision，并由确认摘要写入 `revision_requests`。下一轮 `/sp.flow` 或 `/sp.ui` 必须先读取确认文档中的 `revision_requests`，结合 PRD/spec/flow/UI 来源重新推理并修订结构化数据，再重新生成确认页，而不是要求审核人在浏览器中直接增删改流程或界面。Flow 修改类型包括 `ADD_NODE`、`DELETE_NODE`、`MODIFY_NODE`、`MODIFY_BRANCH`、`ADD_EXCEPTION_PATH`、`SPLIT_SUBFLOW`、`MERGE_SIMPLIFY`、`ADD_ENTRY_EXIT`、`OTHER`；UI 修改类型包括 `ADD_SCREEN`、`DELETE_SCREEN`、`MODIFY_SCREEN_STRUCTURE`、`ADD_REGION`、`MODIFY_REGION_LAYOUT`、`ADD_COMPONENT`、`DELETE_COMPONENT`、`MODIFY_FIELD_ACTION_COPY`、`ADD_STATE`、`MODIFY_INTERACTION`、`ADD_PERMISSION_DISPLAY`、`OTHER`。renderer directory / renderer 目录 `.specify/review/renderer/` 是 multi-file fixed infrastructure / 多文件固定基础设施：`speccompass-review-renderer.html` 只是入口页，`styles/*.css` 与 `scripts/*.js` 是共享页面基础设施；普通命令不得修改 HTML 入口、CSS、JavaScript、布局规则、点击处理、localStorage 草稿、复制摘要或右侧确认栏状态机。固定 renderer 主入口必须使用短参数 / short URL parameter：flow 审核页是 `.specify/review/renderer/speccompass-review-renderer.html?flow=<feature>`，UI 审核页是 `.specify/review/renderer/speccompass-review-renderer.html?ui=<feature>`；命令收尾必须优先提示这个 Web 审核页，不得把 `flow-review-batch.md` 或 `ui-review-batch.md` 当作主入口。renderer 通过浏览器 URL 路径解析 `specs/<feature>/flows/review/flow-review-data.json` 或 `specs/<feature>/ui/review/ui-review-data.json`，不依赖 macOS/Windows/Linux 文件分隔符；无参数、`file://` 限制或自动加载失败时，页面必须显示 fallback / 兜底提示并保留手动加载按钮。flow 数据写入 `specs/<feature>/flows/review/flow-review-data.json` 并使用 `.specify/review/schemas/flow-review-data.schema.json`；UI 数据写入 `specs/<feature>/ui/review/ui-review-data.json` 并使用 `.specify/review/schemas/ui-review-data.schema.json`；两者都必须用 `.specify/review/scripts/validate-review-data.mjs` 校验。校验失败不能收尾，不能提升 readiness；模型可修的问题必须继续修复，确实需要人工信息或授权的缺口才写成带 owner route 的 blocker。
 
 UI review data is not flow review data / UI 审核数据不是 flow 审核数据。UI 的中间预览必须由 `screens[].screen_layout`、`screen_regions` 和可见 `components` 描述；可选 `states` 只补充屏幕状态说明；`nodes` 只用于右侧确认栏的决策和授权模型，不能用一组 flow 节点/边冒充界面。屏幕布局 / screen layout 要说明这是表单、看板、列表详情、向导、详情、设置、页面地图、弹窗或自定义结构；每个区域要写清位置、用途和组件；按钮、输入框、表格、卡片、导航、空态、错误提示、徽标、图表说明等都要作为结构化组件出现。确实重要的动态行为使用 dynamic marker / 动态标注或纯文本标注，例如“此处数字未来会自动更新”，不得写动画、弹窗实现或 renderer 指令。决策选项需要深度推理 / decision options require deeper reasoning：每个需要人工判断的 UI 节点都必须用人话说明背景，背景写入 `when_to_choose` 字段，不要另造 `background` 字段；同时给出 2-4 个可执行选择，写清后果、项目影响、后续出口 `next_exit` 和推荐选项 `recommended_option`，让非技术 reviewer 能判断这个选择会解锁、延后或阻断哪些后续工作。
 

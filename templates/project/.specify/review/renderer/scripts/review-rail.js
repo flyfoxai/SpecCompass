@@ -1,4 +1,39 @@
 /* Fixed SpecCompass review renderer infrastructure. Normal /sp.flow and /sp.ui only fill JSON review data. */
+const flowChangeTypes = [
+  { value: "ADD_NODE", label: "新增流程节点" },
+  { value: "DELETE_NODE", label: "删除流程节点" },
+  { value: "MODIFY_NODE", label: "修改节点说明或规则" },
+  { value: "MODIFY_BRANCH", label: "修改分支判断" },
+  { value: "ADD_EXCEPTION_PATH", label: "补充异常路径" },
+  { value: "SPLIT_SUBFLOW", label: "拆分子流程" },
+  { value: "MERGE_SIMPLIFY", label: "合并或简化流程" },
+  { value: "ADD_ENTRY_EXIT", label: "补充入口或出口" },
+  { value: "OTHER", label: "其他流程修改" }
+];
+
+const uiChangeTypes = [
+  { value: "ADD_SCREEN", label: "新增界面" },
+  { value: "DELETE_SCREEN", label: "删除界面" },
+  { value: "MODIFY_SCREEN_STRUCTURE", label: "调整界面结构" },
+  { value: "ADD_REGION", label: "新增页面区域" },
+  { value: "MODIFY_REGION_LAYOUT", label: "调整区域布局" },
+  { value: "ADD_COMPONENT", label: "新增界面元素" },
+  { value: "DELETE_COMPONENT", label: "删除界面元素" },
+  { value: "MODIFY_FIELD_ACTION_COPY", label: "修改字段、按钮或文案" },
+  { value: "ADD_STATE", label: "补充页面状态" },
+  { value: "MODIFY_INTERACTION", label: "调整交互方式" },
+  { value: "ADD_PERMISSION_DISPLAY", label: "补充权限展示" },
+  { value: "OTHER", label: "其他 UI 修改" }
+];
+
+function changeTypeOptions() {
+  return reviewData?.review_type === "ui" ? uiChangeTypes : flowChangeTypes;
+}
+
+function defaultChangeType() {
+  return reviewData?.review_type === "ui" ? "MODIFY_SCREEN_STRUCTURE" : "MODIFY_NODE";
+}
+
 function hasDrafts() {
   return allNodes().some(({ node }) => nodeState(node.id).status === "DRAFT");
 }
@@ -42,7 +77,7 @@ function nodeCard(node) {
   card.setAttribute("tabindex", "0");
   card.setAttribute("aria-pressed", String(selectedNodeId === node.id));
   card.addEventListener("click", (event) => {
-    if (event.target.closest("button, textarea, summary")) return;
+    if (event.target.closest("button, textarea, select, label, summary")) return;
     selectedNodeId = selectedNodeId === node.id ? null : node.id;
     render();
   });
@@ -87,8 +122,28 @@ function nodeCard(node) {
   card.appendChild(details);
 
   const feedback = create("div", `feedback ${saved.status === "DRAFT" ? "" : "hidden"}`);
+  const changeTypeLabel = create("label", "feedback-label", reviewData?.review_type === "ui" ? "修改类型" : "流程修改类型");
+  const changeTypeSelect = document.createElement("select");
+  changeTypeSelect.name = "change_type";
+  for (const changeType of changeTypeOptions()) {
+    const selectOption = document.createElement("option");
+    selectOption.value = changeType.value;
+    selectOption.textContent = changeType.label;
+    changeTypeSelect.appendChild(selectOption);
+  }
+  changeTypeSelect.value = saved.change_type || defaultChangeType();
+  changeTypeSelect.addEventListener("change", () => {
+    const current = nodeState(node.id);
+    if (current.status === "DRAFT") {
+      state[node.id] = { ...current, change_type: changeTypeSelect.value };
+      markSummaryDirty();
+      saveState();
+    }
+  });
+  changeTypeLabel.appendChild(changeTypeSelect);
+  feedback.appendChild(changeTypeLabel);
   const textarea = document.createElement("textarea");
-  textarea.placeholder = "请补充选择非推荐项的原因";
+  textarea.placeholder = "请用自然语言写清楚希望模型下一轮如何修改，不需要在这里直接改流程或界面。";
   textarea.value = saved.note || "";
   textarea.addEventListener("input", () => {
     const current = nodeState(node.id);
@@ -130,9 +185,17 @@ function nodeCard(node) {
       feedbackStatus.classList.add("error");
       return;
     }
+    const changeType = changeTypeSelect.value || nodeState(node.id).change_type || defaultChangeType();
+    if (!changeType) {
+      feedbackStatus.textContent = "请先选择修改类型。";
+      feedbackStatus.classList.add("error");
+      changeTypeSelect.focus();
+      return;
+    }
     state[node.id] = {
       status: "SAVED_SUBMITTED",
       option: draftOption,
+      change_type: changeType,
       note
     };
     markSummaryDirty();
@@ -194,6 +257,7 @@ function chooseOption(node, option) {
   state[node.id] = {
     status: "DRAFT",
     draft_option: option.id,
+    change_type: nodeState(node.id).change_type || defaultChangeType(),
     note: nodeState(node.id).note || ""
   };
   markSummaryDirty();
@@ -213,19 +277,56 @@ function isNeedsDecisionExit(option) {
   return String(option?.next_exit || "").trim().toLowerCase().startsWith("needs-decision");
 }
 
+function summaryText(value) {
+  return String(value ?? "").replace(/\s+/g, " ").trim();
+}
+
+function summaryScalar(value) {
+  return JSON.stringify(summaryText(value));
+}
+
 function requiresNodeDecision(node) {
   return Boolean(node.recommended_option || (node.options || []).length || node.review_level === "must_confirm");
 }
 
+function isSubmittedRevisionRequest(node, saved) {
+  return Boolean(
+    saved.status === "SAVED_SUBMITTED" &&
+    saved.change_type &&
+    saved.note &&
+    saved.option &&
+    saved.option !== node.recommended_option
+  );
+}
+
 function recordLine(module, item, node, saved, option) {
   const parts = [
-    `${module.title || module.id} / ${item.title || item.id} / ${node.label || node.id}`,
-    `selected_option: ${saved.option || saved.draft_option || "MISSING"}`,
-    `status: ${saved.status || "MISSING"}`
+    summaryText(`${module.title || module.id} / ${item.title || item.id} / ${node.label || node.id}`),
+    `selected_option: ${summaryText(saved.option || saved.draft_option || "MISSING")}`,
+    `status: ${summaryText(saved.status || "MISSING")}`
   ];
-  if (option?.next_exit) parts.push(`next_exit: ${option.next_exit}`);
-  if (saved.note) parts.push(`note: ${saved.note}`);
+  if (option?.next_exit) parts.push(`next_exit: ${summaryText(option.next_exit)}`);
+  if (saved.change_type) parts.push(`change_type: ${summaryText(saved.change_type)}`);
+  if (saved.note) parts.push(`note: ${summaryText(saved.note)}`);
   return `- ${parts.join("；")}`;
+}
+
+function buildRevisionRequest(module, item, node, saved, option) {
+  const targetRef = `${module.id || module.title}:${item.id || item.title}:${node.id}`;
+  const targetLabel = `${module.title || module.id} / ${item.title || item.id} / ${node.label || node.id}`;
+  const expectedAction = reviewData?.review_type === "ui"
+    ? "下一轮 /sp.ui 根据修改类型和审核意见调整 UI review data，再重新生成确认页。"
+    : "下一轮 /sp.flow 根据修改类型和审核意见调整 flow review data，再重新生成确认页。";
+  return [
+    `- target_ref: ${summaryScalar(targetRef)}`,
+    `  target_label: ${summaryScalar(targetLabel)}`,
+    `  review_type: ${summaryScalar(reviewData?.review_type || "unknown")}`,
+    `  change_type: ${summaryScalar(saved.change_type || "OTHER")}`,
+    `  selected_option: ${summaryScalar(saved.option || saved.draft_option || "MISSING")}`,
+    `  reviewer_note: ${summaryScalar(saved.note || "")}`,
+    `  expected_model_action: ${summaryScalar(expectedAction)}`,
+    `  next_exit: ${summaryScalar(option?.next_exit || "needs-revision")}`
+  ].join("\n");
 }
 
 function buildSummaryGroups() {
@@ -235,7 +336,8 @@ function buildSummaryGroups() {
     decision_recorded_items: [],
     needs_decision_items: [],
     unresolved_decision_items: [],
-    draft_excluded_items: []
+    draft_excluded_items: [],
+    revision_requests: []
   };
 
   for (const { module, item, node } of allNodes()) {
@@ -258,14 +360,23 @@ function buildSummaryGroups() {
     }
     if (saved.option === "OPTION_B" && isNeedsDecisionExit(option)) {
       groups.needs_decision_items.push(line);
+      if (isSubmittedRevisionRequest(node, saved)) {
+        groups.revision_requests.push(buildRevisionRequest(module, item, node, saved, option));
+      }
       continue;
     }
     if (saved.option === "OPTION_B") {
       groups.unresolved_decision_items.push(line);
+      if (isSubmittedRevisionRequest(node, saved)) {
+        groups.revision_requests.push(buildRevisionRequest(module, item, node, saved, option));
+      }
       continue;
     }
     groups.decision_recorded_items.push(`${module.id || module.title}:${item.id || item.title}:${node.id}`);
     groups.decision_records.push(line);
+    if (isSubmittedRevisionRequest(node, saved)) {
+      groups.revision_requests.push(buildRevisionRequest(module, item, node, saved, option));
+    }
   }
 
   return groups;
@@ -313,6 +424,9 @@ ${formatSummaryList(groups.unresolved_decision_items)}
 
 draft_excluded_items:
 ${formatSummaryList(groups.draft_excluded_items)}
+
+revision_requests:
+${formatSummaryList(groups.revision_requests)}
 `;
   if (!navigator.clipboard?.writeText) {
     setStatus(`浏览器不支持自动复制；请改用本地服务或手动写回 ${target}。`, true);

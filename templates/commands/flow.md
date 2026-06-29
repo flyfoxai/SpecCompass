@@ -181,6 +181,15 @@ decision_records:
     project_impact: <impact on scope, schedule, risk, downstream UI/plan/implementation>
     next_exit: <next owner route or downstream stage unlocked by this choice>
     reviewer_note: <optional human note>
+revision_requests:
+  - target_ref: <module:item:node stable reference>
+    target_label: <visible module / flow / node label>
+    review_type: flow
+    change_type: ADD_NODE | DELETE_NODE | MODIFY_NODE | MODIFY_BRANCH | ADD_EXCEPTION_PATH | SPLIT_SUBFLOW | MERGE_SIMPLIFY | ADD_ENTRY_EXIT | OTHER
+    selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D
+    reviewer_note: <natural-language revision request / 自然语言修改意见>
+    expected_model_action: <what the next /sp.flow run should revise>
+    next_exit: <owner route or next stage>
 child_batches:
   - batch_id: <child-batch-id>
     status: pending | confirmed | needs_revision | stale
@@ -225,6 +234,19 @@ renderer, write flow data to
 `.specify/review/scripts/validate-review-data.mjs` against
 `.specify/review/schemas/flow-review-data.schema.json`, and keep the result as
 draft when validation fails. 校验失败不能收尾，不能提升 readiness.
+
+review data 是待审内容 / review data is draft review content. The Web review
+page is not an editor / 不是编辑器 and does not directly edit flow or UI design /
+不直接修改 flow 或 UI 设计. It collects local choices and exports authorization
+text. If the reviewer rejects the recommendation, require a `change_type` plus
+natural-language revision / 自然语言修改意见 and write it to `revision_requests` in
+the confirmation document. Flow revision request types are `ADD_NODE`,
+`DELETE_NODE`, `MODIFY_NODE`, `MODIFY_BRANCH`, `ADD_EXCEPTION_PATH`,
+`SPLIT_SUBFLOW`, `MERGE_SIMPLIFY`, `ADD_ENTRY_EXIT`, and `OTHER`. A later
+`/sp.flow` run must read existing `flow-confirmation.md` `revision_requests`,
+apply the requested changes to the flow artifacts and `flow-review-data.json`,
+validate the data again, and regenerate the review page before asking for fresh
+confirmation.
 
 Legacy compatibility is read-only: old `owner_approval.status: APPROVED` may be
 read as `CONFIRMED`, and old `REJECTED` may be migrated or interpreted as
@@ -328,6 +350,8 @@ vocabulary instead.
 - Create or update `specs/<feature>/flows/*.mmd`
 - Create or update `specs/<feature>/flows/review/flow-review-batch.md` or an
   equivalent batch review manifest when confirmation is recommended or required.
+  This Markdown manifest is a 备用 plain-text record only. Do not present
+  `flow-review-batch.md` 作为主入口 for human review.
 - Create or update structured review data at
   `specs/<feature>/flows/review/flow-review-data.json` using the
   `speccompass-review-data` skill when confirmation is recommended or required.
@@ -339,12 +363,22 @@ vocabulary instead.
   gap explicitly. Review data fields are plain structured data: do not put
   HTML, CSS, JavaScript, SVG, class names, event handlers, or page layout
   instructions in any field, including `schema_notes` and `trace_notes`.
+- If `specs/<feature>/flows/review/flow-confirmation.md` already contains
+  `revision_requests`, read them before generating new flow review data. Treat
+  each request as a model-actionable repair instruction, reason against the
+  current PRD/spec/flow sources, update the flow artifacts and review data, and
+  then regenerate the Web review page. Do not ask the reviewer to directly
+  edit the flow in the browser page.
 - After the user completes batch confirmation, write or update
   `specs/<feature>/flows/review/flow-confirmation.md` using the Confirmation
   Document Schema above. This Markdown file is the authorization evidence
   downstream commands must read before treating flow artifacts as stable input.
-- Present flow review data with the fixed renderer
-  `.specify/review/renderer/speccompass-review-renderer.html`; 普通 `/sp.flow`、`/sp.ui`
+- Present flow review data with the fixed renderer main entry
+  `.specify/review/renderer/speccompass-review-renderer.html?flow=<feature>`.
+  Command output must point reviewers to this Web review page first because it
+  auto-loads `specs/<feature>/flows/review/flow-review-data.json` by short URL
+  parameter; the `flow-review-batch.md` file is only a fallback text record.
+  普通 `/sp.flow`、`/sp.ui`
   不得修改 renderer or renderer directory `.specify/review/renderer/` and must
   only fill structured review data / 只填结构化
   review data; it must not write HTML/CSS/JS for the confirmation surface /

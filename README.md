@@ -50,7 +50,7 @@ For controlled multi-agent work, one coordinator assigns eligible worksets, work
 
 `/sp.ui` first generates or refreshes the screen map, page structure, UI regions, controls, states, and key interaction choices, then creates a review page for visual confirmation.
 
-Both pages use a right-side review rail. Reviewers can accept the recommendation or submit another choice with comments. The browser page helps review the decision; the generated confirmation document is what authorizes later implementation.
+Both pages use a right-side review rail. Reviewers can accept the recommendation or submit a structured natural-language revision request. The browser page is not an editor; the generated confirmation document is what authorizes later model revisions and implementation.
 
 Review page examples:
 

@@ -213,6 +213,15 @@ decision_records:
     project_impact: <impact on scope, schedule, risk, downstream plan/implementation>
     next_exit: <next owner route or downstream stage unlocked by this choice>
     reviewer_note: <optional human note>
+revision_requests:
+  - target_ref: <module:screen:node stable reference>
+    target_label: <visible module / screen / UI decision label>
+    review_type: ui
+    change_type: ADD_SCREEN | DELETE_SCREEN | MODIFY_SCREEN_STRUCTURE | ADD_REGION | MODIFY_REGION_LAYOUT | ADD_COMPONENT | DELETE_COMPONENT | MODIFY_FIELD_ACTION_COPY | ADD_STATE | MODIFY_INTERACTION | ADD_PERMISSION_DISPLAY | OTHER
+    selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D
+    reviewer_note: <natural-language revision request / 自然语言修改意见>
+    expected_model_action: <what the next /sp.ui run should revise>
+    next_exit: <owner route or next stage>
 child_batches:
   - batch_id: <child-batch-id>
     status: pending | confirmed | needs_revision | stale
@@ -233,6 +242,20 @@ exists, has `human_confirmation: CONFIRMED`, has owner approval when required,
 covers the requested authorization scope, and is not stale. Review manifests,
 browser-side draft selections, screenshots, or preview state are review aids;
 they are not authorization evidence until written to `ui-confirmation.md`.
+
+review data 是待审内容 / review data is draft review content. The Web review
+page is not an editor / 不是编辑器 and does not directly edit flow or UI design /
+不直接修改 flow 或 UI 设计. It collects local choices and exports authorization
+text. If the reviewer rejects the recommendation, require a `change_type` plus
+natural-language revision / 自然语言修改意见 and write it to `revision_requests` in
+the confirmation document. UI revision request types are `ADD_SCREEN`,
+`DELETE_SCREEN`, `MODIFY_SCREEN_STRUCTURE`, `ADD_REGION`,
+`MODIFY_REGION_LAYOUT`, `ADD_COMPONENT`, `DELETE_COMPONENT`,
+`MODIFY_FIELD_ACTION_COPY`, `ADD_STATE`, `MODIFY_INTERACTION`,
+`ADD_PERMISSION_DISPLAY`, and `OTHER`. A later `/sp.ui` run must read existing
+`ui-confirmation.md` `revision_requests`, apply the requested changes to the UI
+artifacts and `ui-review-data.json`, validate the data again, and regenerate the
+review page before asking for fresh confirmation.
 
 Review pages are rendered by the reusable `speccompass-review-data` toolchain:
 normal `/sp.flow` and `/sp.ui` commands must fill structured review data, must
@@ -359,6 +382,8 @@ instead.
 - Create or update `specs/<feature>/ui/jsonforms/*` when applicable
 - Create or update `specs/<feature>/ui/review/ui-review-batch.md` or an
   equivalent batch review manifest when confirmation is recommended or required.
+  This Markdown manifest is a 备用 plain-text record only. Do not present
+  `ui-review-batch.md` 作为主入口 for human review.
 - Create or update structured review data at
   `specs/<feature>/ui/review/ui-review-data.json` using the
   `speccompass-review-data` skill when confirmation is recommended or required.
@@ -380,12 +405,22 @@ instead.
   instructions. 决策选项需要深度推理: every human decision node needs 2-4
   executable options with background in `when_to_choose`, consequence, project
   impact, `next_exit`, and `recommended_option`.
+- If `specs/<feature>/ui/review/ui-confirmation.md` already contains
+  `revision_requests`, read them before generating new UI review data. Treat
+  each request as a model-actionable repair instruction, reason against the
+  current PRD/spec/flow/UI sources, update the UI artifacts and review data, and
+  then regenerate the Web review page. Do not ask the reviewer to directly
+  edit screens, regions, components, or interactions in the browser page.
 - After the user completes batch confirmation, write or update
   `specs/<feature>/ui/review/ui-confirmation.md` using the Confirmation
   Document Schema above. This Markdown file is the authorization evidence
   downstream commands must read before treating UI artifacts as stable input.
-- Present UI review data with the fixed renderer
-  `.specify/review/renderer/speccompass-review-renderer.html`; 普通 `/sp.flow`、`/sp.ui`
+- Present UI review data with the fixed renderer main entry
+  `.specify/review/renderer/speccompass-review-renderer.html?ui=<feature>`.
+  Command output must point reviewers to this Web review page first because it
+  auto-loads `specs/<feature>/ui/review/ui-review-data.json` by short URL
+  parameter; the `ui-review-batch.md` file is only a fallback text record.
+  普通 `/sp.flow`、`/sp.ui`
   不得修改 renderer or renderer directory `.specify/review/renderer/` and must
   only fill structured review data / 只填结构化
   review data; it must not write HTML/CSS/JS for the confirmation surface /

@@ -24,15 +24,56 @@ or UI confirmation runs.
 
 - Renderer directory: `.specify/review/renderer/`
 - Fixed renderer entry: `.specify/review/renderer/speccompass-review-renderer.html`
+- Flow review Web entry: `.specify/review/renderer/speccompass-review-renderer.html?flow=<feature>`
+- UI review Web entry: `.specify/review/renderer/speccompass-review-renderer.html?ui=<feature>`
 - Flow data: `specs/<feature>/flows/review/flow-review-data.json`
 - UI data: `specs/<feature>/ui/review/ui-review-data.json`
 - Flow schema: `.specify/review/schemas/flow-review-data.schema.json`
 - UI schema: `.specify/review/schemas/ui-review-data.schema.json`
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
 
+When reporting the review result to a user, present the Web review entry above
+as the primary page. The renderer uses short URL parameters / 短参数 to resolve
+the data file with browser URL paths, so it works the same on macOS, Windows,
+and Linux when served from the project root. Do not ask the user to open
+`flow-review-batch.md` or `ui-review-batch.md` as the primary review entry;
+those Markdown files are fallback / 兜底 text records only. If the renderer is
+opened without `?flow=<feature>` or `?ui=<feature>`, it should show a visible
+fallback prompt and the manual load buttons.
+
 If validation fails, do not finish the command and do not promote readiness.
 Fix model-fixable data issues first. If the remaining gap requires human
 information, mark the item blocked with a short reason and owner route.
+
+review data 是待审内容 / review data is draft review content. The renderer is not
+an editor / 不是编辑器 and does not directly edit flow or UI design /
+不直接修改 flow 或 UI 设计. It only helps reviewers accept a recommended option or
+submit a structured natural-language revision / 自然语言修改意见. Browser
+localStorage is a temporary draft only. Authorization and requested changes live
+in the confirmation document / 确认文档: `flow-confirmation.md` for flow and
+`ui-confirmation.md` for UI.
+
+When a reviewer chooses a non-recommended option, the copied summary must
+export `revision_requests`. The next `/sp.flow` or `/sp.ui` run reads those
+requests, applies them to `flow-review-data.json` or `ui-review-data.json`, and
+regenerates the confirmation page. Do not ask reviewers to directly add/delete
+flow nodes or UI elements inside the page; they provide structured change type
+plus plain-language instructions for the model to execute next.
+
+Flow `change_type` values: `ADD_NODE`, `DELETE_NODE`, `MODIFY_NODE`,
+`MODIFY_BRANCH`, `ADD_EXCEPTION_PATH`, `SPLIT_SUBFLOW`, `MERGE_SIMPLIFY`,
+`ADD_ENTRY_EXIT`, `OTHER`.
+
+UI `change_type` values: `ADD_SCREEN`, `DELETE_SCREEN`,
+`MODIFY_SCREEN_STRUCTURE`, `ADD_REGION`, `MODIFY_REGION_LAYOUT`,
+`ADD_COMPONENT`, `DELETE_COMPONENT`, `MODIFY_FIELD_ACTION_COPY`, `ADD_STATE`,
+`MODIFY_INTERACTION`, `ADD_PERMISSION_DISPLAY`, `OTHER`.
+
+Each `revision_requests` item must preserve at least `target_ref`,
+`target_label`, `review_type`, `change_type`, `selected_option`,
+`reviewer_note`, `expected_model_action`, and `next_exit`. The model must treat
+`reviewer_note` as the human's natural-language revision request and reason
+against the current PRD/spec/flow/UI sources before changing data.
 
 ## Data Writing Rules
 
