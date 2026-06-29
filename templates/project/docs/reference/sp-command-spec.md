@@ -448,10 +448,15 @@ Not every file is seeded up front by the template root. Some are created or expa
   by explicit `--auto`, state why, what changed, which tier would otherwise
   apply, and whether the result is still draft or ready for the next step
 - if a flow or UI review summary contains a human decision point, explain the
-  background in plain Chinese, give 2-3 options, describe each option's impact,
-  give a recommendation, explain the reason, and keep the artifact in
-  `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user confirms or
-  selects a repair option.
+  real business background or real screen/interaction background in plain
+  Chinese, give tiered decision options (`must_confirm` 3-4 options; ordinary
+  human-judgment nodes default to 3 options; low-risk binary choices need
+  `options_count_rationale`), describe what the reviewer chooses the model to do
+  or change next, describe each option's concrete consequence and downstream
+  impact on scope, schedule, risk, UI/flow, plan, tasks, implementation,
+  acceptance tests, or delivery, name the recommended option and why it is
+  safest, and keep the artifact in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED`
+  until the user confirms or selects a repair option.
 - `--auto` may skip only the visual review gate; it must never skip subject
   scope, business domain anchor, stage entry preflight, subject-confusion
   checks, or Process Visualization UI checks

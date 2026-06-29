@@ -97,13 +97,17 @@ Global rules:
   or clarifications, actors, main flow stages, decisions, exception/recovery
   paths, state changes, UI contracts, system/external steps, draft or inferred
   parts, files to review, and visible labels to reference in feedback.
-- If the flow draft contains a human decision point, explain the background in
-  plain Chinese, give tiered decision options (`must_confirm` 3-4 options,
-  ordinary human-judgment nodes default to 3 options, and low-risk binary
-  choices only 2 options with `options_count_rationale`), describe each option's
-  consequence and project impact, name the `recommended_option`, explain the
-  reason, and state the actionable `next_exit` that lets later work continue
-  after the selected option.
+- If the flow draft contains a human decision point, explain the real business
+  background in plain Chinese, give tiered decision options (`must_confirm` 3-4
+  options, ordinary human-judgment nodes default to 3 options, and low-risk
+  binary choices only 2 options with `options_count_rationale`), and make every
+  option a business-readable executable exit. Each option must say what the
+  reviewer chooses the model to do next, the concrete consequence, the
+  downstream impact on scope, schedule, risk, UI, plan, tasks, implementation,
+  or tests, the actionable `next_exit`, and why the recommended option is
+  safest. Do not use reusable boilerplate such as "current evidence looks
+  correct"; ground the wording in the current module, business object, branch,
+  state, permission, exception path, or source document.
   Keep the flow in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user
   completes confirmation of selected option.
 - Default human confirmation strategy is `confirm_strategy: batch`. For a
@@ -485,7 +489,7 @@ vocabulary instead.
 - Confirm the fixed SpecCompass review renderer is not Mermaid-based and uses structured JSON plus native SVG/DAG layout for the review page. For Mermaid source/previews, confirm readable font size between 16px and 18px, `useMaxWidth: false`, tuned `nodeSpacing` and `rankSpacing`, and no whole-SVG shrink that makes complex diagrams unreadable. Confirm `sequenceDiagram` files render as sequence diagrams without flowchart label wrapping; every translated or punctuation-containing participant/actor alias is safely double-quoted and escaped. Confirm external Mermaid preview switching clears the old SVG, shows `正在渲染`, and uses a render token or equivalent stale-render guard.
 - Confirm the review page uses the required scroll model: left module navigation scrolls independently; center diagram area and right confirmation rail scroll as one review workspace; the right rail has no sticky/max-height clipping.
 - Confirm the right feedback rail includes per-node decision options, per-node feedback input, and an English label glossary for visible terms such as `FLOW`, `DEC`, `ERR`, `STATE`, `ROLE`, `BLOCKED`, and `DRAFT`.
-- Confirm every human-judgment node has tiered decision options, a clear `recommended_option`, required `consequence`, required `project_impact`, required actionable `next_exit`, and confirmation of selected option. `must_confirm` nodes require 3-4 options; ordinary human-judgment nodes default to 3 options; low-risk binary choices may use 2 options only with `options_count_rationale`. Confirm saved options whose `next_exit` starts with `needs-decision` write to `needs_decision_items` (`OPTION_B.next_exit` must use this route and never counts as confirmed), saved concrete continuation routes such as `OPTION_A/C/D` write to `decision_recorded_items`, and unresolved nodes write to `unresolved_decision_items`. Do not use approve/defer/reject/block as the node-level primary interaction; statuses such as `BLOCKED` or `NEEDS_DECISION` may appear only as system results with a reason, owner, repair route, and exit path.
+- Confirm every human-judgment node has tiered decision options, a clear `recommended_option`, required `when_to_choose` with real business background, required `consequence`, required `project_impact`, required actionable `next_exit`, and confirmation of selected option. The option copy must explain what the reviewer chooses the model to do next, downstream impact on scope, schedule, risk, UI, plan, tasks, implementation, or tests, and why the recommended option is safest. `must_confirm` nodes require 3-4 options; ordinary human-judgment nodes default to 3 options; low-risk binary choices may use 2 options only with `options_count_rationale`. Confirm saved options whose `next_exit` starts with `needs-decision` write to `needs_decision_items` (`OPTION_B.next_exit` must use this route and never counts as confirmed), saved concrete continuation routes such as `OPTION_A/C/D` write to `decision_recorded_items`, and unresolved nodes write to `unresolved_decision_items`. Do not use approve/defer/reject/block as the node-level primary interaction; statuses such as `BLOCKED` or `NEEDS_DECISION` may appear only as system results with a reason, owner, repair route, and exit path.
 - Confirm long node labels / 长节点标签 wrap before Mermaid render, including same-line node-and-edge Mermaid syntax, and that CSS allows node labels to wrap without shrinking the whole diagram below readability.
 - Confirm diagram-to-rail two-way linkage / 双向联动 is data-addressable:
   clicking a node card / 点击右侧节点卡 and clicking a diagram node / 点击流程图节点

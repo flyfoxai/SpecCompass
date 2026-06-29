@@ -20,7 +20,7 @@ SpecCompass turns specifications into a control mechanism for agent work:
 - **Intent before execution**: product goals, constraints, and missing decisions are captured before planning
 - **Smart routing**: when you do not know the next step, run `/sp.route`; it reads project state, uses the agent to choose the next safe command, and avoids guesswork
 - **Visible review before code**: flow and UI are shown in Web review pages before implementation
-- **Recommended choices**: the agent proposes options, consequences, and a recommended decision
+- **Recommended choices**: the agent explains each option in plain language, including when to choose it, what the agent will change next, and how it affects scope, schedule, risk, implementation, and tests
 - **Authorization records**: confirmed flow and UI decisions become the source for later work
 - **Bounded implementation**: coding starts from selected tasks, declared scope, and current verification evidence
 
@@ -50,7 +50,7 @@ For controlled multi-agent work, one coordinator assigns eligible worksets, work
 
 `/sp.ui` first generates or refreshes the screen map, page structure, UI regions, controls, states, and key interaction choices, then creates a review page for visual confirmation.
 
-Both pages use a right-side review rail. Reviewers can accept the recommendation or submit a structured natural-language revision request. The browser page is not an editor; the generated confirmation document is what authorizes later model revisions and implementation.
+Both pages use a right-side review rail. Reviewers can accept the recommendation or submit a structured natural-language revision request. Recommended options must explain the background, next model action, downstream impact, and recommendation reason. The browser page is not an editor; the generated confirmation document is what authorizes later model revisions and implementation.
 
 Review page examples:
 

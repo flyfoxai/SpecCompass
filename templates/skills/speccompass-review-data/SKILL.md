@@ -142,6 +142,15 @@ against the current PRD/spec/flow/UI sources before changing data.
 - Every option must provide an actionable exit / 可执行出口 through
   `next_exit`; do not use vague labels such as approve, defer, reject, or block
   as the option outcome.
+- Decision option copy must be decision-grade, not boilerplate. Each option must
+  include the real business background or real screen/interaction background in
+  `when_to_choose`, what happens after selection in `consequence`, downstream project impact
+  in `project_impact`, and why this option is recommended when it
+  is the `recommended_option`. The reader should understand what the model will
+  change next and how the choice affects scope, schedule, risk, UI/flow, plan,
+  tasks, implementation, acceptance tests, or delivery. Do not write generic
+  labels such as 推荐方案 / 方案A / 确认当前内容, and do not repeat stock phrases
+  such as 当前依据和风险边界看起来正确.
 - `OPTION_B` is reserved for needs-decision / 补充决策 and must not route to a
   confirmed path.
 - `OPTION_B.next_exit` must start with the literal route marker
@@ -267,27 +276,27 @@ needed. Do not add HTML, CSS, or JavaScript.
               "options": [
                 {
                   "id": "OPTION_A",
-                  "label": "按当前发布规则继续",
-                  "when_to_choose": "PRD 已经说明发布前检查项。",
-                  "consequence": "后续流程按当前发布门槛继续设计。",
-                  "project_impact": "后续 UI 和任务可以按当前规则推进。",
+                  "label": "按问卷发布检查继续",
+                  "when_to_choose": "问卷标题、目标人群、截止时间和发布前校验已在 PRD 中说明，产品经理认可这些作为发布门槛。",
+                  "consequence": "下一轮会把这些检查写进发布前流程、UI 校验和任务拆分，不再重新询问发布门槛。",
+                  "project_impact": "可以解锁问卷发布页面、实现任务和验收测试；风险集中在后续发现遗漏检查项时需要局部补充。",
                   "next_exit": "continue",
                   "recommended": true
                 },
                 {
                   "id": "OPTION_B",
-                  "label": "先补充发布规则",
-                  "when_to_choose": "发布前检查项还缺关键业务条件。",
-                  "consequence": "发布相关流程先停在待补充决策状态。",
-                  "project_impact": "发布相关 UI 和实现暂不推进。",
+                  "label": "先补齐发布门槛再设计",
+                  "when_to_choose": "发布前到底要检查哪些问卷信息还没有定，继续设计会让开发按猜测实现。",
+                  "consequence": "该节点下游的发布页面、流程分支和开发任务先暂停，等待产品经理补充门槛。",
+                  "project_impact": "会延后问卷发布相关 UI、计划和实现，但能避免后续返工或错误放行。",
                   "next_exit": "needs-decision:product-owner"
                 },
                 {
                   "id": "OPTION_C",
                   "label": "局部补充检查项后继续",
-                  "when_to_choose": "发布规则大体成立，但还缺一个边界条件。",
-                  "consequence": "下一轮只补这个边界条件，不推翻主发布流程。",
-                  "project_impact": "UI 和任务可以继续推进，但要同步补充该检查项。",
+                  "when_to_choose": "主发布路径已经明确，只剩一个边界条件需要补上，例如截止时间是否必填。",
+                  "consequence": "下一轮只调整当前节点的检查项，不推翻问卷发布主流程。",
+                  "project_impact": "影响集中在当前流程或界面的校验文案和测试用例，整体排期变化较小。",
                   "next_exit": "revise-local-and-continue"
                 }
               ],

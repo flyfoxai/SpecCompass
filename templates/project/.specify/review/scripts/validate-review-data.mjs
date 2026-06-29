@@ -256,6 +256,90 @@ const vagueActionExits = new Set([
   "pending",
   "rejected"
 ]);
+const genericOptionLabels = new Set([
+  "方案a",
+  "方案b",
+  "方案c",
+  "方案d",
+  "选项a",
+  "选项b",
+  "选项c",
+  "选项d",
+  "推荐方案",
+  "默认方案",
+  "当前方案",
+  "保留当前",
+  "按推荐",
+  "按推荐继续",
+  "补充内容",
+  "补充信息",
+  "补充业务决策",
+  "确认通过",
+  "暂缓处理",
+  "退回修改",
+  "阻塞处理"
+]);
+const boilerplateOptionCopyFragments = [
+  "当前依据和风险边界看起来正确",
+  "可按推荐保留",
+  "当前节点需要补充业务决策",
+  "责任人或风险口径",
+  "后续完善相关内容",
+  "当前资料还不能判断",
+  "需求已经覆盖这个业务判断",
+  "后续界面和计划可以按当前路径继续",
+  "影响范围限制在当前流程或界面的局部内容",
+  "按当前规则推进",
+  "待后续补充相关内容",
+  "后续再完善相关内容"
+];
+const concreteImpactSignals = [
+  "开发",
+  "实现",
+  "排期",
+  "风险",
+  "测试",
+  "验收",
+  "UI",
+  "界面",
+  "流程",
+  "权限",
+  "数据",
+  "状态",
+  "用户",
+  "运营",
+  "页面",
+  "接口",
+  "统计",
+  "报表",
+  "发布",
+  "回收",
+  "租户",
+  "文档",
+  "问卷",
+  "成本",
+  "范围",
+  "计划",
+  "下游",
+  "阻断",
+  "延后",
+  "解锁",
+  "scope",
+  "schedule",
+  "risk",
+  "ui",
+  "screen",
+  "flow",
+  "plan",
+  "task",
+  "tasks",
+  "implementation",
+  "test",
+  "tests",
+  "acceptance",
+  "delivery",
+  "release"
+];
 
 function normalizedActionText(value) {
   return String(value || "").trim().toLowerCase();
@@ -267,6 +351,43 @@ function isVagueActionExit(value) {
 
 function hasQualifiedException(item) {
   return Boolean(item.complex_flow_exception || item.low_risk_linear_exception);
+}
+
+function compactText(value) {
+  return String(value || "").replace(/\s+/g, "").trim();
+}
+
+function hasConcreteImpactSignal(value) {
+  const text = String(value || "").toLowerCase();
+  return concreteImpactSignals.some((signal) => text.includes(signal));
+}
+
+function containsBoilerplateOptionCopy(value) {
+  const text = String(value || "");
+  return boilerplateOptionCopyFragments.some((fragment) => text.includes(fragment));
+}
+
+function validateOptionHumanCopy(scope, option) {
+  const label = compactText(option.label);
+  if (genericOptionLabels.has(label.toLowerCase()) || /^方案[a-d]$/i.test(label) || /^选项[a-d]$/i.test(label)) {
+    fail(`${scope}: option ${option.id} label is too generic; name the real business action`);
+  }
+
+  for (const key of ["label", "when_to_choose", "consequence", "project_impact"]) {
+    if (containsBoilerplateOptionCopy(option[key])) {
+      fail(`${scope}: option ${option.id} contains boilerplate option copy in ${key}; explain the real background, action, and impact`);
+    }
+  }
+
+  if (!hasSubstantialText(option.when_to_choose)) {
+    fail(`${scope}: option ${option.id} when_to_choose must explain the business background in plain language`);
+  }
+  if (!hasSubstantialText(option.consequence)) {
+    fail(`${scope}: option ${option.id} consequence must describe the concrete action after selection`);
+  }
+  if (!hasSubstantialText(option.project_impact) || !hasConcreteImpactSignal(option.project_impact)) {
+    fail(`${scope}: option ${option.id} project_impact must name a concrete downstream impact`);
+  }
 }
 
 function validateReadableCopy(scope, value) {
@@ -383,7 +504,7 @@ function validateOptions(scope, node) {
 
   const options = asArray(node.options);
   if (options.length < 2 || options.length > 4) {
-    fail(`${scope}: human_judgment nodes require 2-4 options, and must_confirm nodes require 3-4 options`);
+    fail(`${scope}: human_judgment nodes require tiered executable options: must_confirm nodes require 3-4 options; ordinary human-judgment nodes default to 3 options; low-risk binary choices need options_count_rationale`);
     return;
   }
   if (node.review_level === "must_confirm" && (options.length < 3 || options.length > 4)) {
@@ -414,6 +535,7 @@ function validateOptions(scope, node) {
     if (isVagueActionExit(option.label) || isVagueActionExit(option.next_exit)) {
       fail(`${scope}: option ${option.id} must use an actionable exit, not approve/defer/reject/block labels`);
     }
+    validateOptionHumanCopy(scope, option);
     if (option.id === "OPTION_B" && !String(option.next_exit || "").trim().toLowerCase().startsWith("needs-decision")) {
       fail(`${scope}: OPTION_B.next_exit must start with needs-decision`);
     }

@@ -1764,7 +1764,11 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "exception/recovery" in flow
     assert "state changes" in flow
     assert "visible labels to reference in feedback" in flow
-    assert "2-3 options" in flow
+    assert "tiered decision options" in flow
+    assert "real business background" in flow
+    assert "what the reviewer chooses the model to do next" in flow
+    assert "downstream impact on scope, schedule, risk, UI, plan, tasks, implementation, or tests" in flow
+    assert "why the recommended option is safest" in flow
     assert "multiple reasonable repairs" in flow
     assert "not present `/sp.ui` or `/sp.gate` as the" in flow
     assert "immediate next step" in flow
@@ -1805,7 +1809,11 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "charts/tables and" in ui
     assert "data sources, permissions/states" in ui
     assert "visible labels to reference in feedback" in ui
-    assert "2-3 options" in ui
+    assert "tiered decision options" in ui
+    assert "real screen or interaction background" in ui
+    assert "what the reviewer chooses the model to change next" in ui
+    assert "downstream impact on screen scope, interaction risk, implementation, acceptance tests, or delivery schedule" in ui
+    assert "why the recommended UI option is safest" in ui
     assert "multiple reasonable layouts" in ui
     assert "not present `/sp.gate` as the immediate next" in ui
 
@@ -3201,6 +3209,10 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     assert "must_confirm" in skill and "3-4" in skill and "recommended_option" in skill
     assert "ordinary human-judgment nodes default to 3 options" in skill
     assert "options_count_rationale" in skill
+    assert "real business background" in skill
+    assert "what happens after selection" in skill
+    assert "downstream project impact" in skill
+    assert "why this option is recommended" in skill
     assert "可执行出口" in skill or "actionable exit" in skill
     assert "5-7" in skill and "8+" in skill and "10+" in skill
     assert "localStorage" in renderer_readme
@@ -3472,7 +3484,11 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
         "recommended_option",
         "consequence",
         "must_confirm nodes require 3-4 options",
+        "ordinary human-judgment nodes default to 3 options",
         "options_count_rationale",
+        "label is too generic; name the real business action",
+        "boilerplate option copy",
+        "project_impact must name a concrete downstream impact",
         "actionable exit",
         "10+ business nodes",
         "complex_flow_exception",
@@ -3704,27 +3720,27 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                 "options": [
                     {
                         "id": "OPTION_A",
-                        "label": "按现有规则继续",
-                        "when_to_choose": "需求已经覆盖这个业务判断。",
-                        "consequence": "继续使用当前业务规则作为后续设计依据。",
-                        "project_impact": "后续界面和计划可以按当前路径继续。",
+                        "label": "按问卷发布检查继续",
+                        "when_to_choose": "问卷标题、目标人群和截止时间已经在需求中写清楚，产品经理认可这些作为发布门槛。",
+                        "consequence": "后续流程会把这些检查作为发布前必须满足的条件。",
+                        "project_impact": "UI、计划和开发任务可以围绕问卷发布校验继续拆分，误发布风险较低。",
                         "next_exit": "continue",
                         "recommended": True,
                     },
                     {
                         "id": "OPTION_B",
-                        "label": "补充业务决策",
-                        "when_to_choose": "当前资料还不能判断。",
-                        "consequence": "暂停该节点下游设计，先补充业务判断。",
-                        "project_impact": "需要先补充决策，相关实现暂不推进。",
+                        "label": "先补齐发布门槛再设计",
+                        "when_to_choose": "发布前到底要检查哪些问卷信息还没有定，继续设计会让开发按猜测实现。",
+                        "consequence": "该节点下游的发布页面和开发任务先暂停，等待产品经理补充门槛。",
+                        "project_impact": "会延后问卷发布相关 UI 和实现，但避免后续返工或错误放行。",
                         "next_exit": "needs-decision",
                     },
                     {
                         "id": "OPTION_C",
                         "label": "局部调整后继续",
-                        "when_to_choose": "业务目标不变，只需要改小范围规则。",
-                        "consequence": "先修正这个节点的规则，再继续后续设计。",
-                        "project_impact": "影响范围限制在当前流程或界面的局部内容。",
+                        "when_to_choose": "主发布路径已经明确，只剩一个边界条件需要补上，例如截止时间是否必填。",
+                        "consequence": "下一轮只调整当前节点的检查项，不推翻问卷发布主流程。",
+                        "project_impact": "影响集中在当前流程或界面的校验文案和测试用例，整体排期变化较小。",
                         "next_exit": "revise-local-and-continue",
                     },
                 ],
@@ -4020,6 +4036,44 @@ def test_review_data_validator_enforces_review_option_quality_rules(tmp_path):
     result = _run_review_validator(forbidden_exit, tmp_path / "forbidden-empty-action-exit.json")
     assert result.returncode != 0
     assert "actionable exit" in _review_validator_output(result)
+
+
+def test_review_data_validator_rejects_boilerplate_review_option_copy(tmp_path):
+    """Review options must explain the real business choice, not repeat stock phrases."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    boilerplate = _review_validator_sample("flow")
+    option = boilerplate["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
+    option["label"] = "推荐方案"
+    option["when_to_choose"] = "当前依据和风险边界看起来正确，可按推荐保留。"
+    option["consequence"] = "当前节点需要补充业务决策，责任人或风险口径。"
+    option["project_impact"] = "后续完善相关内容，影响较大。"
+
+    result = _run_review_validator(boilerplate, tmp_path / "boilerplate-option-copy.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "option OPTION_A label is too generic" in output
+    assert "boilerplate option copy" in output
+    assert "project_impact must name a concrete downstream impact" in output
+
+
+def test_review_data_validator_allows_specific_impact_copy_without_false_positive(tmp_path):
+    """Specific impact wording should pass even when it contains common impact words."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    specific_chinese = _review_validator_sample("flow")
+    option = specific_chinese["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
+    option["project_impact"] = "对问卷发布排期影响较大，需要追加发布前验收测试和运营兜底说明。"
+    result = _run_review_validator(specific_chinese, tmp_path / "specific-chinese-impact.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+    english_impact = _review_validator_sample("ui")
+    option = english_impact["modules"][0]["screens"][0]["nodes"][0]["options"][0]
+    option["project_impact"] = "Screen Scope, Implementation Tasks, and Acceptance Tests can continue with lower Release Risk."
+    result = _run_review_validator(english_impact, tmp_path / "english-impact.json")
+    assert result.returncode == 0, _review_validator_output(result)
 
 
 def test_review_data_validator_requires_system_arch_owner_route_and_current_vocabulary(tmp_path):

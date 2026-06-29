@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.24] - 2026-06-30
+
+### Changed
+
+- Strengthened Flow/UI review option generation so decision choices explain real background, model action, downstream impact, recommendation reasons, and concrete exits in plain language.
+- Added validator checks for generic option labels, boilerplate option copy, and missing concrete downstream impact.
+- Updated review-data skill, command templates, methodology, README guidance, and regression coverage for business-readable executable decision options.
+
 ## [0.10.23] - 2026-06-29
 
 ### Changed

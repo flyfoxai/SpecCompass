@@ -113,12 +113,19 @@ Global rules:
   effects, fields and validation sources, images/previews, charts/tables and
   data sources, permissions/states, known draft or inferred parts, files to
   review, and visible labels to reference in feedback.
-- If the UI draft contains a human decision point, explain the background in
-  plain Chinese through the JSON field `when_to_choose` (do not create a
-  separate `background` field), give 2-3 options, describe each option's impact,
-  give a recommendation, and state the reason. Keep the UI in `DRAFT_ONLY`,
-  `NEEDS_DECISION`, or `BLOCKED` until the user confirms or chooses a repair
-  option.
+- If the UI draft contains a human decision point, explain the real screen or interaction background
+  in plain Chinese through the JSON field
+  `when_to_choose` (do not create a separate `background` field), give tiered decision options
+  (`must_confirm` 3-4 options, ordinary human-judgment nodes
+  default to 3 options, and low-risk binary choices only 2 options with
+  `options_count_rationale`), and make every option a UI-readable executable
+  exit. Each option must say what the reviewer chooses the model to change next,
+  the concrete consequence, the downstream impact on screen scope, interaction risk, implementation, acceptance tests, or delivery schedule,
+  the actionable `next_exit`, and why the recommended UI option is safest. Ground the wording
+  in the current screen, region, component, field/action copy, permission,
+  state, or source flow; do not reuse generic "looks correct" boilerplate. Keep
+  the UI in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user confirms
+  or chooses a repair option.
 - Default human confirmation strategy is `confirm_strategy: batch`. For a
   multi-module, multi-page, or dependency-domain UI generation, generate or
   refresh all in-scope UI drafts first, add them to the batch review manifest,
