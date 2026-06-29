@@ -89,6 +89,9 @@ function saveState() {
 
 function markSummaryDirty() {
   state.__meta = { ...(state.__meta || {}), copied_fingerprint: "" };
+  if (typeof clearPackageDownloadLinks === "function") {
+    clearPackageDownloadLinks();
+  }
 }
 
 function localStorageAvailable() {
@@ -181,5 +184,12 @@ function levelLabel(level) {
 }
 
 function writebackTarget() {
+  try {
+    if (window.SpecCompassConfirmationPackage?.safeWritebackTarget && reviewData) {
+      return window.SpecCompassConfirmationPackage.safeWritebackTarget(reviewData);
+    }
+  } catch {
+    // Fallback below keeps the page usable; package download performs strict validation.
+  }
   return reviewData?.review_type === "ui" ? "ui-confirmation.md" : "flow-confirmation.md";
 }

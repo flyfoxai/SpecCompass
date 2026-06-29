@@ -182,6 +182,7 @@ const allowedNodeKeys = new Set([
   "node_kind",
   "source_ref",
   "options",
+  "options_count_rationale",
   "recommended_option"
 ]);
 const allowedOptionKeys = new Set([
@@ -226,6 +227,42 @@ function validateEnum(scope, key, value, allowedValues) {
 
 function isHumanJudgment(node) {
   return node.node_kind === "human_judgment" || node.review_level === "must_confirm";
+}
+
+function hasDecisionOptions(node) {
+  return Boolean(isHumanJudgment(node) || node.options || node.recommended_option);
+}
+
+function hasSubstantialText(value) {
+  return typeof value === "string" && value.replace(/\s+/g, "").length >= 18;
+}
+
+const vagueActionExits = new Set([
+  "通过",
+  "暂缓",
+  "退回",
+  "阻塞",
+  "拒绝",
+  "待定",
+  "approve",
+  "approved",
+  "pass",
+  "hold",
+  "defer",
+  "reject",
+  "return",
+  "block",
+  "blocked",
+  "pending",
+  "rejected"
+]);
+
+function normalizedActionText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+function isVagueActionExit(value) {
+  return vagueActionExits.has(normalizedActionText(value));
 }
 
 function hasQualifiedException(item) {
@@ -340,14 +377,20 @@ function validateCurrentConfirmationVocabulary(scope, value) {
 }
 
 function validateOptions(scope, node) {
-  if (!isHumanJudgment(node) && !node.options && !node.recommended_option) {
+  if (!hasDecisionOptions(node)) {
     return;
   }
 
   const options = asArray(node.options);
   if (options.length < 2 || options.length > 4) {
-    fail(`${scope}: human_judgment or must_confirm nodes require 2-4 options`);
+    fail(`${scope}: human_judgment nodes require 2-4 options, and must_confirm nodes require 3-4 options`);
     return;
+  }
+  if (node.review_level === "must_confirm" && (options.length < 3 || options.length > 4)) {
+    fail(`${scope}: must_confirm nodes require 3-4 options`);
+  }
+  if (options.length === 2 && node.review_level !== "must_confirm" && !hasSubstantialText(node.options_count_rationale)) {
+    fail(`${scope}: options_count_rationale is required when a human-judgment node uses only 2 options`);
   }
 
   const ids = new Set();
@@ -367,6 +410,9 @@ function validateOptions(scope, node) {
       if (!value || (typeof value === "string" && value.trim() === "")) {
         fail(`${scope}: option ${option.id} is missing ${key}`);
       }
+    }
+    if (isVagueActionExit(option.label) || isVagueActionExit(option.next_exit)) {
+      fail(`${scope}: option ${option.id} must use an actionable exit, not approve/defer/reject/block labels`);
     }
     if (option.id === "OPTION_B" && !String(option.next_exit || "").trim().toLowerCase().startsWith("needs-decision")) {
       fail(`${scope}: OPTION_B.next_exit must start with needs-decision`);

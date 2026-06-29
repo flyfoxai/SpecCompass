@@ -53,12 +53,45 @@ localStorage is a temporary draft only. Authorization and requested changes live
 in the confirmation document / 确认文档: `flow-confirmation.md` for flow and
 `ui-confirmation.md` for UI.
 
-When a reviewer chooses a non-recommended option, the copied summary must
-export `revision_requests`. The next `/sp.flow` or `/sp.ui` run reads those
-requests, applies them to `flow-review-data.json` or `ui-review-data.json`, and
-regenerates the confirmation page. Do not ask reviewers to directly add/delete
-flow nodes or UI elements inside the page; they provide structured change type
-plus plain-language instructions for the model to execute next.
+The reviewer-facing export path is 下载确认包 / download confirmation package.
+The fixed renderer, not ordinary `/sp.flow` or `/sp.ui`, creates JSON packages
+with `format: "speccompass-confirmation-package"` and a `target_path` pointing
+to `specs/<feature>/flows/review/flow-confirmation.md` or
+`specs/<feature>/ui/review/ui-confirmation.md`; other repository paths are not
+valid writeback targets. 复制摘要 / copy summary is only a fallback when download
+handoff is unavailable. Ordinary commands must still only fill
+`flow-review-data.json` or `ui-review-data.json`; do not add custom package
+scripts or page export logic to generated review data.
+
+If one confirmation package would exceed `100000` UTF-8 bytes, the fixed
+renderer automatically splits it into self-contained parts. The split must keep
+complete records intact where possible and must repeat `review_type`,
+`package_session_id`, `batch_id`, `review_data_id`, `source_review_data`,
+`target_path`, `part_index`, `part_count`, `total_record_count`,
+`part_record_count`, `continuation_from`, `continuation_to`,
+`package_instruction`, and the relevant `module_context`.
+This repeated `module_context` is mandatory: a later model must be able to read
+any part by itself and still know which module each choice belongs to. Each
+record must also repeat `module_id` and `module_title`, so a record stays
+self-describing even if it was split away from its original module header. When
+writing back multi-part packages, collect all files first, verify the count
+equals `part_count`, verify all parts share the same `package_session_id`, verify
+all parts repeat the same `total_record_count`, and verify the sum of
+`part_record_count` equals `total_record_count`; then merge records in
+`part_index` order and write one coherent `target_path` update. Never overwrite
+the confirmation document with only one part. `continuation_from` and
+`continuation_to` are boundary anchors only; they do not mean a record was split.
+Records marked `DRAFT`,
+`draft_excluded_items`, `EXCLUDED_DRAFT`, or `is_authorized_decision: false` are
+not authorized decisions; keep them as follow-up context only.
+
+When a reviewer chooses a non-recommended option, the confirmation package must
+export `revision_requests` (the copied summary does this only as a fallback).
+The next `/sp.flow` or `/sp.ui` run reads those requests, applies them to
+`flow-review-data.json` or `ui-review-data.json`, and regenerates the
+confirmation page. Do not ask reviewers to directly add/delete flow nodes or UI
+elements inside the page; they provide structured change type plus
+plain-language instructions for the model to execute next.
 
 Flow `change_type` values: `ADD_NODE`, `DELETE_NODE`, `MODIFY_NODE`,
 `MODIFY_BRANCH`, `ADD_EXCEPTION_PATH`, `SPLIT_SUBFLOW`, `MERGE_SIMPLIFY`,
@@ -94,7 +127,11 @@ against the current PRD/spec/flow/UI sources before changing data.
   for the technical owner. Do not hide a business decision inside a
   `system_arch` node, and do not ask the product manager to authorize technical
   implementation details.
-- Each human-judgment node must have 2-4 executable options.
+- Human-judgment option count is tiered:
+  - `must_confirm` nodes must have `3-4` executable options.
+  - ordinary human-judgment nodes default to 3 options.
+  - low-risk binary choices may use 2 options only when
+    `options_count_rationale` explains why 2 exits are enough.
 - Each `node.id` must be globally unique within the whole review data file, not
   only inside one diagram or screen. Prefer IDs that include module and item
   context, such as `survey-publish-DEC1`, because the fixed renderer scopes
@@ -102,6 +139,9 @@ against the current PRD/spec/flow/UI sources before changing data.
   `node.id`.
 - Every option uses `OPTION_A`, `OPTION_B`, `OPTION_C`, or `OPTION_D`.
 - Every human-judgment node must set `recommended_option`.
+- Every option must provide an actionable exit / 可执行出口 through
+  `next_exit`; do not use vague labels such as approve, defer, reject, or block
+  as the option outcome.
 - `OPTION_B` is reserved for needs-decision / 补充决策 and must not route to a
   confirmed path.
 - `OPTION_B.next_exit` must start with the literal route marker
@@ -115,10 +155,11 @@ against the current PRD/spec/flow/UI sources before changing data.
   无需产品确认 in `plain_summary` or `action_prompt`.
 - `confirmed_items` is only for flow/screen/file-level labels that are authorized
   without a node-level option choice.
-- `decision_recorded_items` is only for nodes/items with a saved
-  `OPTION_A`, `OPTION_C`, or `OPTION_D` decision record.
-- Nodes/items with `OPTION_B` go to `needs_decision_items`, not
-  `decision_recorded_items` and not `confirmed_items`.
+- `decision_recorded_items` is only for saved node decisions whose `next_exit`
+  is a concrete continuation route and does not start with `needs-decision`.
+- Nodes/items whose saved option has a `needs-decision` exit go to
+  `needs_decision_items`, not `decision_recorded_items` and not
+  `confirmed_items`.
 
 ## Review Size
 
@@ -156,11 +197,13 @@ the UI.
 
 决策选项需要深度推理 / decision options require deeper reasoning. For every UI
 decision node, explain the background in human language with the JSON field
-`when_to_choose` (do not invent a separate `background` field), provide 2-4
-executable choices, state each choice's consequence, project impact, and
-`next_exit`, and set `recommended_option` with a short reason in the option
-copy. A non-technical reviewer should understand what they are choosing and what
-downstream work that choice unlocks or blocks.
+`when_to_choose` (do not invent a separate `background` field), apply the same
+tiered option-count rule (`must_confirm` has `3-4`; ordinary human-judgment
+nodes default to 3; low-risk binary choices need `options_count_rationale`),
+state each choice's consequence, project impact, and `next_exit`, and set
+`recommended_option` with a short reason in the option copy. A non-technical
+reviewer should understand what they are choosing and what downstream work that
+choice unlocks or blocks.
 
 ## Validation
 
@@ -238,6 +281,14 @@ needed. Do not add HTML, CSS, or JavaScript.
                   "consequence": "发布相关流程先停在待补充决策状态。",
                   "project_impact": "发布相关 UI 和实现暂不推进。",
                   "next_exit": "needs-decision:product-owner"
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "局部补充检查项后继续",
+                  "when_to_choose": "发布规则大体成立，但还缺一个边界条件。",
+                  "consequence": "下一轮只补这个边界条件，不推翻主发布流程。",
+                  "project_impact": "UI 和任务可以继续推进，但要同步补充该检查项。",
+                  "next_exit": "revise-local-and-continue"
                 }
               ],
               "recommended_option": "OPTION_A"

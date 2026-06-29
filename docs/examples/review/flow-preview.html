@@ -24,7 +24,8 @@
         <button id="load-flow">加载 flow-review-data.json</button>
         <button id="load-ui">加载 ui-review-data.json</button>
         <input id="file-input" class="hidden" type="file" accept="application/json,.json">
-        <button id="copy-summary" class="primary">复制确认摘要</button>
+        <button id="download-package" class="primary">下载确认包</button>
+        <button id="copy-summary">复制确认摘要兜底</button>
       </div>
     </header>
 
@@ -58,8 +59,8 @@
             <p id="rail-summary">选择模块、流程或节点后在这里确认。</p>
             <ol id="authorization-steps" class="authorization-steps">
               <li><strong>本地选择</strong>：点击推荐项会保存到浏览器草稿。</li>
-              <li><strong>复制摘要</strong>：点击顶部按钮生成确认摘要。</li>
-              <li><strong>写回确认文档</strong>：把摘要写入 flow-confirmation.md 或 ui-confirmation.md 后才是正式授权。</li>
+              <li><strong>下载确认包</strong>：点击顶部按钮生成可交给模型写回的 JSON 包。</li>
+              <li><strong>写回确认文档</strong>：确认包写入 flow-confirmation.md 或 ui-confirmation.md 后才是正式授权。</li>
             </ol>
             <div class="rail-actions">
               <button id="show-all" class="hidden">显示全部确认点</button>
@@ -77,6 +78,7 @@
   <script defer src="../../../templates/project/.specify/review/renderer/scripts/simple-overlays.js?v=20260626-ui-layout"></script>
   <script defer src="../../../templates/project/.specify/review/renderer/scripts/state-store.js?v=20260626-ui-layout"></script>
   <script defer src="../../../templates/project/.specify/review/renderer/scripts/data-validator.js?v=20260626-ui-layout"></script>
+  <script defer src="../../../templates/project/.specify/review/renderer/scripts/confirmation-package.js?v=20260629-confirmation-package"></script>
   <script defer src="../../../templates/project/.specify/review/renderer/scripts/ui-preview-renderer.js?v=20260626-ui-layout"></script>
   <script defer src="../../../templates/project/.specify/review/renderer/scripts/review-rail.js?v=20260626-ui-layout"></script>
   <script defer src="../../../templates/project/.specify/review/renderer/scripts/data-loader.js?v=20260626-ui-layout"></script>

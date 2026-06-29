@@ -90,9 +90,62 @@ or the manual JSON file selector.
 Browser `localStorage` is only a draft convenience for review selections. It is
 scoped by review type, artifact path, batch id, source snapshot, and the current
 module/item/node structure so a later review-data version does not silently reuse
-an older local draft. It is not authorization. Authorization is the copied or
-written confirmation summary in `flow-confirmation.md` or `ui-confirmation.md`
-and must be tracked with the project.
+an older local draft. It is not authorization. Authorization is the downloaded
+confirmation package, or fallback copied summary, after it has been written into
+`flow-confirmation.md` or `ui-confirmation.md` and tracked with the project.
+
+The primary export path is 下载确认包 / download confirmation package. The
+renderer writes a JSON package with `format:
+speccompass-confirmation-package`; the older copy-summary / 复制摘要 control is
+only a fallback when downloads or file handoff are unavailable. The confirmation
+package always includes `target_path`, which must point to
+`specs/<feature>/flows/review/flow-confirmation.md` for flow review or
+`specs/<feature>/ui/review/ui-confirmation.md` for UI review. Other repository
+paths are rejected even when they are repo-relative. A model that receives the
+package should write the contained decisions and `revision_requests` to that
+`target_path` without needing extra instructions.
+
+Confirmation packages must stay small enough for model handoff. If the package
+would exceed `100000` UTF-8 bytes, the renderer must split it into multiple
+self-contained JSON files instead of hard-cutting text. Every part repeats
+`package_session_id`, `review_type`, `batch_id`, `review_data_id`,
+`source_review_data`, `target_path`, `part_index`, `part_count`,
+`total_record_count`, `part_record_count`, `continuation_from`,
+`continuation_to`, `package_instruction`, and the relevant `module_context`.
+`module_context` must travel with every module segment so a record split away
+from the original module header still says which module it belongs to. Each
+record must also repeat `module_id` and `module_title` so a single record remains
+self-describing if it is handed to a model out of context. Process multi-part
+exports only after all files are collected and the collected file count equals
+`part_count`, all files share the same `package_session_id`, every part repeats
+the same `total_record_count`, and the sum of `part_record_count` equals
+`total_record_count`; then merge them in `part_index` order and write one
+coherent `target_path` update. Never treat a single part as the complete
+confirmation document or overwrite the target file with only that part.
+Each package's `package_instruction.merge_verification` must repeat the same
+formula in machine-readable prose: collect exactly `part_count` files with the
+same `package_session_id`, `review_type`, `batch_id`, `review_data_id`,
+`source_review_data`, and `target_path`; verify all parts repeat the same
+`total_record_count`; and verify `sum(part_record_count) == total_record_count`
+before writing. If any part is missing, duplicated, from another package
+session, or fails the formula, stop and ask for the correct package set instead
+of writing `target_path`.
+`continuation_from` and `continuation_to` are boundary anchors / 边界锚点 only,
+not proof that a record was cut in half, and must not replace `module_context`
+or `target_path`.
+
+When an export creates multiple parts, the renderer may attempt browser
+downloads for each file, but it must also leave visible 多包下载链接 / manual
+part download links in the right rail. Browsers can block repeated automatic
+downloads, so the link list is the stable fallback: reviewers should download
+each `part_index` file in order and hand all parts to the model together.
+Changing any local choice clears the old link list so stale packages are not
+mistaken for current authorization.
+
+DRAFT records and records in `draft_excluded_items` are non-authorization
+records. Confirmation packages include `has_unauthorized_drafts`,
+`unauthorized_draft_count`, and a `draft_rule` instruction so a later model
+does not write local draft choices as approved decisions.
 
 review data 是待审内容 / review data is draft review content. The review page is
 not an editor / 不是编辑器 and does not directly edit flow or UI design /
@@ -187,7 +240,7 @@ The visible node state machine is `MISSING | DRAFT | SAVED_RECOMMENDED | SAVED_S
 `MISSING` means no option is selected; `DRAFT` means a non-recommended option
 is waiting for a human note and submit action;
 `SAVED_RECOMMENDED` means the recommended option is locally saved and still
-needs copied-summary writeback before it becomes external authorization; and
+needs download-package writeback before it becomes external authorization; and
 `SAVED_SUBMITTED` means a non-recommended option was submitted with a note.
 重新选择清空正式选择和草稿，回到未选择 / reselect clears saved selection and draft
 back to `MISSING`.
@@ -200,29 +253,39 @@ readiness, and 草稿不具备授权意义 / draft choices do not authorize.
 Writeback classification is fixed:
 - nodes in DRAFT state are non-recommended choices selected locally but not
   submitted with a review note, and go only to `draft_excluded_items`.
-- nodes with saved `selected_option: OPTION_B` go to `needs_decision_items`.
+- nodes whose saved option's `next_exit` starts with `needs-decision` go to
+  `needs_decision_items`; this is the explicit needs-decision exit route and
+  it must not be counted as an authorized continuation.
+- nodes with a saved option whose `next_exit` is concrete and does not start
+  with `needs-decision` go to `decision_recorded_items`.
 - nodes with no selected option, or no exit path, become ordinary unresolved /
   普通未处理决策 in `unresolved_decision_items`.
 
 Draft nodes are excluded separately so exported authorization cannot confuse a
 local draft with a real decision.
 
-Copy-summary and navigation safety are mandatory. If any DRAFT node exists, the
-first copy-summary click must warn near the copy button, change the button to
-`仍要复制摘要`, and return without rebuilding the right rail, losing the current
-input, redrawing the diagram, or calling a whole-page render. A second explicit
-click may copy, but the copied summary must keep DRAFT nodes only in
-`draft_excluded_items` and include a top-level warning. Copy success must be
-checked; if the browser clipboard call fails, the page must not claim the
-summary was copied and must not mark the current choices as exported. The page
-must also warn on 离开页面 / beforeunload or navigation/close when drafts are
-excluded or locally saved choices have not yet been copied for writeback.
+Download-package, copy-summary fallback, and navigation safety are mandatory.
+If any DRAFT node exists, the first 下载确认包 click must warn near the export
+button, change the button to `仍要下载确认包`, and return without rebuilding the
+right rail, losing the current input, redrawing the diagram, or calling a
+whole-page render. A second explicit click may download, but the package must
+keep DRAFT nodes only in `draft_excluded_items` and include a top-level warning.
+The same rule applies to the fallback copy-summary / 复制摘要 action: the first
+copy-summary click changes the button to `仍要复制摘要`, and a second explicit
+click may copy only if the copied summary keeps DRAFT nodes excluded. Copy
+success must be checked; if the browser clipboard call fails, the page must not
+claim the summary was copied and must not mark the current choices as exported.
+The page must also warn on 离开页面 / beforeunload or navigation/close when
+drafts are excluded or locally saved choices have not yet been downloaded or
+copied for writeback.
 
 The right confirmation rail must show the authorization path as three distinct
-steps: 本地选择 / local browser choice, 复制摘要 / copy confirmation summary, and
-写回确认文档 / write back to `flow-confirmation.md` or `ui-confirmation.md`.
-This prevents browser state or a successful button click from being mistaken
-for repository-tracked authorization.
+steps: 本地选择 / local browser choice, 下载确认包 / download confirmation
+package, and 写回确认文档 / write back to `flow-confirmation.md` or
+`ui-confirmation.md`. The fallback 复制摘要 / copy confirmation summary must be
+visibly labeled as a fallback, not the primary authorization path. This prevents
+browser state or a successful button click from being mistaken for
+repository-tracked authorization.
 
 批量按推荐确认不能覆盖 / bulk recommended-option must not overwrite existing
 saved choices, submitted non-recommended choices, or draft choices waiting for a

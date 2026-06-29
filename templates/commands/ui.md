@@ -200,10 +200,10 @@ implementation_design_requirements:
   - preserve confirmed layout hierarchy
   - do not use SpecCompass review confirmation rail in business UI
 confirmed_items: [<screen/file-level labels or IDs authorized without item-level choice>]
-needs_decision_items: [<SCREEN/ACTION/FIELD labels or IDs with saved selected_option: OPTION_B and supplemental decision route>]
+needs_decision_items: [<SCREEN/ACTION/FIELD labels or IDs whose saved option next_exit starts with needs-decision; OPTION_B.next_exit must use this route>]
 unresolved_decision_items: [<SCREEN/ACTION/FIELD labels or IDs with no selected option or no exit path>]
 draft_excluded_items: [<SCREEN/ACTION/FIELD labels or IDs in DRAFT state, selected locally but not submitted with review note>]
-decision_recorded_items: [<SCREEN/ACTION/FIELD labels or IDs with selected OPTION_A/C/D>]
+decision_recorded_items: [<SCREEN/ACTION/FIELD labels or IDs whose saved option next_exit is a concrete continuation route and not needs-decision; usually OPTION_A/C/D>]
 decision_records:
   - id: <visible label or stable ID>
     selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D | NO_DECISION_REQUIRED
@@ -402,9 +402,12 @@ instead.
   decision and authorization model; it must not replace the middle-screen UI
   preview. Dynamic marker / 动态标注 behavior must be written as plain text
   such as `此处数字未来会自动更新`, not as animation, popup code, or renderer
-  instructions. 决策选项需要深度推理: every human decision node needs 2-4
-  executable options with background in `when_to_choose`, consequence, project
-  impact, `next_exit`, and `recommended_option`.
+  instructions. 决策选项需要深度推理: `must_confirm` nodes need 3-4 executable
+  options; ordinary human-judgment nodes default to 3 options; low-risk binary
+  choices may use 2 options only when `options_count_rationale` explains why 2
+  exits are enough. Every option must be an actionable exit through
+  `next_exit`, with background in `when_to_choose`, consequence, project
+  impact, and `recommended_option`.
 - If `specs/<feature>/ui/review/ui-confirmation.md` already contains
   `revision_requests`, read them before generating new UI review data. Treat
   each request as a model-actionable repair instruction, reason against the
@@ -434,11 +437,15 @@ instead.
   overview, screen map summary, per-screen purpose, stable review IDs, visible
   labels, globally unique `node.id` values across the whole review data file,
   `review_layer`, `review_level`, owner, `node_kind`, source refs,
-  framework approximation/deviation notes, design authority metadata, 2-4
+  framework approximation/deviation notes, design authority metadata, tiered
   `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices,
   `recommended_option`, required `consequence`, required `project_impact`,
-  required `next_exit`, batch scope, pending-decision routes, blocker/stale
-  reasons, and writeback target `ui-confirmation.md`. Use Tiffany Blue
+  required actionable `next_exit`, `options_count_rationale` when a low-risk
+  binary choice uses only 2 options, batch scope, pending-decision routes,
+  blocker/stale reasons, and writeback target `ui-confirmation.md`.
+  `must_confirm` nodes must have 3-4 options; ordinary human-judgment nodes
+  default to 3 options; low-risk binary choices may use 2 options only with
+  `options_count_rationale`. Use Tiffany Blue
   `#0ABAB5` and `huashu-design` only as renderer/design authority metadata in
   the review data. The visual design must come from `huashu-design`; if that
   skill is missing, mark the review data with

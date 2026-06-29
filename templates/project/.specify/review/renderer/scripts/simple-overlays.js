@@ -12,6 +12,8 @@ let selectedNodeId = null;
 let state = {};
 let pendingFocusNodeId = null;
 let copyDraftWarningArmed = false;
+let downloadDraftWarningArmed = false;
+let packageDownloadUrls = [];
 let runtimeWarnings = [];
 let runtimeErrors = [];
 

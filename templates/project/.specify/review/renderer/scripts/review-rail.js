@@ -49,6 +49,59 @@ function hasUnexportedSavedChoices() {
   return Boolean(copiedFingerprint !== summaryFingerprint() && savedCount);
 }
 
+function resetExportButtonLabels() {
+  const copyButton = $("copy-summary");
+  const downloadButton = $("download-package");
+  if (copyButton) copyButton.textContent = "复制确认摘要兜底";
+  if (downloadButton) downloadButton.textContent = "下载确认包";
+}
+
+function clearPackageDownloadLinks() {
+  const container = $("download-package-links");
+  if (container) {
+    container.replaceChildren();
+    container.classList.add("hidden");
+  }
+  for (const url of packageDownloadUrls) {
+    URL.revokeObjectURL(url);
+  }
+  packageDownloadUrls = [];
+}
+
+function renderPackageDownloadLinks(parts) {
+  const container = $("download-package-links");
+  if (!container || !window.SpecCompassConfirmationPackage || typeof Blob === "undefined" || typeof URL === "undefined") {
+    return;
+  }
+
+  clearPackageDownloadLinks();
+  if (!parts?.length) return;
+
+  appendText(container, "strong", parts.length > 1 ? "多包下载链接" : "确认包下载链接");
+  appendText(
+    container,
+    "p",
+    parts.length > 1
+      ? "浏览器可能拦截连续下载；请按 part 顺序确认每个文件都已下载。"
+      : "如果自动下载没有出现，请点击下方链接。"
+  );
+
+  const list = document.createElement("ol");
+  for (const part of parts) {
+    const item = document.createElement("li");
+    const link = document.createElement("a");
+    const url = URL.createObjectURL(new Blob([JSON.stringify(part, null, 2)], { type: "application/json;charset=utf-8" }));
+    packageDownloadUrls.push(url);
+    link.href = url;
+    link.download = window.SpecCompassConfirmationPackage.packageFilename(part);
+    link.textContent = link.download;
+    item.appendChild(link);
+    list.appendChild(item);
+  }
+  container.appendChild(list);
+  container.classList.remove("hidden");
+}
+
 function renderRail() {
   const item = currentItem();
   $("rail-summary").textContent = selectedNodeId
@@ -201,7 +254,8 @@ function nodeCard(node) {
     markSummaryDirty();
     saveState();
     copyDraftWarningArmed = false;
-    $("copy-summary").textContent = "复制确认摘要";
+    downloadDraftWarningArmed = false;
+    resetExportButtonLabels();
     setStatus("已提交非推荐选择。");
     render();
   });
@@ -215,7 +269,8 @@ function nodeCard(node) {
       markSummaryDirty();
       saveState();
       copyDraftWarningArmed = false;
-      $("copy-summary").textContent = "复制确认摘要";
+      downloadDraftWarningArmed = false;
+      resetExportButtonLabels();
       setStatus("已重置该确认点。");
       render();
     });
@@ -235,7 +290,14 @@ function nodeStatusLabel(node, saved) {
   if (!requiresNodeDecision(node)) {
     return "无需人工操作";
   }
+  if (savedRecommendedOption(node, saved)) {
+    return saved.status || "SAVED_RECOMMENDED";
+  }
   return saved.status || "MISSING";
+}
+
+function savedRecommendedOption(node, saved) {
+  return saved.option === node.recommended_option;
 }
 
 function chooseOption(node, option) {
@@ -248,8 +310,9 @@ function chooseOption(node, option) {
     markSummaryDirty();
     saveState();
     copyDraftWarningArmed = false;
-    $("copy-summary").textContent = "复制确认摘要";
-    setStatus("已按推荐保存，可重新选择；正式授权需复制摘要并写回确认文档。");
+    downloadDraftWarningArmed = false;
+    resetExportButtonLabels();
+    setStatus("已按推荐保存，可重新选择；正式授权需下载确认包并写回确认文档。");
     render();
     return;
   }
@@ -264,7 +327,8 @@ function chooseOption(node, option) {
   saveState();
   pendingFocusNodeId = node.id;
   copyDraftWarningArmed = false;
-  $("copy-summary").textContent = "复制确认摘要";
+  downloadDraftWarningArmed = false;
+  resetExportButtonLabels();
   setStatus("非推荐选项已暂存为草稿，请补充审核意见。");
   render();
 }
@@ -312,20 +376,37 @@ function recordLine(module, item, node, saved, option) {
 }
 
 function buildRevisionRequest(module, item, node, saved, option) {
+  return revisionRequestObject(module, item, node, saved, option);
+}
+
+function revisionRequestObject(module, item, node, saved, option) {
   const targetRef = `${module.id || module.title}:${item.id || item.title}:${node.id}`;
   const targetLabel = `${module.title || module.id} / ${item.title || item.id} / ${node.label || node.id}`;
   const expectedAction = reviewData?.review_type === "ui"
     ? "下一轮 /sp.ui 根据修改类型和审核意见调整 UI review data，再重新生成确认页。"
     : "下一轮 /sp.flow 根据修改类型和审核意见调整 flow review data，再重新生成确认页。";
+  return {
+    target_ref: summaryText(targetRef),
+    target_label: summaryText(targetLabel),
+    review_type: summaryText(reviewData?.review_type || "unknown"),
+    change_type: summaryText(saved.change_type || "OTHER"),
+    selected_option: summaryText(saved.option || saved.draft_option || "MISSING"),
+    reviewer_note: summaryText(saved.note || ""),
+    expected_model_action: summaryText(expectedAction),
+    next_exit: summaryText(option?.next_exit || "needs-revision")
+  };
+}
+
+function revisionRequestMarkdown(request) {
   return [
-    `- target_ref: ${summaryScalar(targetRef)}`,
-    `  target_label: ${summaryScalar(targetLabel)}`,
-    `  review_type: ${summaryScalar(reviewData?.review_type || "unknown")}`,
-    `  change_type: ${summaryScalar(saved.change_type || "OTHER")}`,
-    `  selected_option: ${summaryScalar(saved.option || saved.draft_option || "MISSING")}`,
-    `  reviewer_note: ${summaryScalar(saved.note || "")}`,
-    `  expected_model_action: ${summaryScalar(expectedAction)}`,
-    `  next_exit: ${summaryScalar(option?.next_exit || "needs-revision")}`
+    `- target_ref: ${summaryScalar(request.target_ref)}`,
+    `  target_label: ${summaryScalar(request.target_label)}`,
+    `  review_type: ${summaryScalar(request.review_type)}`,
+    `  change_type: ${summaryScalar(request.change_type)}`,
+    `  selected_option: ${summaryScalar(request.selected_option)}`,
+    `  reviewer_note: ${summaryScalar(request.reviewer_note)}`,
+    `  expected_model_action: ${summaryScalar(request.expected_model_action)}`,
+    `  next_exit: ${summaryScalar(request.next_exit)}`
   ].join("\n");
 }
 
@@ -358,28 +439,112 @@ function buildSummaryGroups() {
       groups.unresolved_decision_items.push(line);
       continue;
     }
-    if (saved.option === "OPTION_B" && isNeedsDecisionExit(option)) {
+    if (isNeedsDecisionExit(option)) {
       groups.needs_decision_items.push(line);
       if (isSubmittedRevisionRequest(node, saved)) {
-        groups.revision_requests.push(buildRevisionRequest(module, item, node, saved, option));
-      }
-      continue;
-    }
-    if (saved.option === "OPTION_B") {
-      groups.unresolved_decision_items.push(line);
-      if (isSubmittedRevisionRequest(node, saved)) {
-        groups.revision_requests.push(buildRevisionRequest(module, item, node, saved, option));
+        groups.revision_requests.push(revisionRequestMarkdown(buildRevisionRequest(module, item, node, saved, option)));
       }
       continue;
     }
     groups.decision_recorded_items.push(`${module.id || module.title}:${item.id || item.title}:${node.id}`);
     groups.decision_records.push(line);
     if (isSubmittedRevisionRequest(node, saved)) {
-      groups.revision_requests.push(buildRevisionRequest(module, item, node, saved, option));
+      groups.revision_requests.push(revisionRequestMarkdown(buildRevisionRequest(module, item, node, saved, option)));
     }
   }
 
   return groups;
+}
+
+function buildConfirmationRecord(module, item, node) {
+  const saved = nodeState(node.id);
+  const selectedOptionId = saved.option || saved.draft_option || "";
+  const option = optionById(node, selectedOptionId);
+  const targetRef = `${module.id || module.title}:${item.id || item.title}:${node.id}`;
+  const targetLabel = `${module.title || module.id} / ${item.title || item.id} / ${node.label || node.id}`;
+  const requiresDecision = requiresNodeDecision(node);
+  const status = saved.status || "MISSING";
+  let bucket = "unresolved_decision_items";
+  if (!requiresDecision) {
+    bucket = "confirmed_items";
+  } else if (status === "DRAFT") {
+    bucket = "draft_excluded_items";
+  } else if (isNeedsDecisionExit(option)) {
+    bucket = "needs_decision_items";
+  } else if (saved.option && option?.next_exit) {
+    bucket = "decision_recorded_items";
+  }
+  const isAuthorizedDecision = bucket === "confirmed_items" || bucket === "decision_recorded_items";
+  const authorizationState = isAuthorizedDecision
+    ? "AUTHORIZED"
+    : bucket === "draft_excluded_items"
+      ? "EXCLUDED_DRAFT"
+      : "NOT_AUTHORIZED";
+
+  const record = {
+    target_ref: summaryText(targetRef),
+    target_label: summaryText(targetLabel),
+    module_id: summaryText(module.id || ""),
+    module_title: summaryText(module.title || module.id || ""),
+    item_id: summaryText(item.id || ""),
+    item_title: summaryText(item.title || item.id || ""),
+    node_id: summaryText(node.id || ""),
+    node_label: summaryText(node.label || node.id || ""),
+    review_layer: summaryText(node.review_layer || ""),
+    review_level: summaryText(node.review_level || ""),
+    owner: summaryText(node.owner || ""),
+    bucket,
+    status,
+    authorization_state: authorizationState,
+    is_authorized_decision: isAuthorizedDecision,
+    selected_option: summaryText(saved.option || saved.draft_option || "MISSING"),
+    selected_option_label: summaryText(option?.label || ""),
+    next_exit: summaryText(option?.next_exit || ""),
+    change_type: summaryText(saved.change_type || ""),
+    reviewer_note: summaryText(saved.note || ""),
+    line: recordLine(module, item, node, saved, option)
+  };
+
+  if (isSubmittedRevisionRequest(node, saved)) {
+    record.revision_request = revisionRequestObject(module, item, node, saved, option);
+  } else {
+    record.revision_request = null;
+  }
+  return record;
+}
+
+function buildConfirmationPackageInput() {
+  const groups = buildSummaryGroups();
+  const modules = [];
+  for (const module of reviewData?.modules || []) {
+    const records = [];
+    for (const item of module[itemKey()] || []) {
+      for (const node of item.nodes || []) {
+        records.push(buildConfirmationRecord(module, item, node));
+      }
+    }
+    modules.push({
+      module_id: module.id || module.title || "module",
+      module_title: module.title || module.id || "未命名模块",
+      module_summary: module.summary || "未提供模块说明。",
+      status: records.some((record) => record.bucket === "unresolved_decision_items" || record.bucket === "draft_excluded_items")
+        ? "HAS_OPEN_ITEMS"
+        : "AUTHORIZED",
+      records
+    });
+  }
+  return {
+    schema_version: SUPPORTED_SCHEMA_VERSION,
+    review_type: reviewData.review_type,
+    batch_id: reviewData.batch_id || "N/A",
+    review_data_id: reviewDataIdentifier(),
+    source_review_data: reviewData.artifact_path || "N/A",
+    artifact_path: reviewData.artifact_path || "",
+    target_path: window.SpecCompassConfirmationPackage?.safeWritebackTarget(reviewData),
+    generated_at: new Date().toISOString(),
+    groups,
+    modules
+  };
 }
 
 function formatSummaryList(items) {
@@ -445,6 +610,47 @@ ${formatSummaryList(groups.revision_requests)}
   };
   saveState();
   copyDraftWarningArmed = false;
-  $("copy-summary").textContent = "复制确认摘要";
+  resetExportButtonLabels();
   setStatus(`确认摘要已复制，请写回 ${target}。`);
+}
+
+function downloadConfirmationPackage() {
+  if (!window.SpecCompassConfirmationPackage) {
+    setStatus("确认包下载模块未加载，请刷新页面后重试，或使用复制摘要兜底。", true);
+    return;
+  }
+  const groups = buildSummaryGroups();
+  if (groups.draft_excluded_items.length && !downloadDraftWarningArmed) {
+    downloadDraftWarningArmed = true;
+    $("download-package").textContent = "仍要下载确认包";
+    setStatus("草稿不具备授权意义，下载确认包前请先处理草稿。再次点击会下载，但草稿只进入排除清单。", true);
+    return;
+  }
+
+  let result;
+  try {
+    result = window.SpecCompassConfirmationPackage.downloadConfirmationPackage(buildConfirmationPackageInput());
+  } catch (error) {
+    setStatus(`确认包生成失败：${error.message || error}。请使用复制摘要兜底。`, true);
+    return;
+  }
+  renderPackageDownloadLinks(result.parts);
+
+  state.__meta = {
+    ...(state.__meta || {}),
+    copied_fingerprint: summaryFingerprint(),
+    downloaded_at: new Date().toISOString(),
+    downloaded_part_count: result.part_count,
+    downloaded_filenames: result.filenames
+  };
+  saveState();
+  copyDraftWarningArmed = false;
+  downloadDraftWarningArmed = false;
+  resetExportButtonLabels();
+  const target = writebackTarget();
+  const splitText = result.part_count > 1
+    ? `已按 100000 UTF-8 bytes 自动分为 ${result.part_count} 个确认包，请按 part_index 顺序发给模型写回 ${target}。`
+    : `确认包已下载，请发给模型写回 ${target}。`;
+  const fileText = result.filenames?.length ? ` 文件：${result.filenames.join("；")}` : "";
+  setStatus(`${splitText}${fileText}`);
 }

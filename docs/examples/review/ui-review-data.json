@@ -370,6 +370,14 @@
                   "consequence": "错误提示和关联按钮状态不能进入开发授权。",
                   "project_impact": "会影响文档页开发，需要补充业务规则。",
                   "next_exit": "needs-decision: 产品经理确认文档失败文案"
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "只提示解析失败并保留重试入口",
+                  "when_to_choose": "如果暂时不想承诺原文件能继续用于业务，但希望运营能快速重试，选择这个。",
+                  "consequence": "页面重点告诉用户解析失败，并提供重新上传或稍后重试的入口。",
+                  "project_impact": "开发范围较小，但文档是否可继续关联问卷仍需要后续确认。",
+                  "next_exit": "revise-local-and-continue: 先做重试提示"
                 }
               ]
             }

@@ -122,7 +122,8 @@ $("bulk-recommended").addEventListener("click", () => {
   }
   saveState();
   copyDraftWarningArmed = false;
-  $("copy-summary").textContent = "复制确认摘要";
+  downloadDraftWarningArmed = false;
+  resetExportButtonLabels();
   setStatus(`已按推荐保存 ${saved} 个；跳过已保存 ${skippedSaved} 个、草稿 ${skippedDraft} 个、无推荐 ${skippedMissingRecommendation} 个。`);
   render();
 });
@@ -133,10 +134,12 @@ $("reset-visible").addEventListener("click", () => {
   markSummaryDirty();
   saveState();
   copyDraftWarningArmed = false;
-  $("copy-summary").textContent = "复制确认摘要";
+  downloadDraftWarningArmed = false;
+  resetExportButtonLabels();
   setStatus("已重置当前视图本地选择。");
   render();
 });
+$("download-package").addEventListener("click", downloadConfirmationPackage);
 $("copy-summary").addEventListener("click", copySummary);
 window.addEventListener("beforeunload", (event) => {
   if (!reviewData || (!hasDrafts() && !hasUnexportedSavedChoices())) return;

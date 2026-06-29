@@ -12,6 +12,34 @@ function validateReviewData(data) {
   return "";
 }
 
+const runtimeVagueActionExits = new Set([
+  "通过",
+  "暂缓",
+  "退回",
+  "阻塞",
+  "拒绝",
+  "待定",
+  "approve",
+  "approved",
+  "pass",
+  "hold",
+  "defer",
+  "reject",
+  "return",
+  "block",
+  "blocked",
+  "pending",
+  "rejected"
+]);
+
+function runtimeHasSubstantialText(value) {
+  return typeof value === "string" && value.replace(/\s+/g, "").length >= 18;
+}
+
+function runtimeIsVagueActionExit(value) {
+  return runtimeVagueActionExits.has(String(value || "").trim().toLowerCase());
+}
+
 function runtimeValidateReviewData(data) {
   const result = { warnings: [], errors: [] };
   const key = itemCollectionKey(data);
@@ -60,12 +88,21 @@ function runtimeValidateReviewData(data) {
           if (options.length < 2 || options.length > 4) {
             result.warnings.push(`${node.label || node.id} 的选项数量不是 2-4 个。`);
           }
+          if (node.review_level === "must_confirm" && (options.length < 3 || options.length > 4)) {
+            result.warnings.push(`${node.label || node.id} 是必须确认节点，应提供 3-4 个可执行选项。`);
+          }
+          if (options.length === 2 && node.review_level !== "must_confirm" && !runtimeHasSubstantialText(node.options_count_rationale)) {
+            result.warnings.push(`${node.label || node.id} 只有 2 个选项，需要用 options_count_rationale 说明为什么二元选择足够。`);
+          }
           const optionIds = new Set(options.map((option) => option.id));
           for (const option of options) {
             for (const field of ["when_to_choose", "consequence", "project_impact", "next_exit"]) {
               if (!String(option?.[field] || "").trim()) {
                 result.warnings.push(`${node.label || node.id} 的 ${option?.id || "选项"} 缺少 ${field}。`);
               }
+            }
+            if (runtimeIsVagueActionExit(option?.label) || runtimeIsVagueActionExit(option?.next_exit)) {
+              result.warnings.push(`${node.label || node.id} 的 ${option?.id || "选项"} 需要写成可执行出口，不能只写通过、暂缓、退回或阻塞。`);
             }
           }
           if (!node.recommended_option || !optionIds.has(node.recommended_option)) {
@@ -126,7 +163,8 @@ function acceptReviewData(data) {
   selectedItemIndex = 0;
   selectedNodeId = null;
   copyDraftWarningArmed = false;
-  $("copy-summary").textContent = "复制确认摘要";
+  downloadDraftWarningArmed = false;
+  resetExportButtonLabels();
   const runtimeValidation = runtimeValidateReviewData(data);
   runtimeWarnings = runtimeValidation.warnings;
   runtimeErrors = runtimeValidation.errors;

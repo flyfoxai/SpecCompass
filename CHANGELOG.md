@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.23] - 2026-06-29
+
+### Changed
+
+- Added downloadable Flow/UI confirmation packages with embedded writeback instructions, 100K splitting, and merge verification metadata.
+- Strengthened Flow/UI review option rules so required human decisions use 3-4 actionable exits, with a documented exception path for low-risk binary choices.
+- Added cross-module review navigation and clearer renderer feedback for confirmation package downloads.
+- Updated Flow/UI examples, schemas, validator checks, and regression coverage for the review confirmation workflow.
+
 ## [0.10.22] - 2026-06-29
 
 ### Changed

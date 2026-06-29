@@ -36,18 +36,39 @@ function renderModules() {
     button.appendChild(document.createElement("br"));
     appendText(button, "span", `待处理必审 ${count.pending}/${count.total}`, "must-count");
     button.addEventListener("click", () => {
-      selectedModuleIndex = index;
-      selectedItemIndex = 0;
-      selectedNodeId = null;
-      render();
+      goToModule(index);
     });
     list.appendChild(button);
   });
 }
 
+function goToModule(index) {
+  const count = reviewData?.modules?.length || 0;
+  if (!count) return;
+  const nextIndex = Math.min(Math.max(index, 0), count - 1);
+  selectedModuleIndex = nextIndex;
+  selectedItemIndex = 0;
+  selectedNodeId = null;
+  render();
+}
+
+function renderModuleStepper() {
+  const count = reviewData?.modules?.length || 0;
+  const prev = $("prev-module");
+  const next = $("next-module");
+  const position = $("module-position");
+  if (!prev || !next || !position) return;
+  position.textContent = count ? `模块 ${selectedModuleIndex + 1}/${count}` : "模块 0/0";
+  prev.disabled = selectedModuleIndex <= 0;
+  next.disabled = !count || selectedModuleIndex >= count - 1;
+  prev.onclick = () => goToModule(selectedModuleIndex - 1);
+  next.onclick = () => goToModule(selectedModuleIndex + 1);
+}
+
 function renderCenter() {
   const module = currentModule();
   const item = currentItem();
+  renderModuleStepper();
   $("module-title").textContent = module?.title || "模块";
   $("module-summary").textContent = module?.summary || "未提供模块简介。";
   $("item-title").textContent = item?.title || "流程或界面";

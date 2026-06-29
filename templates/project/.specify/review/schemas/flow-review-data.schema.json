@@ -127,6 +127,46 @@
     "node": {
       "type": "object",
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "review_level": {"const": "must_confirm"}
+            },
+            "required": ["review_level"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "type": "array",
+                "minItems": 3,
+                "maxItems": 4
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "options": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": ["options"]
+          },
+          "then": {
+            "required": ["options_count_rationale"],
+            "properties": {
+              "options_count_rationale": {
+                "type": "string",
+                "minLength": 18
+              }
+            }
+          }
+        }
+      ],
       "required": [
         "id",
         "label",
@@ -174,6 +214,7 @@
           ]
         },
         "source_ref": {"type": "string"},
+        "options_count_rationale": {"type": "string", "minLength": 18},
         "options": {
           "type": "array",
           "minItems": 2,

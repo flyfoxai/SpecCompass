@@ -31,6 +31,7 @@ REVIEW_RENDERER_SCRIPT_FILES = (
     REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js",
     REVIEW_ROOT / "renderer" / "scripts" / "state-store.js",
     REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "confirmation-package.js",
     REVIEW_ROOT / "renderer" / "scripts" / "ui-preview-renderer.js",
     REVIEW_ROOT / "renderer" / "scripts" / "review-rail.js",
     REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js",
@@ -1740,7 +1741,9 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "per-flow summary" in flow
     assert "right feedback rail is mandatory" in flow
     assert "per-node decision options" in flow
-    assert "2-4 decision options" in flow
+    assert "must_confirm" in flow and "3-4" in flow
+    assert "ordinary human-judgment nodes default to 3" in flow or "普通人工判断默认 3 项" in flow
+    assert "options_count_rationale" in flow
     assert "`OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices" in flow
     assert "recommended_option" in flow
     assert "next_exit" in flow
@@ -1858,7 +1861,7 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "不表示 flow 图不需要审核" in methodology
     assert "逐节点决策选项卡" in methodology
     assert "每个需要人工判断的节点" in methodology
-    assert "2-4 个可执行选项" in methodology
+    assert "2-4 个可执行选项" in methodology or ("must_confirm" in methodology and "3-4 个可执行选项" in methodology)
     assert "推荐选项" in methodology
     assert "后续出口" in methodology
     assert "逐节点 approve/defer/reject/block 控件" not in methodology
@@ -3137,14 +3140,15 @@ def test_flow_methodology_requires_human_focused_review_page_contract():
         assert "draft_excluded_items:" in content, label
         assert "DRAFT nodes must be listed only in `draft_excluded_items`" in content or "待提交草稿节点只能进入 `draft_excluded_items`" in content or "仍处于 `DRAFT` 的待提交草稿只能进入 `draft_excluded_items`" in content, label
         assert "ordinary unresolved" in content or "普通 unresolved" in content or "普通未处理决策" in content, label
-        assert "复制摘要前" in content or "copy-summary" in content, label
+        assert "下载确认包前" in content or "download confirmation package" in content, label
+        assert "复制摘要" in content or "copy-summary" in content, label
         assert "离开页面" in content or "beforeunload" in content or "navigation/close" in content, label
         assert "草稿不具备授权意义" in content or "draft choices do not authorize" in content, label
         assert "批量按推荐确认不能覆盖" in content or "bulk recommended-option must not overwrite" in content, label
         assert "跳过" in content and ("草稿" in content or "draft" in content), label
         assert "输入框下方" in content or "under the input" in content or "textarea" in content, label
         assert "即时可见反馈" in content or "immediate visible feedback" in content, label
-        assert "saved `selected_option: OPTION_B`" in content or "已提交的 `OPTION_B`" in content, label
+        assert "needs-decision exit" in content or "以 `needs-decision` 开头" in content, label
         assert "nodes in DRAFT state" in content or "DRAFT 状态" in content, label
         assert "nodes with no selected option" in content or "没有选择" in content, label
         assert "Reset controls clear only the current view's browser local state back to MISSING" in content or "重置动作只清除当前视图 localStorage 中的临时选择" in content, label
@@ -3187,10 +3191,17 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     assert "flow-review-data.schema.json" in flow
     assert "specs/<feature>/ui/review/ui-review-data.json" in ui
     assert "ui-review-data.schema.json" in ui
+    assert "2-4\n  `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices" not in flow
+    assert "2-4\n  `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices" not in ui
+    assert "ordinary human-judgment nodes default to 3 options" in flow
+    assert "ordinary human-judgment nodes default to 3 options" in ui
     assert "只填数据" in skill or "fill only" in skill
     assert "说人话" in skill
     assert "不要编写 HTML/CSS/JS" in skill or "Do not write HTML/CSS/JS" in skill
-    assert "2-4" in skill and "recommended_option" in skill
+    assert "must_confirm" in skill and "3-4" in skill and "recommended_option" in skill
+    assert "ordinary human-judgment nodes default to 3 options" in skill
+    assert "options_count_rationale" in skill
+    assert "可执行出口" in skill or "actionable exit" in skill
     assert "5-7" in skill and "8+" in skill and "10+" in skill
     assert "localStorage" in renderer_readme
     assert "授权" in renderer_readme or "authorization" in renderer_readme
@@ -3433,6 +3444,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
         assert schema["$defs"]["option"]["additionalProperties"] is False, label
         assert schema["$defs"]["edge"]["additionalProperties"] is False, label
         assert "OPTION_B.next_exit must start with 'needs-decision'" in properties, label
+        assert '"maxItems": 2' in properties and '"options_count_rationale"' in properties, label
         for token in (
             "batch_id",
             "confirm_strategy",
@@ -3449,6 +3461,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
             assert token in properties, (label, token)
         option_required = schema["$defs"]["option"]["required"]
         assert "consequence" in option_required, label
+        assert "options_count_rationale" in schema["$defs"]["node"]["properties"], label
 
     for token in (
         "allowedReviewLevels",
@@ -3458,7 +3471,9 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
         "duplicate node id",
         "recommended_option",
         "consequence",
-        "2-4 options",
+        "must_confirm nodes require 3-4 options",
+        "options_count_rationale",
+        "actionable exit",
         "10+ business nodes",
         "complex_flow_exception",
         "low_risk_linear_exception",
@@ -3520,6 +3535,11 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
         assert option_field in renderer
     assert "review data 结构存在阻断问题" in renderer
     assert "authorization-steps" in renderer
+    assert 'id="prev-module"' in renderer
+    assert 'id="next-module"' in renderer
+    assert 'id="module-position"' in renderer
+    assert "goToModule" in renderer
+    assert "上一模块" in renderer and "下一模块" in renderer
     assert "本地选择" in renderer and "复制摘要" in renderer and "写回确认文档" in renderer
     assert "localStorageAvailable" in renderer
     assert "storageStatusWarning" in renderer
@@ -3561,7 +3581,9 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "button.primary:hover" in renderer
     assert "isNeedsDecisionExit" in renderer
     assert "startsWith(\"needs-decision\")" in renderer
-    assert "saved.option === \"OPTION_B\" && isNeedsDecisionExit(option)" in renderer
+    assert "saved.option === \"OPTION_B\" && isNeedsDecisionExit(option)" not in renderer
+    assert "isNeedsDecisionExit(option)" in renderer
+    assert "saved.option === node.recommended_option" in renderer
     assert "requiresNodeDecision(node)" in renderer
     assert "skippedMissingRecommendation" in renderer
 
@@ -3696,6 +3718,14 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                         "consequence": "暂停该节点下游设计，先补充业务判断。",
                         "project_impact": "需要先补充决策，相关实现暂不推进。",
                         "next_exit": "needs-decision",
+                    },
+                    {
+                        "id": "OPTION_C",
+                        "label": "局部调整后继续",
+                        "when_to_choose": "业务目标不变，只需要改小范围规则。",
+                        "consequence": "先修正这个节点的规则，再继续后续设计。",
+                        "project_impact": "影响范围限制在当前流程或界面的局部内容。",
+                        "next_exit": "revise-local-and-continue",
                     },
                 ],
                 "recommended_option": "OPTION_A",
@@ -3957,6 +3987,41 @@ def test_review_data_validator_rejects_invalid_enums_and_missing_consequence(tmp
     assert "OPTION_B.next_exit must start with needs-decision" in _review_validator_output(result)
 
 
+def test_review_data_validator_enforces_review_option_quality_rules(tmp_path):
+    """Human choices should be actionable and sized by review risk, not generic approve/defer states."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    too_few_must_confirm = _review_validator_sample("flow")
+    node = too_few_must_confirm["modules"][0]["diagrams"][0]["nodes"][0]
+    node["options"] = node["options"][:2]
+    result = _run_review_validator(too_few_must_confirm, tmp_path / "too-few-must-confirm.json")
+    assert result.returncode != 0
+    assert "must_confirm nodes require 3-4 options" in _review_validator_output(result)
+
+    binary_without_rationale = _review_validator_sample("flow")
+    node = binary_without_rationale["modules"][0]["diagrams"][0]["nodes"][0]
+    node["review_level"] = "recommended"
+    node["options"] = node["options"][:2]
+    result = _run_review_validator(binary_without_rationale, tmp_path / "binary-without-rationale.json")
+    assert result.returncode != 0
+    assert "options_count_rationale" in _review_validator_output(result)
+
+    binary_with_rationale = _review_validator_sample("flow")
+    node = binary_with_rationale["modules"][0]["diagrams"][0]["nodes"][0]
+    node["review_level"] = "recommended"
+    node["options"] = node["options"][:2]
+    node["options_count_rationale"] = "该判断只有继续当前发布规则或补齐业务口径两个互斥出口，没有第三条可执行路径。"
+    result = _run_review_validator(binary_with_rationale, tmp_path / "binary-with-rationale.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+    forbidden_exit = _review_validator_sample("ui")
+    forbidden_exit["modules"][0]["screens"][0]["nodes"][0]["options"][0]["next_exit"] = "通过"
+    result = _run_review_validator(forbidden_exit, tmp_path / "forbidden-empty-action-exit.json")
+    assert result.returncode != 0
+    assert "actionable exit" in _review_validator_output(result)
+
+
 def test_review_data_validator_requires_system_arch_owner_route_and_current_vocabulary(tmp_path):
     """System/architecture confirmations and current decision vocabulary should be machine-checked."""
     if shutil.which("node") is None:
@@ -4085,3 +4150,217 @@ def test_flow_ui_command_templates_do_not_embed_renderer_implementation_state_ma
         "localStorage",
     ):
         assert token in renderer_readme
+
+
+def test_review_renderer_downloads_split_confirmation_packages():
+    """The fixed renderer should export confirmation packages instead of unlimited clipboard text."""
+    renderer = _review_renderer_bundle()
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+    for content, label in ((renderer, "renderer"), (renderer_readme, "renderer README")):
+        assert "下载确认包" in content or "download confirmation package" in content, label
+        assert "100000" in content or "100K" in content, label
+        assert "UTF-8" in content, label
+        assert "speccompass-confirmation-package" in content, label
+        assert "part_index" in content, label
+        assert "part_count" in content, label
+        assert "total_record_count" in content, label
+        assert "part_record_count" in content, label
+        assert "merge_verification" in content, label
+        assert "package_session_id" in content, label
+        assert "continuation_from" in content, label
+        assert "continuation_to" in content, label
+        assert "module_context" in content, label
+        assert "target_path" in content, label
+        assert "draft_excluded_items" in content or "unauthorized_draft" in content, label
+        assert "flow-confirmation.md" in content, label
+        assert "ui-confirmation.md" in content, label
+
+    assert 'id="download-package"' in renderer
+    assert 'id="download-package-links"' in renderer
+    assert "renderPackageDownloadLinks" in renderer
+    assert "多包下载链接" in renderer
+    assert "createObjectURL" in renderer
+    assert "copy-summary" in renderer
+
+
+def test_confirmation_package_splitter_keeps_parts_under_100k_and_repeats_context(tmp_path):
+    """The renderer package splitter should split large exports without orphaning module decisions."""
+    script = REVIEW_ROOT / "renderer" / "scripts" / "confirmation-package.js"
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer package tests")
+
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+const context = {{ window: {{}}, console, TextEncoder }};
+vm.createContext(context);
+vm.runInContext(source, context);
+const api = context.window.SpecCompassConfirmationPackage;
+const modules = [];
+for (let moduleIndex = 0; moduleIndex < 4; moduleIndex += 1) {{
+  const records = [];
+  for (let recordIndex = 0; recordIndex < 22; recordIndex += 1) {{
+    records.push({{
+      target_ref: `module-${{moduleIndex}}:flow-${{moduleIndex}}:node-${{recordIndex}}`,
+      target_label: `模块 ${{moduleIndex}} / 流程 ${{moduleIndex}} / 节点 ${{recordIndex}}`,
+      selected_option: "OPTION_A",
+      next_exit: "continue-to-next-step",
+      line: `- 模块 ${{moduleIndex}} 节点 ${{recordIndex}} 已按推荐保存；` + "确认内容".repeat(210),
+      revision_request: null
+    }});
+  }}
+  modules.push({{
+    module_id: `module-${{moduleIndex}}`,
+    module_title: `模块 ${{moduleIndex}}`,
+    module_summary: `这是模块 ${{moduleIndex}} 的确认结果。`,
+    status: "AUTHORIZED",
+    records
+  }});
+}}
+const parts = api.splitConfirmationPackage({{
+  review_type: "flow",
+  batch_id: "FLOW-BATCH-TEST",
+  review_data_id: "review-data-test",
+  source_review_data: "specs/001-test/flows/review/flow-review-data.json",
+  target_path: "specs/001-test/flows/review/flow-confirmation.md",
+  groups: {{
+    decision_records: Array.from({{ length: 90 }}, (_, index) => `group summary ${{index}} ` + "摘要内容".repeat(160)),
+    revision_requests: Array.from({{ length: 20 }}, (_, index) => `revision ${{index}} ` + "修改意见".repeat(120))
+  }},
+  modules
+}}, 100000);
+if (parts.length < 2) throw new Error(`expected split parts, got ${{parts.length}}`);
+const expectedTotalRecords = modules.reduce((count, module) => count + module.records.length, 0);
+let observedPartRecords = 0;
+parts.forEach((part, index) => {{
+  const bytes = api.utf8Size(JSON.stringify(part, null, 2));
+  if (bytes > 100000) throw new Error(`part ${{index + 1}} too large: ${{bytes}}`);
+  if (part.format !== "speccompass-confirmation-package") throw new Error("missing package format");
+  if (part.part_index !== index + 1) throw new Error("bad part index");
+  if (part.part_count !== parts.length) throw new Error("bad part count");
+  if (part.total_record_count !== expectedTotalRecords) throw new Error("bad total record count");
+  if (part.part_record_count !== part.modules.reduce((count, module) => count + module.records.length, 0)) {{
+    throw new Error("bad part record count");
+  }}
+  observedPartRecords += part.part_record_count;
+  if (!part.package_session_id) throw new Error("missing package session id");
+  if (part.package_session_id !== parts[0].package_session_id) throw new Error("mixed package session ids");
+  if (!String(part.package_instruction?.writeback_rule || "").includes("collect all parts first")) {{
+    throw new Error("missing collect-all-parts writeback instruction");
+  }}
+  if (!String(part.package_instruction?.writeback_rule || "").includes("do not write a single part")) {{
+    throw new Error("missing single-part overwrite guard");
+  }}
+  if (!part.package_instruction?.merge_verification) {{
+    throw new Error("missing merge verification instruction");
+  }}
+  if (!String(part.package_instruction.merge_verification).includes("sum(part_record_count) == total_record_count")) {{
+    throw new Error("missing explicit part record count formula");
+  }}
+  if (!String(part.package_instruction.merge_verification).includes("package_session_id")) {{
+    throw new Error("missing package session verification");
+  }}
+  if (Array.isArray(part.groups?.decision_records)) throw new Error("split package repeated full decision record groups");
+  if (part.groups?.decision_records?.count !== 90) throw new Error("split package lost group count");
+  if (!part.target_path || part.target_path !== "specs/001-test/flows/review/flow-confirmation.md") {{
+    throw new Error("missing target path");
+  }}
+  if (!part.modules.length) throw new Error("empty package part");
+  part.modules.forEach((module) => {{
+    if (!module.module_context?.module_id) throw new Error("missing carried module id");
+    if (!module.module_context?.module_title) throw new Error("missing carried module title");
+    if (!module.records?.length) throw new Error("missing records");
+    module.records.forEach((record) => {{
+      if (!record.module_id) throw new Error("record missing module_id");
+      if (!record.module_title) throw new Error("record missing module_title");
+    }});
+  }});
+}});
+if (observedPartRecords !== expectedTotalRecords) throw new Error("merged part record count mismatch");
+if (parts[0].continuation_to !== parts[1].continuation_from) {{
+  throw new Error("continuation chain does not connect adjacent parts");
+}}
+
+for (const unsafeTarget of [
+  "package.json",
+  "/tmp/flow-confirmation.md",
+  "specs/001-test/flows/review/ui-confirmation.md",
+  "specs/001-test/flows/review/../flow-confirmation.md"
+]) {{
+  try {{
+    api.splitConfirmationPackage({{
+      review_type: "flow",
+      batch_id: "unsafe-target-test",
+      source_review_data: "specs/001-test/flows/review/flow-review-data.json",
+      target_path: unsafeTarget,
+      modules: []
+    }}, 100000);
+    throw new Error(`unsafe target_path was accepted: ${{unsafeTarget}}`);
+  }} catch (error) {{
+    if (!String(error.message || error).includes("target_path")) throw error;
+  }}
+}}
+
+const draftParts = api.splitConfirmationPackage({{
+  review_type: "flow",
+  batch_id: "draft-test",
+  source_review_data: "specs/001-test/flows/review/flow-review-data.json",
+  target_path: "specs/001-test/flows/review/flow-confirmation.md",
+  groups: {{ draft_excluded_items: ["draft node"] }},
+  modules: [{{
+    module_id: "draft-module",
+    module_title: "草稿模块",
+    records: [{{
+      target_ref: "draft-module:flow:node",
+      target_label: "草稿模块 / 流程 / 节点",
+      bucket: "draft_excluded_items",
+      status: "DRAFT",
+      selected_option: "OPTION_C",
+      is_authorized_decision: false,
+      authorization_state: "EXCLUDED_DRAFT"
+    }}]
+  }}]
+}}, 100000);
+if (!draftParts[0].has_unauthorized_drafts) throw new Error("missing draft warning flag");
+if (draftParts[0].unauthorized_draft_count !== 1) throw new Error("missing draft warning count");
+if (!String(draftParts[0].package_instruction?.draft_rule || "").includes("must not be written")) {{
+  throw new Error("missing draft non-authorization instruction");
+}}
+
+const oversizeParts = api.splitConfirmationPackage({{
+  review_type: "flow",
+  batch_id: "oversize-record-test",
+  source_review_data: "specs/001-test/flows/review/flow-review-data.json",
+  target_path: "specs/001-test/flows/review/flow-confirmation.md",
+  modules: [{{
+    module_id: "oversize-module",
+    module_title: "超大记录模块",
+    records: [{{
+      target_ref: "oversize-module:flow:node",
+      target_label: "超大记录模块 / 流程 / 节点",
+      selected_option: "OPTION_B",
+      status: "SAVED_SUBMITTED",
+      reviewer_note: "请保留这条审核意见，因为它决定下一轮如何修改。".repeat(12000),
+      revision_request: {{
+        target_ref: "oversize-module:flow:node",
+        reviewer_note: "这里是需要模型执行的修改意见。".repeat(12000),
+        expected_model_action: "下一轮根据审核意见修订。"
+      }}
+    }}]
+  }}]
+}}, 100000);
+const oversizeRecord = oversizeParts[0].modules[0].records[0];
+if (!oversizeRecord.reviewer_note) throw new Error("oversize compaction dropped reviewer_note");
+if (!oversizeRecord.revision_request?.reviewer_note) throw new Error("oversize compaction dropped revision_request reviewer_note");
+if (api.utf8Size(JSON.stringify(oversizeParts[0], null, 2)) > 100000) throw new Error("oversize compacted part exceeds limit");
+console.log(JSON.stringify({{ partCount: parts.length, sizes: parts.map((part) => api.utf8Size(JSON.stringify(part, null, 2))) }}));
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout

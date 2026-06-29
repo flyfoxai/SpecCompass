@@ -33,6 +33,26 @@
   flex-wrap: wrap;
 }
 
+.module-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--sc-border);
+}
+
+.module-stepper span {
+  color: var(--sc-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.module-stepper button {
+  min-width: 88px;
+}
+
 .authorization-steps {
   margin: 8px 0 10px;
   padding-left: 18px;
@@ -44,6 +64,36 @@
 .authorization-steps strong {
   color: var(--sc-text);
   font-weight: 600;
+}
+
+.package-download-links {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid #9DD5D3;
+  border-radius: var(--sc-radius);
+  background: #F4FCFB;
+  font-size: 12px;
+}
+
+.package-download-links strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--sc-primary-dark);
+}
+
+.package-download-links p {
+  margin: 0 0 8px;
+  color: var(--sc-muted);
+}
+
+.package-download-links ol {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.package-download-links a {
+  color: var(--sc-primary-dark);
+  overflow-wrap: anywhere;
 }
 
 .diagram-view {
