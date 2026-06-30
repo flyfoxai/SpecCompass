@@ -33,6 +33,37 @@
   flex-wrap: wrap;
 }
 
+.option-detail-list {
+  display: grid;
+  gap: 6px;
+  margin: 8px 0 0;
+  text-align: left;
+}
+
+.option-detail-row {
+  display: grid;
+  grid-template-columns: 74px minmax(0, 1fr);
+  gap: 6px;
+  align-items: start;
+}
+
+.option-detail-label {
+  margin: 0;
+  color: var(--sc-primary-dark);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.option-detail-value {
+  margin: 0;
+  color: var(--sc-text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
 .module-stepper {
   display: flex;
   align-items: center;

@@ -146,11 +146,18 @@ against the current PRD/spec/flow/UI sources before changing data.
   include the real business background or real screen/interaction background in
   `when_to_choose`, what happens after selection in `consequence`, downstream project impact
   in `project_impact`, and why this option is recommended when it
-  is the `recommended_option`. The reader should understand what the model will
-  change next and how the choice affects scope, schedule, risk, UI/flow, plan,
-  tasks, implementation, acceptance tests, or delivery. Do not write generic
-  labels such as 推荐方案 / 方案A / 确认当前内容, and do not repeat stock phrases
-  such as 当前依据和风险边界看起来正确.
+  is the `recommended_option`. The renderer shows the same content as three
+  reviewer-facing rows: `适合什么情况` from `when_to_choose`,
+  `选了以后怎么做` from `consequence`, and `对项目有什么影响` from
+  `project_impact`. The reader should understand what the model will change
+  next and how the choice affects scope, schedule, risk, UI/flow, plan, tasks,
+  implementation, acceptance tests, or delivery. Do not write generic labels
+  such as 推荐方案 / 方案A / 确认当前内容, and do not repeat stock phrases /
+  模板句 such as 当前依据和风险边界看起来正确.
+- Any reviewer-facing 技术词 must be replaced with business wording or followed
+  immediately by a Chinese explanation / 中文说明. Acceptable example:
+  `网关配置(Gateway Profile，用来决定发布前由哪组规则拦截风险)`. Unacceptable:
+  `保留 Gateway Profile 风控路径` without explanation.
 - `OPTION_B` is reserved for needs-decision / 补充决策 and must not route to a
   confirmed path.
 - `OPTION_B.next_exit` must start with the literal route marker
@@ -212,7 +219,12 @@ nodes default to 3; low-risk binary choices need `options_count_rationale`),
 state each choice's consequence, project impact, and `next_exit`, and set
 `recommended_option` with a short reason in the option copy. A non-technical
 reviewer should understand what they are choosing and what downstream work that
-choice unlocks or blocks.
+choice unlocks or blocks. UI choices focus on screen layout, visible regions,
+component wording, states, permissions, operation efficiency, and mis-click
+risk; flow choices focus on business route, branch exits, exception paths,
+state changes, authorization boundaries, and whether later UI/plan/tasks are
+unlocked. Both must still answer `适合什么情况`, `选了以后怎么做`, and
+`对项目有什么影响`.
 
 ## Validation
 
@@ -226,6 +238,11 @@ node .specify/review/scripts/validate-review-data.mjs specs/<feature>/ui/review/
 校验失败不能收尾，不能提升 readiness. The JSON must pass before the review
 data can support `WAITING_FOR_BATCH_REVIEW`, `READY_FOR_UI`, or
 `READY_FOR_PLAN` transitions.
+
+The validator intentionally blocks lazy option writing: duplicate option copy,
+模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject/block exits,
+missing `when_to_choose`, missing `consequence`, missing `project_impact`, or a
+missing actionable `next_exit` must be fixed in the review data before closing.
 
 ## Minimal complete JSON / 最小完整 JSON
 

@@ -291,7 +291,10 @@ const boilerplateOptionCopyFragments = [
   "影响范围限制在当前流程或界面的局部内容",
   "按当前规则推进",
   "待后续补充相关内容",
-  "后续再完善相关内容"
+  "后续再完善相关内容",
+  "业务方向同意，但希望后续补充验收证据或负责人记录",
+  "该节点可按当前方向进入复核记录",
+  "不改变当前一期范围，只增加后续证据要求"
 ];
 const concreteImpactSignals = [
   "开发",
@@ -340,6 +343,21 @@ const concreteImpactSignals = [
   "delivery",
   "release"
 ];
+const reviewerFacingTechnicalTerms = [
+  "Gateway Profile",
+  "Trusted View",
+  "Risk",
+  "Gateway",
+  "Mock",
+  "backend",
+  "Raw",
+  "Canonical",
+  "Golden",
+  "QMT",
+  "OMS",
+  "paper",
+  "shadow"
+];
 
 function normalizedActionText(value) {
   return String(value || "").trim().toLowerCase();
@@ -367,6 +385,30 @@ function containsBoilerplateOptionCopy(value) {
   return boilerplateOptionCopyFragments.some((fragment) => text.includes(fragment));
 }
 
+function normalizeOptionCopy(option) {
+  return ["when_to_choose", "consequence", "project_impact"]
+    .map((key) => String(option[key] || "").toLowerCase().replace(/[\s，。；;,.、:："'“”‘’（）()[\]{}<>《》_-]+/g, ""))
+    .join("|");
+}
+
+function hasChineseExplanation(value) {
+  const text = String(value || "");
+  return /[\u4e00-\u9fff]/.test(text) && /（[^）]*[\u4e00-\u9fff][^）]*\）|\([^)]*[\u4e00-\u9fff][^)]*\)|表示|指|意思是|中文|也就是|用于|代表/.test(text);
+}
+
+function unexplainedTechnicalTerms(value) {
+  const text = String(value || "");
+  if (!text) return [];
+  return reviewerFacingTechnicalTerms.filter((term) => {
+    const pattern = new RegExp(`(^|[^A-Za-z])${term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^A-Za-z]|$)`, "i");
+    if (!pattern.test(text)) return false;
+    if (term.toLowerCase() === "risk" && !/[\u4e00-\u9fff]/.test(text) && !/\b(gateway|profile|setting|config|rule)\b/i.test(text)) {
+      return false;
+    }
+    return !hasChineseExplanation(text);
+  });
+}
+
 function validateOptionHumanCopy(scope, option) {
   const label = compactText(option.label);
   if (genericOptionLabels.has(label.toLowerCase()) || /^方案[a-d]$/i.test(label) || /^选项[a-d]$/i.test(label)) {
@@ -376,6 +418,10 @@ function validateOptionHumanCopy(scope, option) {
   for (const key of ["label", "when_to_choose", "consequence", "project_impact"]) {
     if (containsBoilerplateOptionCopy(option[key])) {
       fail(`${scope}: option ${option.id} contains boilerplate option copy in ${key}; explain the real background, action, and impact`);
+    }
+    const terms = unexplainedTechnicalTerms(option[key]);
+    if (terms.length) {
+      fail(`${scope}: option ${option.id} contains unexplained technical term in ${key}: ${terms.join(", ")}; add a Chinese explanation or replace it with business language`);
     }
   }
 
@@ -515,6 +561,7 @@ function validateOptions(scope, node) {
   }
 
   const ids = new Set();
+  const copyFingerprints = new Map();
   for (const option of options) {
     validateKnownKeys(`${scope}:option`, option, allowedOptionKeys);
     if (!option.id) {
@@ -536,6 +583,15 @@ function validateOptions(scope, node) {
       fail(`${scope}: option ${option.id} must use an actionable exit, not approve/defer/reject/block labels`);
     }
     validateOptionHumanCopy(scope, option);
+    const copyFingerprint = normalizeOptionCopy(option);
+    if (copyFingerprint) {
+      const previousOptionId = copyFingerprints.get(copyFingerprint);
+      if (previousOptionId) {
+        fail(`${scope}: duplicate option copy between ${previousOptionId} and ${option.id}; each option must explain a distinct background, action, and project impact`);
+      } else {
+        copyFingerprints.set(copyFingerprint, option.id);
+      }
+    }
     if (option.id === "OPTION_B" && !String(option.next_exit || "").trim().toLowerCase().startsWith("needs-decision")) {
       fail(`${scope}: OPTION_B.next_exit must start with needs-decision`);
     }

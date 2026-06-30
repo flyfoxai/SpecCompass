@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.25] - 2026-06-30
+
+### Changed
+
+- Improved Flow/UI review option cards so reviewers see `适合什么情况`, `选了以后怎么做`, and `对项目有什么影响` directly in the right rail.
+- Strengthened review data validation against repeated option copy, generic boilerplate, unexplained technical terms, vague approval labels, and missing concrete downstream impact.
+- Updated Flow/UI command templates and the `speccompass-review-data` skill so generated options use business-readable, executable exits instead of lazy template text.
+- Refined Flow/UI example review data as stronger few-shot samples for future model-generated confirmation pages.
+
 ## [0.10.24] - 2026-06-30
 
 ### Changed

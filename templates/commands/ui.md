@@ -121,9 +121,14 @@ Global rules:
   `options_count_rationale`), and make every option a UI-readable executable
   exit. Each option must say what the reviewer chooses the model to change next,
   the concrete consequence, the downstream impact on screen scope, interaction risk, implementation, acceptance tests, or delivery schedule,
-  the actionable `next_exit`, and why the recommended UI option is safest. Ground the wording
-  in the current screen, region, component, field/action copy, permission,
-  state, or source flow; do not reuse generic "looks correct" boilerplate. Keep
+  the actionable `next_exit`, and why the recommended UI option is safest. The
+  right rail shows this as three plain-language rows: `适合什么情况` from
+  `when_to_choose`, `选了以后怎么做` from `consequence`, and `对项目有什么影响`
+  from `project_impact`. Ground the wording in the current screen, region,
+  component, field/action copy, permission, state, or source flow; do not reuse
+  generic "looks correct" 模板句 / boilerplate. Any 技术词 must be replaced with
+  business language or immediately followed by a Chinese explanation / 中文说明,
+  for example `动态标记(dynamic marker，用来提示这里未来会自动更新)`. Keep
   the UI in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user confirms
   or chooses a repair option.
 - Default human confirmation strategy is `confirm_strategy: batch`. For a
@@ -414,7 +419,8 @@ instead.
   choices may use 2 options only when `options_count_rationale` explains why 2
   exits are enough. Every option must be an actionable exit through
   `next_exit`, with background in `when_to_choose`, consequence, project
-  impact, and `recommended_option`.
+  impact, and `recommended_option`. The visible option card must answer
+  `适合什么情况`, `选了以后怎么做`, and `对项目有什么影响` in plain language.
 - If `specs/<feature>/ui/review/ui-confirmation.md` already contains
   `revision_requests`, read them before generating new UI review data. Treat
   each request as a model-actionable repair instruction, reason against the
@@ -452,7 +458,12 @@ instead.
   blocker/stale reasons, and writeback target `ui-confirmation.md`.
   `must_confirm` nodes must have 3-4 options; ordinary human-judgment nodes
   default to 3 options; low-risk binary choices may use 2 options only with
-  `options_count_rationale`. Use Tiffany Blue
+  `options_count_rationale`. Each option must carry three user-facing meanings:
+  `适合什么情况` / `when_to_choose`, `选了以后怎么做` / `consequence`, and
+  `对项目有什么影响` / `project_impact`. Run
+  `.specify/review/scripts/validate-review-data.mjs`; it must reject repeated
+  option copy, 模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject
+  exits, and missing actionable `next_exit`. Use Tiffany Blue
   `#0ABAB5` and `huashu-design` only as renderer/design authority metadata in
   the review data. The visual design must come from `huashu-design`; if that
   skill is missing, mark the review data with

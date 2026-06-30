@@ -162,8 +162,11 @@ function nodeCard(node) {
     button.type = "button";
     button.className = optionClassName(node, option, saved);
     appendText(button, "strong", `${option.label || option.id}${option.id === node.recommended_option ? "（推荐）" : ""}`);
-    button.appendChild(document.createElement("br"));
-    appendText(button, "span", option.when_to_choose || "");
+    const detailList = create("span", "option-detail-list");
+    appendOptionDetail(detailList, "适合什么情况", option.when_to_choose);
+    appendOptionDetail(detailList, "选了以后怎么做", option.consequence);
+    appendOptionDetail(detailList, "对项目有什么影响", option.project_impact);
+    button.appendChild(detailList);
     button.addEventListener("click", () => chooseOption(node, option));
     optionRow.appendChild(button);
   }
@@ -278,6 +281,13 @@ function nodeCard(node) {
   }
 
   return card;
+}
+
+function appendOptionDetail(list, label, value) {
+  const row = create("span", "option-detail-row");
+  appendText(row, "span", label).className = "option-detail-label";
+  appendText(row, "span", value || "未提供说明。").className = "option-detail-value";
+  list.appendChild(row);
 }
 
 function optionClassName(node, option, saved) {

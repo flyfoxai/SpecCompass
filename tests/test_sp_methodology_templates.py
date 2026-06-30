@@ -3248,6 +3248,43 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     assert "`next_exit` (required)" in skill
 
 
+def test_review_renderer_displays_three_part_plain_language_option_copy():
+    """The right rail should show each option's background, action, and impact."""
+    renderer = _review_renderer_bundle()
+
+    for token in (
+        "option-detail-list",
+        "option-detail-label",
+        "option-detail-value",
+        "适合什么情况",
+        "选了以后怎么做",
+        "对项目有什么影响",
+        "option.when_to_choose",
+        "option.consequence",
+        "option.project_impact",
+    ):
+        assert token in renderer, token
+
+
+def test_review_option_plain_language_rules_are_documented_in_primary_guidance():
+    """Commands and the data skill should reject lazy option writing."""
+    flow = _command("flow")
+    ui = _command("ui")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+
+    for content, label in (
+        (flow, "flow command"),
+        (ui, "ui command"),
+        (skill, "review-data skill"),
+    ):
+        assert "适合什么情况" in content, label
+        assert "选了以后怎么做" in content, label
+        assert "对项目有什么影响" in content, label
+        assert "技术词" in content and ("解释" in content or "中文说明" in content), label
+        assert "模板句" in content or "stock phrase" in content or "boilerplate" in content, label
+        assert "validate-review-data.mjs" in content, label
+
+
 def test_flow_ui_review_feedback_exports_revision_requests_without_direct_editing():
     """Review pages should collect model-actionable revision requests instead of editing designs directly."""
     flow = _command("flow")
@@ -4056,6 +4093,43 @@ def test_review_data_validator_rejects_boilerplate_review_option_copy(tmp_path):
     assert "option OPTION_A label is too generic" in output
     assert "boilerplate option copy" in output
     assert "project_impact must name a concrete downstream impact" in output
+
+
+def test_review_data_validator_rejects_lazy_repeated_review_options(tmp_path):
+    """Repeated generic options across choices are a sign the model skipped real reasoning."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    repeated = _review_validator_sample("flow")
+    node = repeated["modules"][0]["diagrams"][0]["nodes"][0]
+    for option in node["options"]:
+        option["when_to_choose"] = "业务方向同意，但希望后续补充验收证据或负责人记录。"
+        option["consequence"] = "该节点可按当前方向进入复核记录。"
+        option["project_impact"] = "不改变当前一期范围，只增加后续证据要求。"
+
+    result = _run_review_validator(repeated, tmp_path / "repeated-option-copy.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "duplicate option copy" in output
+    assert "boilerplate option copy" in output
+
+
+def test_review_data_validator_rejects_unexplained_technical_terms_in_options(tmp_path):
+    """Reviewer-facing option copy should translate technical terms into business meaning."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    technical = _review_validator_sample("flow")
+    option = technical["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
+    option["label"] = "保留 Gateway Profile 风控路径"
+    option["when_to_choose"] = "Gateway Profile 和 Risk 设置都保持当前判断，继续进入发布流程。"
+    option["consequence"] = "后续会按照 Gateway Profile 检查继续拆分开发任务。"
+    option["project_impact"] = "会影响问卷发布流程、测试和验收，但业务审核人无法知道这些英文词具体代表什么。"
+
+    result = _run_review_validator(technical, tmp_path / "unexplained-technical-option.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "unexplained technical term" in output
 
 
 def test_review_data_validator_allows_specific_impact_copy_without_false_positive(tmp_path):
