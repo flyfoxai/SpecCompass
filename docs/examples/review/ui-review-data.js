@@ -175,7 +175,7 @@ window.SPECCOMPASS_REVIEW_DATA = {
             {
               "id": "ui-survey-publish-confirmation",
               "label": "发布前是否必须二次确认",
-              "plain_summary": "发布会影响真实用户是否能填写问卷，因此页面需要让运营在发布前明确看到检查结果。",
+              "plain_summary": "本轮需要先拍板发布前确认方式，否则页面布局、开发和验收会按猜测推进，可能增加误发布风险。",
               "action_prompt": "请选择发布前界面应该如何确认。",
               "review_layer": "business",
               "review_level": "must_confirm",
@@ -378,7 +378,7 @@ window.SPECCOMPASS_REVIEW_DATA = {
             {
               "id": "ui-document-failure-message",
               "label": "解析失败提示怎么写",
-              "plain_summary": "文档解析失败不一定代表上传失败，页面要说清楚原文件是否还可用。",
+              "plain_summary": "现在需要先定解析失败提示，否则页面文案、开发和测试会混淆上传失败与解析失败。",
               "action_prompt": "请选择解析失败时的提示方式。",
               "review_layer": "business",
               "review_level": "must_confirm",

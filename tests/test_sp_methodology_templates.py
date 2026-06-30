@@ -223,6 +223,106 @@ def test_route_continue_resume_entry_is_documented():
     assert "resume entry" in workflows
 
 
+def _minimal_flow_review_data_with_node(node: dict) -> dict:
+    return {
+        "schema_version": 1,
+        "review_type": "flow",
+        "artifact_path": "specs/example/flows/review/flow-review-data.json",
+        "confirm_strategy": "batch",
+        "batch_id": "FLOW-BATCH-TEST",
+        "project": {
+            "name": "Example",
+            "feature": "survey-publish",
+            "business_overview": "运营人员检查问卷发布前的业务条件，避免不完整问卷被直接发布。",
+        },
+        "source_snapshot": [
+            {
+                "path": "specs/example/spec.md",
+                "anchors": ["问卷发布"],
+                "semantic_scope": ["requirements", "flow"],
+            }
+        ],
+        "modules": [
+            {
+                "id": "survey",
+                "title": "问卷管理",
+                "summary": "运营人员在这里决定问卷是否能进入发布。",
+                "review_layer": "business",
+                "diagrams": [
+                    {
+                        "id": "publish-main",
+                        "title": "问卷发布判断",
+                        "summary": "这张图看问卷发布前哪些业务条件需要人工拍板。",
+                        "source_path": "specs/example/flows/publish-main.mmd",
+                        "item_type": "flowchart",
+                        "nodes": [node],
+                        "edges": [],
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_review_data_validator_rejects_lazy_must_confirm_options(tmp_path):
+    """Must-confirm options must be real decision exits, not polished boilerplate."""
+    lazy_node = {
+        "id": "survey-publish-DEC1",
+        "label": "确认问卷发布规则",
+        "plain_summary": "请判断问卷发布规则是否可以进入下一步。",
+        "review_layer": "business",
+        "review_level": "must_confirm",
+        "owner": "产品经理",
+        "node_kind": "human_judgment",
+        "source_ref": "specs/example/spec.md#问卷发布",
+        "recommended_option": "OPTION_A",
+        "options": [
+            {
+                "id": "OPTION_A",
+                "label": "保留问卷发布路径",
+                "when_to_choose": "当前问卷发布的主流程已经能覆盖运营发布前的大部分常见情况。",
+                "consequence": "后续继续整理问卷发布流程，并把相关页面和测试用例接着补齐。",
+                "project_impact": "影响问卷发布页面、开发计划和测试安排，整体风险保持在当前范围。",
+                "next_exit": "continue-survey-publish",
+                "recommended": True,
+            },
+            {
+                "id": "OPTION_B",
+                "label": "补充问卷发布规则",
+                "when_to_choose": "如果产品经理认为发布前还有一些业务条件没有说清楚，就选择这个方案。",
+                "consequence": "后续先暂停问卷发布流程，等相关规则补充后再继续整理。",
+                "project_impact": "会影响问卷发布页面、开发计划和测试安排，整体风险保持在可控范围。",
+                "next_exit": "needs-decision:product-owner",
+            },
+            {
+                "id": "OPTION_C",
+                "label": "调整问卷发布范围",
+                "when_to_choose": "如果当前流程大体可用，但希望调整部分发布相关内容，就选择这个方案。",
+                "consequence": "后续对问卷发布流程做局部调整，并继续推进页面和测试用例。",
+                "project_impact": "会影响问卷发布页面、开发计划和测试安排，但不改变整体范围。",
+                "next_exit": "revise-local-and-continue",
+            },
+        ],
+    }
+    review_data = _minimal_flow_review_data_with_node(lazy_node)
+    review_data_path = tmp_path / "lazy-flow-review-data.json"
+    review_data_path.write_text(json.dumps(review_data, ensure_ascii=False), encoding="utf-8")
+
+    result = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_data_path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    stderr = result.stderr
+    assert "option OPTION_A must say who continues the work" in stderr
+    assert "option labels must not start with generic verbs" in stderr
+    assert "must_confirm node must explain why this decision matters now" in stderr
+
+
 def test_project_intake_direction_judgment_is_methodology_contract():
     """Project intake should choose one mainline before spending tokens on deep feature work."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
@@ -3266,6 +3366,29 @@ def test_review_renderer_displays_three_part_plain_language_option_copy():
         assert token in renderer, token
 
 
+def test_review_renderer_option_choices_use_full_width_readable_cards():
+    """Long plain-language options should render as full-width cards, not hidden strips."""
+    renderer = _review_renderer_bundle()
+
+    for token in (
+        ".option-row",
+        "flex-direction: column",
+        "overflow: visible",
+        "box-sizing: border-box",
+        "width: 100%",
+        "max-width: 100%",
+        "white-space: normal",
+    ):
+        assert token in renderer, token
+
+    for forbidden in (
+        "flex: 0 0 clamp(260px, 86vw, 340px)",
+        "max-width: calc(100vw - 42px)",
+        "scroll-snap-type: x proximity",
+    ):
+        assert forbidden not in renderer, forbidden
+
+
 def test_review_option_plain_language_rules_are_documented_in_primary_guidance():
     """Commands and the data skill should reject lazy option writing."""
     flow = _command("flow")
@@ -3280,6 +3403,12 @@ def test_review_option_plain_language_rules_are_documented_in_primary_guidance()
         assert "适合什么情况" in content, label
         assert "选了以后怎么做" in content, label
         assert "对项目有什么影响" in content, label
+        assert "谁继续处理" in content, label
+        assert "不选推荐" in content, label
+        assert "真实差异" in content, label
+        assert "范围决策" in content, label
+        assert "门禁决策" in content, label
+        assert "降级决策" in content, label
         assert "技术词" in content and ("解释" in content or "中文说明" in content), label
         assert "模板句" in content or "stock phrase" in content or "boilerplate" in content, label
         assert "validate-review-data.mjs" in content, label
@@ -3748,7 +3877,7 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
             {
                 "id": node_id,
                 "label": f"审核业务信息 {index}",
-                "plain_summary": f"请判断第 {index} 个业务环节是否符合当前需求。",
+                "plain_summary": f"请判断第 {index} 个业务环节是否能作为问卷发布门槛；现在不拍板，后续页面、开发和验收都会按猜测推进。",
                 "review_layer": "business",
                 "review_level": "must_confirm" if index == 1 else "verified",
                 "owner": "产品经理" if index == 1 else "无需产品确认",
@@ -3759,8 +3888,8 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                         "id": "OPTION_A",
                         "label": "按问卷发布检查继续",
                         "when_to_choose": "问卷标题、目标人群和截止时间已经在需求中写清楚，产品经理认可这些作为发布门槛。",
-                        "consequence": "后续流程会把这些检查作为发布前必须满足的条件。",
-                        "project_impact": "UI、计划和开发任务可以围绕问卷发布校验继续拆分，误发布风险较低。",
+                        "consequence": "下一轮模型会把这些检查写入发布流程，并让开发团队按这个门槛拆页面和任务。",
+                        "project_impact": "问卷发布 UI、开发任务和验收测试可以继续推进，运营误发布风险较低。",
                         "next_exit": "continue",
                         "recommended": True,
                     },
@@ -3774,9 +3903,9 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                     },
                     {
                         "id": "OPTION_C",
-                        "label": "局部调整后继续",
+                        "label": "只改截止时间边界后继续",
                         "when_to_choose": "主发布路径已经明确，只剩一个边界条件需要补上，例如截止时间是否必填。",
-                        "consequence": "下一轮只调整当前节点的检查项，不推翻问卷发布主流程。",
+                        "consequence": "下一轮模型只调整当前节点的检查项，再交给设计团队和开发团队按主流程推进。",
                         "project_impact": "影响集中在当前流程或界面的校验文案和测试用例，整体排期变化较小。",
                         "next_exit": "revise-local-and-continue",
                     },

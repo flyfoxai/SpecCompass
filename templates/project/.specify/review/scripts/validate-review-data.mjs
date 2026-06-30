@@ -343,6 +343,76 @@ const concreteImpactSignals = [
   "delivery",
   "release"
 ];
+const continuationOwnerSignals = [
+  "下一轮模型",
+  "模型",
+  "大模型",
+  "产品经理",
+  "产品负责人",
+  "运营",
+  "设计师",
+  "设计团队",
+  "开发人员",
+  "开发团队",
+  "工程师",
+  "测试人员",
+  "测试团队",
+  "系统负责人",
+  "架构负责人",
+  "审核人",
+  "业务团队",
+  "项目团队",
+  "PM",
+  "product owner",
+  "product manager",
+  "designer",
+  "developer",
+  "engineer",
+  "tester",
+  "qa",
+  "model",
+  "next model",
+  "reviewer",
+  "owner",
+  "team"
+];
+const decisionUrgencySignals = [
+  "这个决定",
+  "这个判断",
+  "这个选择",
+  "这一步",
+  "本轮",
+  "现在",
+  "当前",
+  "先定",
+  "先确认",
+  "先拍板",
+  "拍板",
+  "否则",
+  "如果不",
+  "不先",
+  "必须确认",
+  "必须明确",
+  "需要确认",
+  "需要明确",
+  "this decision",
+  "this choice",
+  "decide now",
+  "must decide",
+  "must confirm",
+  "otherwise",
+  "if not"
+];
+const genericOptionLabelOpeners = [
+  "保留",
+  "补充",
+  "调整",
+  "确认",
+  "继续",
+  "完善",
+  "按推荐",
+  "局部调整"
+];
 const reviewerFacingTechnicalTerms = [
   "Gateway Profile",
   "Trusted View",
@@ -380,9 +450,57 @@ function hasConcreteImpactSignal(value) {
   return concreteImpactSignals.some((signal) => text.includes(signal));
 }
 
+function hasContinuationOwnerSignal(value) {
+  const text = String(value || "").toLowerCase();
+  return continuationOwnerSignals.some((signal) => text.includes(signal.toLowerCase()));
+}
+
+function hasDecisionUrgencySignal(value) {
+  const text = String(value || "").toLowerCase();
+  return (
+    decisionUrgencySignals.some((signal) => text.includes(signal.toLowerCase())) &&
+    hasConcreteImpactSignal(text)
+  );
+}
+
 function containsBoilerplateOptionCopy(value) {
   const text = String(value || "");
   return boilerplateOptionCopyFragments.some((fragment) => text.includes(fragment));
+}
+
+function normalizedLooseCopy(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/(会|将|可以|能够|整体|当前|相关|后续|继续|保持|不改变|可控|较小|较低|影响|安排|内容|工作|范围|风险|the|a|an|and|or|to|of|for|with|can|will|should)/g, "")
+    .replace(/[\s，。；;,.、:："'“”‘’（）()[\]{}<>《》_\-\/]+/g, "")
+    .trim();
+}
+
+function ngrams(value, size = 2) {
+  const text = normalizedLooseCopy(value);
+  const result = new Set();
+  for (let index = 0; index <= text.length - size; index += 1) {
+    result.add(text.slice(index, index + size));
+  }
+  return result;
+}
+
+function textContainmentSimilarity(left, right) {
+  const leftGrams = ngrams(left);
+  const rightGrams = ngrams(right);
+  if (leftGrams.size < 6 || rightGrams.size < 6) {
+    return 0;
+  }
+  let overlap = 0;
+  for (const gram of leftGrams) {
+    if (rightGrams.has(gram)) overlap += 1;
+  }
+  return overlap / Math.min(leftGrams.size, rightGrams.size);
+}
+
+function labelGenericOpener(value) {
+  const label = compactText(value);
+  return genericOptionLabelOpeners.find((opener) => label.startsWith(opener));
 }
 
 function normalizeOptionCopy(option) {
@@ -430,6 +548,9 @@ function validateOptionHumanCopy(scope, option) {
   }
   if (!hasSubstantialText(option.consequence)) {
     fail(`${scope}: option ${option.id} consequence must describe the concrete action after selection`);
+  }
+  if (!hasContinuationOwnerSignal(`${option.consequence || ""} ${option.project_impact || ""}`)) {
+    fail(`${scope}: option ${option.id} must say who continues the work`);
   }
   if (!hasSubstantialText(option.project_impact) || !hasConcreteImpactSignal(option.project_impact)) {
     fail(`${scope}: option ${option.id} project_impact must name a concrete downstream impact`);
@@ -559,9 +680,13 @@ function validateOptions(scope, node) {
   if (options.length === 2 && node.review_level !== "must_confirm" && !hasSubstantialText(node.options_count_rationale)) {
     fail(`${scope}: options_count_rationale is required when a human-judgment node uses only 2 options`);
   }
+  if (node.review_level === "must_confirm" && !hasDecisionUrgencySignal(`${node.plain_summary || ""} ${node.action_prompt || ""}`)) {
+    fail(`${scope}: must_confirm node must explain why this decision matters now`);
+  }
 
   const ids = new Set();
   const copyFingerprints = new Map();
+  const genericLabelOpeners = [];
   for (const option of options) {
     validateKnownKeys(`${scope}:option`, option, allowedOptionKeys);
     if (!option.id) {
@@ -582,6 +707,10 @@ function validateOptions(scope, node) {
     if (isVagueActionExit(option.label) || isVagueActionExit(option.next_exit)) {
       fail(`${scope}: option ${option.id} must use an actionable exit, not approve/defer/reject/block labels`);
     }
+    const opener = labelGenericOpener(option.label);
+    if (opener) {
+      genericLabelOpeners.push(`${option.id}:${opener}`);
+    }
     validateOptionHumanCopy(scope, option);
     const copyFingerprint = normalizeOptionCopy(option);
     if (copyFingerprint) {
@@ -594,6 +723,18 @@ function validateOptions(scope, node) {
     }
     if (option.id === "OPTION_B" && !String(option.next_exit || "").trim().toLowerCase().startsWith("needs-decision")) {
       fail(`${scope}: OPTION_B.next_exit must start with needs-decision`);
+    }
+  }
+  if (genericLabelOpeners.length >= 2) {
+    fail(`${scope}: option labels must not start with generic verbs; name the real business exit instead of ${genericLabelOpeners.join(", ")}`);
+  }
+  for (let leftIndex = 0; leftIndex < options.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < options.length; rightIndex += 1) {
+      const left = options[leftIndex];
+      const right = options[rightIndex];
+      if (textContainmentSimilarity(left.project_impact, right.project_impact) >= 0.72) {
+        fail(`${scope}: option project_impact copy is too similar between ${left.id} and ${right.id}; each option must explain a distinct project impact`);
+      }
     }
   }
 

@@ -113,6 +113,15 @@ Global rules:
   path, or source document. Any 技术词 must be replaced with business language or
   immediately followed by a Chinese explanation / 中文说明, for example
   `网关配置(Gateway Profile，用来决定发布前由哪组规则拦截风险)`.
+  Each option must also name 谁继续处理 after the choice, explain the cost of
+  不选推荐, and keep 真实差异 between options; do not disguise the same route as
+  保留 / 补充 / 调整 / 后续完善. Classify the decision before writing options:
+  范围决策 decides how much work enters this batch and must explain scope,
+  schedule, manual cost, and rework risk; 门禁决策 decides release, block,
+  missing-material, or human-review exits and must explain who judges and the
+  cost of false pass or false block; 降级决策 decides the fallback when the full
+  capability is unavailable and must explain user experience, operational cost,
+  release timing, and risk boundary.
   Keep the flow in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user
   completes confirmation of selected option.
 - Default human confirmation strategy is `confirm_strategy: batch`. For a
@@ -420,10 +429,14 @@ vocabulary instead.
   default to 3 options; low-risk binary choices may use 2 options only with
   `options_count_rationale`. Each option must carry three user-facing meanings:
   `适合什么情况` / `when_to_choose`, `选了以后怎么做` / `consequence`, and
-  `对项目有什么影响` / `project_impact`. Run
+  `对项目有什么影响` / `project_impact`. It must say 谁继续处理, state the
+  不选推荐 cost, and show 真实差异 between options. Choose a decision template
+  before writing the options: 范围决策, 门禁决策, or 降级决策. Run
   `.specify/review/scripts/validate-review-data.mjs`; it must reject repeated
   option copy, 模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject
-  exits, and missing actionable `next_exit`. Use Tiffany Blue
+  exits, missing actionable `next_exit`, missing continuation owner, missing
+  why-this-must-be-decided-now copy, and overly similar `project_impact` copy.
+  Use Tiffany Blue
   `#0ABAB5` and `huashu-design` only as renderer/design authority metadata in
   the review data. Page implementation details live in
   `.specify/review/renderer/README.md`. If HTML review is unavailable, the
@@ -499,7 +512,7 @@ vocabulary instead.
 - Confirm the fixed SpecCompass review renderer is not Mermaid-based and uses structured JSON plus native SVG/DAG layout for the review page. For Mermaid source/previews, confirm readable font size between 16px and 18px, `useMaxWidth: false`, tuned `nodeSpacing` and `rankSpacing`, and no whole-SVG shrink that makes complex diagrams unreadable. Confirm `sequenceDiagram` files render as sequence diagrams without flowchart label wrapping; every translated or punctuation-containing participant/actor alias is safely double-quoted and escaped. Confirm external Mermaid preview switching clears the old SVG, shows `正在渲染`, and uses a render token or equivalent stale-render guard.
 - Confirm the review page uses the required scroll model: left module navigation scrolls independently; center diagram area and right confirmation rail scroll as one review workspace; the right rail has no sticky/max-height clipping.
 - Confirm the right feedback rail includes per-node decision options, per-node feedback input, and an English label glossary for visible terms such as `FLOW`, `DEC`, `ERR`, `STATE`, `ROLE`, `BLOCKED`, and `DRAFT`.
-- Confirm every human-judgment node has tiered decision options, a clear `recommended_option`, required `when_to_choose` with real business background, required `consequence`, required `project_impact`, required actionable `next_exit`, and confirmation of selected option. The option copy must explain `适合什么情况`, `选了以后怎么做`, and `对项目有什么影响`: what the reviewer chooses the model to do next, downstream impact on scope, schedule, risk, UI, plan, tasks, implementation, or tests, and why the recommended option is safest. `must_confirm` nodes require 3-4 options; ordinary human-judgment nodes default to 3 options; low-risk binary choices may use 2 options only with `options_count_rationale`. The wording must not repeat 模板句 / boilerplate across options; any visible 技术词 must have an immediate Chinese explanation / 中文说明. Confirm saved options whose `next_exit` starts with `needs-decision` write to `needs_decision_items` (`OPTION_B.next_exit` must use this route and never counts as confirmed), saved concrete continuation routes such as `OPTION_A/C/D` write to `decision_recorded_items`, and unresolved nodes write to `unresolved_decision_items`. Do not use approve/defer/reject/block as the node-level primary interaction; statuses such as `BLOCKED` or `NEEDS_DECISION` may appear only as system results with a reason, owner, repair route, and exit path.
+- Confirm every human-judgment node has tiered decision options, a clear `recommended_option`, required `when_to_choose` with real business background, required `consequence`, required `project_impact`, required actionable `next_exit`, and confirmation of selected option. The option copy must explain `适合什么情况`, `选了以后怎么做`, and `对项目有什么影响`: what the reviewer chooses the model to do next, 谁继续处理 after selection, downstream impact on scope, schedule, risk, UI, plan, tasks, implementation, or tests, the cost of 不选推荐, and why the recommended option is safest. `must_confirm` nodes require 3-4 options; ordinary human-judgment nodes default to 3 options; low-risk binary choices may use 2 options only with `options_count_rationale`. Options in the same node must have 真实差异 and must be shaped by one of three decision templates: 范围决策, 门禁决策, or 降级决策. The wording must not repeat 模板句 / boilerplate across options; any visible 技术词 must have an immediate Chinese explanation / 中文说明. Confirm `.specify/review/scripts/validate-review-data.mjs` passes so lazy labels, repeated impact copy, missing owner, and missing why-now copy are caught before closeout. Confirm saved options whose `next_exit` starts with `needs-decision` write to `needs_decision_items` (`OPTION_B.next_exit` must use this route and never counts as confirmed), saved concrete continuation routes such as `OPTION_A/C/D` write to `decision_recorded_items`, and unresolved nodes write to `unresolved_decision_items`. Do not use approve/defer/reject/block as the node-level primary interaction; statuses such as `BLOCKED` or `NEEDS_DECISION` may appear only as system results with a reason, owner, repair route, and exit path.
 - Confirm long node labels / 长节点标签 wrap before Mermaid render, including same-line node-and-edge Mermaid syntax, and that CSS allows node labels to wrap without shrinking the whole diagram below readability.
 - Confirm diagram-to-rail two-way linkage / 双向联动 is data-addressable:
   clicking a node card / 点击右侧节点卡 and clicking a diagram node / 点击流程图节点

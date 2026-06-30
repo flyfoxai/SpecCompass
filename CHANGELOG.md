@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.26] - 2026-06-30
+
+### Changed
+
+- Strengthened Flow/UI review option generation so required decisions explain who continues the work, why the decision matters now, and the cost of not choosing the recommendation.
+- Added stricter review-data validation against generic option labels, missing continuation owners, weak must-confirm context, and overly similar project-impact text.
+- Updated Flow/UI command templates, the review-data skill, tests, and example review data for more business-readable executable choices.
+
 ## [0.10.25] - 2026-06-30
 
 ### Changed

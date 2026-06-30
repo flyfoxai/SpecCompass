@@ -154,6 +154,22 @@ against the current PRD/spec/flow/UI sources before changing data.
   implementation, acceptance tests, or delivery. Do not write generic labels
   such as 推荐方案 / 方案A / 确认当前内容, and do not repeat stock phrases /
   模板句 such as 当前依据和风险边界看起来正确.
+- Every decision option must say 谁继续处理 after the choice: next model,
+  product owner, designer, developer, tester, operations, system owner, or the
+  responsible business team. It must also say the cost of 不选推荐 when that cost
+  matters, for example more manual review, delayed release, weaker guardrails,
+  extra UI work, or later rework. Options inside one node must have 真实差异:
+  different scope, route, owner, risk, release timing, or manual cost. Do not
+  create four labels that only rephrase 保留 / 补充 / 调整 / 后续完善.
+- Pick one decision template before writing options:
+  - 范围决策: decide how much flow/UI work enters this batch, which scenarios
+    move later, and how scope affects schedule, manual cost, and rework risk.
+  - 门禁决策: decide whether to release, block, request missing material, or
+    route to human review, and explain who judges plus the cost of false pass
+    or false block.
+  - 降级决策: decide the fallback when the full capability is unavailable, and
+    explain the user experience, operational cost, release timing, and risk
+    boundary.
 - Any reviewer-facing 技术词 must be replaced with business wording or followed
   immediately by a Chinese explanation / 中文说明. Acceptable example:
   `网关配置(Gateway Profile，用来决定发布前由哪组规则拦截风险)`. Unacceptable:
@@ -241,8 +257,10 @@ data can support `WAITING_FOR_BATCH_REVIEW`, `READY_FOR_UI`, or
 
 The validator intentionally blocks lazy option writing: duplicate option copy,
 模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject/block exits,
-missing `when_to_choose`, missing `consequence`, missing `project_impact`, or a
-missing actionable `next_exit` must be fixed in the review data before closing.
+missing `when_to_choose`, missing `consequence`, missing `project_impact`,
+missing 谁继续处理, missing why-this-must-be-decided-now copy on `must_confirm`
+nodes, repeated `project_impact` copy, or a missing actionable `next_exit` must
+be fixed in the review data before closing.
 
 ## Minimal complete JSON / 最小完整 JSON
 

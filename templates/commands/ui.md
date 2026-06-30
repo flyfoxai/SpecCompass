@@ -128,7 +128,15 @@ Global rules:
   component, field/action copy, permission, state, or source flow; do not reuse
   generic "looks correct" 模板句 / boilerplate. Any 技术词 must be replaced with
   business language or immediately followed by a Chinese explanation / 中文说明,
-  for example `动态标记(dynamic marker，用来提示这里未来会自动更新)`. Keep
+  for example `动态标记(dynamic marker，用来提示这里未来会自动更新)`. Each option
+  must name 谁继续处理 after the choice, explain the cost of 不选推荐, and keep
+  真实差异 between options; do not disguise the same screen route as 保留 /
+  补充 / 调整 / 后续完善. Classify the decision before writing options:
+  范围决策 decides which screens, regions, states, or actions enter this batch;
+  门禁决策 decides whether the screen can release, block, request missing
+  material, or route to human review; 降级决策 decides what simpler UI or manual
+  fallback appears when the ideal interaction is not ready.
+  Keep
   the UI in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user confirms
   or chooses a repair option.
 - Default human confirmation strategy is `confirm_strategy: batch`. For a
@@ -460,10 +468,14 @@ instead.
   default to 3 options; low-risk binary choices may use 2 options only with
   `options_count_rationale`. Each option must carry three user-facing meanings:
   `适合什么情况` / `when_to_choose`, `选了以后怎么做` / `consequence`, and
-  `对项目有什么影响` / `project_impact`. Run
+  `对项目有什么影响` / `project_impact`. It must say 谁继续处理, state the
+  不选推荐 cost, and show 真实差异 between options. Choose a decision template
+  before writing the options: 范围决策, 门禁决策, or 降级决策. Run
   `.specify/review/scripts/validate-review-data.mjs`; it must reject repeated
   option copy, 模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject
-  exits, and missing actionable `next_exit`. Use Tiffany Blue
+  exits, missing actionable `next_exit`, missing continuation owner, missing
+  why-this-must-be-decided-now copy, and overly similar `project_impact` copy.
+  Use Tiffany Blue
   `#0ABAB5` and `huashu-design` only as renderer/design authority metadata in
   the review data. The visual design must come from `huashu-design`; if that
   skill is missing, mark the review data with

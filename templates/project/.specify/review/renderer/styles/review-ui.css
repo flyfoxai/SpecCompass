@@ -26,11 +26,22 @@
 }
 
 .diagram-tabs,
-.option-row,
 .rail-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.option-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 0 2px;
+  padding: 2px 0 4px;
+  overflow: visible;
 }
 
 .option-detail-list {
@@ -45,6 +56,8 @@
   grid-template-columns: 74px minmax(0, 1fr);
   gap: 6px;
   align-items: start;
+  min-width: 0;
+  overflow-wrap: break-word;
 }
 
 .option-detail-label {
@@ -778,9 +791,15 @@
 }
 
 .option {
-  flex: 1 1 120px;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  min-width: 0;
   padding: 8px;
   text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
 }
 
 .option.recommended {

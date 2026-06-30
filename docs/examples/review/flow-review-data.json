@@ -63,7 +63,7 @@
             {
               "id": "survey-draft-publish-readiness",
               "label": "确认发布前必须检查哪些内容",
-              "plain_summary": "发布前要不要强制检查题目、回收范围和截止时间，会直接影响问卷能否被误发布。",
+              "plain_summary": "本轮需要先拍板发布前必须检查哪些内容，否则 UI、开发和验收会按猜测推进，可能导致问卷误发布。",
               "action_prompt": "请选择发布前的强制检查范围。",
               "review_layer": "business",
               "review_level": "must_confirm",
@@ -120,7 +120,7 @@
             {
               "id": "survey-draft-publish-gap",
               "label": "信息不足时退回补齐",
-              "plain_summary": "如果发布前发现信息缺失，系统要告诉运营缺什么，避免只显示笼统失败。",
+              "plain_summary": "本轮需要先明确发布失败时怎么提示，否则发布失败页面、开发和测试会按笼统错误处理。",
               "action_prompt": "请选择信息不足时的处理方式。",
               "review_layer": "business",
               "review_level": "must_confirm",
@@ -232,7 +232,7 @@
             {
               "id": "survey-response-duplicate",
               "label": "重复提交怎么处理",
-              "plain_summary": "同一用户是否允许重复提交，会影响统计结果和用户体验。",
+              "plain_summary": "现在需要先定重复提交规则，否则统计口径、开发实现和测试样例都会按猜测推进。",
               "action_prompt": "请选择重复提交的业务规则。",
               "review_layer": "business",
               "review_level": "must_confirm",
@@ -371,7 +371,7 @@
             {
               "id": "document-link-failure-policy",
               "label": "解析失败是否允许继续发布",
-              "plain_summary": "如果文档解析失败，问卷还能不能带着原文件继续发布，需要产品明确。",
+              "plain_summary": "本轮需要先明确解析失败是否拦截发布，否则文档状态页面、开发和验收会按猜测处理。",
               "action_prompt": "请选择文档解析失败时的业务策略。",
               "review_layer": "business",
               "review_level": "must_confirm",
