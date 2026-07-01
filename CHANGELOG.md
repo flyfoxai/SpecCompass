@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.28] - 2026-07-01
+
+### Changed
+
+- Updated Flow/UI review decisions so reviewers first see the decision background, decision summary, option benefit, option cost, and recommendation reason.
+- Strengthened review-data schemas, renderer copy, validator guardrails, command templates, skill guidance, and examples for decision-grade Flow/UI options.
+- Added regression coverage for legacy option-field rejection, concrete benefit/cost wording, and recommendation-rationale requirements.
+
 ## [0.10.26] - 2026-06-30
 
 ### Changed
