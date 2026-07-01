@@ -280,18 +280,28 @@ const genericOptionLabels = new Set([
   "阻塞处理"
 ]);
 const boilerplateOptionCopyFragments = [
+  "推荐这个选项，因为",
+  "下一轮模型会",
+  "下一轮模型先",
+  "下一轮模型只",
+  "相关人员之后再继续确认",
+  "后续再确认",
   "当前依据和风险边界看起来正确",
   "可按推荐保留",
   "当前节点需要补充业务决策",
   "责任人或风险口径",
   "后续完善相关内容",
+  "后续如果不合适再调整",
   "当前资料还不能判断",
   "需求已经覆盖这个业务判断",
   "后续界面和计划可以按当前路径继续",
   "影响范围限制在当前流程或界面的局部内容",
+  "当前内容拆分处理",
+  "当前内容整体继续处理",
   "按当前规则推进",
   "待后续补充相关内容",
   "后续再完善相关内容",
+  "整体风险会更清楚",
   "业务方向同意，但希望后续补充验收证据或负责人记录",
   "该节点可按当前方向进入复核记录",
   "不改变当前一期范围，只增加后续证据要求"
@@ -428,6 +438,102 @@ const reviewerFacingTechnicalTerms = [
   "paper",
   "shadow"
 ];
+const missingDecisionSignals = [
+  "还没有定",
+  "没有定",
+  "未定",
+  "没定",
+  "还没说清",
+  "没说清",
+  "不清楚",
+  "无法判断",
+  "不能判断",
+  "缺少",
+  "缺失",
+  "补充",
+  "需要明确",
+  "需要确认",
+  "先确认",
+  "先补",
+  "到底",
+  "unknown",
+  "missing",
+  "undecided",
+  "unclear"
+];
+const needsDecisionPauseSignals = [
+  "暂停",
+  "先不",
+  "等待",
+  "延后",
+  "暂缓进入",
+  "不能继续",
+  "不授权",
+  "先停止",
+  "pause",
+  "wait",
+  "defer",
+  "hold"
+];
+const recommendationRationaleSignals = [
+  "推荐",
+  "更稳",
+  "更合适",
+  "更适合",
+  "更少",
+  "更低",
+  "更快",
+  "更清楚",
+  "更容易",
+  "最稳",
+  "最少",
+  "最低",
+  "最小",
+  "最清楚",
+  "优先",
+  "相比",
+  "比",
+  "避免",
+  "减少",
+  "降低",
+  "因为",
+  "代价",
+  "权衡",
+  "tradeoff",
+  "preferred",
+  "recommend",
+  "because",
+  "lower",
+  "less",
+  "faster",
+  "safer",
+  "clearer",
+  "rather than"
+];
+const splitArtifactSignals = [
+  "两个",
+  "三个",
+  "四个",
+  "两条",
+  "三条",
+  "子流程",
+  "短流程",
+  "独立流程",
+  "流程文件",
+  "分别",
+  "主流程",
+  "异常流程",
+  "内容检查",
+  "投放检查",
+  "失败处理",
+  "再次发布",
+  "提示内容",
+  "返回编辑",
+  "subflow",
+  "subflows",
+  "flow file",
+  "separate"
+];
 
 function normalizedActionText(value) {
   return String(value || "").trim().toLowerCase();
@@ -466,6 +572,44 @@ function hasDecisionUrgencySignal(value) {
 function containsBoilerplateOptionCopy(value) {
   const text = String(value || "");
   return boilerplateOptionCopyFragments.some((fragment) => text.includes(fragment));
+}
+
+function optionText(option) {
+  return [
+    option.label,
+    option.when_to_choose,
+    option.consequence,
+    option.project_impact,
+    option.next_exit
+  ].join(" ");
+}
+
+function optionExitStartsWith(option, prefix) {
+  return String(option.next_exit || "").trim().toLowerCase().startsWith(prefix);
+}
+
+function hasAnySignal(value, signals) {
+  const text = String(value || "").toLowerCase();
+  return signals.some((signal) => text.includes(signal.toLowerCase()));
+}
+
+function hasNeedsDecisionTrigger(option) {
+  return hasAnySignal(`${option.when_to_choose || ""} ${option.consequence || ""}`, missingDecisionSignals);
+}
+
+function hasNeedsDecisionPause(option) {
+  return hasAnySignal(`${option.consequence || ""} ${option.project_impact || ""}`, needsDecisionPauseSignals);
+}
+
+function hasRecommendationRationale(option) {
+  return hasAnySignal(`${option.when_to_choose || ""} ${option.consequence || ""} ${option.project_impact || ""}`, recommendationRationaleSignals);
+}
+
+function hasSpecificSplitArtifact(option) {
+  const text = optionText(option);
+  const hasSplitAction = /拆(成|出|分|开)|split/i.test(text);
+  const hasArtifact = hasAnySignal(text, splitArtifactSignals) || /[2-9]\s*(个|条|份|part|flow)/i.test(text);
+  return hasSplitAction && hasArtifact;
 }
 
 function normalizedLooseCopy(value) {
@@ -554,6 +698,14 @@ function validateOptionHumanCopy(scope, option) {
   }
   if (!hasSubstantialText(option.project_impact) || !hasConcreteImpactSignal(option.project_impact)) {
     fail(`${scope}: option ${option.id} project_impact must name a concrete downstream impact`);
+  }
+  if (optionExitStartsWith(option, "needs-decision")) {
+    if (!hasNeedsDecisionTrigger(option) || !hasContinuationOwnerSignal(optionText(option)) || !hasNeedsDecisionPause(option)) {
+      fail(`${scope}: option ${option.id} needs-decision option must say what is missing, who decides, and what downstream work pauses before confirmation`);
+    }
+  }
+  if (optionExitStartsWith(option, "split-flow") && !hasSpecificSplitArtifact(option)) {
+    fail(`${scope}: option ${option.id} split-flow option must say which subflows, short flows, or review artifacts will be produced next`);
   }
 }
 
@@ -745,6 +897,11 @@ function validateOptions(scope, node) {
 
   if (!ids.has(node.recommended_option)) {
     fail(`${scope}: recommended_option ${node.recommended_option} does not match an option id`);
+  }
+
+  const recommendedOption = options.find((option) => option.id === node.recommended_option);
+  if (recommendedOption && !hasRecommendationRationale(recommendedOption)) {
+    fail(`${scope}: recommended option must explain why it is preferred over stricter, slower, or larger-change alternatives`);
   }
 
   const recommendedFlags = options.filter((option) => option.recommended === true);

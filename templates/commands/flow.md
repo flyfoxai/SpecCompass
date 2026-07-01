@@ -121,7 +121,14 @@ Global rules:
   missing-material, or human-review exits and must explain who judges and the
   cost of false pass or false block; 降级决策 decides the fallback when the full
   capability is unavailable and must explain user experience, operational cost,
-  release timing, and risk boundary.
+  release timing, and risk boundary. Apply clarify-style checks to the common
+  routes: needs-decision 选项必须说清缺什么、谁拍板、哪些下游工作暂停; split-flow 选项必须说清拆成哪些子流程; 推荐项必须说明为什么比更慢、更重或更保守的替代方案更适合.
+  The canonical option-writing rule lives in the `speccompass-review-data`
+  skill. Follow its fact-preservation and anti-fabrication rules: never
+  naturalize `node.id`, `change_type`, `next_exit`, paths, `source_ref`, schema
+  fields, enum values, or trace IDs; do not invent extra exits, owners, risks,
+  screens, permissions, or downstream work just to reach 3-4 options; if sources
+  only support a lower valid count, write `options_count_rationale` instead.
   Keep the flow in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user
   completes confirmation of selected option.
 - Default human confirmation strategy is `confirm_strategy: batch`. For a
@@ -258,6 +265,19 @@ renderer, write flow data to
 `.specify/review/scripts/validate-review-data.mjs` against
 `.specify/review/schemas/flow-review-data.schema.json`, and keep the result as
 draft when validation fails. 校验失败不能收尾，不能提升 readiness.
+
+example data must not replace generation rules / 实验数据不能替代生成规则.
+Files under `docs/examples/review/*` or one-off experiment pages are only
+few-shot references and visual smoke-test fixtures. They cannot be used as proof
+that `/sp.flow` is fixed. A valid run must generate or repair the target
+feature's `flow-review-data.json` from the current PRD/spec/clarification/flow
+sources; the corresponding `/sp.ui` proof is the target feature's
+`ui-review-data.json`, not a preview fixture. Apply the
+`speccompass-review-data` option-writing rules, run
+`.specify/review/scripts/validate-review-data.mjs`, and continue fixing
+model-fixable issues until validation passes or a real human-owned blocker is
+recorded. Do not close the command by hand-editing example data, an experiment
+JSON file, or the renderer preview.
 
 review data 是待审内容 / review data is draft review content. The Web review
 page is not an editor / 不是编辑器 and does not directly edit flow or UI design /
@@ -436,6 +456,11 @@ vocabulary instead.
   option copy, 模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject
   exits, missing actionable `next_exit`, missing continuation owner, missing
   why-this-must-be-decided-now copy, and overly similar `project_impact` copy.
+  example data must not replace generation rules / 实验数据不能替代生成规则:
+  do not treat changes to `docs/examples/review/*` or experiment pages as a
+  successful `/sp.flow` output. The generated `flow-review-data.json` for the
+  current feature is the artifact that must pass the validator; the UI-side
+  equivalent is the current feature's `ui-review-data.json`, not example data.
   Use Tiffany Blue
   `#0ABAB5` and `huashu-design` only as renderer/design authority metadata in
   the review data. Page implementation details live in

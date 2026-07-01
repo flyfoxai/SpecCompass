@@ -3393,11 +3393,13 @@ def test_review_option_plain_language_rules_are_documented_in_primary_guidance()
     """Commands and the data skill should reject lazy option writing."""
     flow = _command("flow")
     ui = _command("ui")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
 
     for content, label in (
         (flow, "flow command"),
         (ui, "ui command"),
+        (methodology, "methodology"),
         (skill, "review-data skill"),
     ):
         assert "适合什么情况" in content, label
@@ -3411,6 +3413,67 @@ def test_review_option_plain_language_rules_are_documented_in_primary_guidance()
         assert "降级决策" in content, label
         assert "技术词" in content and ("解释" in content or "中文说明" in content), label
         assert "模板句" in content or "stock phrase" in content or "boilerplate" in content, label
+        assert "validate-review-data.mjs" in content, label
+        assert "needs-decision 选项必须说清缺什么、谁拍板、哪些下游工作暂停" in content, label
+        assert "split-flow 选项必须说清拆成哪些子流程" in content, label
+        assert "推荐项必须说明为什么比更慢、更重或更保守的替代方案更适合" in content, label
+
+
+def test_review_option_plain_language_rules_preserve_facts_and_reject_fabrication():
+    """The embedded plain-language guidance should not trade correctness for smoother copy."""
+    flow = _command("flow")
+    ui = _command("ui")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    compact_skill = " ".join(skill.split())
+
+    for token in (
+        "Preserve facts before making copy smoother",
+        "先保真再说人话",
+        "Do not invent facts",
+        "不要为了凑选项编",
+        "Use real subjects and real actions",
+        "真主语真动作",
+        "`options_count_rationale`",
+    ):
+        assert token in skill, token
+
+    for protected_token in (
+        "`node.id`",
+        "`change_type`",
+        "`next_exit`",
+        "`source_ref`",
+        "schema field names",
+        "enum values",
+        "trace IDs",
+    ):
+        assert protected_token in compact_skill, protected_token
+
+    for content, label in ((flow, "flow command"), (ui, "ui command")):
+        assert "canonical option-writing rule lives in the `speccompass-review-data`" in content, label
+        assert "anti-fabrication" in content, label
+        assert "`node.id`" in content and "`change_type`" in content and "`next_exit`" in content, label
+        assert "`source_ref`" in content and "schema" in content and "enum" in content and "trace IDs" in content, label
+        assert "do not invent extra exits" in content, label
+        assert "`options_count_rationale`" in content, label
+
+
+def test_review_option_generation_rules_cannot_be_replaced_by_hand_edited_examples():
+    """Improving example data is not a substitute for fixing the SP generation path."""
+    flow = _command("flow")
+    ui = _command("ui")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+
+    for content, label in (
+        (flow, "flow command"),
+        (ui, "ui command"),
+        (methodology, "methodology"),
+        (skill, "review-data skill"),
+    ):
+        assert "example data must not replace generation rules" in content, label
+        assert "实验数据不能替代生成规则" in content, label
+        assert "flow-review-data.json" in content, label
+        assert "ui-review-data.json" in content, label
         assert "validate-review-data.mjs" in content, label
 
 
@@ -3888,8 +3951,8 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                         "id": "OPTION_A",
                         "label": "按问卷发布检查继续",
                         "when_to_choose": "问卷标题、目标人群和截止时间已经在需求中写清楚，产品经理认可这些作为发布门槛。",
-                        "consequence": "下一轮模型会把这些检查写入发布流程，并让开发团队按这个门槛拆页面和任务。",
-                        "project_impact": "问卷发布 UI、开发任务和验收测试可以继续推进，运营误发布风险较低。",
+                        "consequence": "模型把这些检查写入发布流程，开发团队按这个门槛拆页面和任务。",
+                        "project_impact": "相比先暂停补更多规则，问卷发布 UI、开发任务和验收测试可以继续推进，运营误发布风险也保持较低。",
                         "next_exit": "continue",
                         "recommended": True,
                     },
@@ -3905,7 +3968,7 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                         "id": "OPTION_C",
                         "label": "只改截止时间边界后继续",
                         "when_to_choose": "主发布路径已经明确，只剩一个边界条件需要补上，例如截止时间是否必填。",
-                        "consequence": "下一轮模型只调整当前节点的检查项，再交给设计团队和开发团队按主流程推进。",
+                        "consequence": "模型只调整当前节点的检查项，再交给设计团队和开发团队按主流程推进。",
                         "project_impact": "影响集中在当前流程或界面的校验文案和测试用例，整体排期变化较小。",
                         "next_exit": "revise-local-and-continue",
                     },
@@ -4224,6 +4287,23 @@ def test_review_data_validator_rejects_boilerplate_review_option_copy(tmp_path):
     assert "project_impact must name a concrete downstream impact" in output
 
 
+def test_review_data_validator_rejects_meta_model_boilerplate_options(tmp_path):
+    """Options should not pass just because they mention a future model pass in vague terms."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    meta_copy = _review_validator_sample("flow")
+    option = meta_copy["modules"][0]["diagrams"][0]["nodes"][0]["options"][2]
+    option["when_to_choose"] = "适合先按当前内容继续，后续如果不合适再调整。"
+    option["consequence"] = "下一轮模型会把当前内容整体继续处理，相关人员之后再继续确认。"
+    option["project_impact"] = "整体风险会更清楚，后续再确认具体影响。"
+
+    result = _run_review_validator(meta_copy, tmp_path / "meta-model-boilerplate-option.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "boilerplate option copy" in output
+
+
 def test_review_data_validator_rejects_lazy_repeated_review_options(tmp_path):
     """Repeated generic options across choices are a sign the model skipped real reasoning."""
     if shutil.which("node") is None:
@@ -4241,6 +4321,66 @@ def test_review_data_validator_rejects_lazy_repeated_review_options(tmp_path):
     assert result.returncode != 0
     assert "duplicate option copy" in output
     assert "boilerplate option copy" in output
+
+
+def test_review_data_validator_rejects_unclear_needs_decision_options(tmp_path):
+    """Needs-decision exits must say what is undecided, who decides, and what gets paused."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    unclear_needs_decision = _review_validator_sample("flow")
+    option = unclear_needs_decision["modules"][0]["diagrams"][0]["nodes"][0]["options"][1]
+    option["when_to_choose"] = "适合当前材料还需要再看一下，继续推进可能会有一些不确定。"
+    option["consequence"] = "下一轮模型先等待更多信息，再决定是否继续处理当前内容。"
+    option["project_impact"] = "会影响问卷发布流程、开发任务和验收测试，但具体影响要等后续再确认。"
+
+    result = _run_review_validator(unclear_needs_decision, tmp_path / "unclear-needs-decision.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "needs-decision option" in output
+    assert "who decides" in output
+    assert "what is missing" in output
+
+
+def test_review_data_validator_rejects_unclear_split_flow_options(tmp_path):
+    """Split-flow exits must name the actual subflows or review artifacts produced next."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    unclear_split = _review_validator_sample("flow")
+    node = unclear_split["modules"][0]["diagrams"][0]["nodes"][0]
+    split_option = {
+        "id": "OPTION_D",
+        "label": "拆分后再处理",
+        "when_to_choose": "适合当前流程比较复杂，需要后续再拆开看。",
+        "consequence": "下一轮模型会把当前内容拆分处理，相关人员之后再继续确认。",
+        "project_impact": "会影响问卷发布流程、开发任务和验收测试，但整体风险会更清楚。",
+        "next_exit": "split-flow",
+    }
+    node["options"].append(split_option)
+
+    result = _run_review_validator(unclear_split, tmp_path / "unclear-split-flow.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "split-flow option" in output
+    assert "which subflows" in output
+
+
+def test_review_data_validator_requires_recommended_option_rationale(tmp_path):
+    """The recommended exit should explain why it is preferable to stricter or heavier routes."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    weak_recommendation = _review_validator_sample("flow")
+    option = weak_recommendation["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
+    option["when_to_choose"] = "问卷标题、目标人群和截止时间已经在需求中写清楚，产品经理认可这些作为发布门槛。"
+    option["consequence"] = "模型把这些检查写入发布流程，开发团队按这个门槛拆页面和任务。"
+    option["project_impact"] = "问卷发布 UI、开发任务和验收测试可以继续推进，运营误发布风险较低。"
+
+    result = _run_review_validator(weak_recommendation, tmp_path / "weak-recommended-option.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "recommended option must explain why it is preferred" in output
 
 
 def test_review_data_validator_rejects_unexplained_technical_terms_in_options(tmp_path):
@@ -4268,7 +4408,7 @@ def test_review_data_validator_allows_specific_impact_copy_without_false_positiv
 
     specific_chinese = _review_validator_sample("flow")
     option = specific_chinese["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
-    option["project_impact"] = "对问卷发布排期影响较大，需要追加发布前验收测试和运营兜底说明。"
+    option["project_impact"] = "相比直接暂停发布，对问卷发布排期影响较小，只需要追加发布前验收测试和运营兜底说明。"
     result = _run_review_validator(specific_chinese, tmp_path / "specific-chinese-impact.json")
     assert result.returncode == 0, _review_validator_output(result)
 

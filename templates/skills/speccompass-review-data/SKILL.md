@@ -32,6 +32,15 @@ or UI confirmation runs.
 - UI schema: `.specify/review/schemas/ui-review-data.schema.json`
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
 
+example data must not replace generation rules / 实验数据不能替代生成规则.
+`docs/examples/review/*`, experiment JSON files, and preview-only HTML pages are
+few-shot references or visual smoke-test fixtures only. They are not a valid
+substitute for repairing `/sp.flow`, `/sp.ui`, this skill, or the validator. A
+normal run must generate or repair the target feature's
+`flow-review-data.json` or `ui-review-data.json` from that feature's current
+PRD/spec/flow/UI evidence, then run `validate-review-data.mjs`. Do not claim the
+SP mechanism is fixed just because an example file was hand-edited.
+
 When reporting the review result to a user, present the Web review entry above
 as the primary page. The renderer uses short URL parameters / 短参数 to resolve
 the data file with browser URL paths, so it works the same on macOS, Windows,
@@ -161,6 +170,28 @@ against the current PRD/spec/flow/UI sources before changing data.
   extra UI work, or later rework. Options inside one node must have 真实差异:
   different scope, route, owner, risk, release timing, or manual cost. Do not
   create four labels that only rephrase 保留 / 补充 / 调整 / 后续完善.
+- Clarify-style option checks are mandatory for the common non-recommended
+  exits: needs-decision 选项必须说清缺什么、谁拍板、哪些下游工作暂停; split-flow 选项必须说清拆成哪些子流程, short review artifacts, or concrete flow files;
+  推荐项必须说明为什么比更慢、更重或更保守的替代方案更适合. If an option cannot
+  answer these checks with source-backed facts, rewrite the option or reduce the
+  option count with `options_count_rationale` instead of padding.
+- Preserve facts before making copy smoother / 先保真再说人话. Do not rewrite,
+  translate, shorten, or naturalize `node.id`, `change_type`, `next_exit`
+  route markers, file paths, `source_ref` anchors, schema field names, enum
+  values, trace IDs, component IDs, or source labels. Keep those exact tokens
+  stable and explain their business meaning in nearby human-facing copy when
+  needed.
+- Do not invent facts just to make 3-4 options look complete / 不要为了凑选项编
+  事实. Every option must be traceable to PRD/spec/flow/UI sources,
+  clarification records, or a clearly marked model inference. If the sources do
+  not support another real executable exit, use the allowed lower option count
+  and write `options_count_rationale`; do not create fake risks, fake owners,
+  fake screens, fake states, fake permissions, or fake downstream work.
+- Use real subjects and real actions / 真主语真动作. Each option must name who
+  continues and what they will actually change, check, split, delay, release, or
+  write back. Prefer concrete action plus consequence over polished summaries:
+  a reviewer should see the decision, the next executor, and the project cost
+  without decoding technical or template language.
 - Pick one decision template before writing options:
   - 范围决策: decide how much flow/UI work enters this batch, which scenarios
     move later, and how scope affects schedule, manual cost, and rework risk.

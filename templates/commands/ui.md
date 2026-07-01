@@ -135,7 +135,17 @@ Global rules:
   范围决策 decides which screens, regions, states, or actions enter this batch;
   门禁决策 decides whether the screen can release, block, request missing
   material, or route to human review; 降级决策 decides what simpler UI or manual
-  fallback appears when the ideal interaction is not ready.
+  fallback appears when the ideal interaction is not ready. Apply clarify-style
+  checks to the common routes: needs-decision 选项必须说清缺什么、谁拍板、哪些下游工作暂停;
+  split-flow 选项必须说清拆成哪些子流程 or UI review slices; 推荐项必须说明为什么比更慢、更重或更保守的替代方案更适合.
+  The canonical option-writing rule lives in the `speccompass-review-data`
+  skill. Follow its fact-preservation and anti-fabrication rules: never
+  naturalize `node.id`, `change_type`, `next_exit`, paths, `source_ref`, schema
+  fields, enum values, component IDs, action refs, field refs, state refs, or
+  trace IDs; do not invent extra exits, owners, risks, screens, permissions,
+  states, interactions, or downstream work just to reach 3-4 options; if
+  sources only support a lower valid count, write `options_count_rationale`
+  instead.
   Keep
   the UI in `DRAFT_ONLY`, `NEEDS_DECISION`, or `BLOCKED` until the user confirms
   or chooses a repair option.
@@ -289,6 +299,18 @@ renderer, write UI data to
 `.specify/review/scripts/validate-review-data.mjs` against
 `.specify/review/schemas/ui-review-data.schema.json`, and keep the result as
 draft when validation fails. 校验失败不能收尾，不能提升 readiness.
+
+example data must not replace generation rules / 实验数据不能替代生成规则.
+Files under `docs/examples/review/*` or one-off experiment pages are only
+few-shot references and visual smoke-test fixtures. They cannot be used as proof
+that `/sp.ui` is fixed. A valid run must generate or repair the target
+feature's `ui-review-data.json` from the current PRD/spec/flow/UI sources; the
+corresponding `/sp.flow` proof is the target feature's `flow-review-data.json`,
+not a preview fixture. Apply the `speccompass-review-data` option-writing rules, run
+`.specify/review/scripts/validate-review-data.mjs`, and continue fixing
+model-fixable issues until validation passes or a real human-owned blocker is
+recorded. Do not close the command by hand-editing example data, an experiment
+JSON file, or the renderer preview.
 
 Legacy compatibility is read-only: old `owner_approval.status: APPROVED` may be
 read as `CONFIRMED`, and old `REJECTED` may be migrated or interpreted as
@@ -475,6 +497,11 @@ instead.
   option copy, 模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject
   exits, missing actionable `next_exit`, missing continuation owner, missing
   why-this-must-be-decided-now copy, and overly similar `project_impact` copy.
+  example data must not replace generation rules / 实验数据不能替代生成规则:
+  do not treat changes to `docs/examples/review/*` or experiment pages as a
+  successful `/sp.ui` output. The generated `ui-review-data.json` for the
+  current feature is the artifact that must pass the validator; the Flow-side
+  equivalent is the current feature's `flow-review-data.json`, not example data.
   Use Tiffany Blue
   `#0ABAB5` and `huashu-design` only as renderer/design authority metadata in
   the review data. The visual design must come from `huashu-design`; if that
