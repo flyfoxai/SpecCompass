@@ -40,6 +40,23 @@ function runtimeIsVagueActionExit(value) {
   return runtimeVagueActionExits.has(String(value || "").trim().toLowerCase());
 }
 
+function runtimeCompactText(value) {
+  return String(value || "").replace(/\s+/g, "").trim();
+}
+
+function runtimeIsLegacyApplicabilityBenefit(value) {
+  const text = String(value || "").trim();
+  const compact = runtimeCompactText(text);
+  return (
+    compact.startsWith("适合") ||
+    compact.startsWith("适用于") ||
+    compact.startsWith("适用在") ||
+    compact.startsWith("用于判断什么情况") ||
+    /^when\s+to\s+choose\b/i.test(text) ||
+    /^choose\s+this\s+when\b/i.test(text)
+  );
+}
+
 function runtimeValidateReviewData(data) {
   const result = { warnings: [], errors: [] };
   const key = itemCollectionKey(data);
@@ -84,6 +101,12 @@ function runtimeValidateReviewData(data) {
         localNodeIds.add(node.id);
         nodeIds.add(node.id);
         if (requiresNodeDecision(node)) {
+          if (!runtimeHasSubstantialText(node.decision_background)) {
+            result.warnings.push(`${node.label || node.id} 缺少 decision_background，右侧栏需要用“背景信息”说明这个判断为什么存在。`);
+          }
+          if (!runtimeHasSubstantialText(node.decision_summary)) {
+            result.warnings.push(`${node.label || node.id} 缺少 decision_summary，右侧栏需要用“决策摘要”说明现在要拍什么板。`);
+          }
           const options = node.options || [];
           if (options.length < 2 || options.length > 4) {
             result.warnings.push(`${node.label || node.id} 的选项数量不是 2-4 个。`);
@@ -96,13 +119,26 @@ function runtimeValidateReviewData(data) {
           }
           const optionIds = new Set(options.map((option) => option.id));
           for (const option of options) {
-            for (const field of ["when_to_choose", "consequence", "project_impact", "next_exit"]) {
+            for (const field of ["benefit", "cost", "consequence", "next_exit"]) {
               if (!String(option?.[field] || "").trim()) {
                 result.warnings.push(`${node.label || node.id} 的 ${option?.id || "选项"} 缺少 ${field}。`);
               }
             }
+            for (const legacyField of ["when_to_choose", "project_impact"]) {
+              if (Object.prototype.hasOwnProperty.call(option || {}, legacyField)) {
+                result.warnings.push(
+                  `${node.label || node.id} 的 ${option?.id || "选项"} 包含 legacy option field ${legacyField}。这是旧字段，只兼容读取；新数据请改用 benefit/cost/recommendation_reason。`
+                );
+              }
+            }
+            if (option?.id === node.recommended_option && !runtimeHasSubstantialText(option?.recommendation_reason)) {
+              result.warnings.push(`${node.label || node.id} 的推荐选项缺少 recommendation_reason，无法展示“推荐理由”。`);
+            }
             if (runtimeIsVagueActionExit(option?.label) || runtimeIsVagueActionExit(option?.next_exit)) {
               result.warnings.push(`${node.label || node.id} 的 ${option?.id || "选项"} 需要写成可执行出口，不能只写通过、暂缓、退回或阻塞。`);
+            }
+            if (runtimeIsLegacyApplicabilityBenefit(option?.benefit)) {
+              result.warnings.push(`${node.label || node.id} 的 ${option?.id || "选项"} 把 benefit 写成了“适合什么情况”；请改成这个选择带来的收益。`);
             }
           }
           if (!node.recommended_option || !optionIds.has(node.recommended_option)) {

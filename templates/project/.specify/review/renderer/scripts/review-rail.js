@@ -154,6 +154,10 @@ function nodeCard(node) {
 
   appendText(card, "h4", node.label || node.id || "未命名确认点");
   appendText(card, "p", node.action_prompt || node.plain_summary || "请判断这个确认点是否符合业务要求。");
+  const decisionIntro = create("div", "decision-intro");
+  appendOptionDetail(decisionIntro, "背景信息", node.decision_background || node.plain_summary);
+  appendOptionDetail(decisionIntro, "决策摘要", node.decision_summary || node.action_prompt);
+  card.appendChild(decisionIntro);
 
   const optionRow = create("div", "option-row");
   card.appendChild(optionRow);
@@ -163,9 +167,11 @@ function nodeCard(node) {
     button.className = optionClassName(node, option, saved);
     appendText(button, "strong", `${option.label || option.id}${option.id === node.recommended_option ? "（推荐）" : ""}`);
     const detailList = create("span", "option-detail-list");
-    appendOptionDetail(detailList, "适合什么情况", option.when_to_choose);
-    appendOptionDetail(detailList, "选了以后怎么做", option.consequence);
-    appendOptionDetail(detailList, "对项目有什么影响", option.project_impact);
+    appendOptionDetail(detailList, "收益", option.benefit || option.project_impact || option.when_to_choose);
+    appendOptionDetail(detailList, "代价", option.cost || option.project_impact);
+    if (option.id === node.recommended_option) {
+      appendOptionDetail(detailList, "推荐理由", option.recommendation_reason);
+    }
     button.appendChild(detailList);
     button.addEventListener("click", () => chooseOption(node, option));
     optionRow.appendChild(button);
@@ -175,6 +181,14 @@ function nodeCard(node) {
   appendText(details, "summary", "为什么这样建议");
   appendText(details, "p", `依据位置：${node.source_ref || "未提供"}`);
   appendText(details, "p", node.plain_summary || "");
+  if (options.length) {
+    const executionList = create("div", "option-detail-list");
+    for (const option of options) {
+      appendOptionDetail(executionList, `${option.id} 执行字段：选择后动作`, option.consequence);
+      appendOptionDetail(executionList, `${option.id} 执行字段：后续出口`, option.next_exit);
+    }
+    details.appendChild(executionList);
+  }
   card.appendChild(details);
 
   const feedback = create("div", `feedback ${saved.status === "DRAFT" ? "" : "hidden"}`);

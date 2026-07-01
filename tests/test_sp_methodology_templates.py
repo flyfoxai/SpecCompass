@@ -275,31 +275,34 @@ def test_review_data_validator_rejects_lazy_must_confirm_options(tmp_path):
         "owner": "产品经理",
         "node_kind": "human_judgment",
         "source_ref": "specs/example/spec.md#问卷发布",
+        "decision_background": "问卷发布会把内容真正交给填写人，发布前门槛不清楚会直接影响运营和数据结果。",
+        "decision_summary": "现在要决定发布前必须检查哪些信息，避免开发团队按猜测做校验。",
         "recommended_option": "OPTION_A",
         "options": [
             {
                 "id": "OPTION_A",
                 "label": "保留问卷发布路径",
-                "when_to_choose": "当前问卷发布的主流程已经能覆盖运营发布前的大部分常见情况。",
+                "benefit": "当前问卷发布的主流程已经能覆盖运营发布前的大部分常见情况。",
+                "cost": "如果规则漏掉关键门槛，上线后可能需要补校验和补测试。",
                 "consequence": "后续继续整理问卷发布流程，并把相关页面和测试用例接着补齐。",
-                "project_impact": "影响问卷发布页面、开发计划和测试安排，整体风险保持在当前范围。",
+                "recommendation_reason": "当前依据和风险边界看起来正确，可按推荐保留。",
                 "next_exit": "continue-survey-publish",
                 "recommended": True,
             },
             {
                 "id": "OPTION_B",
                 "label": "补充问卷发布规则",
-                "when_to_choose": "如果产品经理认为发布前还有一些业务条件没有说清楚，就选择这个方案。",
+                "benefit": "产品经理先把缺失条件补清，后续流程、页面和验收不会按错误门槛继续推进。",
+                "cost": "会延后页面和测试拆分，但可以避免团队按错误门槛实现。",
                 "consequence": "后续先暂停问卷发布流程，等相关规则补充后再继续整理。",
-                "project_impact": "会影响问卷发布页面、开发计划和测试安排，整体风险保持在可控范围。",
                 "next_exit": "needs-decision:product-owner",
             },
             {
                 "id": "OPTION_C",
                 "label": "调整问卷发布范围",
-                "when_to_choose": "如果当前流程大体可用，但希望调整部分发布相关内容，就选择这个方案。",
+                "benefit": "主发布流程可以继续，只把需要修正的边界单独改掉，减少整体返工。",
+                "cost": "需要重新检查受影响的页面文案和验收用例。",
                 "consequence": "后续对问卷发布流程做局部调整，并继续推进页面和测试用例。",
-                "project_impact": "会影响问卷发布页面、开发计划和测试安排，但不改变整体范围。",
                 "next_exit": "revise-local-and-continue",
             },
         ],
@@ -320,7 +323,7 @@ def test_review_data_validator_rejects_lazy_must_confirm_options(tmp_path):
     stderr = result.stderr
     assert "option OPTION_A must say who continues the work" in stderr
     assert "option labels must not start with generic verbs" in stderr
-    assert "must_confirm node must explain why this decision matters now" in stderr
+    assert "recommended option must explain why it is preferred" in stderr
 
 
 def test_project_intake_direction_judgment_is_methodology_contract():
@@ -3311,7 +3314,7 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     assert "options_count_rationale" in skill
     assert "real business background" in skill
     assert "what happens after selection" in skill
-    assert "downstream project impact" in skill
+    assert "downstream impact" in skill
     assert "why this option is recommended" in skill
     assert "可执行出口" in skill or "actionable exit" in skill
     assert "5-7" in skill and "8+" in skill and "10+" in skill
@@ -3343,25 +3346,48 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     assert "Do not add or modify JavaScript functions" in renderer_readme
     assert "Do not change the interaction state machine" in renderer_readme
     assert "Every option requires" in skill
+    assert "`benefit` (required)" in skill
+    assert "`cost` (required)" in skill
     assert "`consequence` (required)" in skill
-    assert "`project_impact` (required)" in skill
+    assert "`recommendation_reason`" in skill
     assert "`next_exit` (required)" in skill
 
 
-def test_review_renderer_displays_three_part_plain_language_option_copy():
-    """The right rail should show each option's background, action, and impact."""
+def test_review_renderer_displays_decision_background_and_tradeoff_option_copy():
+    """The right rail should show decision context and option tradeoffs first."""
     renderer = _review_renderer_bundle()
 
     for token in (
         "option-detail-list",
         "option-detail-label",
         "option-detail-value",
-        "适合什么情况",
-        "选了以后怎么做",
-        "对项目有什么影响",
-        "option.when_to_choose",
+        "背景信息",
+        "决策摘要",
+        "收益",
+        "代价",
+        "推荐理由",
+        "node.decision_background",
+        "node.decision_summary",
+        "option.benefit",
+        "option.cost",
+        "option.recommendation_reason",
         "option.consequence",
-        "option.project_impact",
+        "option.next_exit",
+    ):
+        assert token in renderer, token
+
+
+def test_review_renderer_warns_legacy_option_fields_are_read_only():
+    """The browser-side validator should warn when old option fields appear in hand-edited data."""
+    renderer = _review_renderer_bundle()
+
+    for token in (
+        "when_to_choose",
+        "project_impact",
+        "legacy option field",
+        "旧字段",
+        "只兼容读取",
+        "benefit/cost/recommendation_reason",
     ):
         assert token in renderer, token
 
@@ -3402,9 +3428,12 @@ def test_review_option_plain_language_rules_are_documented_in_primary_guidance()
         (methodology, "methodology"),
         (skill, "review-data skill"),
     ):
-        assert "适合什么情况" in content, label
-        assert "选了以后怎么做" in content, label
-        assert "对项目有什么影响" in content, label
+        assert "背景信息" in content, label
+        assert "决策摘要" in content, label
+        assert "收益" in content, label
+        assert "代价" in content, label
+        assert "推荐理由" in content, label
+        assert "consequence" in content and "next_exit" in content, label
         assert "谁继续处理" in content, label
         assert "不选推荐" in content, label
         assert "真实差异" in content, label
@@ -3417,6 +3446,7 @@ def test_review_option_plain_language_rules_are_documented_in_primary_guidance()
         assert "needs-decision 选项必须说清缺什么、谁拍板、哪些下游工作暂停" in content, label
         assert "split-flow 选项必须说清拆成哪些子流程" in content, label
         assert "推荐项必须说明为什么比更慢、更重或更保守的替代方案更适合" in content, label
+        assert "执行字段" in content or "execution field" in content, label
 
 
 def test_review_option_plain_language_rules_preserve_facts_and_reject_fabrication():
@@ -3693,6 +3723,11 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
             "modules",
             "review_level",
             "recommended_option",
+            "decision_background",
+            "decision_summary",
+            "benefit",
+            "cost",
+            "recommendation_reason",
             "consequence",
             "next_exit",
             "human_judgment",
@@ -3701,6 +3736,8 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
         ):
             assert token in properties, (label, token)
         option_required = schema["$defs"]["option"]["required"]
+        assert "benefit" in option_required, label
+        assert "cost" in option_required, label
         assert "consequence" in option_required, label
         assert "options_count_rationale" in schema["$defs"]["node"]["properties"], label
 
@@ -3711,13 +3748,19 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
         "allowedUiItemTypes",
         "duplicate node id",
         "recommended_option",
+        "decision_background",
+        "decision_summary",
+        "benefit",
+        "cost",
+        "recommendation_reason",
         "consequence",
         "must_confirm nodes require 3-4 options",
         "ordinary human-judgment nodes default to 3 options",
         "options_count_rationale",
         "label is too generic; name the real business action",
         "boilerplate option copy",
-        "project_impact must name a concrete downstream impact",
+        "option benefit must name a concrete upside",
+        "option cost must name a concrete tradeoff",
         "actionable exit",
         "10+ business nodes",
         "complex_flow_exception",
@@ -3776,7 +3819,17 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "runtimeErrors" in renderer
     assert "rejectReviewData" in renderer
     assert "重复 node id 会导致本地选择串到其他确认点" in renderer
-    for option_field in ("when_to_choose", "consequence", "project_impact", "next_exit"):
+    for option_field in (
+        "decision_background",
+        "decision_summary",
+        "benefit",
+        "cost",
+        "recommendation_reason",
+        "when_to_choose",
+        "consequence",
+        "project_impact",
+        "next_exit",
+    ):
         assert option_field in renderer
     assert "review data 结构存在阻断问题" in renderer
     assert "authorization-steps" in renderer
@@ -3919,8 +3972,8 @@ def test_ui_review_data_has_independent_screen_contract():
         assert "screen layout" in content or "屏幕布局" in content, label
         assert "dynamic marker" in content or "动态标注" in content or "纯文本标注" in content, label
         assert "decision options require deeper reasoning" in content or "决策选项需要深度推理" in content, label
-        assert "when_to_choose" in content, label
-        assert "background" in content, label
+        assert "decision_background" in content, label
+        assert "decision_summary" in content, label
 
 
 def _review_validator_sample(review_type: str, *, node_count: int = 3, include_exception: bool = True) -> dict:
@@ -3941,6 +3994,8 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                 "id": node_id,
                 "label": f"审核业务信息 {index}",
                 "plain_summary": f"请判断第 {index} 个业务环节是否能作为问卷发布门槛；现在不拍板，后续页面、开发和验收都会按猜测推进。",
+                "decision_background": f"第 {index} 个发布门槛会决定问卷能不能交给填写人；如果这里含糊，运营可能在目标人群或截止时间没准备好时就发布。",
+                "decision_summary": f"现在要拍板第 {index} 个发布门槛按什么规则进入后续流程，避免 UI、任务和验收按模型猜测继续。",
                 "review_layer": "business",
                 "review_level": "must_confirm" if index == 1 else "verified",
                 "owner": "产品经理" if index == 1 else "无需产品确认",
@@ -3950,26 +4005,27 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                     {
                         "id": "OPTION_A",
                         "label": "按问卷发布检查继续",
-                        "when_to_choose": "问卷标题、目标人群和截止时间已经在需求中写清楚，产品经理认可这些作为发布门槛。",
+                        "benefit": "问卷发布页、开发任务和验收测试可以继续推进，运营也能按标题、目标人群和截止时间三项检查减少误发布。",
+                        "cost": "一期要实现发布前校验和缺失提示，开发范围会比直接放行略多。",
                         "consequence": "模型把这些检查写入发布流程，开发团队按这个门槛拆页面和任务。",
-                        "project_impact": "相比先暂停补更多规则，问卷发布 UI、开发任务和验收测试可以继续推进，运营误发布风险也保持较低。",
+                        "recommendation_reason": "这条路能覆盖当前 PRD 已写清的主要风险，比先暂停更快，也比只做最小校验更不容易让运营误发问卷。",
                         "next_exit": "continue",
                         "recommended": True,
                     },
                     {
                         "id": "OPTION_B",
                         "label": "先补齐发布门槛再设计",
-                        "when_to_choose": "发布前到底要检查哪些问卷信息还没有定，继续设计会让开发按猜测实现。",
+                        "benefit": "产品经理能先补清问卷类型、必填信息和例外情况，后续规则更稳，不容易做完再推翻。",
+                        "cost": "发布页面和相关开发任务会暂停，问卷发布能力的排期会后移。",
                         "consequence": "该节点下游的发布页面和开发任务先暂停，等待产品经理补充门槛。",
-                        "project_impact": "会延后问卷发布相关 UI 和实现，但避免后续返工或错误放行。",
                         "next_exit": "needs-decision",
                     },
                     {
                         "id": "OPTION_C",
                         "label": "只改截止时间边界后继续",
-                        "when_to_choose": "主发布路径已经明确，只剩一个边界条件需要补上，例如截止时间是否必填。",
+                        "benefit": "主流程不用停，只把截止时间是否必填这类边界补清，UI 和任务仍能按主路径推进。",
+                        "cost": "如果后面发现目标人群或发布对象也需要调整，还要再补一轮规则和测试。",
                         "consequence": "模型只调整当前节点的检查项，再交给设计团队和开发团队按主流程推进。",
-                        "project_impact": "影响集中在当前流程或界面的校验文案和测试用例，整体排期变化较小。",
                         "next_exit": "revise-local-and-continue",
                     },
                 ],
@@ -4192,7 +4248,7 @@ def _review_validator_output(result: subprocess.CompletedProcess[str]) -> str:
     return (result.stderr or "") + (result.stdout or "")
 
 
-def test_review_data_validator_rejects_invalid_enums_and_missing_consequence(tmp_path):
+def test_review_data_validator_rejects_invalid_enums_and_missing_decision_tradeoff_fields(tmp_path):
     """Validator should catch schema-level review data drift even without a JSON Schema runtime."""
     if shutil.which("node") is None:
         pytest.skip("node is required for review data validator tests")
@@ -4219,11 +4275,29 @@ def test_review_data_validator_rejects_invalid_enums_and_missing_consequence(tmp
     assert result.returncode != 0
     assert "consequence" in _review_validator_output(result)
 
-    empty_impact = _review_validator_sample("flow")
-    empty_impact["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]["project_impact"] = "   "
-    result = _run_review_validator(empty_impact, tmp_path / "empty-project-impact.json")
+    missing_background = _review_validator_sample("flow")
+    missing_background["modules"][0]["diagrams"][0]["nodes"][0].pop("decision_background")
+    result = _run_review_validator(missing_background, tmp_path / "missing-decision-background.json")
     assert result.returncode != 0
-    assert "project_impact" in _review_validator_output(result)
+    assert "decision_background" in _review_validator_output(result)
+
+    missing_summary = _review_validator_sample("flow")
+    missing_summary["modules"][0]["diagrams"][0]["nodes"][0].pop("decision_summary")
+    result = _run_review_validator(missing_summary, tmp_path / "missing-decision-summary.json")
+    assert result.returncode != 0
+    assert "decision_summary" in _review_validator_output(result)
+
+    empty_benefit = _review_validator_sample("flow")
+    empty_benefit["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]["benefit"] = "   "
+    result = _run_review_validator(empty_benefit, tmp_path / "empty-benefit.json")
+    assert result.returncode != 0
+    assert "benefit" in _review_validator_output(result)
+
+    empty_cost = _review_validator_sample("flow")
+    empty_cost["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]["cost"] = "   "
+    result = _run_review_validator(empty_cost, tmp_path / "empty-cost.json")
+    assert result.returncode != 0
+    assert "cost" in _review_validator_output(result)
 
     loose_option_b_exit = _review_validator_sample("flow")
     loose_option_b_exit["modules"][0]["diagrams"][0]["nodes"][0]["options"][1]["next_exit"] = "continue-after-needs-decision"
@@ -4275,16 +4349,50 @@ def test_review_data_validator_rejects_boilerplate_review_option_copy(tmp_path):
     boilerplate = _review_validator_sample("flow")
     option = boilerplate["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
     option["label"] = "推荐方案"
-    option["when_to_choose"] = "当前依据和风险边界看起来正确，可按推荐保留。"
+    option["benefit"] = "当前依据和风险边界看起来正确，可按推荐保留。"
+    option["cost"] = "当前节点需要补充业务决策，责任人或风险口径。"
     option["consequence"] = "当前节点需要补充业务决策，责任人或风险口径。"
-    option["project_impact"] = "后续完善相关内容，影响较大。"
+    option["recommendation_reason"] = "当前依据和风险边界看起来正确，可按推荐保留。"
 
     result = _run_review_validator(boilerplate, tmp_path / "boilerplate-option-copy.json")
     output = _review_validator_output(result)
     assert result.returncode != 0
     assert "option OPTION_A label is too generic" in output
     assert "boilerplate option copy" in output
-    assert "project_impact must name a concrete downstream impact" in output
+    assert "option benefit must name a concrete upside" in output
+    assert "option cost must name a concrete tradeoff" in output
+
+
+def test_review_data_validator_rejects_legacy_when_to_choose_benefit_copy(tmp_path):
+    """The benefit field should state the upside, not reuse old 'when to choose' wording."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    legacy_benefit = _review_validator_sample("flow")
+    option = legacy_benefit["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
+    option["benefit"] = "适合运营只想尽快发布问卷，并且愿意在线下自己检查目标人群和截止时间。"
+
+    result = _run_review_validator(legacy_benefit, tmp_path / "legacy-when-to-choose-benefit.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "option benefit must state the upside" in output
+
+
+def test_review_data_validator_rejects_legacy_option_fields_in_new_data(tmp_path):
+    """New review data should not keep legacy option-copy fields as generation output."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    legacy_fields = _review_validator_sample("flow")
+    option = legacy_fields["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
+    option["when_to_choose"] = "适合运营只想尽快发布问卷时使用。"
+    option["project_impact"] = "项目影响会在后续再补充。"
+
+    result = _run_review_validator(legacy_fields, tmp_path / "legacy-option-fields.json")
+    output = _review_validator_output(result)
+    assert result.returncode != 0
+    assert "must not include legacy option field when_to_choose" in output
+    assert "must not include legacy option field project_impact" in output
 
 
 def test_review_data_validator_rejects_meta_model_boilerplate_options(tmp_path):
@@ -4294,9 +4402,9 @@ def test_review_data_validator_rejects_meta_model_boilerplate_options(tmp_path):
 
     meta_copy = _review_validator_sample("flow")
     option = meta_copy["modules"][0]["diagrams"][0]["nodes"][0]["options"][2]
-    option["when_to_choose"] = "适合先按当前内容继续，后续如果不合适再调整。"
+    option["benefit"] = "整体风险会更清楚，后续再确认具体影响。"
+    option["cost"] = "后续如果不合适再调整。"
     option["consequence"] = "下一轮模型会把当前内容整体继续处理，相关人员之后再继续确认。"
-    option["project_impact"] = "整体风险会更清楚，后续再确认具体影响。"
 
     result = _run_review_validator(meta_copy, tmp_path / "meta-model-boilerplate-option.json")
     output = _review_validator_output(result)
@@ -4312,9 +4420,9 @@ def test_review_data_validator_rejects_lazy_repeated_review_options(tmp_path):
     repeated = _review_validator_sample("flow")
     node = repeated["modules"][0]["diagrams"][0]["nodes"][0]
     for option in node["options"]:
-        option["when_to_choose"] = "业务方向同意，但希望后续补充验收证据或负责人记录。"
+        option["benefit"] = "不改变当前一期范围，只增加后续证据要求。"
+        option["cost"] = "需要后续补充验收证据或负责人记录。"
         option["consequence"] = "该节点可按当前方向进入复核记录。"
-        option["project_impact"] = "不改变当前一期范围，只增加后续证据要求。"
 
     result = _run_review_validator(repeated, tmp_path / "repeated-option-copy.json")
     output = _review_validator_output(result)
@@ -4330,9 +4438,9 @@ def test_review_data_validator_rejects_unclear_needs_decision_options(tmp_path):
 
     unclear_needs_decision = _review_validator_sample("flow")
     option = unclear_needs_decision["modules"][0]["diagrams"][0]["nodes"][0]["options"][1]
-    option["when_to_choose"] = "适合当前材料还需要再看一下，继续推进可能会有一些不确定。"
+    option["benefit"] = "可以先停下来再看一下，避免继续推进可能会有一些不确定。"
+    option["cost"] = "会影响问卷发布流程、开发任务和验收测试，但具体影响要等后续再确认。"
     option["consequence"] = "下一轮模型先等待更多信息，再决定是否继续处理当前内容。"
-    option["project_impact"] = "会影响问卷发布流程、开发任务和验收测试，但具体影响要等后续再确认。"
 
     result = _run_review_validator(unclear_needs_decision, tmp_path / "unclear-needs-decision.json")
     output = _review_validator_output(result)
@@ -4352,9 +4460,9 @@ def test_review_data_validator_rejects_unclear_split_flow_options(tmp_path):
     split_option = {
         "id": "OPTION_D",
         "label": "拆分后再处理",
-        "when_to_choose": "适合当前流程比较复杂，需要后续再拆开看。",
+        "benefit": "复杂流程拆开后整体风险会更清楚。",
+        "cost": "会影响问卷发布流程、开发任务和验收测试，但整体风险会更清楚。",
         "consequence": "下一轮模型会把当前内容拆分处理，相关人员之后再继续确认。",
-        "project_impact": "会影响问卷发布流程、开发任务和验收测试，但整体风险会更清楚。",
         "next_exit": "split-flow",
     }
     node["options"].append(split_option)
@@ -4373,9 +4481,7 @@ def test_review_data_validator_requires_recommended_option_rationale(tmp_path):
 
     weak_recommendation = _review_validator_sample("flow")
     option = weak_recommendation["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
-    option["when_to_choose"] = "问卷标题、目标人群和截止时间已经在需求中写清楚，产品经理认可这些作为发布门槛。"
-    option["consequence"] = "模型把这些检查写入发布流程，开发团队按这个门槛拆页面和任务。"
-    option["project_impact"] = "问卷发布 UI、开发任务和验收测试可以继续推进，运营误发布风险较低。"
+    option.pop("recommendation_reason")
 
     result = _run_review_validator(weak_recommendation, tmp_path / "weak-recommended-option.json")
     output = _review_validator_output(result)
@@ -4391,9 +4497,10 @@ def test_review_data_validator_rejects_unexplained_technical_terms_in_options(tm
     technical = _review_validator_sample("flow")
     option = technical["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
     option["label"] = "保留 Gateway Profile 风控路径"
-    option["when_to_choose"] = "Gateway Profile 和 Risk 设置都保持当前判断，继续进入发布流程。"
+    option["benefit"] = "Gateway Profile 和 Risk 设置都保持当前判断，继续进入发布流程。"
+    option["cost"] = "业务审核人无法知道这些英文词具体代表什么。"
     option["consequence"] = "后续会按照 Gateway Profile 检查继续拆分开发任务。"
-    option["project_impact"] = "会影响问卷发布流程、测试和验收，但业务审核人无法知道这些英文词具体代表什么。"
+    option["recommendation_reason"] = "Gateway Profile 和 Risk 设置看起来合理。"
 
     result = _run_review_validator(technical, tmp_path / "unexplained-technical-option.json")
     output = _review_validator_output(result)
@@ -4401,20 +4508,22 @@ def test_review_data_validator_rejects_unexplained_technical_terms_in_options(tm
     assert "unexplained technical term" in output
 
 
-def test_review_data_validator_allows_specific_impact_copy_without_false_positive(tmp_path):
-    """Specific impact wording should pass even when it contains common impact words."""
+def test_review_data_validator_allows_specific_tradeoff_copy_without_false_positive(tmp_path):
+    """Specific tradeoff wording should pass even when it contains common impact words."""
     if shutil.which("node") is None:
         pytest.skip("node is required for review data validator tests")
 
     specific_chinese = _review_validator_sample("flow")
     option = specific_chinese["modules"][0]["diagrams"][0]["nodes"][0]["options"][0]
-    option["project_impact"] = "相比直接暂停发布，对问卷发布排期影响较小，只需要追加发布前验收测试和运营兜底说明。"
+    option["benefit"] = "相比直接暂停发布，问卷发布排期影响较小，页面和开发任务可以继续推进。"
+    option["cost"] = "需要追加发布前验收测试和运营兜底说明，避免检查项漏掉后没人处理。"
     result = _run_review_validator(specific_chinese, tmp_path / "specific-chinese-impact.json")
     assert result.returncode == 0, _review_validator_output(result)
 
     english_impact = _review_validator_sample("ui")
     option = english_impact["modules"][0]["screens"][0]["nodes"][0]["options"][0]
-    option["project_impact"] = "Screen Scope, Implementation Tasks, and Acceptance Tests can continue with lower Release Risk."
+    option["benefit"] = "Screen Scope, Implementation Tasks, and Acceptance Tests can continue with lower Release Risk."
+    option["cost"] = "The reviewer still needs one release checklist item so operators know what to verify before publishing."
     result = _run_review_validator(english_impact, tmp_path / "english-impact.json")
     assert result.returncode == 0, _review_validator_output(result)
 

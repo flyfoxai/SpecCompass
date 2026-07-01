@@ -200,9 +200,14 @@ or `state_ref` to connect a visible UI element to a right-rail checkpoint. For
 dynamic behavior, use a dynamic marker / 动态标注 with plain text markers such as
 `此处数字未来会自动更新`; do not add animation or popup logic to review data.
 Decision options require deeper reasoning / 决策选项需要深度推理: every human
-decision node should explain the choice background in `when_to_choose` (do not
-invent a separate `background` field), each option's consequence, project
-impact, next exit, and recommendation reason in plain language.
+decision node must explain the real business or screen background in
+`decision_background` and summarize the actual decision in `decision_summary`.
+Each option must explain `benefit` / 收益 and `cost` / 代价 in plain language;
+the recommended option must also include `recommendation_reason` / 推荐理由.
+`consequence` and `next_exit` remain required execution fields for writeback and
+routing. Legacy `when_to_choose` and `project_impact` may be read only for old
+data compatibility; new flow/UI review data must not use them as the primary
+copy model.
 
 When a real-world step has both product/business meaning and a
 system/architecture support concern, the review data should split it into two

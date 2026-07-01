@@ -165,6 +165,14 @@
               }
             }
           }
+        },
+        {
+          "if": {
+            "required": ["options"]
+          },
+          "then": {
+            "required": ["decision_background", "decision_summary"]
+          }
         }
       ],
       "required": [
@@ -181,6 +189,8 @@
         "id": {"type": "string"},
         "label": {"type": "string"},
         "plain_summary": {"type": "string"},
+        "decision_background": {"type": "string"},
+        "decision_summary": {"type": "string"},
         "action_prompt": {"type": "string"},
         "review_layer": {
           "type": "string",
@@ -227,7 +237,7 @@
     "option": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "label", "when_to_choose", "consequence", "project_impact", "next_exit"],
+      "required": ["id", "label", "benefit", "cost", "consequence", "next_exit"],
       "allOf": [
         {
           "if": {
@@ -249,6 +259,9 @@
           "enum": ["OPTION_A", "OPTION_B", "OPTION_C", "OPTION_D"]
         },
         "label": {"type": "string"},
+        "benefit": {"type": "string"},
+        "cost": {"type": "string"},
+        "recommendation_reason": {"type": "string"},
         "when_to_choose": {"type": "string"},
         "consequence": {"type": "string"},
         "project_impact": {"type": "string"},

@@ -151,18 +151,24 @@ against the current PRD/spec/flow/UI sources before changing data.
 - Every option must provide an actionable exit / 可执行出口 through
   `next_exit`; do not use vague labels such as approve, defer, reject, or block
   as the option outcome.
-- Decision option copy must be decision-grade, not boilerplate. Each option must
-  include the real business background or real screen/interaction background in
-  `when_to_choose`, what happens after selection in `consequence`, downstream project impact
-  in `project_impact`, and why this option is recommended when it
-  is the `recommended_option`. The renderer shows the same content as three
-  reviewer-facing rows: `适合什么情况` from `when_to_choose`,
-  `选了以后怎么做` from `consequence`, and `对项目有什么影响` from
-  `project_impact`. The reader should understand what the model will change
-  next and how the choice affects scope, schedule, risk, UI/flow, plan, tasks,
-  implementation, acceptance tests, or delivery. Do not write generic labels
-  such as 推荐方案 / 方案A / 确认当前内容, and do not repeat stock phrases /
-  模板句 such as 当前依据和风险边界看起来正确.
+- Decision option copy must be decision-grade, not boilerplate. Each decision
+  node must include the real business background or real screen/interaction
+  background in `decision_background`, and the one thing the reviewer must
+  decide in `decision_summary`. Every option requires `benefit` (required),
+  `cost` (required), `consequence` (required), and `next_exit` (required). The
+  recommended option also requires `recommendation_reason`. The reviewer-facing
+  page shows `背景信息`, `决策摘要`, `收益`, `代价`, and `推荐理由` first. The
+  execution fields / 执行字段 `consequence` and `next_exit` still explain what
+  happens after selection and where the work goes next, but they are not the
+  main visible explanation. The reader should understand the real business
+  background, the concrete upside, the concrete tradeoff, the downstream impact
+  on scope/schedule/risk/workload, and why the recommended option beats slower,
+  stricter, or larger-change alternatives. `benefit` is not "when to choose":
+  it must state what the project gains after choosing the option. `cost` must
+  state what the project gives up, delays, weakens, or must manually absorb.
+  The `recommendation_reason` field must say why this option is recommended
+  over the other available exits. Do not write generic labels such as 推荐方案 /
+  方案A / 确认当前内容, and do not repeat stock phrases / 模板句 such as 当前依据和风险边界看起来正确.
 - Every decision option must say 谁继续处理 after the choice: next model,
   product owner, designer, developer, tester, operations, system owner, or the
   responsible business team. It must also say the cost of 不选推荐 when that cost
@@ -210,9 +216,21 @@ against the current PRD/spec/flow/UI sources before changing data.
 - `OPTION_B.next_exit` must start with the literal route marker
   `needs-decision` (for example `needs-decision:product-owner`) because the
   validator checks that exact route prefix.
-- Every option requires: `when_to_choose` (the background / 背景 for when this
-  option should be chosen), `consequence` (required),
-  `project_impact` (required), and `next_exit` (required).
+- Every option requires: `benefit` (required), `cost` (required),
+  `consequence` (required), and `next_exit` (required). `consequence` must say
+  what happens after selection and who continues the work; `next_exit` must be
+  an actionable exit for writeback and routing. The recommended option must also
+  include `recommendation_reason`. Keep legacy `when_to_choose` and
+  `project_impact` only as compatibility fields when reading old data; new
+  generation must use `decision_background`, `decision_summary`, `benefit`,
+  `cost`, `recommendation_reason`, `consequence`, and `next_exit`.
+- Do not move old wording into new fields. `benefit` must not start with
+  "适合..." or describe only an applicable scenario; put necessary scenario
+  context in `decision_background` or `decision_summary`. `cost` must not be a
+  vague "后续再调整" line; name the delay, manual work, weaker guardrail, rework
+  risk, or blocked downstream task. `recommendation_reason` must not repeat the
+  benefit; it must explain why the recommended route is better than the other
+  2-3 exits for this project now.
 - System/architecture nodes must use `review_layer: "system_arch"` and
   `review_level: "system_arch"`, route to 系统负责人 or 架构负责人, and say
   无需产品确认 in `plain_summary` or `action_prompt`.
@@ -259,19 +277,20 @@ regions/components/states, validation fails because the reviewer cannot inspect
 the UI.
 
 决策选项需要深度推理 / decision options require deeper reasoning. For every UI
-decision node, explain the background in human language with the JSON field
-`when_to_choose` (do not invent a separate `background` field), apply the same
-tiered option-count rule (`must_confirm` has `3-4`; ordinary human-judgment
-nodes default to 3; low-risk binary choices need `options_count_rationale`),
-state each choice's consequence, project impact, and `next_exit`, and set
-`recommended_option` with a short reason in the option copy. A non-technical
-reviewer should understand what they are choosing and what downstream work that
-choice unlocks or blocks. UI choices focus on screen layout, visible regions,
-component wording, states, permissions, operation efficiency, and mis-click
-risk; flow choices focus on business route, branch exits, exception paths,
-state changes, authorization boundaries, and whether later UI/plan/tasks are
-unlocked. Both must still answer `适合什么情况`, `选了以后怎么做`, and
-`对项目有什么影响`.
+decision node, explain the background in human language with
+`decision_background` and summarize the decision with `decision_summary`. Apply
+the same tiered option-count rule (`must_confirm` has `3-4`; ordinary
+human-judgment nodes default to 3; low-risk binary choices need
+`options_count_rationale`). Every option must state `benefit`, `cost`,
+`consequence`, and `next_exit`; the recommended option must also state
+`recommendation_reason`. A non-technical reviewer should understand what they
+are choosing and what downstream work that choice unlocks or blocks. UI choices
+focus on screen layout, visible regions, component wording, states,
+permissions, operation efficiency, and mis-click risk; flow choices focus on
+business route, branch exits, exception paths, state changes, authorization
+boundaries, and whether later UI/plan/tasks are unlocked. Both must still show
+`背景信息`, `决策摘要`, `收益`, `代价`, and `推荐理由`, while keeping
+`consequence` and `next_exit` as execution field / 执行字段 values for writeback.
 
 ## Validation
 
@@ -288,10 +307,11 @@ data can support `WAITING_FOR_BATCH_REVIEW`, `READY_FOR_UI`, or
 
 The validator intentionally blocks lazy option writing: duplicate option copy,
 模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject/block exits,
-missing `when_to_choose`, missing `consequence`, missing `project_impact`,
-missing 谁继续处理, missing why-this-must-be-decided-now copy on `must_confirm`
-nodes, repeated `project_impact` copy, or a missing actionable `next_exit` must
-be fixed in the review data before closing.
+missing `decision_background`, missing `decision_summary`, missing `benefit`,
+missing `cost`, missing `consequence`, missing `recommendation_reason` on the
+recommended option, missing 谁继续处理, missing why-this-must-be-decided-now copy
+on `must_confirm` nodes, repeated benefit/cost/recommendation copy, or a
+missing actionable `next_exit` must be fixed in the review data before closing.
 
 ## Minimal complete JSON / 最小完整 JSON
 
@@ -339,30 +359,33 @@ needed. Do not add HTML, CSS, or JavaScript.
               "owner": "产品经理",
               "node_kind": "human_judgment",
               "source_ref": "specs/example/spec.md#问卷发布",
+              "decision_background": "问卷发布会把内容推给目标人群，题目、对象和截止时间如果没确认，后面很容易出现误发或统计口径错误。",
+              "decision_summary": "现在要决定发布前检查按完整门槛执行，还是先补规则、缩小范围或拆成更细流程。",
               "options": [
                 {
                   "id": "OPTION_A",
                   "label": "按问卷发布检查继续",
-                  "when_to_choose": "问卷标题、目标人群、截止时间和发布前校验已在 PRD 中说明，产品经理认可这些作为发布门槛。",
+                  "benefit": "发布门槛清楚，运营、开发和测试都能按同一套规则推进，误发问卷的风险最低。",
+                  "cost": "开发要补齐发布前校验和错误提示，后续如果发现遗漏门槛，需要做局部修订。",
                   "consequence": "下一轮会把这些检查写进发布前流程、UI 校验和任务拆分，不再重新询问发布门槛。",
-                  "project_impact": "可以解锁问卷发布页面、实现任务和验收测试；风险集中在后续发现遗漏检查项时需要局部补充。",
+                  "recommendation_reason": "PRD 已经说明这些门槛，直接按完整检查继续，比先上线弱校验或拆分会议更节省沟通成本。",
                   "next_exit": "continue",
                   "recommended": true
                 },
                 {
                   "id": "OPTION_B",
                   "label": "先补齐发布门槛再设计",
-                  "when_to_choose": "发布前到底要检查哪些问卷信息还没有定，继续设计会让开发按猜测实现。",
+                  "benefit": "产品经理先把缺失门槛说清楚，后续流程、UI 和测试不会按猜测实现。",
+                  "cost": "问卷发布相关 UI、计划和实现会暂停，直到产品经理补充发布前检查规则。",
                   "consequence": "该节点下游的发布页面、流程分支和开发任务先暂停，等待产品经理补充门槛。",
-                  "project_impact": "会延后问卷发布相关 UI、计划和实现，但能避免后续返工或错误放行。",
                   "next_exit": "needs-decision:product-owner"
                 },
                 {
                   "id": "OPTION_C",
                   "label": "局部补充检查项后继续",
-                  "when_to_choose": "主发布路径已经明确，只剩一个边界条件需要补上，例如截止时间是否必填。",
+                  "benefit": "不推翻主发布路径，只补一个边界条件，团队可以继续推进大部分设计和任务。",
+                  "cost": "被补充的检查项仍要由产品经理确认，相关文案和测试用例需要后续跟着改。",
                   "consequence": "下一轮只调整当前节点的检查项，不推翻问卷发布主流程。",
-                  "project_impact": "影响集中在当前流程或界面的校验文案和测试用例，整体排期变化较小。",
                   "next_exit": "revise-local-and-continue"
                 }
               ],

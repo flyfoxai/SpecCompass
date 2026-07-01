@@ -175,6 +175,8 @@ const allowedNodeKeys = new Set([
   "id",
   "label",
   "plain_summary",
+  "decision_background",
+  "decision_summary",
   "action_prompt",
   "review_layer",
   "review_level",
@@ -188,6 +190,9 @@ const allowedNodeKeys = new Set([
 const allowedOptionKeys = new Set([
   "id",
   "label",
+  "benefit",
+  "cost",
+  "recommendation_reason",
   "when_to_choose",
   "consequence",
   "project_impact",
@@ -556,6 +561,39 @@ function hasConcreteImpactSignal(value) {
   return concreteImpactSignals.some((signal) => text.includes(signal));
 }
 
+function optionBenefitText(option) {
+  return option.benefit || "";
+}
+
+function optionCostText(option) {
+  return option.cost || "";
+}
+
+function isLegacyApplicabilityBenefit(value) {
+  const text = String(value || "").trim();
+  const compact = compactText(text);
+  return (
+    compact.startsWith("适合") ||
+    compact.startsWith("适用于") ||
+    compact.startsWith("适用在") ||
+    compact.startsWith("用于判断什么情况") ||
+    /^when\s+to\s+choose\b/i.test(text) ||
+    /^choose\s+this\s+when\b/i.test(text)
+  );
+}
+
+function optionExecutionText(option) {
+  return [
+    option.consequence,
+    option.recommendation_reason,
+    option.next_exit
+  ].join(" ");
+}
+
+function isConcreteDecisionField(value) {
+  return hasSubstantialText(value) && !containsBoilerplateOptionCopy(value) && hasConcreteImpactSignal(value);
+}
+
 function hasContinuationOwnerSignal(value) {
   const text = String(value || "").toLowerCase();
   return continuationOwnerSignals.some((signal) => text.includes(signal.toLowerCase()));
@@ -577,8 +615,11 @@ function containsBoilerplateOptionCopy(value) {
 function optionText(option) {
   return [
     option.label,
+    option.benefit,
+    option.cost,
     option.when_to_choose,
     option.consequence,
+    option.recommendation_reason,
     option.project_impact,
     option.next_exit
   ].join(" ");
@@ -594,15 +635,19 @@ function hasAnySignal(value, signals) {
 }
 
 function hasNeedsDecisionTrigger(option) {
-  return hasAnySignal(`${option.when_to_choose || ""} ${option.consequence || ""}`, missingDecisionSignals);
+  return hasAnySignal(`${option.benefit || ""} ${option.cost || ""} ${option.consequence || ""} ${option.recommendation_reason || ""}`, missingDecisionSignals);
 }
 
 function hasNeedsDecisionPause(option) {
-  return hasAnySignal(`${option.consequence || ""} ${option.project_impact || ""}`, needsDecisionPauseSignals);
+  return hasAnySignal(`${option.cost || ""} ${option.consequence || ""} ${option.next_exit || ""}`, needsDecisionPauseSignals);
 }
 
 function hasRecommendationRationale(option) {
-  return hasAnySignal(`${option.when_to_choose || ""} ${option.consequence || ""} ${option.project_impact || ""}`, recommendationRationaleSignals);
+  return (
+    hasSubstantialText(option.recommendation_reason) &&
+    !containsBoilerplateOptionCopy(option.recommendation_reason) &&
+    hasAnySignal(`${option.recommendation_reason || ""} ${option.benefit || ""} ${option.cost || ""} ${option.consequence || ""}`, recommendationRationaleSignals)
+  );
 }
 
 function hasSpecificSplitArtifact(option) {
@@ -648,7 +693,7 @@ function labelGenericOpener(value) {
 }
 
 function normalizeOptionCopy(option) {
-  return ["when_to_choose", "consequence", "project_impact"]
+  return ["benefit", "cost", "consequence", "recommendation_reason", "when_to_choose", "project_impact"]
     .map((key) => String(option[key] || "").toLowerCase().replace(/[\s，。；;,.、:："'“”‘’（）()[\]{}<>《》_-]+/g, ""))
     .join("|");
 }
@@ -677,9 +722,15 @@ function validateOptionHumanCopy(scope, option) {
     fail(`${scope}: option ${option.id} label is too generic; name the real business action`);
   }
 
-  for (const key of ["label", "when_to_choose", "consequence", "project_impact"]) {
+  for (const legacyKey of ["when_to_choose", "project_impact"]) {
+    if (Object.prototype.hasOwnProperty.call(option, legacyKey)) {
+      fail(`${scope}: option ${option.id} must not include legacy option field ${legacyKey}; write selection guidance in decision_background/decision_summary and use benefit/cost/recommendation_reason for visible copy`);
+    }
+  }
+
+  for (const key of ["label", "benefit", "cost", "consequence", "recommendation_reason", "when_to_choose", "project_impact"]) {
     if (containsBoilerplateOptionCopy(option[key])) {
-      fail(`${scope}: option ${option.id} contains boilerplate option copy in ${key}; explain the real background, action, and impact`);
+      fail(`${scope}: option ${option.id} contains boilerplate option copy in ${key}; explain the node background, decision summary, benefit, cost, action, and impact`);
     }
     const terms = unexplainedTechnicalTerms(option[key]);
     if (terms.length) {
@@ -687,20 +738,23 @@ function validateOptionHumanCopy(scope, option) {
     }
   }
 
-  if (!hasSubstantialText(option.when_to_choose)) {
-    fail(`${scope}: option ${option.id} when_to_choose must explain the business background in plain language`);
+  if (!isConcreteDecisionField(optionBenefitText(option))) {
+    fail(`${scope}: option ${option.id} option benefit must name a concrete upside`);
+  }
+  if (isLegacyApplicabilityBenefit(optionBenefitText(option))) {
+    fail(`${scope}: option ${option.id} option benefit must state the upside, not when to choose this option`);
+  }
+  if (!isConcreteDecisionField(optionCostText(option))) {
+    fail(`${scope}: option ${option.id} option cost must name a concrete tradeoff`);
   }
   if (!hasSubstantialText(option.consequence)) {
     fail(`${scope}: option ${option.id} consequence must describe the concrete action after selection`);
   }
-  if (!hasContinuationOwnerSignal(`${option.consequence || ""} ${option.project_impact || ""}`)) {
+  if (!hasContinuationOwnerSignal(optionExecutionText(option))) {
     fail(`${scope}: option ${option.id} must say who continues the work`);
   }
-  if (!hasSubstantialText(option.project_impact) || !hasConcreteImpactSignal(option.project_impact)) {
-    fail(`${scope}: option ${option.id} project_impact must name a concrete downstream impact`);
-  }
   if (optionExitStartsWith(option, "needs-decision")) {
-    if (!hasNeedsDecisionTrigger(option) || !hasContinuationOwnerSignal(optionText(option)) || !hasNeedsDecisionPause(option)) {
+    if (!hasNeedsDecisionTrigger(option) || !hasContinuationOwnerSignal(optionExecutionText(option)) || !hasNeedsDecisionPause(option)) {
       fail(`${scope}: option ${option.id} needs-decision option must say what is missing, who decides, and what downstream work pauses before confirmation`);
     }
   }
@@ -835,6 +889,12 @@ function validateOptions(scope, node) {
   if (node.review_level === "must_confirm" && !hasDecisionUrgencySignal(`${node.plain_summary || ""} ${node.action_prompt || ""}`)) {
     fail(`${scope}: must_confirm node must explain why this decision matters now`);
   }
+  if (!hasSubstantialText(node.decision_background)) {
+    fail(`${scope}: decision_background must explain the real business background before options`);
+  }
+  if (!hasSubstantialText(node.decision_summary)) {
+    fail(`${scope}: decision_summary must state what the reviewer is deciding`);
+  }
 
   const ids = new Set();
   const copyFingerprints = new Map();
@@ -850,7 +910,7 @@ function validateOptions(scope, node) {
       fail(`${scope}: duplicate option id ${option.id}`);
     }
     ids.add(option.id);
-    for (const key of ["label", "when_to_choose", "consequence", "project_impact", "next_exit"]) {
+    for (const key of ["label", "benefit", "cost", "consequence", "next_exit"]) {
       const value = option[key];
       if (!value || (typeof value === "string" && value.trim() === "")) {
         fail(`${scope}: option ${option.id} is missing ${key}`);
@@ -868,7 +928,7 @@ function validateOptions(scope, node) {
     if (copyFingerprint) {
       const previousOptionId = copyFingerprints.get(copyFingerprint);
       if (previousOptionId) {
-        fail(`${scope}: duplicate option copy between ${previousOptionId} and ${option.id}; each option must explain a distinct background, action, and project impact`);
+        fail(`${scope}: duplicate option copy between ${previousOptionId} and ${option.id}; each option must explain a distinct benefit, cost, execution action, and downstream impact`);
       } else {
         copyFingerprints.set(copyFingerprint, option.id);
       }
@@ -884,8 +944,8 @@ function validateOptions(scope, node) {
     for (let rightIndex = leftIndex + 1; rightIndex < options.length; rightIndex += 1) {
       const left = options[leftIndex];
       const right = options[rightIndex];
-      if (textContainmentSimilarity(left.project_impact, right.project_impact) >= 0.72) {
-        fail(`${scope}: option project_impact copy is too similar between ${left.id} and ${right.id}; each option must explain a distinct project impact`);
+      if (textContainmentSimilarity(`${left.benefit || ""} ${left.cost || ""}`, `${right.benefit || ""} ${right.cost || ""}`) >= 0.72) {
+        fail(`${scope}: duplicate option copy between ${left.id} and ${right.id}; option benefit and cost must show real differences`);
       }
     }
   }
@@ -902,6 +962,9 @@ function validateOptions(scope, node) {
   const recommendedOption = options.find((option) => option.id === node.recommended_option);
   if (recommendedOption && !hasRecommendationRationale(recommendedOption)) {
     fail(`${scope}: recommended option must explain why it is preferred over stricter, slower, or larger-change alternatives`);
+  }
+  if (recommendedOption && !hasSubstantialText(recommendedOption.recommendation_reason)) {
+    fail(`${scope}: recommended option must explain why it is preferred`);
   }
 
   const recommendedFlags = options.filter((option) => option.recommended === true);

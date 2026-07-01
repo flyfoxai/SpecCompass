@@ -114,17 +114,17 @@ Global rules:
   data sources, permissions/states, known draft or inferred parts, files to
   review, and visible labels to reference in feedback.
 - If the UI draft contains a human decision point, explain the real screen or interaction background
-  in plain Chinese through the JSON field
-  `when_to_choose` (do not create a separate `background` field), give tiered decision options
+  in plain Chinese through `decision_background` / `背景信息` and summarize the
+  actual choice in `decision_summary` / `决策摘要`, then give tiered decision options
   (`must_confirm` 3-4 options, ordinary human-judgment nodes
   default to 3 options, and low-risk binary choices only 2 options with
   `options_count_rationale`), and make every option a UI-readable executable
-  exit. Each option must say what the reviewer chooses the model to change next,
-  the concrete consequence, the downstream impact on screen scope, interaction risk, implementation, acceptance tests, or delivery schedule,
-  the actionable `next_exit`, and why the recommended UI option is safest. The
-  right rail shows this as three plain-language rows: `适合什么情况` from
-  `when_to_choose`, `选了以后怎么做` from `consequence`, and `对项目有什么影响`
-  from `project_impact`. Ground the wording in the current screen, region,
+  exit. Each option must show `收益` / `benefit` and `代价` / `cost`; the
+  recommended option must also show `推荐理由` / `recommendation_reason`. The
+  execution fields / 执行字段 `consequence` and `next_exit` remain mandatory for
+  writeback and downstream routing, but they are not the primary visible
+  decision explanation; they must still state what the reviewer chooses the model to change next.
+  Ground the wording in the current screen, region,
   component, field/action copy, permission, state, or source flow; do not reuse
   generic "looks correct" 模板句 / boilerplate. Any 技术词 must be replaced with
   business language or immediately followed by a Chinese explanation / 中文说明,
@@ -239,8 +239,10 @@ decision_records:
     selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D | NO_DECISION_REQUIRED
     selected_summary: <plain-language selected action>
     recommended_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D | NO_DECISION_REQUIRED
+    benefit: <what this choice gains for the screen, user task, delivery, or risk control>
+    cost: <tradeoff, delay, manual work, weaker guardrail, or rework risk>
     recommendation_reason: <why this option is recommended>
-    project_impact: <impact on scope, schedule, risk, downstream plan/implementation>
+    consequence: <execution field: what the next model or owner must do after selection>
     next_exit: <next owner route or downstream stage unlocked by this choice>
     reviewer_note: <optional human note>
 revision_requests:
@@ -447,10 +449,14 @@ instead.
   instructions. 决策选项需要深度推理: `must_confirm` nodes need 3-4 executable
   options; ordinary human-judgment nodes default to 3 options; low-risk binary
   choices may use 2 options only when `options_count_rationale` explains why 2
-  exits are enough. Every option must be an actionable exit through
-  `next_exit`, with background in `when_to_choose`, consequence, project
-  impact, and `recommended_option`. The visible option card must answer
-  `适合什么情况`, `选了以后怎么做`, and `对项目有什么影响` in plain language.
+  exits are enough. Each decision node must use `decision_background` for the
+  real screen or interaction background and `decision_summary` for the actual
+  choice. Every option must be an actionable exit through `next_exit` and must
+  provide `benefit`, `cost`, `consequence`, and `recommended_option`; the
+  recommended option must also provide `recommendation_reason`. The visible
+  option card must lead with `背景信息`, `决策摘要`, `收益`, `代价`, and, for the
+  recommended option, `推荐理由`. `consequence` and `next_exit` are execution
+  fields for writeback/routing, not the primary visible decision explanation.
 - If `specs/<feature>/ui/review/ui-confirmation.md` already contains
   `revision_requests`, read them before generating new UI review data. Treat
   each request as a model-actionable repair instruction, reason against the
@@ -482,21 +488,29 @@ instead.
   `review_layer`, `review_level`, owner, `node_kind`, source refs,
   framework approximation/deviation notes, design authority metadata, tiered
   `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices,
-  `recommended_option`, required `consequence`, required `project_impact`,
-  required actionable `next_exit`, `options_count_rationale` when a low-risk
-  binary choice uses only 2 options, batch scope, pending-decision routes,
-  blocker/stale reasons, and writeback target `ui-confirmation.md`.
+  `recommended_option`, required `decision_background`, required
+  `decision_summary`, required `benefit`, required `cost`, required
+  `consequence`, required actionable `next_exit`, and required
+  `recommendation_reason` for the recommended option. Use
+  `options_count_rationale` when a low-risk binary choice uses only 2 options.
+  Also provide batch scope, pending-decision routes, blocker/stale reasons, and
+  writeback target `ui-confirmation.md`.
   `must_confirm` nodes must have 3-4 options; ordinary human-judgment nodes
   default to 3 options; low-risk binary choices may use 2 options only with
-  `options_count_rationale`. Each option must carry three user-facing meanings:
-  `适合什么情况` / `when_to_choose`, `选了以后怎么做` / `consequence`, and
-  `对项目有什么影响` / `project_impact`. It must say 谁继续处理, state the
-  不选推荐 cost, and show 真实差异 between options. Choose a decision template
+  `options_count_rationale`. Each decision must show `背景信息` and `决策摘要`;
+  each option must show `收益` and `代价`; the recommended option must show
+  `推荐理由`. The execution fields / 执行字段 `consequence` and `next_exit`
+  must still say what happens after selection and who continues the work. It
+  must say 谁继续处理, state the 不选推荐 cost, explain downstream impact on screen scope, interaction risk, implementation, acceptance tests, or delivery schedule,
+  explain why the recommended UI option is safest, and show 真实差异 between
+  options.
+  Choose a decision template
   before writing the options: 范围决策, 门禁决策, or 降级决策. Run
   `.specify/review/scripts/validate-review-data.mjs`; it must reject repeated
   option copy, 模板句 / boilerplate, unexplained 技术词, vague approve/defer/reject
   exits, missing actionable `next_exit`, missing continuation owner, missing
-  why-this-must-be-decided-now copy, and overly similar `project_impact` copy.
+  why-this-must-be-decided-now copy, missing background/summary/tradeoff fields,
+  and overly similar benefit/cost/recommendation copy.
   example data must not replace generation rules / 实验数据不能替代生成规则:
   do not treat changes to `docs/examples/review/*` or experiment pages as a
   successful `/sp.ui` output. The generated `ui-review-data.json` for the
