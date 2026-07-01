@@ -56,6 +56,7 @@ instead. Renderer changes require a separate implementation task with tests.
 
 - Flow data path: `specs/<feature>/flows/review/flow-review-data.json`
 - UI data path: `specs/<feature>/ui/review/ui-review-data.json`
+- Review index path: `specs/review-index.json`
 - Renderer directory: `.specify/review/renderer/`
 - Renderer path: `.specify/review/renderer/speccompass-review-renderer.html`
 - Flow review Web entry:
@@ -87,12 +88,55 @@ must show a visible fallback / 兜底 prompt and keep the manual load buttons.
 If `file://` browser restrictions block JSON fetch, use a local server preview
 or the manual JSON file selector.
 
+The fixed renderer also reads `specs/review-index.json` for demand-level
+navigation / 需求级导航. The top navigation text is `上一需求 / 需求 X/Y / 下一需求`;
+it follows the feature order recorded in `features[].order` and the feature slug
+in `features[].feature`. This is different from the current feature's business
+module navigation, which must be labeled `上一业务模块 / 业务模块 X/Y / 下一业务模块`.
+Each index entry uses `has_flow_review` and `has_ui_review` so the renderer can
+disable a target and mark it `待生成` when the selected review type has not been
+generated. Do not invent future slugs in the index: if only
+`001-phase-one-core-loop` exists, the index contains only that feature and the
+page shows `需求 1/1` with previous/next disabled.
+
+Minimum `specs/review-index.json` shape:
+
+```json
+{
+  "schema_version": 1,
+  "project": "<project-name>",
+  "updated_at": "YYYY-MM-DD",
+  "features": [
+    {
+      "order": 1,
+      "feature": "<feature-slug>",
+      "title": "<human title>",
+      "has_flow_review": true,
+      "has_ui_review": false
+    }
+  ]
+}
+```
+
+Normal `/sp.flow` and `/sp.ui` runs create or update this index when they create
+review data. They preserve existing real feature entries, keep their order, add
+only the current real feature when missing, and update only the relevant
+`has_flow_review` or `has_ui_review` flag plus `updated_at`.
+
 Browser `localStorage` is only a draft convenience for review selections. It is
 scoped by review type, artifact path, batch id, source snapshot, and the current
 module/item/node structure so a later review-data version does not silently reuse
 an older local draft. It is not authorization. Authorization is the downloaded
 confirmation package, or fallback copied summary, after it has been written into
 `flow-confirmation.md` or `ui-confirmation.md` and tracked with the project.
+
+The renderer may also store display-only layout preferences in `localStorage`,
+for example `speccompass-review:right-rail-width` for the draggable right
+confirmation rail. This preference only changes the local page width. It is not
+authorization, must not enter the confirmation package, and must not be mixed
+with review draft state. The right rail uses a slightly larger reading size than
+the rest of the page so long decision options remain legible on lower-resolution
+screens.
 
 The primary export path is 下载确认包 / download confirmation package. The
 renderer writes a JSON package with `format:

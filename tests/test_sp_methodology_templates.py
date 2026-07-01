@@ -22,6 +22,7 @@ UI_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "ui-review-data.schema.json"
 REVIEW_DATA_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-review-data.mjs"
 REVIEW_PAGE_RENDERER = REVIEW_ROOT / "renderer" / "speccompass-review-renderer.html"
 RENDERER_README = REVIEW_ROOT / "renderer" / "README.md"
+REVIEW_INDEX_TEMPLATE = PROJECT_ROOT / "templates" / "project" / "specs" / "review-index.json"
 REVIEW_RENDERER_STYLE_FILES = (
     REVIEW_ROOT / "renderer" / "styles" / "tokens.css",
     REVIEW_ROOT / "renderer" / "styles" / "layout.css",
@@ -34,6 +35,8 @@ REVIEW_RENDERER_SCRIPT_FILES = (
     REVIEW_ROOT / "renderer" / "scripts" / "confirmation-package.js",
     REVIEW_ROOT / "renderer" / "scripts" / "ui-preview-renderer.js",
     REVIEW_ROOT / "renderer" / "scripts" / "review-rail.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "right-rail-resizer.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "feature-nav.js",
     REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js",
 )
 REVIEW_DATA_SKILL = PROJECT_ROOT / "templates" / "skills" / "speccompass-review-data" / "SKILL.md"
@@ -315,6 +318,8 @@ def test_review_data_validator_rejects_lazy_must_confirm_options(tmp_path):
         ["node", str(REVIEW_DATA_VALIDATOR), str(review_data_path)],
         cwd=PROJECT_ROOT,
         text=True,
+        encoding="utf-8",
+        errors="replace",
         capture_output=True,
         check=False,
     )
@@ -3278,6 +3283,7 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
     renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+    review_index_template = json.loads(REVIEW_INDEX_TEMPLATE.read_text(encoding="utf-8"))
 
     for content, label in (
         (flow, "flow command"),
@@ -3302,6 +3308,18 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     assert "flow-review-data.schema.json" in flow
     assert "specs/<feature>/ui/review/ui-review-data.json" in ui
     assert "ui-review-data.schema.json" in ui
+    for content, label in ((flow, "flow command"), (ui, "ui command"), (skill, "review-data skill"), (renderer_readme, "renderer README"), (methodology, "methodology")):
+        assert "specs/review-index.json" in content, label
+        assert "has_flow_review" in content, label
+        assert "has_ui_review" in content, label
+    assert "上一需求" in renderer_readme and "下一需求" in renderer_readme
+    assert "上一业务模块" in renderer_readme and "下一业务模块" in renderer_readme
+    assert review_index_template["schema_version"] == 1
+    assert isinstance(review_index_template["features"], list)
+    assert review_index_template["features"] == []
+    assert {"schema_version", "project", "updated_at", "features"} <= set(review_index_template)
+    assert "不要虚构" in flow or "do not invent" in flow
+    assert "不要虚构" in ui or "do not invent" in ui
     assert "2-4\n  `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices" not in flow
     assert "2-4\n  `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices" not in ui
     assert "ordinary human-judgment nodes default to 3 options" in flow
@@ -3833,11 +3851,43 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
         assert option_field in renderer
     assert "review data 结构存在阻断问题" in renderer
     assert "authorization-steps" in renderer
+    assert "review-index.json" in renderer
+    assert "../../../specs/review-index.json" in renderer
+    assert "URLSearchParams" in renderer
+    assert "has_flow_review" in renderer
+    assert "has_ui_review" in renderer
+    assert "待生成" in renderer
+    assert "上一需求" in renderer and "下一需求" in renderer
+    assert "需求 0/0" in renderer
+    assert 'id="feature-nav"' in renderer
+    assert 'id="prev-feature"' in renderer
+    assert 'id="feature-position"' in renderer
+    assert 'id="next-feature"' in renderer
+    assert 'id="feature-nav-note"' in renderer
+    assert "当前页面有本地选择或尚未导出的确认结果" in renderer
     assert 'id="prev-module"' in renderer
     assert 'id="next-module"' in renderer
     assert 'id="module-position"' in renderer
     assert "goToModule" in renderer
-    assert "上一模块" in renderer and "下一模块" in renderer
+    assert "上一业务模块" in renderer and "下一业务模块" in renderer
+    assert "业务模块 0/0" in renderer
+    assert 'setAttribute("role", "tablist")' in renderer
+    assert 'setAttribute("role", "tab")' in renderer
+    assert "待处理" in renderer
+    assert "diagram-tab-pending" in renderer
+    assert "height: 100vh" in renderer
+    assert "--right-rail-width" in renderer
+    assert "speccompass-review:right-rail-width" in renderer
+    assert 'id="right-rail-resizer"' in renderer
+    assert 'aria-label="调整右侧确认栏宽度"' in renderer
+    assert "right-rail-resizer.js" in renderer_entry
+    assert "pointerdown" in renderer
+    assert "pointermove" in renderer
+    assert "col-resize" in renderer
+    assert ".right-rail .option-detail-value" in renderer
+    assert "font-size: 13px" in renderer
+    assert ".right-rail .option-detail-label" in renderer
+    assert "font-size: 12px" in renderer
     assert "本地选择" in renderer and "复制摘要" in renderer and "写回确认文档" in renderer
     assert "localStorageAvailable" in renderer
     assert "storageStatusWarning" in renderer

@@ -28,6 +28,7 @@ or UI confirmation runs.
 - UI review Web entry: `.specify/review/renderer/speccompass-review-renderer.html?ui=<feature>`
 - Flow data: `specs/<feature>/flows/review/flow-review-data.json`
 - UI data: `specs/<feature>/ui/review/ui-review-data.json`
+- Feature review index: `specs/review-index.json`
 - Flow schema: `.specify/review/schemas/flow-review-data.schema.json`
 - UI schema: `.specify/review/schemas/ui-review-data.schema.json`
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
@@ -53,6 +54,20 @@ fallback prompt and the manual load buttons.
 If validation fails, do not finish the command and do not promote readiness.
 Fix model-fixable data issues first. If the remaining gap requires human
 information, mark the item blocked with a short reason and owner route.
+
+Maintain the lightweight feature review index whenever `/sp.flow` or `/sp.ui`
+creates or repairs review data. The file path is `specs/review-index.json`; it
+is for renderer navigation only, not business flow/UI content. Preserve existing
+real feature entries and their order. Add the current feature only if it is
+missing, using the real feature directory name and a human title from the
+current PRD/spec. Do not invent future 002/003 feature slugs. A flow run sets
+the current entry's `has_flow_review` to `true` and preserves
+`has_ui_review`; a UI run sets `has_ui_review` to `true` and preserves
+`has_flow_review`. Required entry fields are `order`, `feature`, `title`,
+`has_flow_review`, and `has_ui_review`; root fields are `schema_version`,
+`project`, `updated_at`, and `features`. The renderer uses this index to show
+`上一需求 / 需求 X/Y / 下一需求`; current-feature navigation still says
+`上一业务模块 / 业务模块 X/Y / 下一业务模块`.
 
 review data 是待审内容 / review data is draft review content. The renderer is not
 an editor / 不是编辑器 and does not directly edit flow or UI design /

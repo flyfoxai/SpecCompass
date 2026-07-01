@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SpecCompass Review</title>
   <link rel="stylesheet" href="styles/tokens.css?v=20260626-ui-layout">
-  <link rel="stylesheet" href="styles/layout.css?v=20260626-ui-layout">
-  <link rel="stylesheet" href="styles/review-ui.css?v=20260630-option-cards">
+  <link rel="stylesheet" href="styles/layout.css?v=20260702-right-rail">
+  <link rel="stylesheet" href="styles/review-ui.css?v=20260702-right-rail">
 </head>
 <body>
   <div class="app">
@@ -16,6 +16,12 @@
         <div>
           <h1 id="page-title">SpecCompass Review</h1>
           <p id="page-note">统一确认页只展示结构化 review data；正式授权需要写回 confirmation 文档。</p>
+          <nav id="feature-nav" class="feature-nav" aria-label="需求级复核导航">
+            <button id="prev-feature" type="button">上一需求</button>
+            <span id="feature-position">需求 0/0</span>
+            <button id="next-feature" type="button">下一需求</button>
+            <span id="feature-nav-note" class="feature-nav-note">加载 specs/review-index.json 后显示需求顺序。</span>
+          </nav>
         </div>
       </div>
       <div class="tools">
@@ -41,9 +47,9 @@
         <main>
           <section class="panel">
             <div class="module-stepper" aria-label="跨模块跳转">
-              <button id="prev-module" type="button">上一模块</button>
-              <span id="module-position">模块 0/0</span>
-              <button id="next-module" type="button">下一模块</button>
+              <button id="prev-module" type="button">上一业务模块</button>
+              <span id="module-position">业务模块 0/0</span>
+              <button id="next-module" type="button">下一业务模块</button>
             </div>
             <h2 id="module-title">模块</h2>
             <p id="module-summary">加载数据后显示模块简介。</p>
@@ -55,6 +61,8 @@
           </section>
           <section class="diagram-view" id="diagram-view" aria-label="主流程图或界面预览"></section>
         </main>
+
+        <div id="right-rail-resizer" class="right-rail-resizer" role="separator" aria-orientation="vertical" aria-label="调整右侧确认栏宽度" tabindex="0"></div>
 
         <aside class="right-rail" aria-label="右侧确认栏">
           <section class="panel">
@@ -85,6 +93,8 @@
   <script defer src="scripts/confirmation-package.js?v=20260629-confirmation-package"></script>
   <script defer src="scripts/ui-preview-renderer.js?v=20260626-ui-layout"></script>
   <script defer src="scripts/review-rail.js?v=20260626-ui-layout"></script>
+  <script defer src="scripts/right-rail-resizer.js?v=20260702-right-rail"></script>
+  <script defer src="scripts/feature-nav.js?v=20260701-feature-nav"></script>
   <script defer src="scripts/data-loader.js?v=20260626-ui-layout"></script>
 </body>
 </html>

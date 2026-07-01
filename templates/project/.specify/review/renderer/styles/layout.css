@@ -2,6 +2,7 @@
 .app {
   display: grid;
   grid-template-rows: auto 1fr;
+  height: 100vh;
   min-height: 100vh;
 }
 
@@ -53,9 +54,10 @@ header {
 
 .shell {
   display: grid;
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(340px, 400px);
   min-height: 0;
-  height: calc(100vh - 64px);
+  height: 100%;
+  overflow: hidden;
 }
 
 .left-nav {
@@ -66,8 +68,9 @@ header {
 }
 
 .review-workspace {
+  --right-rail-width: 380px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
+  grid-template-columns: minmax(0, 1fr) 8px var(--right-rail-width);
   grid-column: 2 / 4;
   min-width: 0;
   overflow: auto;
@@ -78,11 +81,35 @@ main {
   padding: 18px;
 }
 
+.right-rail-resizer {
+  width: 8px;
+  min-width: 8px;
+  cursor: col-resize;
+  background: linear-gradient(90deg, transparent 0, transparent 3px, var(--sc-border) 3px, var(--sc-border) 5px, transparent 5px);
+  border-left: 1px solid transparent;
+  border-right: 1px solid transparent;
+  touch-action: none;
+}
+
+.right-rail-resizer:hover,
+.right-rail-resizer:focus-visible,
+body.is-resizing-right-rail .right-rail-resizer {
+  background: linear-gradient(90deg, transparent 0, transparent 2px, var(--sc-primary) 2px, var(--sc-primary) 6px, transparent 6px);
+  outline: none;
+}
+
+body.is-resizing-right-rail {
+  cursor: col-resize;
+  user-select: none;
+}
+
 .right-rail {
   border-left: 1px solid var(--sc-border);
   background: var(--sc-panel);
   padding: 14px;
   min-width: 0;
+  overflow-y: auto;
+  font-size: 14px;
 }
 
 .panel {
@@ -104,4 +131,14 @@ main {
   color: var(--sc-muted);
   line-height: 1.5;
   font-size: 13px;
+}
+
+@media (max-width: 1180px) {
+  .shell {
+    grid-template-columns: minmax(210px, 240px) minmax(0, 1fr) minmax(320px, 360px);
+  }
+
+  .review-workspace {
+    --right-rail-width: 360px;
+  }
 }

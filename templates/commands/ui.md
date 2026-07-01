@@ -457,6 +457,14 @@ instead.
   option card must lead with `背景信息`, `决策摘要`, `收益`, `代价`, and, for the
   recommended option, `推荐理由`. `consequence` and `next_exit` are execution
   fields for writeback/routing, not the primary visible decision explanation.
+- Create or update the lightweight feature review index at
+  `specs/review-index.json` when UI review data is created or repaired. Keep
+  this index about feature navigation only: preserve existing real entries and
+  order, add the current real feature only if missing, set the current entry's
+  `has_ui_review` to `true`, preserve `has_flow_review`, refresh `updated_at`,
+  and do not invent future 002/003 feature slugs. Required entry fields are
+  `order`, `feature`, `title`, `has_flow_review`, and `has_ui_review`; root
+  fields are `schema_version`, `project`, `updated_at`, and `features`.
 - If `specs/<feature>/ui/review/ui-confirmation.md` already contains
   `revision_requests`, read them before generating new UI review data. Treat
   each request as a model-actionable repair instruction, reason against the

@@ -25,11 +25,95 @@
   font-size: 12px;
 }
 
+.feature-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.feature-nav button {
+  min-width: 78px;
+  min-height: 28px;
+  padding: 4px 9px;
+  font-size: 12px;
+}
+
+.feature-nav button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
+
+#feature-position {
+  color: var(--sc-primary-dark);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.feature-nav-note {
+  color: var(--sc-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .diagram-tabs,
 .rail-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+
+.diagram-tabs {
+  align-items: stretch;
+  padding-top: 2px;
+}
+
+.diagram-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 7px 10px;
+  border-color: #C8DADA;
+  border-bottom-width: 3px;
+  background: #FFFFFF;
+}
+
+.diagram-tab:hover {
+  border-color: var(--sc-primary);
+  background: #F6FCFB;
+}
+
+.diagram-tab.active {
+  border-color: var(--sc-primary);
+  border-bottom-color: var(--sc-primary);
+  background: var(--sc-soft);
+  color: var(--sc-primary-dark);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.diagram-tab-title {
+  overflow-wrap: anywhere;
+}
+
+.diagram-tab-pending {
+  display: inline-flex;
+  align-items: center;
+  min-height: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #FBE9E9;
+  color: var(--sc-red);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.diagram-tab.active .diagram-tab-pending {
+  background: #FFFFFF;
 }
 
 .option-row {
@@ -108,6 +192,32 @@
 .authorization-steps strong {
   color: var(--sc-text);
   font-weight: 600;
+}
+
+.right-rail .panel p,
+.right-rail .node-card p,
+.right-rail details {
+  font-size: 14px;
+}
+
+.right-rail .authorization-steps,
+.right-rail .package-download-links,
+.right-rail .feedback-label,
+.right-rail .status,
+.right-rail button,
+.right-rail input,
+.right-rail textarea,
+.right-rail select {
+  font-size: 13px;
+}
+
+.right-rail .option-detail-label,
+.right-rail .node-meta {
+  font-size: 12px;
+}
+
+.right-rail .option-detail-value {
+  font-size: 13px;
 }
 
 .package-download-links {
@@ -954,6 +1064,10 @@ details {
   .left-nav,
   .right-rail {
     border: 0;
+  }
+
+  .right-rail-resizer {
+    display: none;
   }
 
   .ui-region,

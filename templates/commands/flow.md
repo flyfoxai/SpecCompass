@@ -411,6 +411,14 @@ vocabulary instead.
   gap explicitly. Review data fields are plain structured data: do not put
   HTML, CSS, JavaScript, SVG, class names, event handlers, or page layout
   instructions in any field, including `schema_notes` and `trace_notes`.
+- Create or update the lightweight feature review index at
+  `specs/review-index.json` when flow review data is created or repaired. Keep
+  this index about feature navigation only: preserve existing real entries and
+  order, add the current real feature only if missing, set the current entry's
+  `has_flow_review` to `true`, preserve `has_ui_review`, refresh `updated_at`,
+  and do not invent future 002/003 feature slugs. Required entry fields are
+  `order`, `feature`, `title`, `has_flow_review`, and `has_ui_review`; root
+  fields are `schema_version`, `project`, `updated_at`, and `features`.
 - If `specs/<feature>/flows/review/flow-confirmation.md` already contains
   `revision_requests`, read them before generating new flow review data. Treat
   each request as a model-actionable repair instruction, reason against the

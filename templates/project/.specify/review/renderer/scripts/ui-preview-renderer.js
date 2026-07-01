@@ -58,11 +58,22 @@ function renderModuleStepper() {
   const next = $("next-module");
   const position = $("module-position");
   if (!prev || !next || !position) return;
-  position.textContent = count ? `模块 ${selectedModuleIndex + 1}/${count}` : "模块 0/0";
+  position.textContent = count ? `业务模块 ${selectedModuleIndex + 1}/${count}` : "业务模块 0/0";
   prev.disabled = selectedModuleIndex <= 0;
   next.disabled = !count || selectedModuleIndex >= count - 1;
   prev.onclick = () => goToModule(selectedModuleIndex - 1);
   next.onclick = () => goToModule(selectedModuleIndex + 1);
+}
+
+function countItemMust(item) {
+  let total = 0;
+  let pending = 0;
+  for (const node of item?.nodes || []) {
+    if (!isMust(node)) continue;
+    total += 1;
+    if (!isResolved(node)) pending += 1;
+  }
+  return { pending, total };
 }
 
 function renderCenter() {
@@ -76,11 +87,18 @@ function renderCenter() {
 
   const tabs = $("item-tabs");
   tabs.replaceChildren();
+  tabs.setAttribute("role", "tablist");
+  tabs.setAttribute("aria-label", reviewData.review_type === "ui" ? "当前业务模块内的界面切换" : "当前业务模块内的流程切换");
   currentItems().forEach((entry, index) => {
+    const mustCount = countItemMust(entry);
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = entry.title || entry.id;
-    button.className = index === selectedItemIndex ? "primary" : "";
+    button.className = `diagram-tab ${index === selectedItemIndex ? "active" : ""}`;
+    button.setAttribute("role", "tab");
+    button.setAttribute("aria-selected", String(index === selectedItemIndex));
+    button.tabIndex = index === selectedItemIndex ? 0 : -1;
+    appendText(button, "span", entry.title || entry.id, "diagram-tab-title");
+    appendText(button, "span", `待处理 ${mustCount.pending}/${mustCount.total}`, "diagram-tab-pending");
     button.addEventListener("click", () => {
       selectedItemIndex = index;
       selectedNodeId = null;
