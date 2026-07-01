@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.29] - 2026-07-02
+
+### Changed
+
+- Added demand-level review navigation backed by `specs/review-index.json`, so reviewers can distinguish feature switching from business-module switching.
+- Renamed in-feature module navigation to business-module navigation and made flow/UI tabs more visible with pending required-review counts.
+- Improved the fixed Flow/UI review renderer with a wider, resizable right confirmation rail and larger right-rail text for lower-resolution displays.
+
 ## [0.10.28] - 2026-07-01
 
 ### Changed
