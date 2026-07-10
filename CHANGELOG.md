@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.31] - 2026-07-11
+
+### Changed
+
+- Added actions to apply recommendations to every remaining review item or only the remaining items in the current view.
+- Added confirmation-package preflight across all modules, with a remaining-item prompt and optional recommendation completion before download.
+- Preserved saved decisions and drafts during recommendation completion, and blocked downloads when unresolved items have no valid recommendation.
+
 ## [0.10.30] - 2026-07-10
 
 ### Changed
