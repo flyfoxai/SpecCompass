@@ -205,9 +205,10 @@ function nodeCard(node) {
   changeTypeSelect.addEventListener("change", () => {
     const current = nodeState(node.id);
     if (current.status === "DRAFT") {
+      const previousState = snapshotReviewState();
       state[node.id] = { ...current, change_type: changeTypeSelect.value };
       markSummaryDirty();
-      saveState();
+      if (!saveState()) restoreReviewState(previousState);
     }
   });
   changeTypeLabel.appendChild(changeTypeSelect);
@@ -218,9 +219,10 @@ function nodeCard(node) {
   textarea.addEventListener("input", () => {
     const current = nodeState(node.id);
     if (current.status === "DRAFT") {
+      const previousState = snapshotReviewState();
       state[node.id] = { ...current, note: textarea.value };
       markSummaryDirty();
-      saveState();
+      if (!saveState()) restoreReviewState(previousState);
     }
   });
   feedback.appendChild(textarea);
@@ -262,6 +264,7 @@ function nodeCard(node) {
       changeTypeSelect.focus();
       return;
     }
+    const previousState = snapshotReviewState();
     state[node.id] = {
       status: "SAVED_SUBMITTED",
       option: draftOption,
@@ -269,7 +272,10 @@ function nodeCard(node) {
       note
     };
     markSummaryDirty();
-    saveState();
+    if (!saveState()) {
+      restoreReviewState(previousState);
+      return;
+    }
     copyDraftWarningArmed = false;
     downloadDraftWarningArmed = false;
     resetExportButtonLabels();
@@ -282,9 +288,13 @@ function nodeCard(node) {
     reselect.type = "button";
     reselect.textContent = "重新选择";
     reselect.addEventListener("click", () => {
+      const previousState = snapshotReviewState();
       delete state[node.id];
       markSummaryDirty();
-      saveState();
+      if (!saveState()) {
+        restoreReviewState(previousState);
+        return;
+      }
       copyDraftWarningArmed = false;
       downloadDraftWarningArmed = false;
       resetExportButtonLabels();
@@ -325,6 +335,7 @@ function savedRecommendedOption(node, saved) {
 }
 
 function chooseOption(node, option) {
+  const previousState = snapshotReviewState();
   if (option.id === node.recommended_option && node.recommended_option) {
     setStatus("正在保存推荐选择。");
     state[node.id] = {
@@ -332,7 +343,10 @@ function chooseOption(node, option) {
       option: option.id
     };
     markSummaryDirty();
-    saveState();
+    if (!saveState()) {
+      restoreReviewState(previousState);
+      return;
+    }
     copyDraftWarningArmed = false;
     downloadDraftWarningArmed = false;
     resetExportButtonLabels();
@@ -348,7 +362,10 @@ function chooseOption(node, option) {
     note: nodeState(node.id).note || ""
   };
   markSummaryDirty();
-  saveState();
+  if (!saveState()) {
+    restoreReviewState(previousState);
+    return;
+  }
   pendingFocusNodeId = node.id;
   copyDraftWarningArmed = false;
   downloadDraftWarningArmed = false;
@@ -627,12 +644,17 @@ ${formatSummaryList(groups.revision_requests)}
     setStatus(`确认摘要未能复制：${error.message || error}。请改用本地服务或手动写回 ${target}。`, true);
     return;
   }
+  const previousState = snapshotReviewState();
   state.__meta = {
     ...(state.__meta || {}),
     copied_fingerprint: summaryFingerprint(),
     copied_at: new Date().toISOString()
   };
-  saveState();
+  if (!saveState()) {
+    restoreReviewState(previousState);
+    setStatus(`确认摘要已复制，但浏览器未能记录复制状态；请直接写回 ${target}。`, true);
+    return;
+  }
   copyDraftWarningArmed = false;
   resetExportButtonLabels();
   setStatus(`确认摘要已复制，请写回 ${target}。`);
@@ -643,7 +665,37 @@ function downloadConfirmationPackage() {
     setStatus("确认包下载模块未加载，请刷新页面后重试，或使用复制摘要兜底。", true);
     return;
   }
+  const allReviewNodes = allNodes().map(({ node }) => node);
+  const completion = summarizeRecommendationCompletion(allReviewNodes);
+  if (completion.unfinished) {
+    const confirmed = window.confirm(
+      `所有模块和流程还有 ${completion.unfinished} 个剩余未选项，其中 ${completion.canSaveRecommended} 个可按推荐自动保存。\n不会覆盖已有选择或草稿；缺少推荐选项的确认点会阻止下载。\n是否将剩余未选项按推荐设置并继续下载？`
+    );
+    if (!confirmed) {
+      setStatus("已取消按推荐补齐，未下载确认包。");
+      return;
+    }
+    const result = applyRecommendedToMissing(allReviewNodes);
+    if (result.savedRecommended) {
+      if (!saveState()) {
+        restoreReviewState(result.previousState);
+        return;
+      }
+      copyDraftWarningArmed = false;
+      downloadDraftWarningArmed = false;
+      resetExportButtonLabels();
+      if (!result.drafts) render();
+    }
+    if (result.missingRecommendation) {
+      setStatus(`仍有 ${result.missingRecommendation} 个剩余未选项缺少推荐选项，请人工处理后再下载确认包。`, true);
+      return;
+    }
+  }
   const groups = buildSummaryGroups();
+  if (groups.unresolved_decision_items.length) {
+    setStatus(`仍有 ${groups.unresolved_decision_items.length} 个确认点没有有效选择，请人工处理后再下载确认包。`, true);
+    return;
+  }
   if (groups.draft_excluded_items.length && !downloadDraftWarningArmed) {
     downloadDraftWarningArmed = true;
     $("download-package").textContent = "仍要下载确认包";
@@ -660,6 +712,7 @@ function downloadConfirmationPackage() {
   }
   renderPackageDownloadLinks(result.parts);
 
+  const previousState = snapshotReviewState();
   state.__meta = {
     ...(state.__meta || {}),
     copied_fingerprint: summaryFingerprint(),
@@ -667,7 +720,8 @@ function downloadConfirmationPackage() {
     downloaded_part_count: result.part_count,
     downloaded_filenames: result.filenames
   };
-  saveState();
+  const downloadStateSaved = saveState();
+  if (!downloadStateSaved) restoreReviewState(previousState);
   copyDraftWarningArmed = false;
   downloadDraftWarningArmed = false;
   resetExportButtonLabels();
@@ -676,5 +730,10 @@ function downloadConfirmationPackage() {
     ? `已按 100000 UTF-8 bytes 自动分为 ${result.part_count} 个确认包，请按 part_index 顺序发给模型写回 ${target}。`
     : `确认包已下载，请发给模型写回 ${target}。`;
   const fileText = result.filenames?.length ? ` 文件：${result.filenames.join("；")}` : "";
-  setStatus(`${splitText}${fileText}`);
+  setStatus(
+    downloadStateSaved
+      ? `${splitText}${fileText}`
+      : `确认包已下载，但浏览器未能记录下载状态。${fileText}`,
+    !downloadStateSaved
+  );
 }

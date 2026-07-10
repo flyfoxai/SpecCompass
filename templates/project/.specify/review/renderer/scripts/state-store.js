@@ -82,9 +82,19 @@ function saveState() {
       state.__meta = {};
     }
     localStorage.setItem(storageKey(), JSON.stringify(state));
+    return true;
   } catch {
     setStatus("浏览器未能保存本地草稿；正式授权仍以确认文档为准。", true);
+    return false;
   }
+}
+
+function snapshotReviewState() {
+  return JSON.parse(JSON.stringify(state));
+}
+
+function restoreReviewState(snapshot) {
+  state = snapshot;
 }
 
 function markSummaryDirty() {
@@ -152,6 +162,59 @@ function nodeState(nodeId) {
 function isResolved(node) {
   const saved = nodeState(node.id);
   return saved.status === "SAVED_RECOMMENDED" || saved.status === "SAVED_SUBMITTED";
+}
+
+function recommendationNode(entry) {
+  return entry?.node || entry;
+}
+
+function hasValidRecommendedOption(node) {
+  return Boolean(
+    node?.recommended_option &&
+    (node.options || []).some((option) => option.id === node.recommended_option)
+  );
+}
+
+function summarizeRecommendationCompletion(entries) {
+  const summary = {
+    unfinished: 0,
+    canSaveRecommended: 0,
+    drafts: 0,
+    saved: 0,
+    missingRecommendation: 0,
+    eligible: []
+  };
+  for (const entry of entries || []) {
+    const node = recommendationNode(entry);
+    if (!node || !requiresNodeDecision(node)) continue;
+    const current = nodeState(node.id);
+    if (current.status === "DRAFT") {
+      summary.drafts += 1;
+    } else if (isResolved(node)) {
+      summary.saved += 1;
+    } else if (current.status === "MISSING") {
+      summary.unfinished += 1;
+      if (hasValidRecommendedOption(node)) {
+        summary.canSaveRecommended += 1;
+        summary.eligible.push(node);
+      } else {
+        summary.missingRecommendation += 1;
+      }
+    } else {
+      summary.saved += 1;
+    }
+  }
+  return summary;
+}
+
+function applyRecommendedToMissing(entries) {
+  const summary = summarizeRecommendationCompletion(entries);
+  const previousState = snapshotReviewState();
+  for (const node of summary.eligible) {
+    state[node.id] = { status: "SAVED_RECOMMENDED", option: node.recommended_option };
+  }
+  if (summary.eligible.length) markSummaryDirty();
+  return { ...summary, savedRecommended: summary.eligible.length, previousState };
 }
 
 function isMust(node) {
