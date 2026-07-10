@@ -97,59 +97,55 @@ $("show-all").addEventListener("click", () => {
   selectedNodeId = null;
   render();
 });
-$("bulk-recommended").addEventListener("click", () => {
-  const nodes = visibleNodes();
-  const unfinished = nodes.filter((node) => requiresNodeDecision(node) && !isResolved(node)).length;
-  const canSaveRecommended = nodes.filter((node) => {
-    const current = nodeState(node.id);
-    return requiresNodeDecision(node) && node.recommended_option && (!current.status || current.status === "MISSING");
-  }).length;
-  if (!unfinished || !canSaveRecommended) {
-    setStatus(`当前可见流程或节点没有可按推荐自动保存的未完成项；建议确认不计入红色待处理必审。`);
+function runRecommendationCompletion(entries, scopeLabel) {
+  const summary = summarizeRecommendationCompletion(entries);
+  if (!summary.unfinished || !summary.canSaveRecommended) {
+    const missingText = summary.missingRecommendation
+      ? `；另有 ${summary.missingRecommendation} 个未选项缺少推荐选项，需人工处理`
+      : "";
+    setStatus(`${scopeLabel}没有可按推荐自动保存的剩余未选项${missingText}；不会覆盖已有选择或草稿。`, Boolean(summary.missingRecommendation));
     return;
   }
   const confirmed = window.confirm(
-    `当前只保存当前可见流程或节点，不会一次保存所有模块所有流程。\n还有 ${unfinished} 个当前可见确认点未完成，其中 ${canSaveRecommended} 个可按推荐自动保存；草稿和已保存选择不会被覆盖。\n是否都按推荐设置进行保存？`
+    `${scopeLabel}还有 ${summary.unfinished} 个确认点未完成，其中 ${summary.canSaveRecommended} 个剩余未选项可按推荐自动保存。\n不会覆盖已有选择或草稿；缺少推荐选项的确认点仍需人工处理。\n是否都按推荐设置进行保存？`
   );
   if (!confirmed) {
-    setStatus("已取消当前视图按推荐保存。");
+    setStatus(`已取消${scopeLabel}按推荐保存。`);
     return;
   }
-  let saved = 0;
-  let skippedSaved = 0;
-  let skippedDraft = 0;
-  let skippedMissingRecommendation = 0;
-  for (const node of nodes) {
-    if (!requiresNodeDecision(node) || !node.recommended_option) {
-      skippedMissingRecommendation += 1;
-      continue;
-    }
-    const current = nodeState(node.id);
-    if (current.status === "DRAFT") {
-      skippedDraft += 1;
-      continue;
-    }
-    if (current.status && current.status !== "MISSING") {
-      skippedSaved += 1;
-      continue;
-    }
-    state[node.id] = { status: "SAVED_RECOMMENDED", option: node.recommended_option };
-    markSummaryDirty();
-    saved += 1;
+  const result = applyRecommendedToMissing(entries);
+  if (!saveState()) {
+    restoreReviewState(result.previousState);
+    return;
   }
-  saveState();
   copyDraftWarningArmed = false;
   downloadDraftWarningArmed = false;
   resetExportButtonLabels();
-  setStatus(`已按推荐保存 ${saved} 个；跳过已保存 ${skippedSaved} 个、草稿 ${skippedDraft} 个、无推荐 ${skippedMissingRecommendation} 个。`);
+  const skippedMissingRecommendation = result.missingRecommendation;
+  setStatus(`已按推荐保存 ${result.savedRecommended} 个；保留已保存 ${result.saved} 个、草稿 ${result.drafts} 个；缺少推荐选项 ${skippedMissingRecommendation} 个。`);
   render();
+}
+
+const bulkAllRecommended = $("bulk-all-recommended");
+if (bulkAllRecommended) {
+  bulkAllRecommended.addEventListener("click", () => {
+    runRecommendationCompletion(allNodes().map(({ node }) => node), "所有模块和流程");
+  });
+}
+$("bulk-recommended").addEventListener("click", () => {
+  const scopeLabel = selectedNodeId ? "当前节点" : "当前流程或界面";
+  runRecommendationCompletion(visibleNodes(), `${scopeLabel}（只保存当前可见流程或节点）`);
 });
 $("reset-visible").addEventListener("click", () => {
+  const previousState = snapshotReviewState();
   for (const node of visibleNodes()) {
     delete state[node.id];
   }
   markSummaryDirty();
-  saveState();
+  if (!saveState()) {
+    restoreReviewState(previousState);
+    return;
+  }
   copyDraftWarningArmed = false;
   downloadDraftWarningArmed = false;
   resetExportButtonLabels();

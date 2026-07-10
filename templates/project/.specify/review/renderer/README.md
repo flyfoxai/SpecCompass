@@ -342,11 +342,27 @@ the renderer shows recommended pending work separately when it exists.
 
 批量按推荐确认不能覆盖 / bulk recommended-option must not overwrite existing
 saved choices, submitted non-recommended choices, or draft choices waiting for a
-note. Current-flow bulk recommended-option acts on the current visible flow or
-node only / 只保存当前可见流程或节点. Before saving, ask how many unfinished
-visible items remain before bulk saving recommendations / 批量按推荐保存前提示当前可见未完成数量,
-and ask whether to save them with recommendations. Batch feedback must say how
-many nodes were saved and how many saved or draft choices were skipped / 跳过.
+note. 全部选择推荐 scans all modules and all flow/UI items in the loaded review
+data. 当前视图剩余项选推荐 acts on the selected node when one is focused;
+otherwise it acts on the current flow/UI item / 只保存当前可见流程或节点. Both
+actions fill only `MISSING` decision nodes whose `recommended_option` matches an
+actual option in that node. Before
+saving, ask how many unfinished items remain in that scope and whether to save
+the eligible items with recommendations / 批量按推荐保存前提示当前范围未完成数量.
+Batch feedback must say how many nodes were saved and how many saved or draft
+choices were skipped and preserved / 跳过并保留已有选择或草稿.
+
+Before confirmation-package download, the renderer scans all decision nodes. If
+`MISSING` nodes remain, it asks whether to fill eligible nodes with
+recommendations. Cancelling the prompt must not mutate browser state or start a
+download. After confirmation, nodes without a valid recommendation remain
+unresolved and block the download until they are handled manually. If browser
+persistence fails, selection mutations must be rolled back and the renderer
+must show the storage error instead of claiming that choices were saved. The existing draft
+warning still runs after this preflight: the first click warns without rebuilding
+the rail when drafts exist, and only a second explicit click may download a
+package that excludes drafts from authorization.
+
 Reset controls clear only the current view's browser local state back to MISSING and do not delete authorization already
 written to `flow-confirmation.md` or `ui-confirmation.md`.
 

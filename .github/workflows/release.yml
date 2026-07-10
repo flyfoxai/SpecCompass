@@ -50,6 +50,8 @@ jobs:
 
           - Flow and UI review pages open through the fixed Web renderer with short auto-load parameters.
           - Reviewers can accept recommendations or submit structured natural-language revision requests.
+          - Reviewers can apply recommendations to all remaining items or only the current view without overwriting saved choices or drafts.
+          - Confirmation-package download checks every module, offers to fill valid remaining recommendations, and blocks unresolved items without a valid recommendation.
           - The review page remains a confirmation surface, not a direct Flow/UI editor.
           - Flow and UI use separate review data contracts and change-type lists.
 

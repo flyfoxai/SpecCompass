@@ -3940,6 +3940,22 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "pendingRecommended" in renderer
     assert "建议确认不计入红色待处理必审" in renderer
     assert "只保存当前可见流程或节点" in renderer
+    assert 'id="bulk-all-recommended"' in renderer
+    assert "全部选择推荐" in renderer
+    assert "当前视图剩余项选推荐" in renderer
+    assert "summarizeRecommendationCompletion" in renderer
+    assert "applyRecommendedToMissing" in renderer
+    assert "allNodes().map" in renderer
+    assert 'const bulkAllRecommended = $("bulk-all-recommended")' in renderer
+    assert "if (bulkAllRecommended)" in renderer
+    assert "if (!saveState())" in renderer
+    assert "snapshotReviewState" in renderer
+    assert "restoreReviewState" in renderer
+    assert "result.previousState" in renderer
+    assert "确认包已下载，但浏览器未能记录下载状态" in renderer
+    assert "剩余未选项" in renderer
+    assert "缺少推荐选项" in renderer
+    assert "不会覆盖已有选择或草稿" in renderer
     assert "window.confirm" in renderer
     assert "还有" in renderer and "未完成" in renderer and "是否都按推荐设置进行保存" in renderer
 
@@ -3983,6 +3999,9 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "must still run `validate-review-data.mjs`" in renderer_readme
     assert "native `<dialog>`" in renderer_readme
     assert "説明" not in renderer_readme
+    assert "all modules and all flow/UI items" in renderer_readme
+    assert "only `MISSING`" in renderer_readme
+    assert "without a valid recommendation remain" in renderer_readme
     assert "only for explanation or preview" in renderer_readme or "只用于说明或预览" in renderer_readme
     assert "must not carry recommendation choices" in renderer_readme or "不得承载推荐/非推荐选择" in renderer_readme
 
@@ -4748,10 +4767,84 @@ def test_review_renderer_downloads_split_confirmation_packages():
 
     assert 'id="download-package"' in renderer
     assert 'id="download-package-links"' in renderer
+    assert 'id="bulk-all-recommended"' in renderer
+    assert "剩余未选项" in renderer
+    assert "缺少推荐选项" in renderer
     assert "renderPackageDownloadLinks" in renderer
     assert "多包下载链接" in renderer
     assert "createObjectURL" in renderer
     assert "copy-summary" in renderer
+
+
+def test_review_recommendation_completion_only_updates_missing_nodes():
+    """Bulk recommendation completion must preserve drafts and saved human choices."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer state tests")
+
+    script = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+const context = {{
+  window: {{ SpecCompassDom: {{}} }},
+  console,
+  STORAGE_PREFIX: "test:",
+  reviewData: null,
+  localStorage: {{
+    setItem: () => {{ throw new Error("storage disabled"); }},
+    removeItem: () => undefined
+  }},
+  $: () => ({{ textContent: "", classList: {{ toggle: () => undefined }} }}),
+  state: {{
+    missing: {{ status: "MISSING" }},
+    draft: {{ status: "DRAFT", draft_option: "OPTION_B", note: "keep draft" }},
+    recommended: {{ status: "SAVED_RECOMMENDED", option: "OPTION_B" }},
+    submitted: {{ status: "SAVED_SUBMITTED", option: "OPTION_B", note: "keep choice" }}
+  }},
+  create: () => ({{}}),
+  requiresNodeDecision: () => true
+}};
+vm.createContext(context);
+vm.runInContext(source, context);
+const nodes = [
+  {{ id: "missing", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
+  {{ id: "draft", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
+  {{ id: "recommended", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
+  {{ id: "submitted", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
+  {{ id: "without-recommendation", options: [{{ id: "OPTION_A" }}] }},
+  {{ id: "invalid-recommendation", recommended_option: "OPTION_X", options: [{{ id: "OPTION_A" }}] }}
+];
+const before = JSON.parse(JSON.stringify(context.state));
+const result = context.applyRecommendedToMissing(nodes);
+if (result.savedRecommended !== 1) throw new Error(`expected one save, got ${{result.savedRecommended}}`);
+if (result.drafts !== 1 || result.saved !== 2 || result.missingRecommendation !== 2) {{
+  throw new Error(`unexpected summary: ${{JSON.stringify(result)}}`);
+}}
+if (context.state.missing.status !== "SAVED_RECOMMENDED" || context.state.missing.option !== "OPTION_A") {{
+  throw new Error("eligible missing node was not saved with its recommendation");
+}}
+for (const id of ["draft", "recommended", "submitted"]) {{
+  if (JSON.stringify(context.state[id]) !== JSON.stringify(before[id])) {{
+    throw new Error(`${{id}} was overwritten`);
+  }}
+}}
+if (context.state["without-recommendation"] !== undefined) {{
+  throw new Error("node without recommendation was mutated");
+}}
+if (context.state["invalid-recommendation"] !== undefined) {{
+  throw new Error("node with an invalid recommendation was mutated");
+}}
+if (context.state.__meta?.copied_fingerprint !== "") throw new Error("summary was not invalidated");
+if (context.saveState() !== false) throw new Error("storage failure must be reported to callers");
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_confirmation_package_splitter_keeps_parts_under_100k_and_repeats_context(tmp_path):
