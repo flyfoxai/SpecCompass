@@ -3118,6 +3118,7 @@ def test_flow_methodology_requires_human_focused_review_page_contract():
         assert "selected node should focus the right rail on that single checkpoint" in content or "右侧节点栏只显示该确认点" in content, label
         assert "待处理必审" in content, label
         assert "total must-confirm" in content or "总必审" in content, label
+        assert "recommended nodes are not included in the red must-confirm pending count" in content or "建议确认不计入红色待处理必审" in content, label
         assert "必须审核总数" not in content, label
         assert "实时" in content or "real-time" in content, label
         assert "red marker" in content or "红色标记" in content, label
@@ -3130,6 +3131,8 @@ def test_flow_methodology_requires_human_focused_review_page_contract():
         assert "current-flow bulk" in content or "当前流程批量" in content, label
         assert "当前流程批量（current-flow bulk）通过、阻塞" not in content, label
         assert "current-flow bulk recommended-option" in content or "当前流程批量按推荐确认" in content, label
+        assert "current visible flow or node only" in content or "只保存当前可见流程或节点" in content, label
+        assert "ask how many unfinished visible items remain before bulk saving recommendations" in content or "批量按推荐保存前提示当前可见未完成数量" in content, label
         assert "index preview" in content or "索引预览" in content, label
         assert "NOT_APPLICABLE_FOR_UI" in content, label
         assert "5-7" in content, label
@@ -3934,6 +3937,18 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "saved.option === node.recommended_option" in renderer
     assert "requiresNodeDecision(node)" in renderer
     assert "skippedMissingRecommendation" in renderer
+    assert "pendingRecommended" in renderer
+    assert "建议确认不计入红色待处理必审" in renderer
+    assert "只保存当前可见流程或节点" in renderer
+    assert "window.confirm" in renderer
+    assert "还有" in renderer and "未完成" in renderer and "是否都按推荐设置进行保存" in renderer
+
+    for content, label in (
+        (_command("flow"), "flow command"),
+        (_command("ui"), "ui command"),
+        (METHODOLOGY_DOC.read_text(encoding="utf-8"), "methodology"),
+    ):
+        assert 'batch_scope: "<' in content, label
 
     skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
     renderer_readme = RENDERER_README.read_text(encoding="utf-8")

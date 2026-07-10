@@ -98,11 +98,28 @@ $("show-all").addEventListener("click", () => {
   render();
 });
 $("bulk-recommended").addEventListener("click", () => {
+  const nodes = visibleNodes();
+  const unfinished = nodes.filter((node) => requiresNodeDecision(node) && !isResolved(node)).length;
+  const canSaveRecommended = nodes.filter((node) => {
+    const current = nodeState(node.id);
+    return requiresNodeDecision(node) && node.recommended_option && (!current.status || current.status === "MISSING");
+  }).length;
+  if (!unfinished || !canSaveRecommended) {
+    setStatus(`当前可见流程或节点没有可按推荐自动保存的未完成项；建议确认不计入红色待处理必审。`);
+    return;
+  }
+  const confirmed = window.confirm(
+    `当前只保存当前可见流程或节点，不会一次保存所有模块所有流程。\n还有 ${unfinished} 个当前可见确认点未完成，其中 ${canSaveRecommended} 个可按推荐自动保存；草稿和已保存选择不会被覆盖。\n是否都按推荐设置进行保存？`
+  );
+  if (!confirmed) {
+    setStatus("已取消当前视图按推荐保存。");
+    return;
+  }
   let saved = 0;
   let skippedSaved = 0;
   let skippedDraft = 0;
   let skippedMissingRecommendation = 0;
-  for (const node of visibleNodes()) {
+  for (const node of nodes) {
     if (!requiresNodeDecision(node) || !node.recommended_option) {
       skippedMissingRecommendation += 1;
       continue;

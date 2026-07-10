@@ -172,6 +172,20 @@ function countModuleMust(module) {
   return { pending, total };
 }
 
+function countModuleRecommended(module) {
+  const items = module?.[itemKey()] || [];
+  let total = 0;
+  let pendingRecommended = 0;
+  for (const item of items) {
+    for (const node of item.nodes || []) {
+      if (node.review_level !== "recommended") continue;
+      total += 1;
+      if (!isResolved(node)) pendingRecommended += 1;
+    }
+  }
+  return { pendingRecommended, total };
+}
+
 function levelLabel(level) {
   return {
     must_confirm: "必须确认",

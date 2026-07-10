@@ -196,7 +196,7 @@ review_data_schema: .specify/review/schemas/ui-review-data.schema.json
 review_validator: .specify/review/scripts/validate-review-data.mjs
 confirm_strategy: batch | hybrid | rolling
 batch_id: <Batch ID from the review manifest>
-batch_scope: <confirmed UI scope>
+batch_scope: "<confirmed UI scope>"
 batch_review_status: CONFIRMED | SCOPED_CONFIRMATION | NEEDS_REVISION | STALE | REVOKED
 source_artifacts_snapshot:
   - path: specs/<feature>/ui/index.md

@@ -25,6 +25,16 @@
   font-size: 12px;
 }
 
+.recommended-count {
+  display: inline-flex;
+  margin-top: 5px;
+  padding: 2px 6px;
+  border-radius: 999px;
+  color: #285B5A;
+  background: #E4F6F4;
+  font-size: 12px;
+}
+
 .feature-nav {
   display: flex;
   align-items: center;

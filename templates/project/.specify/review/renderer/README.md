@@ -336,10 +336,18 @@ visibly labeled as a fallback, not the primary authorization path. This prevents
 browser state or a successful button click from being mistaken for
 repository-tracked authorization.
 
+The red 待处理必审 counter is must-confirm only. Recommended nodes are not
+included in the red must-confirm pending count / 建议确认不计入红色待处理必审, so
+the renderer shows recommended pending work separately when it exists.
+
 批量按推荐确认不能覆盖 / bulk recommended-option must not overwrite existing
 saved choices, submitted non-recommended choices, or draft choices waiting for a
-note. Batch feedback must say how many nodes were saved and how many saved or
-draft choices were skipped / 跳过. Reset controls clear only the current view's browser local state back to MISSING and do not delete authorization already
+note. Current-flow bulk recommended-option acts on the current visible flow or
+node only / 只保存当前可见流程或节点. Before saving, ask how many unfinished
+visible items remain before bulk saving recommendations / 批量按推荐保存前提示当前可见未完成数量,
+and ask whether to save them with recommendations. Batch feedback must say how
+many nodes were saved and how many saved or draft choices were skipped / 跳过.
+Reset controls clear only the current view's browser local state back to MISSING and do not delete authorization already
 written to `flow-confirmation.md` or `ui-confirmation.md`.
 
 Node-level option actions should update the current card, selected-node facts,

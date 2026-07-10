@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.30] - 2026-07-10
+
+### Changed
+
+- Clarified Flow/UI review module counters by separating recommended pending work from the red must-confirm count.
+- Added a confirmation prompt before current-view recommended saves, including the current visible unfinished count and scoped-save warning.
+- Quoted `batch_scope` frontmatter examples so scopes containing colons remain valid YAML.
+
 ## [0.10.29] - 2026-07-02
 
 ### Changed

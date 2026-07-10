@@ -69,13 +69,13 @@
             <h2>当前确认</h2>
             <p id="rail-summary">选择模块、流程或节点后在这里确认。</p>
             <ol id="authorization-steps" class="authorization-steps">
-              <li><strong>本地选择</strong>：点击推荐项会保存到浏览器草稿。</li>
+              <li><strong>本地选择</strong>：点击推荐项会保存到浏览器草稿；建议确认不计入红色待处理必审。</li>
               <li><strong>下载确认包</strong>：点击顶部按钮生成可交给模型写回的 JSON 包。</li>
               <li><strong>写回确认文档</strong>：确认包写入 flow-confirmation.md 或 ui-confirmation.md 后才是正式授权。</li>
             </ol>
             <div class="rail-actions">
               <button id="show-all" class="hidden">显示全部确认点</button>
-              <button id="bulk-recommended">当前视图按推荐保存</button>
+              <button id="bulk-recommended">当前可见项按推荐保存</button>
               <button id="reset-visible" class="danger">重置可见项</button>
             </div>
             <div id="live-status" class="status" aria-live="polite"></div>

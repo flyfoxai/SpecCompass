@@ -26,6 +26,7 @@ function renderModules() {
   list.replaceChildren();
   (reviewData.modules || []).forEach((module, index) => {
     const count = countModuleMust(module);
+    const recommendedCount = countModuleRecommended(module);
     const button = document.createElement("button");
     button.className = "module-button";
     button.type = "button";
@@ -35,6 +36,13 @@ function renderModules() {
     appendText(button, "span", module.summary || "");
     button.appendChild(document.createElement("br"));
     appendText(button, "span", `待处理必审 ${count.pending}/${count.total}`, "must-count");
+    button.appendChild(document.createElement("br"));
+    appendText(
+      button,
+      "span",
+      `建议确认待处理 ${recommendedCount.pendingRecommended}/${recommendedCount.total}；建议确认不计入红色待处理必审`,
+      "recommended-count"
+    );
     button.addEventListener("click", () => {
       goToModule(index);
     });
