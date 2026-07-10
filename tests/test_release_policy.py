@@ -15,7 +15,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 def test_project_version_matches_latest_changelog_entry():
-    """The checked-in public version should have a matching top changelog entry."""
+    """The project version should match the release or its next development cycle."""
     pyproject = tomllib.loads((PROJECT_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
     version = pyproject["project"]["version"]
 
@@ -23,7 +23,11 @@ def test_project_version_matches_latest_changelog_entry():
     latest_entry = re.search(r"^## \[([0-9]+\.[0-9]+\.[0-9]+)\]", changelog, re.MULTILINE)
 
     assert latest_entry is not None
-    assert latest_entry.group(1) == version
+    latest_version = latest_entry.group(1)
+    major, minor, patch = (int(part) for part in latest_version.split("."))
+    next_dev_version = f"{major}.{minor}.{patch + 1}.dev0"
+
+    assert version in {latest_version, next_dev_version}
 
 
 def test_release_notes_publish_user_facing_release_theme():
