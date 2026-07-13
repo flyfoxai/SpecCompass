@@ -5,11 +5,12 @@ from __future__ import annotations
 import http.client
 import json
 import os
-import selectors
+import queue
 import shutil
 import signal
 import socket
 import subprocess
+import threading
 import time
 from contextlib import contextmanager
 from pathlib import Path
@@ -94,29 +95,43 @@ def _launcher_command(project: ReviewProject, review_type: str = "flow", *extra:
 
 def _wait_for_ready_url(process: subprocess.Popen[str], timeout: float = 8.0) -> str:
     assert process.stdout is not None
-    selector = selectors.DefaultSelector()
-    selector.register(process.stdout, selectors.EVENT_READ)
+    lines: queue.Queue[str | None] = queue.Queue()
+
+    def read_stdout() -> None:
+        try:
+            for line in process.stdout:
+                lines.put(line)
+        finally:
+            lines.put(None)
+
+    threading.Thread(target=read_stdout, daemon=True).start()
     deadline = time.monotonic() + timeout
     output: list[str] = []
-    try:
-        while time.monotonic() < deadline:
-            if process.poll() is not None:
-                output.extend(process.stdout.readlines())
-                stderr = process.stderr.read() if process.stderr else ""
+    while time.monotonic() < deadline:
+        try:
+            remaining = max(0.0, deadline - time.monotonic())
+            line = lines.get(timeout=min(0.1, remaining))
+        except queue.Empty:
+            continue
+
+        if line is None:
+            try:
+                process.wait(timeout=1)
+            except subprocess.TimeoutExpired:
                 pytest.fail(
-                    f"launcher exited before readiness ({process.returncode})\n"
-                    f"stdout: {''.join(output)}\nstderr: {stderr}"
+                    "launcher output closed before readiness while process was still running\n"
+                    f"output: {''.join(output)}"
                 )
-            events = selector.select(timeout=min(0.1, deadline - time.monotonic()))
-            if not events:
-                continue
-            line = process.stdout.readline()
-            output.append(line)
-            if line.startswith("SPECCOMPASS_REVIEW_URL="):
-                return line.strip().split("=", 1)[1]
-    finally:
-        selector.close()
-    pytest.fail(f"launcher did not become ready\nstdout: {''.join(output)}")
+            pytest.fail(
+                f"launcher exited before readiness ({process.returncode})\n"
+                f"output: {''.join(output)}"
+            )
+
+        output.append(line)
+        if line.startswith("SPECCOMPASS_REVIEW_URL="):
+            return line.strip().split("=", 1)[1]
+
+    pytest.fail(f"launcher did not become ready\noutput: {''.join(output)}")
 
 
 @contextmanager
@@ -125,7 +140,7 @@ def _running_launcher(project: ReviewProject, review_type: str = "flow"):
         _launcher_command(project, review_type),
         cwd=project.root,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True,
         encoding="utf-8",
     )
@@ -346,7 +361,7 @@ def test_launcher_sigterm_stops_server_and_releases_port(review_project: ReviewP
         _launcher_command(review_project),
         cwd=review_project.root,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
         text=True,
         encoding="utf-8",
     )
