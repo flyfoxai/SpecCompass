@@ -381,4 +381,9 @@ def test_launcher_sigterm_stops_server_and_releases_port(review_project: ReviewP
     else:
         pytest.fail("launcher port remained open after SIGTERM")
 
-    assert process.returncode == 0
+    # On Windows this checks port release after forced termination only:
+    # os.kill(..., SIGTERM) calls TerminateProcess with SIGTERM's integer
+    # value (15), so the process exits with code 15 and Node's graceful-
+    # shutdown handler is not exercised.
+    expected_returncode = signal.SIGTERM if os.name == "nt" else 0
+    assert process.returncode == expected_returncode
