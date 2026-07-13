@@ -588,6 +588,16 @@ vocabulary instead.
 
 ## Next
 
+- After `flow-review-data.json` passes validation, start the fixed review launcher
+  from the project root in a long-running terminal:
+  `node .specify/review/scripts/serve-review.mjs --flow <feature>`. Wait for the
+  launcher self-check; it may print `SPECCOMPASS_REVIEW_URL=` only after the
+  renderer 和 review data 均返回 HTTP 200. Keep that process running and present
+  the exact emitted URL to the user. Do not guess a port or rewrite the URL.
+  交互复核禁止使用 `file://`，并且 `localhost` 不接受；only the emitted
+  `http://127.0.0.1:<port>/...` URL is a valid interactive entry. A failed
+  self-check is a model-fixable closeout failure, not a reason to return a file
+  link, relative path, or Markdown batch manifest as the primary review entry.
 - End every run with a concrete closeout recommendation. Do not only list possible next commands. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.
 - Before choosing the recommendation, reconcile `.specify/memory/active-context.md`, `.specify/memory/feature-map.md`, feature `memory/index.md`, feature `memory/open-items.md`, flow `Stage Readiness`, and this flow evidence. If flow readiness is missing or blocked, recommend `/sp.flow`, `/sp.clarify`, or `/sp.specify` with the exact blocker route instead of downstream work.
 - If the closeout names a numbered feature, module, or mainline such as `110-template-library-template-application`, include 1-3 short Chinese sentences explaining what it mainly does and why it matters. If the role is not confirmed by current evidence, say it is not confirmed and recommend evidence repair or `/sp.route all`.

@@ -138,9 +138,17 @@ function currentItem() {
   return currentItems()[selectedItemIndex] || null;
 }
 
+function currentItemNodes() {
+  return currentItem()?.nodes || [];
+}
+
 function visibleNodes() {
-  const nodes = currentItem()?.nodes || [];
+  const nodes = currentItemNodes();
   return selectedNodeId ? nodes.filter((node) => node.id === selectedNodeId) : nodes;
+}
+
+function currentModuleNodes() {
+  return currentItems().flatMap((item) => item.nodes || []);
 }
 
 function allNodes() {

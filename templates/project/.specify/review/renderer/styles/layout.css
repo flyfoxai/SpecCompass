@@ -1,7 +1,9 @@
 /* Fixed review layout: stable position and size are more important than motion. */
 .app {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: auto 1fr;
+  width: 100%;
   height: 100vh;
   min-height: 100vh;
 }
@@ -140,5 +142,33 @@ body.is-resizing-right-rail {
 
   .review-workspace {
     --right-rail-width: 360px;
+  }
+}
+
+@media (max-width: 920px) {
+  .app {
+    height: auto;
+    overflow-x: hidden;
+  }
+
+  header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .brand,
+  .tools,
+  .shell,
+  .review-workspace,
+  .left-nav,
+  main,
+  .right-rail {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+  }
+
+  .tools {
+    justify-content: flex-start;
   }
 }

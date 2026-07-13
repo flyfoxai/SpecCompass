@@ -33,6 +33,31 @@ or UI confirmation runs.
 - UI schema: `.specify/review/schemas/ui-review-data.schema.json`
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
 
+## Interactive Review Launcher
+
+After the matching JSON passes validation, start one launcher from the project
+root in a long-running terminal:
+
+```bash
+node .specify/review/scripts/serve-review.mjs --flow <feature>
+node .specify/review/scripts/serve-review.mjs --ui <feature>
+```
+
+Use only the command matching the generated review type. The launcher binds to
+exactly `127.0.0.1`, chooses an available port by default, and prints
+`SPECCOMPASS_REVIEW_URL=` only after the renderer 和 review data 均返回 HTTP 200.
+Keep the process running and return that exact URL; never guess or replace its
+port. 交互复核禁止使用 `file://`，并且 `localhost` 不接受. Do not return a
+relative renderer path, a direct file link, or the Markdown batch manifest as
+the interactive entry. If either self-check fails, repair the generated data or
+fixed infrastructure and restart the launcher before closeout.
+
+The fixed renderer exposes `当前视图按推荐保存`, `当前模块按推荐保存`, and
+`当前需求按推荐保存`. These scopes fill only unfinished `MISSING` nodes with a
+valid recommendation and preserve drafts and saved choices. Confirmation-package
+download performs the same whole-requirement preflight and asks whether eligible
+unfinished nodes should be saved with their recommendations before downloading.
+
 example data must not replace generation rules / 实验数据不能替代生成规则.
 `docs/examples/review/*`, experiment JSON files, and preview-only HTML pages are
 few-shot references or visual smoke-test fixtures only. They are not a valid
@@ -42,14 +67,11 @@ normal run must generate or repair the target feature's
 PRD/spec/flow/UI evidence, then run `validate-review-data.mjs`. Do not claim the
 SP mechanism is fixed just because an example file was hand-edited.
 
-When reporting the review result to a user, present the Web review entry above
-as the primary page. The renderer uses short URL parameters / 短参数 to resolve
-the data file with browser URL paths, so it works the same on macOS, Windows,
-and Linux when served from the project root. Do not ask the user to open
+When reporting the review result to a user, present the launcher's emitted Web
+review URL as the primary page. The renderer uses short URL parameters / 短参数
+to resolve the data file with browser URL paths. Do not ask the user to open
 `flow-review-batch.md` or `ui-review-batch.md` as the primary review entry;
-those Markdown files are fallback / 兜底 text records only. If the renderer is
-opened without `?flow=<feature>` or `?ui=<feature>`, it should show a visible
-fallback prompt and the manual load buttons.
+those Markdown files are fallback / 兜底 text records only.
 
 If validation fails, do not finish the command and do not promote readiness.
 Fix model-fixable data issues first. If the remaining gap requires human

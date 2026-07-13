@@ -67,12 +67,26 @@ instead. Renderer changes require a separate implementation task with tests.
 - Schemas: `.specify/review/schemas/flow-review-data.schema.json` and
   `.specify/review/schemas/ui-review-data.schema.json`
 
-The renderer may load `window.SPECCOMPASS_REVIEW_DATA`, a selected local JSON
-file input / 本地 JSON 文件, or a colocated `flow-review-data.json` /
-`ui-review-data.json` file when the browser permits it. `window.SPECCOMPASS_REVIEW_DATA`
-is useful for server previews or generated wrapper pages; local files are useful
-for static review from `file://`; colocated JSON is a convenience only and must
-not be treated as a persistence guarantee.
+Interactive review must start from the project root with the self-contained
+launcher. Use exactly one matching command and keep it running:
+
+```bash
+node .specify/review/scripts/serve-review.mjs --flow <feature>
+node .specify/review/scripts/serve-review.mjs --ui <feature>
+```
+
+The launcher binds only to `127.0.0.1`, chooses an available port unless an
+explicit port is supplied, and emits `SPECCOMPASS_REVIEW_URL=` only after the
+renderer 和 review data 均返回 HTTP 200. The agent must return that exact emitted
+URL and must not guess a port. 交互复核禁止使用 `file://`，并且 `localhost` 不接受;
+HTTPS, `::1`, and other hostnames are also unsupported. On any unsupported
+origin, the renderer rejects inline data and disables load, file, download, and
+copy controls. The local JSON selector remains a recovery control only after the
+fixed renderer has been opened from a supported `http://127.0.0.1:<port>` URL.
+On that supported origin, the renderer may accept
+`window.SPECCOMPASS_REVIEW_DATA`, a selected local JSON file input / 本地 JSON 文件,
+or a colocated `flow-review-data.json` / `ui-review-data.json`; none of these data
+sources bypasses the transport gate or changes the authorization rules.
 
 The primary reviewer-facing entry uses short URL parameters / 短参数. Opening
 `speccompass-review-renderer.html?flow=<feature>` auto-loads
@@ -83,10 +97,14 @@ locations with browser URL paths and `new URL(..., window.location.href)`, not
 operating-system file separators, so the same contract applies on macOS,
 Windows, and Linux. The feature parameter must be a simple feature directory
 name only: letters, numbers, dot, underscore, and dash are allowed; path
-separators and `..` are rejected. When no short parameter is present, the page
-must show a visible fallback / 兜底 prompt and keep the manual load buttons.
-If `file://` browser restrictions block JSON fetch, use a local server preview
-or the manual JSON file selector.
+separators and `..` are rejected. When no short parameter is present on the
+supported origin, the page shows a visible prompt and keeps the manual load
+buttons. This does not create a fallback for unsupported transports.
+
+New projects receive the launcher and renderer through `specify init`. Existing
+projects refresh this fixed `.specify/review/` infrastructure with
+`specify init --force`; review data and confirmation documents under `specs/`
+remain project-owned artifacts and are outside that fixed directory.
 
 The fixed renderer also reads `specs/review-index.json` for demand-level
 navigation / 需求级导航. The top navigation text is `上一需求 / 需求 X/Y / 下一需求`;
@@ -342,15 +360,16 @@ the renderer shows recommended pending work separately when it exists.
 
 批量按推荐确认不能覆盖 / bulk recommended-option must not overwrite existing
 saved choices, submitted non-recommended choices, or draft choices waiting for a
-note. 全部选择推荐 scans all modules and all flow/UI items in the loaded review
-data. 当前视图剩余项选推荐 acts on the selected node when one is focused;
-otherwise it acts on the current flow/UI item / 只保存当前可见流程或节点. Both
-actions fill only `MISSING` decision nodes whose `recommended_option` matches an
-actual option in that node. Before
-saving, ask how many unfinished items remain in that scope and whether to save
-the eligible items with recommendations / 批量按推荐保存前提示当前范围未完成数量.
-Batch feedback must say how many nodes were saved and how many saved or draft
-choices were skipped and preserved / 跳过并保留已有选择或草稿.
+note. `当前视图按推荐保存` always covers every node in the current flow/UI item,
+even when one node is focused. `当前模块按推荐保存` covers every flow/UI item in the
+current business module. `当前需求按推荐保存` covers every module and item in the
+currently loaded feature requirement; it does not cross into other entries in
+`specs/review-index.json`. All three actions fill only `MISSING` decision nodes
+whose `recommended_option` matches an actual option in that node. Before saving,
+ask how many unfinished items remain in that scope and whether to save the
+eligible items with recommendations / 批量按推荐保存前提示当前范围未完成数量. Batch
+feedback must say how many nodes were saved and how many saved or draft choices
+were skipped and preserved / 跳过并保留已有选择或草稿.
 
 Before confirmation-package download, the renderer scans all decision nodes. If
 `MISSING` nodes remain, it asks whether to fill eligible nodes with
