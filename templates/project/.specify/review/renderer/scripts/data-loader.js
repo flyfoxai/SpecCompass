@@ -1,4 +1,35 @@
 /* Fixed SpecCompass review renderer infrastructure. Normal /sp.flow and /sp.ui only fill JSON review data. */
+const REVIEW_TRANSPORT_CONTROL_IDS = [
+  "load-flow",
+  "load-ui",
+  "file-input",
+  "download-package",
+  "copy-summary"
+];
+
+function isSupportedReviewTransport() {
+  return window.location.protocol === "http:" && window.location.hostname === "127.0.0.1";
+}
+
+function requireSupportedReviewTransport() {
+  if (isSupportedReviewTransport()) return true;
+  for (const id of REVIEW_TRANSPORT_CONTROL_IDS) {
+    const control = $(id);
+    if (control) control.disabled = true;
+  }
+  setStatus(
+    "确认页只能通过 127.0.0.1 本地服务使用。请在项目根目录运行 node .specify/review/scripts/serve-review.mjs --flow <feature> 或 --ui <feature>，并打开 SPECCOMPASS_REVIEW_URL= 输出的地址。",
+    true
+  );
+  return false;
+}
+
+function acceptSupportedReviewData(data) {
+  if (!requireSupportedReviewTransport()) return false;
+  acceptReviewData(data);
+  return true;
+}
+
 function containsPathSeparator(value) {
   for (const char of String(value || "")) {
     if (char === "/" || char.charCodeAt(0) === 92) return true;
@@ -46,19 +77,18 @@ function autoLoadConfigFromUrl() {
 }
 
 async function loadFromUrlConfig(config) {
+  if (!requireSupportedReviewTransport()) return;
   try {
     const response = await fetch(config.url, { cache: "no-store" });
     if (!response.ok) throw new Error(response.statusText);
-    acceptReviewData(await response.json());
+    acceptSupportedReviewData(await response.json());
   } catch (error) {
-    const protocolHint = window.location.protocol === "file:"
-      ? "当前通过 file:// 打开时浏览器可能禁止读取 JSON；请使用本地预览服务，或点击上方按钮/选择 JSON 文件兜底。"
-      : "请确认对应 feature 已生成 review data，或点击上方按钮/选择 JSON 文件兜底。";
-    setStatus(`无法自动加载 ${config.type} review data（${config.feature}）：${error.message}。${protocolHint}`, true);
+    setStatus(`无法自动加载 ${config.type} review data（${config.feature}）：${error.message}。请确认对应 feature 已生成 review data。`, true);
   }
 }
 
 async function autoLoadFromUrl() {
+  if (!requireSupportedReviewTransport()) return;
   try {
     const config = autoLoadConfigFromUrl();
     if (!config) {
@@ -72,10 +102,11 @@ async function autoLoadFromUrl() {
 }
 
 async function loadDefault(type) {
+  if (!requireSupportedReviewTransport()) return;
   try {
     const response = await fetch(DEFAULT_DATA_FILES[type], { cache: "no-store" });
     if (!response.ok) throw new Error(response.statusText);
-    acceptReviewData(await response.json());
+    acceptSupportedReviewData(await response.json());
   } catch (error) {
     setStatus(`无法自动加载 ${DEFAULT_DATA_FILES[type]}，请手动选择 JSON 文件。`, true);
     $("file-input").click();
@@ -85,10 +116,11 @@ async function loadDefault(type) {
 $("load-flow").addEventListener("click", () => loadDefault("flow"));
 $("load-ui").addEventListener("click", () => loadDefault("ui"));
 $("file-input").addEventListener("change", async (event) => {
+  if (!requireSupportedReviewTransport()) return;
   const file = event.target.files?.[0];
   if (!file) return;
   try {
-    acceptReviewData(JSON.parse(await file.text()));
+    acceptSupportedReviewData(JSON.parse(await file.text()));
   } catch (error) {
     setStatus(`JSON 文件解析失败：${error.message}`, true);
   }
@@ -126,15 +158,14 @@ function runRecommendationCompletion(entries, scopeLabel) {
   render();
 }
 
-const bulkAllRecommended = $("bulk-all-recommended");
-if (bulkAllRecommended) {
-  bulkAllRecommended.addEventListener("click", () => {
-    runRecommendationCompletion(allNodes().map(({ node }) => node), "所有模块和流程");
-  });
-}
-$("bulk-recommended").addEventListener("click", () => {
-  const scopeLabel = selectedNodeId ? "当前节点" : "当前流程或界面";
-  runRecommendationCompletion(visibleNodes(), `${scopeLabel}（只保存当前可见流程或节点）`);
+$("bulk-view-recommended").addEventListener("click", () => {
+  runRecommendationCompletion(currentItemNodes(), "当前视图");
+});
+$("bulk-module-recommended").addEventListener("click", () => {
+  runRecommendationCompletion(currentModuleNodes(), "当前模块");
+});
+$("bulk-requirement-recommended").addEventListener("click", () => {
+  runRecommendationCompletion(allNodes().map(({ node }) => node), "当前需求");
 });
 $("reset-visible").addEventListener("click", () => {
   const previousState = snapshotReviewState();
@@ -152,8 +183,12 @@ $("reset-visible").addEventListener("click", () => {
   setStatus("已重置当前视图本地选择。");
   render();
 });
-$("download-package").addEventListener("click", downloadConfirmationPackage);
-$("copy-summary").addEventListener("click", copySummary);
+$("download-package").addEventListener("click", () => {
+  if (requireSupportedReviewTransport()) downloadConfirmationPackage();
+});
+$("copy-summary").addEventListener("click", () => {
+  if (requireSupportedReviewTransport()) copySummary();
+});
 window.addEventListener("beforeunload", (event) => {
   if (!reviewData || (!hasDrafts() && !hasUnexportedSavedChoices())) return;
   event.preventDefault();
@@ -161,8 +196,10 @@ window.addEventListener("beforeunload", (event) => {
   return event.returnValue;
 });
 
-if (reviewData) {
-  acceptReviewData(reviewData);
+if (!requireSupportedReviewTransport()) {
+  reviewData = null;
+} else if (reviewData) {
+  acceptSupportedReviewData(reviewData);
 } else {
   autoLoadFromUrl();
 }

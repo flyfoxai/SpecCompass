@@ -1080,6 +1080,17 @@ details {
     display: none;
   }
 
+  .diagram-view {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .rail-actions > button {
+    flex: 1 1 150px;
+    min-width: 0;
+    white-space: normal;
+  }
+
   .ui-region,
   .ui-region-left,
   .ui-region-main,

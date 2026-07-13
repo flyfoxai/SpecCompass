@@ -3645,9 +3645,204 @@ def test_flow_ui_review_pages_use_short_url_parameters_as_primary_entry():
     assert "new URL(relativePath, window.location.href)" in data_loader
     assert "../../../specs/${encodeURIComponent(feature)}/flows/review/flow-review-data.json" in data_loader
     assert "../../../specs/${encodeURIComponent(feature)}/ui/review/ui-review-data.json" in data_loader
-    assert "window.location.protocol === \"file:\"" in data_loader
+    assert "window.location.protocol === \"http:\"" in data_loader
+    assert "window.location.hostname === \"127.0.0.1\"" in data_loader
+    assert "serve-review.mjs" in data_loader
     assert "path.sep" not in data_loader
     assert "\\\\" not in data_loader
+
+
+def test_review_renderer_exposes_view_module_and_requirement_recommendation_scopes():
+    """Recommendation completion should expose three precise, independently bound scopes."""
+    renderer_entry = REVIEW_PAGE_RENDERER.read_text(encoding="utf-8")
+    data_loader = (REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js").read_text(encoding="utf-8")
+
+    for button_id, label in (
+        ("bulk-view-recommended", "当前视图按推荐保存"),
+        ("bulk-module-recommended", "当前模块按推荐保存"),
+        ("bulk-requirement-recommended", "当前需求按推荐保存"),
+    ):
+        assert f'id="{button_id}"' in renderer_entry
+        assert label in renderer_entry
+        assert f'$("{button_id}").addEventListener' in data_loader
+
+    assert 'runRecommendationCompletion(currentItemNodes(), "当前视图")' in data_loader
+    assert 'runRecommendationCompletion(currentModuleNodes(), "当前模块")' in data_loader
+    assert 'runRecommendationCompletion(allNodes().map(({ node }) => node), "当前需求")' in data_loader
+
+
+def test_review_recommendation_scope_current_view_includes_all_item_nodes_when_node_selected():
+    """The view scope should not collapse to the focused node in the current item."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer state tests")
+
+    script = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+const context = {{
+  window: {{ SpecCompassDom: {{}} }},
+  console,
+  reviewData: {{
+    review_type: "flow",
+    modules: [{{
+      id: "module-a",
+      diagrams: [
+        {{ id: "flow-a1", nodes: [{{ id: "a-1" }}, {{ id: "a-2" }}] }},
+        {{ id: "flow-a2", nodes: [{{ id: "a-3" }}] }}
+      ]
+    }}]
+  }},
+  selectedModuleIndex: 0,
+  selectedItemIndex: 0,
+  selectedNodeId: "a-1",
+  STORAGE_PREFIX: "test:",
+  localStorage: {{}},
+  state: {{}},
+  create: () => ({{}}),
+  requiresNodeDecision: () => true
+}};
+vm.createContext(context);
+vm.runInContext(source, context);
+const ids = context.currentItemNodes().map((node) => node.id);
+if (JSON.stringify(ids) !== JSON.stringify(["a-1", "a-2"])) {{
+  throw new Error(`unexpected view nodes: ${{JSON.stringify(ids)}}`);
+}}
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_review_recommendation_scope_current_module_flattens_only_that_module():
+    """The module scope should include every item in the selected module and nothing else."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer state tests")
+
+    script = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+const context = {{
+  window: {{ SpecCompassDom: {{}} }},
+  console,
+  reviewData: {{
+    review_type: "flow",
+    modules: [
+      {{ id: "module-a", diagrams: [{{ id: "flow-a", nodes: [{{ id: "a-1" }}] }}] }},
+      {{
+        id: "module-b",
+        diagrams: [
+          {{ id: "flow-b1", nodes: [{{ id: "b-1" }}, {{ id: "b-2" }}] }},
+          {{ id: "flow-b2", nodes: [{{ id: "b-3" }}] }}
+        ]
+      }}
+    ]
+  }},
+  selectedModuleIndex: 1,
+  selectedItemIndex: 0,
+  selectedNodeId: "b-1",
+  STORAGE_PREFIX: "test:",
+  localStorage: {{}},
+  state: {{}},
+  create: () => ({{}}),
+  requiresNodeDecision: () => true
+}};
+vm.createContext(context);
+vm.runInContext(source, context);
+const ids = context.currentModuleNodes().map((node) => node.id);
+if (JSON.stringify(ids) !== JSON.stringify(["b-1", "b-2", "b-3"])) {{
+  throw new Error(`unexpected module nodes: ${{JSON.stringify(ids)}}`);
+}}
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_review_renderer_transport_gate_rejects_non_127_http_before_accepting_data():
+    """Inline review data and review controls must stay blocked outside the launcher origin."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer transport tests")
+
+    script = REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+const controlIds = ["load-flow", "load-ui", "file-input", "download-package", "copy-summary"];
+
+function evaluate(protocol, hostname, expectedAccepted) {{
+  const controls = Object.fromEntries(controlIds.map((id) => [id, {{
+    disabled: false,
+    addEventListener: () => undefined,
+    classList: {{ toggle: () => undefined }}
+  }}]));
+  controls["show-all"] = {{ addEventListener: () => undefined }};
+  controls["bulk-view-recommended"] = {{ addEventListener: () => undefined }};
+  controls["bulk-module-recommended"] = {{ addEventListener: () => undefined }};
+  controls["bulk-requirement-recommended"] = {{ addEventListener: () => undefined }};
+  controls["bulk-all-recommended"] = {{ addEventListener: () => undefined }};
+  controls["bulk-recommended"] = {{ addEventListener: () => undefined }};
+  controls["reset-visible"] = {{ addEventListener: () => undefined }};
+  controls["live-status"] = {{ textContent: "", classList: {{ toggle: () => undefined }} }};
+  let accepted = 0;
+  const context = {{
+    window: {{
+      location: {{ protocol, hostname, search: "" }},
+      addEventListener: () => undefined,
+      confirm: () => true
+    }},
+    console,
+    URL,
+    URLSearchParams,
+    DEFAULT_DATA_FILES: {{ flow: "flow.json", ui: "ui.json" }},
+    reviewData: {{ review_type: "flow" }},
+    $: (id) => controls[id],
+    acceptReviewData: () => {{ accepted += 1; }},
+    setStatus: (message) => {{ controls["live-status"].textContent = message; }},
+    downloadConfirmationPackage: () => undefined,
+    copySummary: () => undefined,
+    hasDrafts: () => false,
+    hasUnexportedSavedChoices: () => false
+  }};
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  if (accepted !== expectedAccepted) {{
+    throw new Error(`${{protocol}}//${{hostname}} accepted ${{accepted}} review payloads`);
+  }}
+  if (expectedAccepted === 0) {{
+    for (const id of controlIds) {{
+      if (!controls[id].disabled) throw new Error(`${{id}} was not disabled for ${{protocol}}//${{hostname}}`);
+    }}
+    if (!controls["live-status"].textContent.includes("serve-review.mjs")) {{
+      throw new Error("blocked transport did not identify the required launcher");
+    }}
+  }}
+}}
+
+evaluate("file:", "", 0);
+evaluate("http:", "localhost", 0);
+evaluate("https:", "127.0.0.1", 0);
+evaluate("http:", "127.0.0.1", 1);
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_review_confirmation_legacy_vocabulary_is_compatibly_migrated():
@@ -3939,15 +4134,18 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "skippedMissingRecommendation" in renderer
     assert "pendingRecommended" in renderer
     assert "建议确认不计入红色待处理必审" in renderer
-    assert "只保存当前可见流程或节点" in renderer
-    assert 'id="bulk-all-recommended"' in renderer
-    assert "全部选择推荐" in renderer
-    assert "当前视图剩余项选推荐" in renderer
+    assert "当前视图按推荐保存" in renderer
+    assert "当前模块按推荐保存" in renderer
+    assert "当前需求按推荐保存" in renderer
+    assert 'id="bulk-view-recommended"' in renderer
+    assert 'id="bulk-module-recommended"' in renderer
+    assert 'id="bulk-requirement-recommended"' in renderer
     assert "summarizeRecommendationCompletion" in renderer
     assert "applyRecommendedToMissing" in renderer
     assert "allNodes().map" in renderer
-    assert 'const bulkAllRecommended = $("bulk-all-recommended")' in renderer
-    assert "if (bulkAllRecommended)" in renderer
+    assert 'runRecommendationCompletion(currentItemNodes(), "当前视图")' in renderer
+    assert 'runRecommendationCompletion(currentModuleNodes(), "当前模块")' in renderer
+    assert 'runRecommendationCompletion(allNodes().map(({ node }) => node), "当前需求")' in renderer
     assert "if (!saveState())" in renderer
     assert "snapshotReviewState" in renderer
     assert "restoreReviewState" in renderer
@@ -3999,7 +4197,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "must still run `validate-review-data.mjs`" in renderer_readme
     assert "native `<dialog>`" in renderer_readme
     assert "説明" not in renderer_readme
-    assert "all modules and all flow/UI items" in renderer_readme
+    assert "`当前需求按推荐保存` covers every module and item" in renderer_readme
     assert "only `MISSING`" in renderer_readme
     assert "without a valid recommendation remain" in renderer_readme
     assert "only for explanation or preview" in renderer_readme or "只用于说明或预览" in renderer_readme
@@ -4742,6 +4940,47 @@ def test_flow_ui_command_templates_do_not_embed_renderer_implementation_state_ma
         assert token in renderer_readme
 
 
+def test_review_localhost_launcher_is_required_by_commands_and_documentation():
+    """Interactive reviews must use the checked 127.0.0.1 launcher URL."""
+    flow = _command("flow")
+    ui = _command("ui")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+
+    assert "node .specify/review/scripts/serve-review.mjs --flow <feature>" in flow
+    assert "node .specify/review/scripts/serve-review.mjs --ui <feature>" in ui
+
+    for content, label in (
+        (flow, "flow command"),
+        (ui, "ui command"),
+        (skill, "review-data skill"),
+        (renderer_readme, "renderer README"),
+        (methodology, "methodology"),
+    ):
+        assert "serve-review.mjs" in content, label
+        assert "SPECCOMPASS_REVIEW_URL=" in content, label
+        assert "127.0.0.1" in content, label
+        assert "renderer 和 review data 均返回 HTTP 200" in content, label
+        assert "禁止使用 `file://`" in content, label
+        assert "`localhost`" in content and "不接受" in content, label
+
+    for content, label in (
+        (skill, "review-data skill"),
+        (renderer_readme, "renderer README"),
+        (methodology, "methodology"),
+    ):
+        assert "当前视图按推荐保存" in content, label
+        assert "当前模块按推荐保存" in content, label
+        assert "当前需求按推荐保存" in content, label
+
+    for content, label in (
+        (renderer_readme, "renderer README"),
+        (methodology, "methodology"),
+    ):
+        assert "specify init --force" in content, label
+
+
 def test_review_renderer_downloads_split_confirmation_packages():
     """The fixed renderer should export confirmation packages instead of unlimited clipboard text."""
     renderer = _review_renderer_bundle()
@@ -4767,13 +5006,29 @@ def test_review_renderer_downloads_split_confirmation_packages():
 
     assert 'id="download-package"' in renderer
     assert 'id="download-package-links"' in renderer
-    assert 'id="bulk-all-recommended"' in renderer
+    assert 'id="bulk-view-recommended"' in renderer
+    assert 'id="bulk-module-recommended"' in renderer
+    assert 'id="bulk-requirement-recommended"' in renderer
     assert "剩余未选项" in renderer
     assert "缺少推荐选项" in renderer
     assert "renderPackageDownloadLinks" in renderer
     assert "多包下载链接" in renderer
     assert "createObjectURL" in renderer
     assert "copy-summary" in renderer
+
+
+def test_review_renderer_keeps_recommendation_actions_inside_mobile_viewport():
+    """Narrow layouts must contain wide previews without pushing review actions off screen."""
+    layout = (REVIEW_ROOT / "renderer" / "styles" / "layout.css").read_text(encoding="utf-8")
+    review_ui = (REVIEW_ROOT / "renderer" / "styles" / "review-ui.css").read_text(encoding="utf-8")
+
+    assert "grid-template-columns: minmax(0, 1fr);" in layout
+    assert "overflow-x: hidden;" in layout
+    assert ".brand,\n  .tools,\n  .shell,\n  .review-workspace" in layout
+    assert ".diagram-view {\n    width: 100%;\n    max-width: 100%;" in review_ui
+    assert ".rail-actions > button" in review_ui
+    assert "flex: 1 1 150px;" in review_ui
+    assert "white-space: normal;" in review_ui
 
 
 def test_review_recommendation_completion_only_updates_missing_nodes():
