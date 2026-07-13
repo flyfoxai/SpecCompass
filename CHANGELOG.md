@@ -2,6 +2,16 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.32] - 2026-07-13
+
+### Changed
+
+- Published Flow/UI review confirmation improvements as the release focus.
+- test: account for Windows SIGTERM exit code
+- test: make review launcher tests Windows compatible
+- feat: require localhost review launcher
+- docs: design localhost review launcher
+
 ## [0.10.31] - 2026-07-11
 
 ### Changed
