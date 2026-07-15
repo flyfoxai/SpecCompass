@@ -2,6 +2,17 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.33] - 2026-07-15
+
+### Changed
+
+- Published Flow/UI review context improvements as the release focus.
+- Strengthened Flow checkpoints with business triggers, responsible roles, result changes, next responsibilities, and explicit decision exits.
+- Added business context, user goals, outcomes, and Flow evidence references to UI review screens while keeping Flow evidence separate from product UI structure.
+- Updated review-data schemas, validators, renderer guidance, command templates, methodology, README documentation, examples, and regression coverage.
+- chore: begin 0.10.33.dev0 development
+- feat: strengthen Flow and UI review context
+
 ## [0.10.32] - 2026-07-13
 
 ### Changed

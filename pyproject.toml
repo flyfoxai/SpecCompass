@@ -1,6 +1,6 @@
 [project]
 name = "specify-cli"
-version = "0.10.33.dev0"
+version = "0.10.33"
 description = "Specify CLI for SpecCompass, a specification-driven AI engineering control toolkit."
 requires-python = ">=3.11"
 dependencies = [
