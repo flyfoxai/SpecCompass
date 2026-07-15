@@ -37,12 +37,12 @@
     "project": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "feature", "business_overview"],
+      "required": ["name", "feature", "business_overview", "review_goal"],
       "properties": {
         "name": {"type": "string"},
         "feature": {"type": "string"},
-        "business_overview": {"type": "string"},
-        "review_goal": {"type": "string"}
+        "business_overview": {"type": "string", "minLength": 18},
+        "review_goal": {"type": "string", "minLength": 18}
       }
     },
     "source_snapshot": {
@@ -79,7 +79,7 @@
       "properties": {
         "id": {"type": "string"},
         "title": {"type": "string"},
-        "summary": {"type": "string"},
+        "summary": {"type": "string", "minLength": 18},
         "review_layer": {
           "type": "string",
           "enum": ["business", "system_arch", "mixed"]
@@ -102,7 +102,7 @@
       "properties": {
         "id": {"type": "string"},
         "title": {"type": "string"},
-        "summary": {"type": "string"},
+        "summary": {"type": "string", "minLength": 18},
         "source_path": {"type": "string"},
         "item_type": {
           "type": "string",
@@ -139,7 +139,7 @@
             "properties": {
               "options": {
                 "type": "array",
-                "minItems": 3,
+                "minItems": 2,
                 "maxItems": 4
               }
             }

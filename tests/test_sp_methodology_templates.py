@@ -237,6 +237,7 @@ def _minimal_flow_review_data_with_node(node: dict) -> dict:
             "name": "Example",
             "feature": "survey-publish",
             "business_overview": "运营人员检查问卷发布前的业务条件，避免不完整问卷被直接发布。",
+            "review_goal": "确认问卷发布前的门槛和责任清楚，避免页面、开发和验收按猜测推进。",
         },
         "source_snapshot": [
             {
@@ -1831,6 +1832,8 @@ def test_flow_ui_methodology_is_enforced_by_command_templates_and_seed_memory():
     assert "no high-risk decision, permission, irreversible result, external dependency, or exception branch" in flow
     assert "collapsible segment checklist" in flow
     assert "Do not merge real business steps just to satisfy the 5-7 node budget" in flow
+    assert "trigger" in flow and "responsible" in flow and "state/result" in flow
+    assert "outgoing edge" in flow and "business condition" in flow
     assert "preconditions" in flow
     assert "postconditions" in flow
     assert "segment-by-segment review order" in flow
@@ -3919,6 +3922,13 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
 
     assert flow_schema["properties"]["review_type"]["const"] == "flow"
     assert ui_schema["properties"]["review_type"]["const"] == "ui"
+    assert "review_goal" in flow_schema["properties"]["project"]["required"]
+    assert flow_schema["properties"]["project"]["properties"]["business_overview"]["minLength"] == 18
+    assert flow_schema["properties"]["project"]["properties"]["review_goal"]["minLength"] == 18
+    flow_node_options = flow_schema["$defs"]["node"]["allOf"][0]["then"]["properties"]["options"]
+    ui_node_options = ui_schema["$defs"]["node"]["allOf"][0]["then"]["properties"]["options"]
+    assert flow_node_options["minItems"] == 2
+    assert ui_node_options["minItems"] == 3
     for schema, label in ((flow_schema, "flow"), (ui_schema, "ui")):
         properties = json.dumps(schema, ensure_ascii=False)
         assert schema["properties"]["schema_version"] == {"type": "integer", "const": 1}, label
@@ -4215,8 +4225,17 @@ def test_ui_review_data_has_independent_screen_contract():
     ui_command = _command("ui")
 
     review_item = ui_schema["$defs"]["review_item"]
-    assert "screen_layout" in review_item["required"]
-    assert "screen_regions" in review_item["required"]
+    for field in (
+        "business_context",
+        "primary_users",
+        "entry_scenarios",
+        "user_goal",
+        "user_outcome",
+        "flow_refs",
+        "screen_layout",
+        "screen_regions",
+    ):
+        assert field in review_item["required"]
     assert "screen_region" in ui_schema["$defs"]
     assert "ui_component" in ui_schema["$defs"]
     assert "ui_state" in ui_schema["$defs"]
@@ -4233,6 +4252,9 @@ def test_ui_review_data_has_independent_screen_contract():
         "states",
         "dynamic_marker",
         "duplicate component id",
+        "validateUiScreenContext",
+        "vague UI context copy",
+        "generic user wording",
         "UI review data requires screen_regions",
         "UI review data must describe UI screen regions/components; optional states may add screen-state notes, but review nodes alone are not enough",
     ):
@@ -4245,6 +4267,9 @@ def test_ui_review_data_has_independent_screen_contract():
         "ui-component",
         "ui-state-note",
         "dynamic marker",
+        "功能说明",
+        "这个界面为什么存在",
+        "业务流程依据（仅用于追溯，不是界面内容）",
     ):
         assert token in renderer
 
@@ -4256,6 +4281,15 @@ def test_ui_review_data_has_independent_screen_contract():
         assert "decision options require deeper reasoning" in content or "决策选项需要深度推理" in content, label
         assert "decision_background" in content, label
         assert "decision_summary" in content, label
+        for field in (
+            "business_context",
+            "primary_users",
+            "entry_scenarios",
+            "user_goal",
+            "user_outcome",
+            "flow_refs",
+        ):
+            assert field in content, f"{label} missing {field}"
 
 
 def _review_validator_sample(review_type: str, *, node_count: int = 3, include_exception: bool = True) -> dict:
@@ -4315,7 +4349,14 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
             }
         )
 
-    edges = [{"from": f"N{index}", "to": f"N{index + 1}"} for index in range(1, node_count)]
+    edges = [
+        {
+            "from": f"N{index}",
+            "to": f"N{index + 1}",
+            **({"label": "发布门槛已确认，进入后续发布检查"} if review_type == "flow" else {}),
+        }
+        for index in range(1, node_count)
+    ]
     item = {
         "id": "D1" if review_type == "flow" else "S1",
         "title": "问卷发布确认" if review_type == "flow" else "问卷发布页面",
@@ -4328,6 +4369,12 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
     if review_type == "ui":
         item.update(
             {
+                "business_context": "运营人员准备发布问卷时，需要在同一页面确认发布范围和关键条件，避免把未完成的问卷交给填写人。",
+                "primary_users": ["问卷运营人员"],
+                "entry_scenarios": ["问卷内容编辑完成，运营人员准备检查并执行发布时进入。"],
+                "user_goal": "核对问卷标题、目标人群和截止时间，并完成发布前确认。",
+                "user_outcome": "问卷按确认的范围发布，运营人员能继续查看触达和回收情况。",
+                "flow_refs": ["specs/example/flows/publish.mmd#发布前检查"],
                 "screen_layout": "form",
                 "screen_regions": [
                     {
@@ -4378,6 +4425,7 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
             "name": "Example",
             "feature": "example-feature",
             "business_overview": "问卷团队确认发布前后的业务规则和界面入口。",
+            "review_goal": "确认问卷发布流程的关键选择有明确责任和结果，避免后续实现误解业务规则。",
         },
         "source_snapshot": [
             {
@@ -4513,6 +4561,47 @@ def test_review_data_validator_rejects_flow_like_ui_without_screen_structure(tmp
     assert "duplicate component id" in _review_validator_output(result)
 
 
+def test_review_data_validator_requires_specific_ui_screen_context(tmp_path):
+    """Every UI screen must explain its business role, not merely name layout or visible objects."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    required_fields = (
+        "business_context",
+        "primary_users",
+        "entry_scenarios",
+        "user_goal",
+        "user_outcome",
+        "flow_refs",
+    )
+    for field in required_fields:
+        sample = _review_validator_sample("ui")
+        sample["modules"][0]["screens"][0].pop(field)
+        result = _run_review_validator(sample, tmp_path / f"missing-{field}.json")
+        assert result.returncode != 0, field
+        assert field in _review_validator_output(result), field
+
+    object_inventory = _review_validator_sample("ui")
+    object_inventory["modules"][0]["screens"][0]["business_context"] = (
+        "该屏展示命令、订单、成交、持仓、资金、风险事件、审计链路和对账结果。"
+    )
+    result = _run_review_validator(object_inventory, tmp_path / "object-inventory-context.json")
+    assert result.returncode != 0
+    assert "vague UI context copy" in _review_validator_output(result)
+
+    layout_copy = _review_validator_sample("ui")
+    layout_copy["modules"][0]["screens"][0]["user_goal"] = "列表加详情"
+    result = _run_review_validator(layout_copy, tmp_path / "layout-context.json")
+    assert result.returncode != 0
+    assert "user_goal" in _review_validator_output(result)
+
+    generic_role = _review_validator_sample("ui")
+    generic_role["modules"][0]["screens"][0]["primary_users"] = ["用户"]
+    result = _run_review_validator(generic_role, tmp_path / "generic-ui-role.json")
+    assert result.returncode != 0
+    assert "generic user wording" in _review_validator_output(result)
+
+
 def _run_review_validator(sample: dict, path: Path) -> subprocess.CompletedProcess[str]:
     path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
     return subprocess.run(
@@ -4593,12 +4682,19 @@ def test_review_data_validator_enforces_review_option_quality_rules(tmp_path):
     if shutil.which("node") is None:
         pytest.skip("node is required for review data validator tests")
 
-    too_few_must_confirm = _review_validator_sample("flow")
-    node = too_few_must_confirm["modules"][0]["diagrams"][0]["nodes"][0]
+    binary_must_confirm_without_rationale = _review_validator_sample("flow")
+    node = binary_must_confirm_without_rationale["modules"][0]["diagrams"][0]["nodes"][0]
     node["options"] = node["options"][:2]
-    result = _run_review_validator(too_few_must_confirm, tmp_path / "too-few-must-confirm.json")
+    result = _run_review_validator(binary_must_confirm_without_rationale, tmp_path / "binary-must-confirm-without-rationale.json")
     assert result.returncode != 0
-    assert "must_confirm nodes require 3-4 options" in _review_validator_output(result)
+    assert "options_count_rationale" in _review_validator_output(result)
+
+    binary_must_confirm_with_rationale = _review_validator_sample("flow")
+    node = binary_must_confirm_with_rationale["modules"][0]["diagrams"][0]["nodes"][0]
+    node["options"] = node["options"][:2]
+    node["options_count_rationale"] = "现有材料只支持继续当前发布校验或先补齐产品规则两个互斥出口，没有第三条可执行路径。"
+    result = _run_review_validator(binary_must_confirm_with_rationale, tmp_path / "binary-must-confirm-with-rationale.json")
+    assert result.returncode == 0, _review_validator_output(result)
 
     binary_without_rationale = _review_validator_sample("flow")
     node = binary_without_rationale["modules"][0]["diagrams"][0]["nodes"][0]
@@ -4616,11 +4712,98 @@ def test_review_data_validator_enforces_review_option_quality_rules(tmp_path):
     result = _run_review_validator(binary_with_rationale, tmp_path / "binary-with-rationale.json")
     assert result.returncode == 0, _review_validator_output(result)
 
+    ui_binary_must_confirm_with_rationale = _review_validator_sample("ui")
+    node = ui_binary_must_confirm_with_rationale["modules"][0]["screens"][0]["nodes"][0]
+    node["options"] = node["options"][:2]
+    node["options_count_rationale"] = "这个界面判断只有保留当前发布检查或先补齐发布规则两个互斥出口，没有第三种可执行的界面调整路径。"
+    result = _run_review_validator(ui_binary_must_confirm_with_rationale, tmp_path / "ui-binary-must-confirm-with-rationale.json")
+    assert result.returncode != 0
+    assert "UI must_confirm nodes require 3-4 options" in _review_validator_output(result)
+
     forbidden_exit = _review_validator_sample("ui")
     forbidden_exit["modules"][0]["screens"][0]["nodes"][0]["options"][0]["next_exit"] = "通过"
     result = _run_review_validator(forbidden_exit, tmp_path / "forbidden-empty-action-exit.json")
     assert result.returncode != 0
     assert "actionable exit" in _review_validator_output(result)
+
+
+def test_review_data_validator_requires_business_flow_semantics(tmp_path):
+    """Flow nodes and decision exits must carry business meaning, not just labels."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    repeated_summary = _review_validator_sample("flow")
+    first_node = repeated_summary["modules"][0]["diagrams"][0]["nodes"][0]
+    first_node["plain_summary"] = first_node["label"]
+    result = _run_review_validator(repeated_summary, tmp_path / "repeated-flow-summary.json")
+    assert result.returncode != 0
+    assert "plain_summary must explain the business context" in _review_validator_output(result)
+
+    vague_summary = _review_validator_sample("flow")
+    vague_summary["modules"][0]["diagrams"][0]["nodes"][1]["plain_summary"] = "系统进入下一步"
+    result = _run_review_validator(vague_summary, tmp_path / "vague-flow-summary.json")
+    assert result.returncode != 0
+    assert "plain_summary is too generic" in _review_validator_output(result)
+
+    padded_summary = _review_validator_sample("flow")
+    padded_summary["modules"][0]["diagrams"][0]["nodes"][1]["plain_summary"] = "该节点负责处理相关业务并推进后续流程。"
+    result = _run_review_validator(padded_summary, tmp_path / "padded-flow-summary.json")
+    assert result.returncode != 0
+    assert "plain_summary is too generic" in _review_validator_output(result)
+
+    missing_decision_edge_label = _review_validator_sample("flow")
+    missing_decision_edge_label["modules"][0]["diagrams"][0]["edges"][0].pop("label")
+    result = _run_review_validator(missing_decision_edge_label, tmp_path / "missing-decision-edge-label.json")
+    assert result.returncode != 0
+    assert "outgoing edges from decision or human_judgment nodes require" in _review_validator_output(result)
+
+    vague_decision_edge_label = _review_validator_sample("flow")
+    vague_decision_edge_label["modules"][0]["diagrams"][0]["edges"][0]["label"] = "继续"
+    result = _run_review_validator(vague_decision_edge_label, tmp_path / "vague-decision-edge-label.json")
+    assert result.returncode != 0
+    assert "decision exit label is too generic" in _review_validator_output(result)
+
+    numbered_decision_edge = _review_validator_sample("flow")
+    numbered_decision_edge["modules"][0]["diagrams"][0]["edges"][0]["label"] = "进入第 2 个业务环节"
+    result = _run_review_validator(numbered_decision_edge, tmp_path / "numbered-decision-edge.json")
+    assert result.returncode != 0
+    assert "decision exit label is too generic" in _review_validator_output(result)
+
+    vague_decision_edge_variant = _review_validator_sample("flow")
+    vague_decision_edge_variant["modules"][0]["diagrams"][0]["edges"][0]["label"] = "进入下一步"
+    result = _run_review_validator(vague_decision_edge_variant, tmp_path / "vague-decision-edge-variant.json")
+    assert result.returncode != 0
+    assert "decision exit label is too generic" in _review_validator_output(result)
+
+    flow_with_ui_fields = _review_validator_sample("flow")
+    flow_with_ui_fields["modules"][0]["diagrams"][0]["business_context"] = "这是不应进入 Flow review-data 的 UI 页面背景字段。"
+    result = _run_review_validator(flow_with_ui_fields, tmp_path / "flow-with-ui-fields.json")
+    assert result.returncode != 0
+    assert "keep Flow and UI review contracts separate" in _review_validator_output(result)
+
+
+def test_review_data_validator_requires_flow_context_layers(tmp_path):
+    """Project, module, and diagram summaries must carry real business context."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    cases = [
+        ("business_overview", "该项目主要用于展示相关流程。", "business_overview"),
+        ("review_goal", "帮助用户了解相关流程。", "review_goal"),
+        ("module_summary", "该模块负责处理相关业务工作。", "module summary"),
+        ("flow_summary", "这张图主要用于展示业务流程。", "flow summary"),
+    ]
+    for name, value, expected in cases:
+        sample = _review_validator_sample("flow")
+        if name in {"business_overview", "review_goal"}:
+            sample["project"][name] = value
+        elif name == "module_summary":
+            sample["modules"][0]["summary"] = value
+        else:
+            sample["modules"][0]["diagrams"][0]["summary"] = value
+        result = _run_review_validator(sample, tmp_path / f"generic-{name}.json")
+        assert result.returncode != 0, name
+        assert expected in _review_validator_output(result), name
 
 
 def test_review_data_validator_rejects_boilerplate_review_option_copy(tmp_path):

@@ -449,9 +449,12 @@ Not every file is seeded up front by the template root. Some are created or expa
   apply, and whether the result is still draft or ready for the next step
 - if a flow or UI review summary contains a human decision point, explain the
   real business background or real screen/interaction background in plain
-  Chinese, give tiered decision options (`must_confirm` 3-4 options; ordinary
-  human-judgment nodes default to 3 options; low-risk binary choices need
-  `options_count_rationale`), describe what the reviewer chooses the model to do
+  Chinese. Flow `must_confirm` nodes use 2-4 options; a source-backed,
+  mutually exclusive binary Flow decision must include
+  `options_count_rationale` explaining why no third executable exit exists. UI
+  `must_confirm` nodes require 3-4 options; only an ordinary, non-
+  `must_confirm` low-risk UI judgment may use 2, and it must include
+  `options_count_rationale`. In both cases, describe what the reviewer chooses the model to do
   or change next, describe each option's concrete consequence and downstream
   impact on scope, schedule, risk, UI/flow, plan, tasks, implementation,
   acceptance tests, or delivery, name the recommended option and why it is

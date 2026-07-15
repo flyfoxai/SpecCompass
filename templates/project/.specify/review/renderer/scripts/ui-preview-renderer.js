@@ -414,12 +414,13 @@ function renderUiScreen(item) {
   const headingText = create("div");
   appendText(headingText, "span", "界面实例预览", "ui-preview-label");
   appendText(headingText, "strong", item?.title || "界面预览");
-  appendText(headingText, "span", `布局：${uiLayoutLabel(item?.screen_layout)}。外层为审核页，深色边框内为真实界面示意范围。`);
+  appendText(headingText, "span", `界面结构：${uiLayoutLabel(item?.screen_layout)}。下方描边范围是产品界面示意，外围内容是审核说明。`);
   heading.appendChild(headingText);
   if (item?.framework_approximation) {
     appendText(heading, "span", item.framework_approximation, "ui-framework-note");
   }
   frame.appendChild(heading);
+  frame.appendChild(renderUiScreenContext(item));
 
   const productFrame = create("section", "ui-product-frame");
   const titlebar = create("div", "ui-product-titlebar");
@@ -465,6 +466,41 @@ function renderUiScreen(item) {
   }
 
   return frame;
+}
+
+function renderUiScreenContext(item) {
+  const context = create("section", "ui-screen-context");
+  const heading = create("div", "ui-screen-context-heading");
+  appendText(heading, "span", "功能说明", "ui-preview-label");
+  appendText(heading, "h4", "这个界面为什么存在");
+  context.appendChild(heading);
+  appendText(context, "p", item?.business_context || "", "ui-screen-context-lead");
+
+  const facts = create("dl", "ui-screen-context-grid");
+  appendUiScreenContextFact(facts, "谁会使用", item?.primary_users || []);
+  appendUiScreenContextFact(facts, "什么时候进入", item?.entry_scenarios || []);
+  appendUiScreenContextFact(facts, "要完成的事", item?.user_goal || "");
+  appendUiScreenContextFact(facts, "完成后得到", item?.user_outcome || "");
+  context.appendChild(facts);
+
+  const flowRefs = item?.flow_refs || [];
+  if (flowRefs.length) {
+    const details = document.createElement("details");
+    details.className = "ui-screen-flow-refs";
+    appendText(details, "summary", "业务流程依据（仅用于追溯，不是界面内容）");
+    for (const ref of flowRefs) {
+      appendText(details, "p", ref);
+    }
+    context.appendChild(details);
+  }
+  return context;
+}
+
+function appendUiScreenContextFact(container, label, value) {
+  const row = create("div", "ui-screen-context-fact");
+  appendText(row, "dt", label);
+  appendText(row, "dd", Array.isArray(value) ? value.join("；") : value);
+  container.appendChild(row);
 }
 
 function renderUiRegion(region) {

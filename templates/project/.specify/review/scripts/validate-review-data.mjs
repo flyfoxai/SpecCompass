@@ -131,6 +131,12 @@ const allowedReviewItemKeys = new Set([
   "summary",
   "source_path",
   "item_type",
+  "business_context",
+  "primary_users",
+  "entry_scenarios",
+  "user_goal",
+  "user_outcome",
+  "flow_refs",
   "screen_layout",
   "screen_regions",
   "states",
@@ -141,6 +147,19 @@ const allowedReviewItemKeys = new Set([
   "nodes",
   "edges",
   "trace_notes"
+]);
+const uiOnlyReviewItemKeys = new Set([
+  "business_context",
+  "primary_users",
+  "entry_scenarios",
+  "user_goal",
+  "user_outcome",
+  "flow_refs",
+  "screen_layout",
+  "screen_regions",
+  "states",
+  "framework_approximation",
+  "framework_notes"
 ]);
 const allowedScreenRegionKeys = new Set([
   "id",
@@ -240,6 +259,99 @@ function hasDecisionOptions(node) {
 
 function hasSubstantialText(value) {
   return typeof value === "string" && value.replace(/\s+/g, "").length >= 18;
+}
+
+const vagueFlowEdgeLabels = new Set([
+  "下一步",
+  "继续",
+  "处理",
+  "完成",
+  "通过",
+  "失败",
+  "默认",
+  "正常",
+  "异常",
+  "next",
+  "continue",
+  "process",
+  "done",
+  "success",
+  "failure",
+  "default"
+]);
+const vagueFlowEdgeLabelPatterns = [
+  /^(继续|进入|执行|开始|转到|前往)?(下一步|后续|后续流程|流程|处理|完成)[。.!！]?$/i,
+  /^(通过|失败|默认|正常|异常)(流程|路径|处理|分支)?[。.!！]?$/i,
+  /^(next|continue|process|done|success|failure|default)(\s+(step|flow|path|process|branch))?$/i,
+  /^进入第\s*\d+\s*个(业务)?环节[。.!！]?$/i,
+  /^(执行|处理)(相关|后续|当前)?(操作|结果|工作|业务)[。.!！]?$/i
+];
+
+const vagueFlowSummaryPatterns = [
+  /^(这一步|该步骤|本步骤)?(用于|负责|就是)?(处理|执行|完成|进入|继续)(相关|业务)?(数据|流程|操作|步骤|状态)?[。.!！]?$/i,
+  /^(系统|流程|页面|该节点|本节点)?(继续|进入|完成)(下一步|后续流程|相关处理|流程)[。.!！]?$/i,
+  /^(这一步|该步骤|本步骤|该节点|本节点)?(主要)?(用于|负责|进行|处理|执行|完成|推进)(相关|当前|后续)?(业务|数据|逻辑|工作|流程|操作)(处理|工作|流程)?[。.!！]?$/i,
+  /^(系统|流程|该节点|本节点)?(会|将|负责)?(推进|执行|处理)(后续|相关|当前)?(业务|工作|流程|操作|处理)?[。.!！]?$/i,
+  /^(该节点|本节点|这一步|该步骤)?(主要)?负责处理相关业务(并)?推进(后续|下一步)(业务|流程)?[。.!！]?$/i
+];
+
+const vagueFlowContextPatterns = [
+  /^(本|该|此)?(项目|模块|流程|图)(主要)?(用于|用来)?(展示|说明|描述|呈现)(相关|业务)?(流程|路径|信息|内容)[。.!！]?$/i,
+  /^(帮助|方便)(用户|相关人员)?(了解|查看|处理)(相关|业务)?(流程|信息|内容|工作)[。.!！]?$/i,
+  /^(本|该|此)?(模块|流程|图)(主要)?(负责|处理|完成)(相关|业务)?(工作|流程|处理)[。.!！]?$/i,
+  /^(当前模块|当前流程|当前图)(\s*\+\s*业务对象|：?说明当前业务(如何|怎样)被处理)[。.!！]?$/i
+];
+
+function isDecisionFlowNode(node) {
+  return node.node_kind === "decision" || node.node_kind === "human_judgment" || node.review_level === "must_confirm";
+}
+
+function isVagueFlowEdgeLabel(value) {
+  const label = compactText(value).toLowerCase();
+  return vagueFlowEdgeLabels.has(label) || vagueFlowEdgeLabelPatterns.some((pattern) => pattern.test(label));
+}
+
+function validateFlowNodeSemantics(nodeLabel, node) {
+  const label = compactText(node.label);
+  const summary = compactText(node.plain_summary);
+  if (label && summary && label === summary) {
+    fail(`${nodeLabel}: plain_summary must explain the business context and outcome, not repeat the node label`);
+  }
+  if (summary.length < 18 || vagueFlowSummaryPatterns.some((pattern) => pattern.test(summary))) {
+    fail(`${nodeLabel}: plain_summary is too generic; state the trigger, responsible role, business action, state/result change, and next responsibility`);
+  }
+}
+
+function validateFlowContextCopy(scope, value, label) {
+  const text = compactText(value);
+  if (!hasSubstantialText(text)) {
+    fail(`${scope}: ${label} must contain a substantive business context (at least 18 non-space characters)`);
+  } else if (vagueFlowContextPatterns.some((pattern) => pattern.test(text))) {
+    fail(`${scope}: ${label} is generic flow context; state who handles what business situation, the flow boundary, and the business result`);
+  }
+}
+
+function validateFlowEdgeSemantics(itemLabel, nodes, edges) {
+  const nodesById = new Map(nodes.map((node) => [node.id, node]));
+  let unlabeledEdges = 0;
+  edges.forEach((edge, edgeIndex) => {
+    const edgeLabel = `${itemLabel}:edge-${edgeIndex + 1}`;
+    const sourceNode = nodesById.get(edge.from);
+    const label = compactText(edge.label);
+    if (!label) {
+      unlabeledEdges += 1;
+      if (sourceNode && isDecisionFlowNode(sourceNode)) {
+        fail(`${edgeLabel}: outgoing edges from decision or human_judgment nodes require a business condition or result label`);
+      }
+      return;
+    }
+    if (sourceNode && isDecisionFlowNode(sourceNode) && isVagueFlowEdgeLabel(label)) {
+      fail(`${edgeLabel}: decision exit label is too generic; name the business condition, result, or recovery reason`);
+    }
+  });
+  if (unlabeledEdges && !edges.some((edge) => compactText(edge.label))) {
+    warn(`${itemLabel}: flow edges have no business labels; add conditions or results so reviewers can follow why work moves between nodes`);
+  }
 }
 
 const vagueActionExits = new Set([
@@ -870,21 +982,21 @@ function validateCurrentConfirmationVocabulary(scope, value) {
   }
 }
 
-function validateOptions(scope, node) {
+function validateOptions(scope, node, reviewType) {
   if (!hasDecisionOptions(node)) {
     return;
   }
 
   const options = asArray(node.options);
   if (options.length < 2 || options.length > 4) {
-    fail(`${scope}: human_judgment nodes require tiered executable options: must_confirm nodes require 3-4 options; ordinary human-judgment nodes default to 3 options; low-risk binary choices need options_count_rationale`);
+    fail(`${scope}: ${reviewType} human_judgment nodes require 2-4 executable options; ordinary human-judgment nodes default to 3 options`);
     return;
   }
-  if (node.review_level === "must_confirm" && (options.length < 3 || options.length > 4)) {
-    fail(`${scope}: must_confirm nodes require 3-4 options`);
+  if (node.review_level === "must_confirm" && reviewType !== "flow" && (options.length < 3 || options.length > 4)) {
+    fail(`${scope}: UI must_confirm nodes require 3-4 options`);
   }
-  if (options.length === 2 && node.review_level !== "must_confirm" && !hasSubstantialText(node.options_count_rationale)) {
-    fail(`${scope}: options_count_rationale is required when a human-judgment node uses only 2 options`);
+  if (options.length === 2 && (reviewType === "flow" || node.review_level !== "must_confirm") && !hasSubstantialText(node.options_count_rationale)) {
+    fail(`${scope}: options_count_rationale is required when this ${reviewType} human-judgment node uses only 2 options`);
   }
   if (node.review_level === "must_confirm" && !hasDecisionUrgencySignal(`${node.plain_summary || ""} ${node.action_prompt || ""}`)) {
     fail(`${scope}: must_confirm node must explain why this decision matters now`);
@@ -1052,6 +1164,52 @@ function validateUiScreenStructure(itemLabel, item) {
   });
 }
 
+const vagueUiContextPatterns = [
+  /^(本|该|此)?(页面|界面|屏幕)?(主要)?(用于|用来)?(展示|查看|呈现|管理|处理)(相关|业务|系统|页面)?(信息|数据|内容|功能|详情|列表)[。.!！]?$/i,
+  /^(帮助|方便)(用户|相关人员)?(查看|了解|管理|处理|完成)(相关|业务)?(信息|数据|内容|任务)[。.!！]?$/i,
+  /^(本|该|此)?(页面|界面|屏幕|屏|screen)(主要)?(用于|用来)?(展示|查看|呈现|包含|列出|提供).+$/i,
+  /^(布局[:：]?)?(列表加详情|列表详情|顶部加侧栏|表单|看板|仪表盘|详情页|设置页|向导|弹窗|自定义界面)[。.!！]?$/i
+];
+
+const genericUiRolePattern = /^(用户|业务用户|相关人员|工作人员|管理员|操作员|user|users)$/i;
+
+function isVagueUiContextCopy(value) {
+  const text = compactText(value);
+  return vagueUiContextPatterns.some((pattern) => pattern.test(text));
+}
+
+function validateUiScreenContext(itemLabel, item) {
+  for (const key of ["business_context", "user_goal", "user_outcome"]) {
+    if (!hasSubstantialText(item[key])) {
+      fail(`${itemLabel}: UI screen context requires ${key} with specific business meaning`);
+    } else if (isVagueUiContextCopy(item[key])) {
+      fail(`${itemLabel}: ${key} is vague UI context copy; explain the real business situation instead of layout or generic display wording`);
+    }
+  }
+
+  const primaryUsers = asArray(item.primary_users);
+  if (!primaryUsers.length || primaryUsers.some((value) => !compactText(value))) {
+    fail(`${itemLabel}: UI screen context requires primary_users with at least one named business role`);
+  } else if (primaryUsers.some((value) => genericUiRolePattern.test(compactText(value)))) {
+    fail(`${itemLabel}: primary_users must name a concrete business role instead of generic user wording`);
+  }
+
+  const entryScenarios = asArray(item.entry_scenarios);
+  if (!entryScenarios.length) {
+    fail(`${itemLabel}: UI screen context requires entry_scenarios`);
+  }
+  entryScenarios.forEach((scenario, index) => {
+    if (compactText(scenario).length < 8 || isVagueUiContextCopy(scenario)) {
+      fail(`${itemLabel}: entry_scenarios[${index}] must name a concrete trigger or business situation`);
+    }
+  });
+
+  const flowRefs = asArray(item.flow_refs);
+  if (!flowRefs.length || flowRefs.some((value) => !compactText(value))) {
+    fail(`${itemLabel}: UI screen context requires flow_refs as evidence references; flow references must not replace UI regions or components`);
+  }
+}
+
 function validateItem(reviewType, module, item, itemIndex, globalNodeIds) {
   const itemLabel = `${module.id || "module"}:${item.id || `item-${itemIndex + 1}`}`;
   const nodes = asArray(item.nodes);
@@ -1059,6 +1217,13 @@ function validateItem(reviewType, module, item, itemIndex, globalNodeIds) {
   const nodeIds = new Set();
 
   validateKnownKeys(itemLabel, item, allowedReviewItemKeys);
+  if (reviewType === "flow") {
+    for (const key of uiOnlyReviewItemKeys) {
+      if (Object.prototype.hasOwnProperty.call(item, key)) {
+        fail(`${itemLabel}: flow review data must not use ${key}; keep Flow and UI review contracts separate`);
+      }
+    }
+  }
   validateReadableCopy(itemLabel, item);
 
   if (!item.id) fail(`${itemLabel}: item id is required`);
@@ -1069,6 +1234,7 @@ function validateItem(reviewType, module, item, itemIndex, globalNodeIds) {
     validateEnum(itemLabel, "item_type", item.item_type, allowedFlowItemTypes);
   } else {
     validateEnum(itemLabel, "item_type", item.item_type, allowedUiItemTypes);
+    validateUiScreenContext(itemLabel, item);
     validateUiScreenStructure(itemLabel, item);
   }
 
@@ -1127,7 +1293,10 @@ function validateItem(reviewType, module, item, itemIndex, globalNodeIds) {
     }
 
     validateReadableCopy(nodeLabel, node);
-    validateOptions(nodeLabel, node);
+    if (reviewType === "flow") {
+      validateFlowNodeSemantics(nodeLabel, node);
+    }
+    validateOptions(nodeLabel, node, reviewType);
   });
 
   edges.forEach((edge, edgeIndex) => {
@@ -1144,6 +1313,9 @@ function validateItem(reviewType, module, item, itemIndex, globalNodeIds) {
       fail(`${edgeLabel}: edge.to references missing node ${edge.to}`);
     }
   });
+  if (reviewType === "flow") {
+    validateFlowEdgeSemantics(itemLabel, nodes, edges);
+  }
 }
 
 function validate(data) {
@@ -1182,12 +1354,19 @@ function validate(data) {
   if (!data.project || typeof data.project !== "object") {
     fail("project must be an object");
   } else {
-    for (const key of ["name", "feature", "business_overview"]) {
+    const requiredProjectKeys = data.review_type === "flow"
+      ? ["name", "feature", "business_overview", "review_goal"]
+      : ["name", "feature", "business_overview"];
+    for (const key of requiredProjectKeys) {
       if (!data.project[key]) {
         fail(`project is missing ${key}`);
       }
     }
     validateReadableCopy("project", data.project);
+    if (data.review_type === "flow") {
+      validateFlowContextCopy("project", data.project.business_overview, "business_overview");
+      validateFlowContextCopy("project", data.project.review_goal, "review_goal");
+    }
     validateKnownKeys("project", data.project, allowedProjectKeys);
   }
 
@@ -1219,6 +1398,9 @@ function validate(data) {
     }
     validateEnum(moduleLabel, "review_layer", module.review_layer, allowedModuleReviewLayers);
     validateReadableCopy(moduleLabel, module);
+    if (data.review_type === "flow") {
+      validateFlowContextCopy(moduleLabel, module.summary, "module summary");
+    }
 
     const itemsKey = data.review_type === "flow" ? "diagrams" : "screens";
     const wrongItemsKey = data.review_type === "flow" ? "screens" : "diagrams";
@@ -1239,6 +1421,9 @@ function validate(data) {
         itemIds.add(item.id);
       }
       validateItem(data.review_type, module, item, itemIndex, globalNodeIds);
+      if (data.review_type === "flow") {
+        validateFlowContextCopy(`${moduleLabel}:${item.id || `item-${itemIndex + 1}`}`, item.summary, "flow summary");
+      }
     });
   });
 }

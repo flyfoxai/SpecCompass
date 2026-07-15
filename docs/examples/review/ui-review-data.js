@@ -40,6 +40,21 @@ window.SPECCOMPASS_REVIEW_DATA = {
           "summary": "左侧查看问卷列表，右侧在需要时打开发布抽屉。页面把高风险发布动作集中到右侧确认区，避免误操作。",
           "source_path": "specs/ask-survey/ui/survey-list-publish.md",
           "item_type": "screen",
+          "business_context": "问卷运营人员每天要在多个草稿和已发布问卷之间切换；正式发布会直接触达填写人，因此需要在不离开列表工作的情况下完成发布前检查。",
+          "primary_users": [
+            "问卷运营人员",
+            "平台管理员"
+          ],
+          "entry_scenarios": [
+            "运营人员进入问卷管理模块，查找草稿、已发布或已关闭的问卷时进入。",
+            "问卷内容编辑完成，运营人员准备核对发布范围并执行发布时打开右侧抽屉。"
+          ],
+          "user_goal": "找到目标问卷，核对标题、目标人群、截止时间和发布风险，并完成发布前确认。",
+          "user_outcome": "问卷按确认的范围发布，运营人员回到列表继续查看问卷状态、触达和回收情况。",
+          "flow_refs": [
+            "specs/ask-survey/flows/survey-publish.mmd#发布前检查",
+            "specs/ask-survey/flows/survey-publish.mmd#发布结果"
+          ],
           "screen_layout": "list_detail",
           "framework_approximation": "示例使用固定 renderer 近似展示；真实前端可按 PRD 选定框架实现。",
           "framework_notes": [
@@ -314,6 +329,21 @@ window.SPECCOMPASS_REVIEW_DATA = {
           "summary": "页面展示上传入口、解析状态和关联问卷按钮，让运营知道文档现在能不能使用。",
           "source_path": "specs/ask-survey/ui/document-upload-status.md",
           "item_type": "screen",
+          "business_context": "运营人员要把说明文档用于问卷内容和后续检索，但文件上传成功不等于内容已经解析可用，因此需要一个页面区分保存、解析和关联三个结果。",
+          "primary_users": [
+            "问卷运营人员",
+            "文档管理员"
+          ],
+          "entry_scenarios": [
+            "运营人员准备为问卷补充说明材料，选择并上传本地文档时进入。",
+            "文档解析失败或仍在处理中，运营人员需要判断能否继续关联问卷时返回。"
+          ],
+          "user_goal": "上传符合要求的文档，确认解析是否成功，并决定现在关联问卷、重试还是更换文件。",
+          "user_outcome": "运营人员明确知道原文件和内容检索各自是否可用，并能继续关联问卷或采取可执行的恢复动作。",
+          "flow_refs": [
+            "specs/ask-survey/flows/document-processing.mmd#文档上传",
+            "specs/ask-survey/flows/document-processing.mmd#解析失败处理"
+          ],
           "screen_layout": "dashboard",
           "screen_regions": [
             {
@@ -448,6 +478,20 @@ window.SPECCOMPASS_REVIEW_DATA = {
           "summary": "页面帮助平台管理员查看租户是否启用，以及谁负责该租户。",
           "source_path": "specs/ask-survey/ui/tenant-list-status.md",
           "item_type": "screen",
+          "business_context": "平台按租户隔离问卷和文档能力；租户被停用或没有负责人时，后续创建和运营工作会受阻，因此平台管理员需要统一维护可用状态和责任人。",
+          "primary_users": [
+            "平台管理员"
+          ],
+          "entry_scenarios": [
+            "新租户完成开通，平台管理员需要分配负责问卷和文档管理的人员时进入。",
+            "租户业务暂停、恢复或出现权限问题，平台管理员需要核对并调整启停状态时进入。"
+          ],
+          "user_goal": "核对租户当前是否可用、由谁负责，并完成管理员分配或启停状态调整。",
+          "user_outcome": "租户状态和负责人得到明确维护，具备权限的团队可以继续开展问卷与文档工作。",
+          "flow_refs": [
+            "specs/ask-survey/flows/tenant-management.mmd#租户开通",
+            "specs/ask-survey/flows/tenant-management.mmd#租户停用与恢复"
+          ],
           "screen_layout": "dashboard",
           "screen_regions": [
             {

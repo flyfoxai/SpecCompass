@@ -252,11 +252,21 @@ missing recommended options, or unavailable `localStorage` are shown as visible
 warnings. This runtime validation is a guardrail only; routine commands must still run `validate-review-data.mjs`.
 
 UI review data is not flow review data / UI 审核数据不是 flow 审核数据. The
-middle UI preview is rendered from `screens[].screen_layout`,
-`screen_regions`, and `components`; optional `states` add screen-state notes.
+middle UI preview first explains each screen with `business_context`,
+`primary_users`, `entry_scenarios`, `user_goal`, and `user_outcome`, then renders
+the product shape from `screen_layout`, `screen_regions`, and `components`;
+optional `states` add screen-state notes. `flow_refs` are collapsed evidence
+citations only and are explicitly labeled as not being product UI content.
+Generic copy such as `用于展示相关信息`, an object inventory such as
+`该屏展示命令、订单和成交`, or layout wording such as `列表加详情` does not
+satisfy the screen context contract.
 `nodes` are only the right-rail
 decision and authorization checkpoints. A UI screen that only contains review
 nodes is invalid because it gives the reviewer no visible screen to inspect.
+Flow roles, triggers, states, exceptions, permissions, and outcomes may support
+UI decisions, but Flow node IDs, edges, branches, Mermaid diagrams, and stage
+progress must not become visible product UI unless workflow monitoring is an
+explicit product requirement.
 Use component references such as `decision_node_id`, `action_ref`, `field_ref`,
 or `state_ref` to connect a visible UI element to a right-rail checkpoint. For
 dynamic behavior, use a dynamic marker / 动态标注 with plain text markers such as
