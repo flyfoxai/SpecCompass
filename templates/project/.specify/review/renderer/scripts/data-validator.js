@@ -57,6 +57,20 @@ function runtimeIsLegacyApplicabilityBenefit(value) {
   );
 }
 
+const runtimeVagueUiContextPatterns = [
+  /^(本|该|此)?(页面|界面|屏幕)?(主要)?(用于|用来)?(展示|查看|呈现|管理|处理)(相关|业务|系统|页面)?(信息|数据|内容|功能|详情|列表)[。.!！]?$/i,
+  /^(帮助|方便)(用户|相关人员)?(查看|了解|管理|处理|完成)(相关|业务)?(信息|数据|内容|任务)[。.!！]?$/i,
+  /^(本|该|此)?(页面|界面|屏幕|屏|screen)(主要)?(用于|用来)?(展示|查看|呈现|包含|列出|提供).+$/i,
+  /^(布局[:：]?)?(列表加详情|列表详情|顶部加侧栏|表单|看板|仪表盘|详情页|设置页|向导|弹窗|自定义界面)[。.!！]?$/i
+];
+
+const runtimeGenericUiRolePattern = /^(用户|业务用户|相关人员|工作人员|管理员|操作员|user|users)$/i;
+
+function runtimeIsVagueUiContextCopy(value) {
+  const text = runtimeCompactText(value);
+  return runtimeVagueUiContextPatterns.some((pattern) => pattern.test(text));
+}
+
 function runtimeValidateReviewData(data) {
   const result = { warnings: [], errors: [] };
   const key = itemCollectionKey(data);
@@ -67,6 +81,30 @@ function runtimeValidateReviewData(data) {
     for (const item of module[key] || []) {
       const itemLabel = `${module.title || module.id || "未命名模块"} / ${item.title || item.id || "未命名视图"}`;
       if (data.review_type === "ui") {
+        for (const key of ["business_context", "user_goal", "user_outcome"]) {
+          if (!runtimeHasSubstantialText(item[key])) {
+            result.errors.push(`${itemLabel} 缺少 ${key}，每个 Screen 必须说明业务背景、用户任务和完成结果。`);
+          } else if (runtimeIsVagueUiContextCopy(item[key])) {
+            result.errors.push(`${itemLabel} 的 ${key} 只有布局或通用展示话术，没有具体业务含义。`);
+          }
+        }
+        if (!Array.isArray(item.primary_users) || item.primary_users.length === 0 || item.primary_users.some((value) => !runtimeCompactText(value))) {
+          result.errors.push(`${itemLabel} 缺少 primary_users，必须说明哪些业务角色实际使用这个界面。`);
+        } else if (item.primary_users.some((value) => runtimeGenericUiRolePattern.test(runtimeCompactText(value)))) {
+          result.errors.push(`${itemLabel} 的 primary_users 只有“用户/管理员”等泛称，必须写具体业务角色。`);
+        }
+        if (!Array.isArray(item.entry_scenarios) || item.entry_scenarios.length === 0) {
+          result.errors.push(`${itemLabel} 缺少 entry_scenarios，必须说明用户在什么业务时刻进入。`);
+        } else {
+          item.entry_scenarios.forEach((scenario, index) => {
+            if (runtimeCompactText(scenario).length < 8 || runtimeIsVagueUiContextCopy(scenario)) {
+              result.errors.push(`${itemLabel} 的 entry_scenarios[${index}] 没有写清具体触发条件或业务场景。`);
+            }
+          });
+        }
+        if (!Array.isArray(item.flow_refs) || item.flow_refs.length === 0 || item.flow_refs.some((value) => !runtimeCompactText(value))) {
+          result.errors.push(`${itemLabel} 缺少 flow_refs。Flow 只能作为业务事实依据，不能替代 screen_regions 或 components。`);
+        }
         if (!item.screen_layout) {
           result.errors.push(`${itemLabel} 缺少 screen_layout，UI 确认数据必须说明屏幕布局。`);
         }
@@ -111,10 +149,10 @@ function runtimeValidateReviewData(data) {
           if (options.length < 2 || options.length > 4) {
             result.warnings.push(`${node.label || node.id} 的选项数量不是 2-4 个。`);
           }
-          if (node.review_level === "must_confirm" && (options.length < 3 || options.length > 4)) {
+          if (data.review_type === "ui" && node.review_level === "must_confirm" && (options.length < 3 || options.length > 4)) {
             result.warnings.push(`${node.label || node.id} 是必须确认节点，应提供 3-4 个可执行选项。`);
           }
-          if (options.length === 2 && node.review_level !== "must_confirm" && !runtimeHasSubstantialText(node.options_count_rationale)) {
+          if (options.length === 2 && (data.review_type === "flow" || node.review_level !== "must_confirm") && !runtimeHasSubstantialText(node.options_count_rationale)) {
             result.warnings.push(`${node.label || node.id} 只有 2 个选项，需要用 options_count_rationale 说明为什么二元选择足够。`);
           }
           const optionIds = new Set(options.map((option) => option.id));

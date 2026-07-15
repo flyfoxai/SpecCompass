@@ -173,11 +173,22 @@ against the current PRD/spec/flow/UI sources before changing data.
   for the technical owner. Do not hide a business decision inside a
   `system_arch` node, and do not ask the product manager to authorize technical
   implementation details.
-- Human-judgment option count is tiered:
-  - `must_confirm` nodes must have `3-4` executable options.
+- Human-judgment option count is tiered by review type:
+  - Flow `must_confirm` nodes use 2-4 executable options; a source-backed
+    mutually exclusive binary decision may use 2 only when
+    `options_count_rationale` explains why no third executable exit exists.
+  - UI `must_confirm` nodes require 3-4 executable options. Only an ordinary,
+    non-`must_confirm` low-risk UI judgment may use 2, and it must include
+    `options_count_rationale` explaining why no third screen or interaction
+    exit exists.
   - ordinary human-judgment nodes default to 3 options.
-  - low-risk binary choices may use 2 options only when
-    `options_count_rationale` explains why 2 exits are enough.
+- Before writing a Flow review-data node, explain the business trigger or
+  situation, responsible role, action or judgment, state/result change, and
+  next responsibility or recovery path in `plain_summary`. A label plus generic
+  copy such as `进入下一步` is not a business explanation. For every `decision`
+  or `human_judgment` node, every outgoing `edge` must carry the business
+  condition, result, or recovery reason that selects its target; do not use only
+  `继续`, `下一步`, `处理`, or `完成`.
 - Each `node.id` must be globally unique within the whole review data file, not
   only inside one diagram or screen. Prefer IDs that include module and item
   context, such as `survey-publish-DEC1`, because the fixed renderer scopes
@@ -293,7 +304,22 @@ against the current PRD/spec/flow/UI sources before changing data.
 
 UI review data has its own screen contract. Do not copy flow `nodes` and
 `edges` into a UI file and call it a screen. A UI item under `screens` must
-describe what the reviewer sees:
+first explain why the screen exists, then describe what the reviewer sees:
+
+- `business_context`: explain where the screen sits in the larger business
+  operation, what situation or risk makes it necessary, and why the product
+  needs a separate screen for it. Do not repeat the layout or list the objects
+  shown on the page.
+- `primary_users`: name the business roles that actually use the screen.
+- `entry_scenarios`: name concrete events, exceptions, handoffs, or user actions
+  that bring those roles to the screen.
+- `user_goal`: state the decision, inspection, correction, or operation the user
+  must complete here.
+- `user_outcome`: state what the user knows, changes, submits, or can do next
+  after completing the screen task.
+- `flow_refs`: cite the source Flow anchors that support the screen. These are
+  design evidence only and must never be rendered as product controls, regions,
+  nodes, edges, branches, or stage-progress UI.
 
 - `screen_layout`: the screen layout / 屏幕布局 such as `form`, `dashboard`,
   `list_detail`, `wizard`, or `modal`.
@@ -313,12 +339,22 @@ when a visible UI element maps to a decision node. If a screen has no visible
 regions/components/states, validation fails because the reviewer cannot inspect
 the UI.
 
+Build the screen contract in two steps. First extract source-backed Flow facts:
+role, trigger, business object, state, exception, permission, and expected
+outcome. Then make UI decisions from those facts: screen boundary, information
+priority, regions, fields, controls, wording, feedback, and UI states. Flow is
+input evidence; UI is the output. A Flow label such as `FLOW E1`, `DEC E3`, an
+edge, a branch, or a Mermaid diagram is not a UI element. Generic filler such as
+`用于展示相关信息`, `方便用户查看数据`, `列表加详情`, or `顶部加侧栏` does not satisfy
+the Screen context contract even when it is grammatically readable.
+
 决策选项需要深度推理 / decision options require deeper reasoning. For every UI
 decision node, explain the background in human language with
-`decision_background` and summarize the decision with `decision_summary`. Apply
-the same tiered option-count rule (`must_confirm` has `3-4`; ordinary
-human-judgment nodes default to 3; low-risk binary choices need
-`options_count_rationale`). Every option must state `benefit`, `cost`,
+`decision_background` and summarize the decision with `decision_summary`. For
+UI, `must_confirm` nodes require 3-4 options. Only an ordinary,
+non-`must_confirm` low-risk UI judgment may use 2, and it must include
+`options_count_rationale`; ordinary human-judgment nodes default to 3. Every
+option must state `benefit`, `cost`,
 `consequence`, and `next_exit`; the recommended option must also state
 `recommendation_reason`. A non-technical reviewer should understand what they
 are choosing and what downstream work that choice unlocks or blocks. UI choices
@@ -365,7 +401,8 @@ needed. Do not add HTML, CSS, or JavaScript.
   "project": {
     "name": "Example",
     "feature": "survey-publish",
-    "business_overview": "运营人员确认问卷从编辑到发布前需要人工判断的业务规则。"
+    "business_overview": "运营人员确认问卷从编辑到发布前需要人工判断的业务规则。",
+    "review_goal": "确认发布门槛、责任和结果都能被产品经理核对，避免后续页面与开发按猜测推进。"
   },
   "source_snapshot": [
     {
@@ -390,7 +427,7 @@ needed. Do not add HTML, CSS, or JavaScript.
             {
               "id": "DEC1",
               "label": "确认问卷是否可以发布",
-              "plain_summary": "请判断当前问卷是否已经具备发布条件。",
+              "plain_summary": "运营准备向目标人群发布问卷时，由产品经理判断题目、对象和截止时间是否齐备；通过后运营进入发布准备，不通过则回到产品规则补充。",
               "review_layer": "business",
               "review_level": "must_confirm",
               "owner": "产品经理",
@@ -431,7 +468,7 @@ needed. Do not add HTML, CSS, or JavaScript.
             {
               "id": "FLOW1",
               "label": "进入发布准备",
-              "plain_summary": "系统进入发布准备，等待后续界面展示发布结果。",
+              "plain_summary": "产品经理确认发布门槛后，运营进入发布准备并核对目标人群与发送时间；准备结果交给发布执行环节，发现配置缺失则退回运营修正。",
               "review_layer": "business",
               "review_level": "verified",
               "owner": "无需产品确认",
@@ -441,7 +478,7 @@ needed. Do not add HTML, CSS, or JavaScript.
             {
               "id": "SYS1",
               "label": "记录发布证据",
-              "plain_summary": "这一步由系统负责人确认证据留存方式，无需产品确认。",
+              "plain_summary": "问卷发出后，系统负责人记录发布时间、目标范围和执行结果，供运营追溯误发或失败原因；证据留存方式无需产品确认。",
               "action_prompt": "请系统负责人确认发布证据能支撑后续追溯，无需产品确认。",
               "review_layer": "system_arch",
               "review_level": "system_arch",
@@ -451,7 +488,7 @@ needed. Do not add HTML, CSS, or JavaScript.
             }
           ],
           "edges": [
-            { "from": "DEC1", "to": "FLOW1" }
+            { "from": "DEC1", "to": "FLOW1", "label": "符合发布条件" }
           ]
         }
       ]
@@ -462,4 +499,7 @@ needed. Do not add HTML, CSS, or JavaScript.
 
 For UI review data, keep the same top-level shape, set `"review_type": "ui"`,
 write `artifact_path` to `specs/<feature>/ui/review/ui-review-data.json`, and
-replace each module's `diagrams` array with `screens`.
+replace each module's `diagrams` array with `screens`. Every screen must include
+`business_context`, `primary_users`, `entry_scenarios`, `user_goal`,
+`user_outcome`, and `flow_refs` before `screen_layout`, `screen_regions`, and
+`components`.

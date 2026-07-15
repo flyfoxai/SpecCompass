@@ -439,8 +439,21 @@ instead.
   HTML, CSS, JavaScript, SVG, class names, event handlers, or page layout
   instructions in any field, including `schema_notes` and `trace_notes`.
   UI review data is not flow review data / UI 审核数据不是 flow 审核数据:
-  each screen must provide `screen_layout`, `screen_regions`, and visible
-  `components`; optional `states` add screen-state notes. `screen_layout` is the
+  before describing layout, each screen must explain its place in the business
+  with `business_context`, `primary_users`, `entry_scenarios`, `user_goal`,
+  `user_outcome`, and `flow_refs`. These fields must let a reviewer answer: why
+  this screen exists in the larger product, who opens it, what observable event
+  brings them here, what task they complete, and what business result they leave
+  with. Do not satisfy them with layout wording or generic copy such as
+  `用于展示相关信息`, `方便用户查看数据`, or a list of objects on the page.
+  `flow_refs` are evidence citations only. Use Flow roles, events, states,
+  exceptions, permissions, and outcomes as source facts, then transform those
+  facts into screen purposes, regions, fields, actions, feedback, and UI states.
+  Never turn Flow node IDs, edges, branches, stage progress, or a Mermaid graph
+  into visible business UI unless the product spec explicitly requires process
+  monitoring. After the business context is clear, each screen must provide
+  `screen_layout`, `screen_regions`, and visible `components`; optional `states`
+  add screen-state notes. `screen_layout` is the
   screen layout / 屏幕布局 that tells the reviewer whether this is a form,
   dashboard, list/detail, wizard, modal, or other screen shape. The `nodes` array is only the right-rail
   decision and authorization model; it must not replace the middle-screen UI
@@ -491,7 +504,8 @@ instead.
   template, right confirmation sidebar, browser draft handling, decision
   interactions, summary copy, visual grouping, and accessibility details. `/sp.ui`
   must instead provide complete data for that renderer: page title, project UI
-  overview, screen map summary, per-screen purpose, stable review IDs, visible
+  overview, screen map summary, per-screen business context, primary users,
+  entry scenarios, user goal, user outcome, Flow evidence references, stable review IDs, visible
   labels, globally unique `node.id` values across the whole review data file,
   `review_layer`, `review_level`, owner, `node_kind`, source refs,
   framework approximation/deviation notes, design authority metadata, tiered
@@ -546,6 +560,13 @@ instead.
 ## Check Before Finish
 
 - Confirm screen responsibilities match the flow and clarified rules.
+- Confirm every screen explains its business position in plain language: why it
+  exists, who uses it, when they enter, what they need to complete, and what
+  result they obtain. Reject layout-only, object-inventory-only, or generic
+  display wording even when regions and components are structurally valid.
+- Confirm Flow contributed only source facts and trace references. Flow node IDs,
+  edges, branches, timelines, and diagrams must not appear as product regions or
+  components unless process monitoring is an explicit product requirement.
 - Confirm the UI is not under-decomposed: it covers user roles, entry points, screen map, screen purposes, sections, fields, actions, states, validation, permissions, feedback, error/recovery behavior, and verification evidence, or records explicit open items for missing parts.
 - Confirm any `Source: model-inferred` UI content is marked as draft, traceable to the flow/spec source, and not promoted to stable memory/trace without confirmation or current evidence.
 - Confirm every stable screen, section, field, action, state, and validation rule has provenance such as `[SRC:FLOW-*]`, `[SRC:SPEC-*]`, `[SRC:CLARIFY-*]`, or an explicit `OPEN-*`; `[INFER:DRAFT]` and `Source: model-inferred` do not qualify as stable provenance.

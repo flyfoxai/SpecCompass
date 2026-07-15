@@ -53,7 +53,9 @@ jobs:
           - Reviewers can apply recommendations to all remaining items or only the current view without overwriting saved choices or drafts.
           - Confirmation-package download checks every module, offers to fill valid remaining recommendations, and blocks unresolved items without a valid recommendation.
           - The review page remains a confirmation surface, not a direct Flow/UI editor.
-          - Flow and UI use separate review data contracts and change-type lists.
+          - Flow checkpoints identify the business trigger, responsible role, result change, and next responsibility; decision exits must state the real condition or recovery reason.
+          - UI screens explain why they exist, who enters them, what users must accomplish, and what result they obtain before showing the product interface.
+          - Flow and UI use separate review data contracts: Flow facts support UI decisions as traceable evidence but do not become product controls, branches, or diagrams.
 
           Release notes intentionally summarize shipped review tooling and user-facing behavior. Methodology documents are not published as the release theme; supporting documentation, tests, and maintenance commits remain tracked in git history and CHANGELOG.md.
 
