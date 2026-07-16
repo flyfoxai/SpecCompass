@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import json
 import shutil
 import subprocess
@@ -231,7 +230,7 @@ def _writeback_command(
         pytest.skip("node is required for Outline discovery writeback tests")
     command = ["node"]
     if node_import is not None:
-        command.extend(["--import", str(node_import)])
+        command.extend(["--import", node_import.resolve().as_uri()])
     command.extend(
         [
             str(WRITEBACK_HELPER),
@@ -248,6 +247,17 @@ def _writeback_command(
 
 def _output(result: subprocess.CompletedProcess[str]) -> str:
     return f"{result.stdout}\n{result.stderr}"
+
+
+def test_writeback_command_uses_file_url_for_node_import(tmp_path):
+    paths = _prepare_project(tmp_path)
+    preload = tmp_path / "preload.mjs"
+
+    command = _writeback_command(tmp_path, paths, node_import=preload)
+
+    import_index = command.index("--import")
+    assert command[import_index + 1].startswith("file:")
+    assert command[import_index + 1] == preload.resolve().as_uri()
 
 
 def test_outline_discovery_writeback_appends_ledger_and_replaces_both_documents(tmp_path):
