@@ -9,10 +9,28 @@ function hashText(text) {
 }
 
 function itemCollectionKey(data = reviewData) {
-  return data?.review_type === "ui" ? "screens" : "diagrams";
+  return data?.review_type === "outline" ? "views" : data?.review_type === "ui" ? "screens" : "diagrams";
 }
 
-function reviewIdentityPayload(data = reviewData) {
+function canonicalizeReviewValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => canonicalizeReviewValue(entry));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map((key) => [key, canonicalizeReviewValue(value[key])])
+    );
+  }
+  return value;
+}
+
+function canonicalReviewData(data = reviewData) {
+  return JSON.stringify(canonicalizeReviewValue(data));
+}
+
+function legacyReviewIdentityPayload(data = reviewData) {
   const key = itemCollectionKey(data);
   return {
     schema_version: data?.schema_version,
@@ -39,7 +57,11 @@ function reviewIdentityPayload(data = reviewData) {
 }
 
 function reviewDataIdentifier(data = reviewData) {
-  return hashText(JSON.stringify(reviewIdentityPayload(data)));
+  return hashText(canonicalReviewData(data));
+}
+
+function legacyReviewDataIdentifier(data = reviewData) {
+  return hashText(JSON.stringify(legacyReviewIdentityPayload(data)));
 }
 
 function appendText(parent, tag, text, className) {
@@ -59,9 +81,18 @@ function storageKey() {
   return `${STORAGE_PREFIX}${reviewData?.review_type || "unknown"}:${reviewDataIdentifier()}:${path}`;
 }
 
+function legacyStorageKey(data = reviewData) {
+  const path = data?.artifact_path || data?.batch_id || "draft";
+  return `${STORAGE_PREFIX}${data?.review_type || "unknown"}:${legacyReviewDataIdentifier(data)}:${path}`;
+}
+
 function loadState() {
   try {
-    state = JSON.parse(localStorage.getItem(storageKey()) || "{}");
+    let storedState = localStorage.getItem(storageKey());
+    if (storedState === null && reviewData?.schema_version === 1) {
+      storedState = localStorage.getItem(legacyStorageKey());
+    }
+    state = JSON.parse(storedState || "{}");
     if (!state || typeof state !== "object" || Array.isArray(state)) {
       state = {};
     }
@@ -143,8 +174,28 @@ function currentItemNodes() {
 }
 
 function visibleNodes() {
-  const nodes = currentItemNodes();
+  const priorityOrder = { critical: 0, important: 1, normal: 2 };
+  const nodes = currentItemNodes()
+    .filter((node) => selectedPriority === "all" || node.confirmation_priority === selectedPriority)
+    .sort((left, right) => (priorityOrder[left.confirmation_priority] ?? 3) - (priorityOrder[right.confirmation_priority] ?? 3));
   return selectedNodeId ? nodes.filter((node) => node.id === selectedNodeId) : nodes;
+}
+
+function priorityCounts(nodes = currentItemNodes()) {
+  return (nodes || []).reduce((counts, node) => {
+    if (requiresNodeDecision(node) && Object.prototype.hasOwnProperty.call(counts, node.confirmation_priority)) {
+      counts[node.confirmation_priority] += 1;
+    }
+    return counts;
+  }, { critical: 0, important: 0, normal: 0 });
+}
+
+function priorityLabel(priority) {
+  return {
+    critical: "非常重要",
+    important: "重要",
+    normal: "普通"
+  }[priority] || "未分级";
 }
 
 function currentModuleNodes() {
@@ -190,19 +241,26 @@ function summarizeRecommendationCompletion(entries) {
     drafts: 0,
     saved: 0,
     missingRecommendation: 0,
+    criticalRequiresIndividual: 0,
     eligible: []
   };
   for (const entry of entries || []) {
     const node = recommendationNode(entry);
     if (!node || !requiresNodeDecision(node)) continue;
     const current = nodeState(node.id);
+    const isCritical = node.confirmation_priority === "critical";
+    if (isCritical && !isResolved(node)) {
+      summary.criticalRequiresIndividual += 1;
+    }
     if (current.status === "DRAFT") {
       summary.drafts += 1;
     } else if (isResolved(node)) {
       summary.saved += 1;
     } else if (current.status === "MISSING") {
       summary.unfinished += 1;
-      if (hasValidRecommendedOption(node)) {
+      if (isCritical) {
+        continue;
+      } else if (hasValidRecommendedOption(node)) {
         summary.canSaveRecommended += 1;
         summary.eligible.push(node);
       } else {
@@ -276,5 +334,6 @@ function writebackTarget() {
   } catch {
     // Fallback below keeps the page usable; package download performs strict validation.
   }
+  if (reviewData?.review_type === "outline") return "outline-confirmation.md";
   return reviewData?.review_type === "ui" ? "ui-confirmation.md" : "flow-confirmation.md";
 }

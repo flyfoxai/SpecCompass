@@ -1,16 +1,18 @@
 # SpecCompass Review Renderer
 
 This renderer directory / renderer 目录 contains the multi-file fixed
-infrastructure for SpecCompass flow and UI review pages:
+infrastructure for SpecCompass flow, UI, and PRD Outline review pages:
 `speccompass-review-renderer.html` is only the entry page, while
 `styles/*.css` and `scripts/*.js` are shared page infrastructure. Normal
-`/sp.flow` and `/sp.ui` runs must not edit the renderer. Normal `/sp.flow` and
-`/sp.ui` commands still only fill structured review data and validate it before
-presenting the review page.
+`/sp.flow`, `/sp.ui`, and `/sp.prd` runs must not edit the renderer. Normal
+commands still only fill the matching structured review data and validate it
+before presenting the review page.
 
 Contract sentence for template checks: normal `/sp.flow` and `/sp.ui` commands still only fill structured review data / 普通 `/sp.flow`、`/sp.ui` 只填结构化数据.
 
-The fixed renderer is shared by both flow review and UI review.
+The fixed renderer is shared by Flow, UI, and Outline review. Outline is a
+stage inside `/sp.prd`, not a separate required command and not a replacement
+for `/sp.specify`.
 For flow review, this fixed renderer is not Mermaid-based: it reads structured
 JSON nodes and edges and draws a native SVG/DAG flow diagram. Mermaid, PlantUML,
 or Graphviz files may still exist as project flow source or external preview
@@ -56,6 +58,15 @@ instead. Renderer changes require a separate implementation task with tests.
 
 - Flow data path: `specs/<feature>/flows/review/flow-review-data.json`
 - UI data path: `specs/<feature>/ui/review/ui-review-data.json`
+- Outline data path: `specs/<feature>/prd/review/outline-review-data.json`
+- Outline discovery data path:
+  `specs/<feature>/prd/review/outline-discovery-data.json`
+- Outline discovery response download (browser download, not committed to the
+  repository; the user supplies it explicitly to `/sp.prd`):
+  `outline-discovery-response-*.json`
+- Outline intent ledger path:
+  `specs/<feature>/prd/review/outline-intent-ledger.json`
+- Outline source path: `specs/<feature>/spec-outline.md`
 - Review index path: `specs/review-index.json`
 - Renderer directory: `.specify/review/renderer/`
 - Renderer path: `.specify/review/renderer/speccompass-review-renderer.html`
@@ -63,9 +74,52 @@ instead. Renderer changes require a separate implementation task with tests.
   `.specify/review/renderer/speccompass-review-renderer.html?flow=<feature>`
 - UI review Web entry:
   `.specify/review/renderer/speccompass-review-renderer.html?ui=<feature>`
+- Outline review Web entry:
+  `.specify/review/renderer/speccompass-review-renderer.html?outline=<feature>`
+- Outline discovery Web entry:
+  `.specify/review/renderer/speccompass-review-renderer.html?outline-discovery=<feature>`
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
-- Schemas: `.specify/review/schemas/flow-review-data.schema.json` and
-  `.specify/review/schemas/ui-review-data.schema.json`
+- Schemas: `.specify/review/schemas/flow-review-data.schema.json`,
+  `.specify/review/schemas/ui-review-data.schema.json`, and
+  `.specify/review/schemas/outline-review-data.schema.json`, plus the separate
+  Outline discovery data, response, and intent-ledger schemas.
+
+Outline has two explicit modes. Level 1 `outline_maturity: explore` and Level 2
+`outline_maturity: frame` use `interaction_mode: discovery`; Level 3
+`outline_maturity: specify_ready` uses `interaction_mode: confirmation`.
+Discovery shows 2-4 candidates, a recommendation and reason, none of the above,
+free-form input, and the operations `confirm_candidate`, `add`, `replace`,
+`exclude`, and `context_note`. Its primary action is `Save and continue refinement`,
+and the surface must continuously say that it does not authorize `/sp.specify`.
+
+Discovery and confirmation share the fixed visual shell, but not their schemas,
+packages, or state machines. A discovery package must not accept or emit
+`speccompass-confirmation-package`, and the confirmation package logic must not
+accept `outline-discovery-response`. Browser discovery state and response
+downloads are non-authoritative; only `/sp.prd` may validate the response,
+append `outline-intent-ledger.json`, and write provenance anchors. Accepted new
+text uses `[src:user]`, accepted candidates use `[src:user-confirmed]`,
+unaccepted candidates stay `[src:ai-proposed]`, and consumed events use
+`<!-- intent-delta:<id> -->`.
+Existing entries that can be replaced or excluded use
+`<!-- intent-target:<id> -->`; the generated delta block records its exact
+reference as `<!-- intent-ref:<delta-id>:<target-or-candidate-id> -->`. After
+`/sp.prd` regenerates both temporary documents, it runs
+`node .specify/review/scripts/apply-outline-discovery.mjs --response <response-package> --prd-temp specs/<feature>/prd.md.tmp --outline-temp specs/<feature>/spec-outline.md.tmp`.
+Valid events are appended before temporary-document validation. A failure keeps
+the formal documents unchanged and leaves those events pending, so the same
+response can be retried without duplicating the ledger.
+The helper serializes writeback for each feature with
+`specs/<feature>/prd/review/.outline-discovery-writeback.lock`. If an active
+process owns the lock, wait for it to finish before retrying. If the recorded
+owner is no longer running, the helper first acquires the exclusive
+`.outline-discovery-writeback.recovery.lock` claim and rechecks the main lock
+identity before recovering it. Unique ownership IDs ensure cleanup preserves a
+lock that has changed owners. If a dead process left both locks, the helper
+fails closed and preserves them until an operator verifies no writeback is
+running and removes only the recovery claim. When the old main lock is already
+absent, the helper removes an orphaned recovery claim only after acquiring a
+fresh main lock.
 
 Interactive review must start from the project root with the self-contained
 launcher. Use exactly one matching command and keep it running:
@@ -73,6 +127,8 @@ launcher. Use exactly one matching command and keep it running:
 ```bash
 node .specify/review/scripts/serve-review.mjs --flow <feature>
 node .specify/review/scripts/serve-review.mjs --ui <feature>
+node .specify/review/scripts/serve-review.mjs --outline <feature>
+node .specify/review/scripts/serve-review.mjs --outline-discovery <feature>
 ```
 
 The launcher binds only to `127.0.0.1`, chooses an available port unless an
@@ -85,14 +141,19 @@ copy controls. The local JSON selector remains a recovery control only after the
 fixed renderer has been opened from a supported `http://127.0.0.1:<port>` URL.
 On that supported origin, the renderer may accept
 `window.SPECCOMPASS_REVIEW_DATA`, a selected local JSON file input / 本地 JSON 文件,
-or a colocated `flow-review-data.json` / `ui-review-data.json`; none of these data
+or a colocated `flow-review-data.json`, `ui-review-data.json`, or
+`outline-review-data.json`/`outline-discovery-data.json`; none of these data
 sources bypasses the transport gate or changes the authorization rules.
 
 The primary reviewer-facing entry uses short URL parameters / 短参数. Opening
 `speccompass-review-renderer.html?flow=<feature>` auto-loads
 `specs/<feature>/flows/review/flow-review-data.json`; opening
 `speccompass-review-renderer.html?ui=<feature>` auto-loads
-`specs/<feature>/ui/review/ui-review-data.json`. The renderer resolves these
+`specs/<feature>/ui/review/ui-review-data.json`; opening
+`speccompass-review-renderer.html?outline=<feature>` auto-loads
+`specs/<feature>/prd/review/outline-review-data.json`; opening
+`speccompass-review-renderer.html?outline-discovery=<feature>` auto-loads
+`specs/<feature>/prd/review/outline-discovery-data.json`. The renderer resolves these
 locations with browser URL paths and `new URL(..., window.location.href)`, not
 operating-system file separators, so the same contract applies on macOS,
 Windows, and Linux. The feature parameter must be a simple feature directory
@@ -101,19 +162,24 @@ separators and `..` are rejected. When no short parameter is present on the
 supported origin, the page shows a visible prompt and keeps the manual load
 buttons. This does not create a fallback for unsupported transports.
 
-New projects receive the launcher and renderer through `specify init`. Existing
-projects refresh this fixed `.specify/review/` infrastructure with
-`specify init --force`; review data and confirmation documents under `specs/`
-remain project-owned artifacts and are outside that fixed directory.
+New projects receive the launcher and renderer through `specify init`. Projects
+that were already initialized do not receive new templates automatically.
+Existing projects refresh this fixed `.specify/review/` infrastructure with
+`specify init --force`; review data, discovery responses, intent ledgers, and
+confirmation documents under `specs/` remain project-owned artifacts and are
+outside that fixed directory.
 
 The fixed renderer also reads `specs/review-index.json` for demand-level
 navigation / 需求级导航. The top navigation text is `上一需求 / 需求 X/Y / 下一需求`;
 it follows the feature order recorded in `features[].order` and the feature slug
 in `features[].feature`. This is different from the current feature's business
 module navigation, which must be labeled `上一业务模块 / 业务模块 X/Y / 下一业务模块`.
-Each index entry uses `has_flow_review` and `has_ui_review` so the renderer can
-disable a target and mark it `待生成` when the selected review type has not been
-generated. Do not invent future slugs in the index: if only
+Each index entry uses `has_flow_review`, `has_ui_review`,
+`has_outline_review`, and `has_outline_discovery`. Formal Outline confirmation
+and Outline Discovery are separate navigation targets: the renderer consults
+only the flag for the selected review type, disables an unavailable target, and
+marks it `待生成`. Do not infer one Outline flag from the other. Do not invent
+future slugs in the index: if only
 `001-phase-one-core-loop` exists, the index contains only that feature and the
 page shows `需求 1/1` with previous/next disabled.
 
@@ -130,23 +196,34 @@ Minimum `specs/review-index.json` shape:
       "feature": "<feature-slug>",
       "title": "<human title>",
       "has_flow_review": true,
-      "has_ui_review": false
+      "has_ui_review": false,
+      "has_outline_review": true,
+      "has_outline_discovery": false
     }
   ]
 }
 ```
 
-Normal `/sp.flow` and `/sp.ui` runs create or update this index when they create
-review data. They preserve existing real feature entries, keep their order, add
-only the current real feature when missing, and update only the relevant
-`has_flow_review` or `has_ui_review` flag plus `updated_at`.
+Normal `/sp.flow`, `/sp.ui`, and `/sp.prd` runs create or update this index when
+they create review data. They preserve existing real feature entries, keep
+their order, add only the current real feature when missing, and update only
+the relevant review flag plus `updated_at`. A PRD discovery run sets
+`has_outline_discovery`; a formal Outline confirmation run sets
+`has_outline_review`. Neither operation clears or derives the other flag.
 
 Browser `localStorage` is only a draft convenience for review selections. It is
 scoped by review type, artifact path, batch id, source snapshot, and the current
 module/item/node structure so a later review-data version does not silently reuse
 an older local draft. It is not authorization. Authorization is the downloaded
 confirmation package, or fallback copied summary, after it has been written into
-`flow-confirmation.md` or `ui-confirmation.md` and tracked with the project.
+`flow-confirmation.md`, `ui-confirmation.md`, or `outline-confirmation.md` and
+tracked with the project.
+
+Schema-v1 data remains readable. Because schema-v2 identity covers the complete
+review contract, a v1 page first checks the new complete-identity storage key and
+then falls back to the exact pre-v2 `localStorage` key when the new key is absent.
+The next successful save writes the restored draft under the new key. This is a
+draft migration only; neither key is authorization evidence.
 
 The renderer may also store display-only layout preferences in `localStorage`,
 for example `speccompass-review:right-rail-width` for the draggable right
@@ -163,7 +240,10 @@ only a fallback when downloads or file handoff are unavailable. The confirmation
 package always includes `target_path`, which must point to
 `specs/<feature>/flows/review/flow-confirmation.md` for flow review or
 `specs/<feature>/ui/review/ui-confirmation.md` for UI review. Other repository
-paths are rejected even when they are repo-relative. A model that receives the
+paths are rejected even when they are repo-relative. Outline review instead
+targets `specs/<feature>/prd/review/outline-confirmation.md` and repeats the
+canonical `outline_digest` plus ordered `source_authority_ids` in every package
+part. A model that receives the
 package should write the contained decisions and `revision_requests` to that
 `target_path` without needing extra instructions.
 
@@ -209,6 +289,17 @@ records. Confirmation packages include `has_unauthorized_drafts`,
 `unauthorized_draft_count`, and a `draft_rule` instruction so a later model
 does not write local draft choices as approved decisions.
 
+For Outline, browser state and the downloaded package remain non-authoritative.
+Only a complete Markdown confirmation whose digest, source authority IDs, and
+review-data identity match the current Outline may promote
+`AWAITING_OUTLINE_CONFIRMATION` to `READY_FOR_SPECIFY`. Missing, incomplete,
+stale, or identity-mismatched confirmation blocks `/sp.specify`.
+Compute the identity from the complete review JSON with
+`.specify/review/scripts/review-data-id.mjs`; the browser uses the same
+recursively key-sorted serialization and identifier algorithm. The downstream
+gate recomputes this value, so changing any review field invalidates the old
+confirmation instead of allowing its declared ID to be reused.
+
 review data 是待审内容 / review data is draft review content. The review page is
 not an editor / 不是编辑器 and does not directly edit flow or UI design /
 不直接修改 flow 或 UI 设计. Reviewers either accept the recommended option or submit
@@ -222,7 +313,7 @@ requests to the structured review data and regenerates the page.
 ```yaml
 - target_ref: <module:item:node>
   target_label: <visible module / flow-or-screen / node label>
-  review_type: flow | ui
+  review_type: flow | ui | outline
   change_type: <FlowChangeType | UiChangeType>
   selected_option: OPTION_A | OPTION_B | OPTION_C | OPTION_D
   reviewer_note: <natural-language revision request>
@@ -238,6 +329,20 @@ UI change types: `ADD_SCREEN`, `DELETE_SCREEN`, `MODIFY_SCREEN_STRUCTURE`,
 `ADD_REGION`, `MODIFY_REGION_LAYOUT`, `ADD_COMPONENT`, `DELETE_COMPONENT`,
 `MODIFY_FIELD_ACTION_COPY`, `ADD_STATE`, `MODIFY_INTERACTION`,
 `ADD_PERMISSION_DISPLAY`, `OTHER`.
+
+Outline change types: `REVISE_INTENT`, `REVISE_USERS`,
+`REVISE_PROBLEM_SLICE`, `REVISE_CAPABILITY_BOUNDARY`, `REVISE_SCOPE`,
+`REVISE_NON_GOAL`, `REVISE_SCENARIO_COVERAGE`, `REVISE_FIRST_SLICE`,
+`REVISE_SOURCE_AUTHORITY`, `REVISE_READINESS`, `OTHER`.
+
+New Flow/UI/Outline schema-v2 actionable nodes use
+`confirmation_priority: critical | important | normal`, displayed as
+`非常重要 | 重要 | 普通`. Priority is independent from `review_level`.
+Informational nodes omit it. Critical is scarce: for `N` actionable nodes its
+upper bound is `N == 0 ? 0 : min(3, max(1, ceil(N / 10)))`; zero is valid, and
+each critical node must prove severe impact plus no safe reversible or default
+route. Critical nodes always require individual confirmation and are excluded
+from every bulk recommendation scope.
 
 Every `node.id` must be globally unique inside one review data file because the
 renderer scopes browser draft state to one review data version and then keys the

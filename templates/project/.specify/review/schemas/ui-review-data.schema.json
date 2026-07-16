@@ -17,7 +17,7 @@
   "properties": {
     "schema_version": {
       "type": "integer",
-      "const": 1
+      "enum": [1, 2]
     },
     "review_type": {
       "const": "ui"
@@ -280,6 +280,13 @@
       "allOf": [
         {
           "if": {
+            "properties": {"confirmation_priority": {"const": "critical"}},
+            "required": ["confirmation_priority"]
+          },
+          "then": {"required": ["critical_basis", "priority_reason"]}
+        },
+        {
+          "if": {
             "properties": {
               "review_level": {"const": "must_confirm"}
             },
@@ -357,6 +364,12 @@
             "system_arch"
           ]
         },
+        "confirmation_priority": {
+          "type": "string",
+          "enum": ["critical", "important", "normal"]
+        },
+        "priority_reason": {"type": "string", "minLength": 18},
+        "critical_basis": {"type": "string", "minLength": 18},
         "owner": {"type": "string"},
         "node_kind": {
           "type": "string",

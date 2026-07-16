@@ -19,7 +19,13 @@ METHODOLOGY_DOC = PROJECT_ROOT / "docs" / "reference" / "sp-project-methodology.
 REVIEW_ROOT = PROJECT_ROOT / "templates" / "project" / ".specify" / "review"
 FLOW_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "flow-review-data.schema.json"
 UI_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "ui-review-data.schema.json"
+OUTLINE_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "outline-review-data.schema.json"
+OUTLINE_DISCOVERY_SCHEMA = REVIEW_ROOT / "schemas" / "outline-discovery-data.schema.json"
+OUTLINE_DISCOVERY_RESPONSE_SCHEMA = REVIEW_ROOT / "schemas" / "outline-discovery-response.schema.json"
+OUTLINE_INTENT_LEDGER_SCHEMA = REVIEW_ROOT / "schemas" / "outline-intent-ledger.schema.json"
 REVIEW_DATA_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-review-data.mjs"
+OUTLINE_DIGEST = REVIEW_ROOT / "scripts" / "outline-digest.mjs"
+REVIEW_DATA_ID = REVIEW_ROOT / "scripts" / "review-data-id.mjs"
 REVIEW_PAGE_RENDERER = REVIEW_ROOT / "renderer" / "speccompass-review-renderer.html"
 RENDERER_README = REVIEW_ROOT / "renderer" / "README.md"
 REVIEW_INDEX_TEMPLATE = PROJECT_ROOT / "templates" / "project" / "specs" / "review-index.json"
@@ -33,7 +39,10 @@ REVIEW_RENDERER_SCRIPT_FILES = (
     REVIEW_ROOT / "renderer" / "scripts" / "state-store.js",
     REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js",
     REVIEW_ROOT / "renderer" / "scripts" / "confirmation-package.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "discovery-response-package.js",
     REVIEW_ROOT / "renderer" / "scripts" / "ui-preview-renderer.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "outline-preview-renderer.js",
     REVIEW_ROOT / "renderer" / "scripts" / "review-rail.js",
     REVIEW_ROOT / "renderer" / "scripts" / "right-rail-resizer.js",
     REVIEW_ROOT / "renderer" / "scripts" / "feature-nav.js",
@@ -201,10 +210,8 @@ def test_commands_use_user_facing_dot_form_for_sp_commands():
 
 
 def test_route_continue_resume_entry_is_documented():
-    """Usage docs should explain the single-command resume path and its stop rules."""
+    """Detailed usage docs should explain the resume path and its stop rules."""
     usage_docs = [
-        PROJECT_ROOT / "README.md",
-        PROJECT_ROOT / "README.zh-CN.md",
         PROJECT_ROOT / "docs" / "quickstart.md",
         PROJECT_ROOT / "docs" / "reference" / "sp-project-methodology.md",
         PROJECT_ROOT / "docs" / "reference" / "speckit-command-usage.md",
@@ -224,6 +231,24 @@ def test_route_continue_resume_entry_is_documented():
     workflows = (PROJECT_ROOT / "docs" / "reference" / "workflows.md").read_text(encoding="utf-8")
     assert "/sp.route y" in workflows
     assert "resume entry" in workflows
+
+
+def test_root_readmes_stay_concise_and_cover_core_onboarding():
+    """Root READMEs should remain short while preserving the essential user path."""
+    readme_en = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
+    readme_zh = (PROJECT_ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+
+    for content, label in ((readme_en, "README.md"), (readme_zh, "README.zh-CN.md")):
+        assert len(content.splitlines()) <= 50, label
+        assert "/sp.prd" in content, label
+        assert "/sp.flow" in content, label
+        assert "/sp.ui" in content, label
+        assert "specify init . --integration codex --force" in content, label
+
+    assert "critical" in readme_en
+    assert "SP Project Methodology" in readme_en
+    assert "非常重要" in readme_zh
+    assert "SP 项目方法论" in readme_zh
 
 
 def _minimal_flow_review_data_with_node(node: dict) -> dict:
@@ -1615,6 +1640,39 @@ def test_prd_is_mandatory_upstream_intake_but_not_stable_spec_entry():
     assert "`Risk Type`, `Review Focus`, `Impact If Approved`, `Impact If Rejected`" in prd
     assert "must not create a second conflicting decision" in prd
     assert "[src:ai-proposed]" in prd
+
+
+def test_prd_outline_graphical_confirmation_is_a_fresh_authorization_gate():
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    constitution = (PROJECT_MEMORY_DIR / "constitution.md").read_text(encoding="utf-8")
+    prd = _command("prd")
+    specify = _command("specify")
+    command_spec = (
+        PROJECT_ROOT
+        / "templates"
+        / "project"
+        / "docs"
+        / "reference"
+        / "sp-command-spec.md"
+    ).read_text(encoding="utf-8")
+
+    for content in (methodology, constitution, prd, specify, command_spec):
+        assert "AWAITING_OUTLINE_CONFIRMATION" in content
+        assert "outline-review-data.json" in content
+        assert "outline-confirmation.md" in content
+        assert "Outline Digest" in content
+        assert "Source Authority IDs" in content
+
+    assert "serve-review.mjs --outline" in prd
+    assert "OUTLINE_CONFIRMATION_PENDING" in specify
+    assert "OUTLINE_CONFIRMATION_STALE" in specify
+    assert "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" in specify
+
+    for content in (methodology, constitution, prd, specify, command_spec):
+        lowered = content.lower()
+        assert "localstorage" in lowered
+        assert "download" in lowered
+        assert "authoriz" in lowered or "授权" in content
     assert "SP_STATUS: NEEDS_DECISION" in prd
     assert "SP_EXIT_CODE: 1" in prd
     assert "ready for /sp.specify" in prd
@@ -1701,6 +1759,125 @@ def test_prd_is_mandatory_upstream_intake_but_not_stable_spec_entry():
     assert "contradictory acceptance criteria" in specify
     assert "NEEDS_DECISION" in specify
     assert "/sp.clarify" in specify
+
+
+def test_prd_outline_maturity_discovery_contract_is_documented_across_templates():
+    """Stage 1/2 discovery must stay distinct from Stage 3 authorization."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    design = (
+        PROJECT_ROOT
+        / "docs"
+        / "reference"
+        / "sp-flow-ui-confirmation-review-design.zh-CN.md"
+    ).read_text(encoding="utf-8")
+    prd = _command("prd")
+    command_spec = (
+        PROJECT_ROOT
+        / "templates"
+        / "project"
+        / "docs"
+        / "reference"
+        / "sp-command-spec.md"
+    ).read_text(encoding="utf-8")
+    renderer_readme = (
+        REVIEW_ROOT / "renderer" / "README.md"
+    ).read_text(encoding="utf-8")
+    review_skill = (
+        PROJECT_ROOT
+        / "templates"
+        / "skills"
+        / "speccompass-review-data"
+        / "SKILL.md"
+    ).read_text(encoding="utf-8")
+
+    maintained_contracts = (
+        methodology,
+        design,
+        prd,
+        command_spec,
+        renderer_readme,
+        review_skill,
+    )
+    for content in maintained_contracts:
+        assert "outline_maturity" in content
+        assert "explore" in content
+        assert "frame" in content
+        assert "specify_ready" in content
+        assert "discovery" in content
+        assert "confirmation" in content
+
+    artifact_paths = (
+        "outline-discovery-data.json",
+        "outline-discovery-response",
+        "outline-intent-ledger.json",
+        "outline-review-data.json",
+    )
+    for content in (methodology, prd, command_spec, renderer_readme, review_skill):
+        for artifact in artifact_paths:
+            assert artifact in content
+
+    operations = (
+        "confirm_candidate",
+        "add",
+        "replace",
+        "exclude",
+        "context_note",
+    )
+    for content in (methodology, prd, command_spec, review_skill):
+        for operation in operations:
+            assert operation in content
+
+    for content in (methodology, prd, command_spec, review_skill):
+        assert "[src:user]" in content
+        assert "[src:user-confirmed]" in content
+        assert "[src:ai-proposed]" in content
+        assert "intent-delta:" in content
+
+    assert "Outline Maturity" in prd
+    assert "2-4" in prd
+    assert "none of the above" in prd.lower()
+    assert "free-form" in prd.lower()
+    assert "must never advance" in prd
+    assert "`AWAITING_OUTLINE_CONFIRMATION` or `READY_FOR_SPECIFY`" in prd
+    assert "append-only" in prd
+    assert "temporary" in prd
+    assert "fail closed" in prd.lower()
+    assert "must not invent target users, product goals, business rules, or scope" in prd
+    assert "confirmed goal, at least one confirmed user or role, and a clear core problem" in prd
+    assert "regress from `frame` to `explore`" in prd
+    assert "regress from `specify_ready` to `frame`" in prd
+    assert "model-owned compilation step" in prd
+    assert "not cross-consumption by the confirmation package parser" in prd
+    assert "validator or helper is missing, crashes, or returns an invalid result" in prd
+    assert "two consecutive regeneration attempts" in prd
+    assert "supersedes_delta_id" in prd
+    assert "must remain auditable in the append-only ledger" in prd
+    assert "schema version is unsupported" in prd
+    assert "do not guess or silently upcast it" in prd
+    assert "do not downgrade it to an incompatible earlier contract" in prd
+    assert "must reference an earlier accepted event" in prd
+    assert "Reject forward references and cycles" in prd
+    assert "reset the consecutive-failure count" in prd
+    assert "installed discovery schemas, renderer modules, or launcher support are missing" in prd
+    assert "specify init --force" in prd
+
+    assert "一级：方向探索" in methodology
+    assert "二级：框架收敛" in methodology
+    assert "三级：完整大纲" in methodology
+    assert "成熟度可以回退" in methodology
+    assert "不能授权 `/sp.specify`" in methodology
+    assert "从账本生成三级正式 review data 是 `/sp.prd` 的单向编译步骤" in methodology
+    assert "不是 confirmation consumer 读取 discovery package" in methodology
+    assert "连续两次临时文档验证失败" in methodology
+
+    assert "interaction_mode" in renderer_readme
+    assert "Save and continue refinement" in renderer_readme
+    assert "does not authorize `/sp.specify`" in renderer_readme
+    assert "must not accept" in renderer_readme
+
+    assert "specify init --force" in renderer_readme
+    assert "already initialized" in renderer_readme
+    assert "do not receive new templates automatically" in renderer_readme
 
 
 def test_task_packet_defaults_protect_shared_truth_and_worker_artifact_boundaries():
@@ -2682,9 +2859,7 @@ def test_code_continuation_task_packets_are_executable_and_reviewable():
 
 
 def test_delta_first_review_order_prevents_full_reaudit_by_default():
-    """Analyze/gate and README docs should review implementation deltas before broad source reads."""
-    readme_en = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
-    readme_zh = (PROJECT_ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
+    """Analyze/gate and detailed docs should review deltas before broad source reads."""
     overview_en = (PROJECT_ROOT / "templates" / "project" / "docs" / "sp-overview.en.md").read_text(encoding="utf-8")
     overview_zh = (
         PROJECT_ROOT / "templates" / "project" / "docs" / "sp-overview.zh-CN.md"
@@ -2714,8 +2889,6 @@ def test_delta_first_review_order_prevents_full_reaudit_by_default():
         ), label
 
     for content, label in (
-        (readme_en, "README.md"),
-        (readme_zh, "README.zh-CN.md"),
         (overview_en, "sp-overview.en.md"),
         (overview_zh, "sp-overview.zh-CN.md"),
         (details_en, "sp-overview-details.en.md"),
@@ -2733,8 +2906,6 @@ def test_reverse_trace_and_proposed_updates_support_safe_multi_agent_continuatio
     tasks = _command("tasks")
     gate = _command("gate")
     analyze = _command("analyze")
-    readme_en = (PROJECT_ROOT / "README.md").read_text(encoding="utf-8")
-    readme_zh = (PROJECT_ROOT / "README.zh-CN.md").read_text(encoding="utf-8")
 
     for content, label in (
         (implement, "implement"),
@@ -2753,14 +2924,6 @@ def test_reverse_trace_and_proposed_updates_support_safe_multi_agent_continuatio
 
     assert "Proposed Updates" in implement
     assert "coordinator closeout" in implement
-    assert "For controlled multi-agent work" in readme_en
-    assert "one coordinator assigns eligible worksets" in readme_en
-    assert "workers submit `Delta Summary` and `Proposed Updates`" in readme_en
-    assert "failures fall back to single-agent recovery" in readme_en
-    assert "受控多 agent 协作" in readme_zh
-    assert "coordinator 分配符合条件的 workset" in readme_zh
-    assert "提交 `Delta Summary` 和 `Proposed Updates`" in readme_zh
-    assert "失败时兜底到单 agent 恢复路线" in readme_zh
 
 
 def test_multi_agent_proposed_update_conflicts_block_analyze_and_gate_pass():
@@ -3539,10 +3702,6 @@ def test_flow_ui_review_feedback_exports_revision_requests_without_direct_editin
     skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
     renderer_readme = RENDERER_README.read_text(encoding="utf-8")
     renderer = _review_renderer_bundle()
-    readmes = {
-        "README.md": (PROJECT_ROOT / "README.md").read_text(encoding="utf-8"),
-        "README.zh-CN.md": (PROJECT_ROOT / "README.zh-CN.md").read_text(encoding="utf-8"),
-    }
 
     for content, label in (
         (flow, "flow command"),
@@ -3557,11 +3716,6 @@ def test_flow_ui_review_feedback_exports_revision_requests_without_direct_editin
         assert "自然语言修改意见" in content or "natural-language revision" in content, label
         assert "不是编辑器" in content or "not an editor" in content, label
         assert "不直接修改 flow 或 UI 设计" in content or "does not directly edit flow or UI design" in content, label
-
-    for label, content in readmes.items():
-        assert "revision request" in content or "修改请求" in content, label
-        assert "not an editor" in content or "不是编辑器" in content, label
-        assert "confirmation document" in content or "确认文档" in content, label
 
     for content, label in ((flow, "flow command"), (skill, "review-data skill"), (renderer_readme, "renderer README")):
         for token in (
@@ -3613,8 +3767,8 @@ def test_flow_ui_review_feedback_exports_revision_requests_without_direct_editin
         assert token in renderer, token
 
 
-def test_flow_ui_review_pages_use_short_url_parameters_as_primary_entry():
-    """Flow/UI review should open the web renderer directly and auto-load data from short URL params."""
+def test_review_pages_use_short_url_parameters_as_primary_entry():
+    """Flow/UI/Outline review should open the renderer and auto-load data from short URL params."""
     flow = _command("flow")
     ui = _command("ui")
     skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
@@ -3642,12 +3796,14 @@ def test_flow_ui_review_pages_use_short_url_parameters_as_primary_entry():
     assert "URLSearchParams(window.location.search)" in data_loader
     assert 'params.get("flow")' in data_loader
     assert 'params.get("ui")' in data_loader
-    assert "URL 只能包含 flow 或 ui 其中一个短参数" in data_loader
+    assert 'params.get("outline")' in data_loader
+    assert "URL 只能包含 flow、ui 或 outline 其中一个短参数" in data_loader
     assert "validateFeatureId" in data_loader
     assert "includes(\"..\")" in data_loader
     assert "new URL(relativePath, window.location.href)" in data_loader
     assert "../../../specs/${encodeURIComponent(feature)}/flows/review/flow-review-data.json" in data_loader
     assert "../../../specs/${encodeURIComponent(feature)}/ui/review/ui-review-data.json" in data_loader
+    assert "../../../specs/${encodeURIComponent(feature)}/prd/review/outline-review-data.json" in data_loader
     assert "window.location.protocol === \"http:\"" in data_loader
     assert "window.location.hostname === \"127.0.0.1\"" in data_loader
     assert "serve-review.mjs" in data_loader
@@ -3783,7 +3939,7 @@ def test_review_renderer_transport_gate_rejects_non_127_http_before_accepting_da
 const fs = require("fs");
 const vm = require("vm");
 const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
-const controlIds = ["load-flow", "load-ui", "file-input", "download-package", "copy-summary"];
+const controlIds = ["load-flow", "load-ui", "load-outline", "file-input", "download-package", "copy-summary"];
 
 function evaluate(protocol, hostname, expectedAccepted) {{
   const controls = Object.fromEntries(controlIds.map((id) => [id, {{
@@ -3798,6 +3954,7 @@ function evaluate(protocol, hostname, expectedAccepted) {{
   controls["bulk-all-recommended"] = {{ addEventListener: () => undefined }};
   controls["bulk-recommended"] = {{ addEventListener: () => undefined }};
   controls["reset-visible"] = {{ addEventListener: () => undefined }};
+  controls["priority-filters"] = {{ addEventListener: () => undefined }};
   controls["live-status"] = {{ textContent: "", classList: {{ toggle: () => undefined }} }};
   let accepted = 0;
   const context = {{
@@ -3809,7 +3966,7 @@ function evaluate(protocol, hostname, expectedAccepted) {{
     console,
     URL,
     URLSearchParams,
-    DEFAULT_DATA_FILES: {{ flow: "flow.json", ui: "ui.json" }},
+    DEFAULT_DATA_FILES: {{ flow: "flow.json", ui: "ui.json", outline: "outline.json" }},
     reviewData: {{ review_type: "flow" }},
     $: (id) => controls[id],
     acceptReviewData: () => {{ accepted += 1; }},
@@ -3925,13 +4082,22 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "review_goal" in flow_schema["properties"]["project"]["required"]
     assert flow_schema["properties"]["project"]["properties"]["business_overview"]["minLength"] == 18
     assert flow_schema["properties"]["project"]["properties"]["review_goal"]["minLength"] == 18
-    flow_node_options = flow_schema["$defs"]["node"]["allOf"][0]["then"]["properties"]["options"]
-    ui_node_options = ui_schema["$defs"]["node"]["allOf"][0]["then"]["properties"]["options"]
+    def must_confirm_options(schema: dict) -> dict:
+        branch = next(
+            item
+            for item in schema["$defs"]["node"]["allOf"]
+            if item.get("if", {}).get("properties", {}).get("review_level")
+            == {"const": "must_confirm"}
+        )
+        return branch["then"]["properties"]["options"]
+
+    flow_node_options = must_confirm_options(flow_schema)
+    ui_node_options = must_confirm_options(ui_schema)
     assert flow_node_options["minItems"] == 2
     assert ui_node_options["minItems"] == 3
     for schema, label in ((flow_schema, "flow"), (ui_schema, "ui")):
         properties = json.dumps(schema, ensure_ascii=False)
-        assert schema["properties"]["schema_version"] == {"type": "integer", "const": 1}, label
+        assert schema["properties"]["schema_version"] == {"type": "integer", "enum": [1, 2]}, label
         assert schema["additionalProperties"] is False, label
         assert schema["properties"]["project"]["additionalProperties"] is False, label
         assert schema["properties"]["source_snapshot"]["items"]["additionalProperties"] is False, label
@@ -4445,6 +4611,595 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
     }
 
 
+def _priority_review_validator_sample(
+    review_type: str,
+    *,
+    node_count: int = 3,
+    critical_indexes: tuple[int, ...] = (),
+) -> dict:
+    sample = _review_validator_sample(review_type, node_count=node_count)
+    sample["schema_version"] = 2
+    items_key = "diagrams" if review_type == "flow" else "screens"
+    nodes = sample["modules"][0][items_key][0]["nodes"]
+    for index, node in enumerate(nodes, start=1):
+        node["confirmation_priority"] = "critical" if index in critical_indexes else "normal"
+        if index in critical_indexes:
+            node["critical_basis"] = "错误确认会让真实敏感数据被不可逆地发布给错误对象，且当前没有安全默认值或可撤销路径。"
+            node["priority_reason"] = "必须由产品负责人逐项确认发布对象边界，否则后续页面、开发与验收都会继承错误的数据权限。"
+    return sample
+
+
+def _outline_review_validator_sample() -> dict:
+    def node(node_id: str, label: str) -> dict:
+        return {
+            "id": node_id,
+            "label": label,
+            "plain_summary": "产品负责人需要确认该纲要判断，避免范围或来源边界错误传入后续规格。",
+            "decision_background": "现有来源能够支持候选结论，但该结论会改变后续规格的范围和验收覆盖。",
+            "decision_summary": "确认当前纲要判断是否足以作为后续规格阶段的输入边界。",
+            "action_prompt": "请选择保留当前建议，或要求补充证据后再次刷新纲要。",
+            "review_layer": "business",
+            "review_level": "must_confirm",
+            "confirmation_priority": "important",
+            "owner": "product-owner",
+            "node_kind": "human_judgment",
+            "source_ref": "specs/001-outline/spec-outline.md#Outline Decision",
+            "options": [
+                {
+                    "id": "OPTION_A",
+                    "label": "保留当前纲要判断",
+                    "benefit": "保持当前范围并让后续规格围绕已覆盖的用户问题继续收敛。",
+                    "cost": "产品负责人需要接受当前来源留下的低风险假设并持续跟踪。",
+                    "recommendation_reason": "当前来源权威且核心场景已有验收种子，继续推进的返工风险较低。",
+                    "consequence": "确认结果会写入纲要确认文档，并允许后续规格消费当前边界。",
+                    "next_exit": "record-outline-confirmation-and-return-to-prd",
+                    "recommended": True,
+                },
+                {
+                    "id": "OPTION_B",
+                    "label": "补充证据后重新确认",
+                    "benefit": "在进入规格前补齐来源缺口，减少范围判断依赖未验证假设。",
+                    "cost": "需要暂停规格并由来源负责人补充材料，当前交付会延后。",
+                    "consequence": "纲要保持等待确认状态，补充来源后重新生成图形确认数据。",
+                    "next_exit": "needs-decision:refresh-outline-evidence",
+                },
+            ],
+            "options_count_rationale": "当前判断只有保留边界或补充来源两条互斥出口，不存在第三条可执行路径。",
+            "recommended_option": "OPTION_A",
+        }
+
+    views = [
+        {
+            "id": "intent",
+            "title": "意图地图",
+            "summary": "连接产品目标、实际角色、问题切片与候选能力边界。",
+            "source_path": "specs/001-outline/spec-outline.md",
+            "view_type": "intent_map",
+            "intent": "让产品团队在进入规格前确认目标、真实用户与问题边界一致。",
+            "users": ["产品负责人", "需求分析人员"],
+            "problem_slices": ["来源分散导致规格范围容易偏离真实业务目标"],
+            "capability_slices": ["形成可追溯且可确认的规格输入边界"],
+            "nodes": [node("OUTLINE-INTENT", "确认产品意图与首要问题边界")],
+        },
+        {
+            "id": "scope",
+            "title": "范围与首切片",
+            "summary": "并列展示本期范围、非目标、场景覆盖和推荐首个切片。",
+            "source_path": "specs/001-outline/spec-outline.md",
+            "view_type": "scope_slice",
+            "in_scope": ["纲要意图、范围和验收覆盖确认"],
+            "non_goals": ["不在纲要阶段设计页面、接口或实现任务"],
+            "scenario_coverage": [
+                {
+                    "scenario": "产品负责人检查首切片是否覆盖核心用户问题",
+                    "acceptance_seeds": ["能够追溯到权威来源并明确一期边界"],
+                }
+            ],
+            "recommended_first_slice": "先确认核心角色、主要问题和一期验收边界，再进入详细规格。",
+            "nodes": [node("OUTLINE-SCOPE", "确认一期范围与推荐首切片")],
+        },
+        {
+            "id": "readiness",
+            "title": "就绪度与来源权威",
+            "summary": "展示来源权威、风险、开放项、阻断项和下一条工作路由。",
+            "source_path": "specs/001-outline/spec-outline.md",
+            "view_type": "readiness_authority",
+            "source_authorities": [
+                {
+                    "id": "prd-v3",
+                    "path": "specs/001-outline/prd.md",
+                    "status": "authoritative",
+                    "scope": "product intent and scope",
+                }
+            ],
+            "risks": ["低风险来源假设需要在详细规格中保持可追溯"],
+            "open_items": [],
+            "blockers": [],
+            "next_route": "/sp.prd consume outline confirmation package",
+            "nodes": [node("OUTLINE-READY", "确认来源权威与下一路由")],
+        },
+    ]
+    return {
+        "schema_version": 2,
+        "review_type": "outline",
+        "artifact_path": "specs/001-outline/prd/review/outline-review-data.json",
+        "outline_source_path": "specs/001-outline/spec-outline.md",
+        "outline_digest": "a" * 64,
+        "source_authority_ids": ["prd-v3"],
+        "confirm_strategy": "batch",
+        "batch_id": "OUTLINE-001",
+        "project": {
+            "name": "Outline Example",
+            "feature": "001-outline",
+            "business_overview": "产品团队需要在详细规格前确认产品意图、范围、来源权威和首个交付切片。",
+            "review_goal": "只确认纲要级边界和就绪度，不提前设计流程、界面、接口、数据库或实现任务。",
+        },
+        "source_snapshot": [
+            {
+                "path": "specs/001-outline/prd.md",
+                "anchors": ["Product Intent", "Scope"],
+                "semantic_scope": ["intent", "scope", "acceptance-seeds"],
+            }
+        ],
+        "modules": [
+            {
+                "id": "feature-outline",
+                "title": "功能纲要",
+                "summary": "对进入详细规格前必须稳定的产品判断进行一次集中确认。",
+                "views": views,
+            }
+        ],
+    }
+
+
+def _outline_discovery_validator_sample() -> dict:
+    return {
+        "schema_version": 1,
+        "review_type": "outline_discovery",
+        "interaction_mode": "discovery",
+        "artifact_path": "specs/001-outline/prd/review/outline-discovery-data.json",
+        "outline_maturity": "explore",
+        "batch_id": "DISCOVERY-001",
+        "project": {
+            "name": "Outline Discovery Example",
+            "feature": "001-outline",
+            "current_understanding": "团队希望先从零散产品想法中确认真实目标用户、核心问题和产品方向。",
+            "discovery_goal": "通过少量高价值候选和用户直接输入，把模糊想法收敛为可继续完善的产品大纲。",
+        },
+        "source_snapshot": [
+            {
+                "path": "specs/001-outline/prd.md",
+                "source_type": "user_document",
+                "anchors": ["Product Intent"],
+            }
+        ],
+        "question_groups": [
+            {
+                "id": "direction",
+                "title": "方向探索",
+                "summary": "先确认产品目标和核心用户，不在本轮假定完整范围。",
+                "questions": [
+                    {
+                        "id": "goal",
+                        "target_kind": "goal",
+                        "prompt": "这项产品工作最需要优先解决什么目标？",
+                        "context": "现有资料只表达了提高需求质量，尚未确认最重要的业务结果。",
+                        "selection_mode": "single",
+                        "candidates": [
+                            {
+                                "id": "goal-quality",
+                                "label": "先提高需求输入质量",
+                                "value": "让产品负责人在进入详细规格前补齐真实目标、用户和核心问题。",
+                                "rationale": "当前返工主要来自产品事实不足，而不是实现能力不足。",
+                            },
+                            {
+                                "id": "goal-speed",
+                                "label": "先缩短需求整理时间",
+                                "value": "减少从零散资料形成可讨论产品框架所需的轮次。",
+                                "rationale": "适合已有稳定产品方向、主要受整理效率影响的团队。",
+                            },
+                        ],
+                        "recommended_candidate_ids": ["goal-quality"],
+                        "recommendation_reason": "当前输入不足以形成稳定框架，先确认产品事实能直接降低后续返工。",
+                        "allow_none_of_the_above": True,
+                        "free_input": {
+                            "enabled": True,
+                            "label": "补充或改写业务目标",
+                            "allowed_operations": [
+                                "confirm_candidate",
+                                "add",
+                                "replace",
+                                "exclude",
+                                "context_note",
+                            ],
+                        },
+                    }
+                ],
+            }
+        ],
+        "authorization_effect": "none",
+        "next_route": "/sp.prd",
+    }
+
+
+def _outline_intent_ledger_sample() -> dict:
+    return {
+        "schema_version": 1,
+        "format": "speccompass-outline-intent-ledger",
+        "feature": "001-outline",
+        "events": [
+            {
+                "delta_id": "delta-001",
+                "response_id": "response-001",
+                "maturity": "explore",
+                "target_kind": "goal",
+                "operation": "confirm_candidate",
+                "candidate_id": "goal-quality",
+                "target_id": None,
+                "value": "让产品负责人在进入详细规格前补齐真实目标、用户和核心问题。",
+                "source_tag": "user-confirmed",
+                "recorded_at": "2026-07-16T08:00:00.000Z",
+                "supersedes_delta_id": None,
+            },
+            {
+                "delta_id": "delta-002",
+                "response_id": "response-002",
+                "maturity": "frame",
+                "target_kind": "goal",
+                "operation": "replace",
+                "candidate_id": None,
+                "target_id": "goal-primary",
+                "value": "先确认产品事实，再在稳定框架上提高整理效率。",
+                "source_tag": "user",
+                "recorded_at": "2026-07-16T08:30:00.000Z",
+                "supersedes_delta_id": "delta-001",
+            },
+        ],
+    }
+
+
+def test_outline_review_schema_and_validator_enforce_three_view_contract(tmp_path):
+    assert OUTLINE_REVIEW_SCHEMA.is_file()
+    schema = json.loads(OUTLINE_REVIEW_SCHEMA.read_text(encoding="utf-8"))
+    assert schema["properties"]["review_type"]["const"] == "outline"
+    assert schema["properties"]["schema_version"] == {"const": 2}
+    assert schema["$defs"]["view"]["properties"]["view_type"]["enum"] == [
+        "intent_map",
+        "scope_slice",
+        "readiness_authority",
+    ]
+
+    sample = _outline_review_validator_sample()
+    accepted = _run_review_validator(sample, tmp_path / "outline-valid.json")
+    assert accepted.returncode == 0, _review_validator_output(accepted)
+
+    for label, mutate in (
+        ("missing", lambda views: views.pop()),
+        ("duplicate", lambda views: views.__setitem__(2, {**views[2], "view_type": "scope_slice"})),
+        ("extra", lambda views: views.append({**views[0], "id": "extra"})),
+    ):
+        invalid = _outline_review_validator_sample()
+        mutate(invalid["modules"][0]["views"])
+        result = _run_review_validator(invalid, tmp_path / f"outline-{label}.json")
+        assert result.returncode != 0, label
+        assert "exactly once" in _review_validator_output(result)
+
+
+def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured(tmp_path):
+    for path in (
+        OUTLINE_DISCOVERY_SCHEMA,
+        OUTLINE_DISCOVERY_RESPONSE_SCHEMA,
+        OUTLINE_INTENT_LEDGER_SCHEMA,
+    ):
+        assert path.is_file(), path
+
+    discovery = json.loads(OUTLINE_DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
+    assert discovery["properties"]["review_type"] == {"const": "outline_discovery"}
+    assert discovery["properties"]["interaction_mode"] == {"const": "discovery"}
+    assert discovery["properties"]["outline_maturity"]["enum"] == ["explore", "frame"]
+    assert discovery["properties"]["authorization_effect"] == {"const": "none"}
+    question = discovery["$defs"]["question"]
+    assert question["properties"]["selection_mode"] == {"const": "single"}
+    assert question["properties"]["candidates"]["minItems"] == 2
+    assert question["properties"]["candidates"]["maxItems"] == 4
+    assert question["properties"]["recommended_candidate_ids"]["minItems"] == 1
+    assert question["properties"]["recommended_candidate_ids"]["maxItems"] == 1
+    assert {
+        "recommended_candidate_ids",
+        "recommendation_reason",
+        "allow_none_of_the_above",
+        "free_input",
+    } <= set(question["required"])
+    assert question["properties"]["allow_none_of_the_above"] == {"const": True}
+    operations = question["properties"]["free_input"]["properties"]["allowed_operations"]
+    assert operations["minItems"] == operations["maxItems"] == 5
+    assert set(operations["items"]["enum"]) == {
+        "confirm_candidate",
+        "add",
+        "replace",
+        "exclude",
+        "context_note",
+    }
+
+    response = json.loads(OUTLINE_DISCOVERY_RESPONSE_SCHEMA.read_text(encoding="utf-8"))
+    assert response["properties"]["format"] == {"const": "speccompass-outline-discovery-response"}
+    assert response["properties"]["authorization_effect"] == {"const": "none"}
+    assert response["properties"]["next_route"] == {"const": "/sp.prd"}
+    assert response["$defs"]["delta"]["properties"]["operation"]["enum"] == [
+        "confirm_candidate",
+        "add",
+        "replace",
+        "exclude",
+        "context_note",
+    ]
+
+    ledger = json.loads(OUTLINE_INTENT_LEDGER_SCHEMA.read_text(encoding="utf-8"))
+    assert ledger["properties"]["format"] == {"const": "speccompass-outline-intent-ledger"}
+    assert ledger["properties"]["events"]["items"]["$ref"] == "#/$defs/event"
+    assert "supersedes_delta_id" in ledger["$defs"]["event"]["properties"]
+
+    accepted = _run_review_validator(_outline_discovery_validator_sample(), tmp_path / "discovery-valid.json")
+    assert accepted.returncode == 0, _review_validator_output(accepted)
+
+    for label, mutate, expected in (
+        (
+            "multiple-selection",
+            lambda data: data["question_groups"][0]["questions"][0].__setitem__("selection_mode", "multiple"),
+            "selection_mode must be single",
+        ),
+        (
+            "feature-path-mismatch",
+            lambda data: data["project"].__setitem__("feature", "002-other"),
+            "project.feature must match artifact_path",
+        ),
+        (
+            "unsafe-source-path",
+            lambda data: data["source_snapshot"][0].__setitem__("path", "../prd.md"),
+            "safe repository-relative path",
+        ),
+        (
+            "one-candidate",
+            lambda data: data["question_groups"][0]["questions"][0]["candidates"].pop(),
+            "2-4 candidates",
+        ),
+        (
+            "five-candidates",
+            lambda data: data["question_groups"][0]["questions"][0]["candidates"].extend(
+                [{"id": f"extra-{i}", "label": "额外方向", "value": "额外候选方向。", "rationale": "只用于越界测试。"} for i in range(3)]
+            ),
+            "2-4 candidates",
+        ),
+        (
+            "missing-recommendation",
+            lambda data: data["question_groups"][0]["questions"][0].__setitem__("recommended_candidate_ids", []),
+            "recommended_candidate_ids",
+        ),
+        (
+            "multiple-recommendations",
+            lambda data: data["question_groups"][0]["questions"][0].__setitem__(
+                "recommended_candidate_ids", ["goal-quality", "goal-speed"]
+            ),
+            "exactly one candidate",
+        ),
+        (
+            "none-disabled",
+            lambda data: data["question_groups"][0]["questions"][0].__setitem__("allow_none_of_the_above", False),
+            "none-of-the-above",
+        ),
+        (
+            "missing-operation",
+            lambda data: data["question_groups"][0]["questions"][0]["free_input"]["allowed_operations"].pop(),
+            "five discovery operations",
+        ),
+    ):
+        invalid = _outline_discovery_validator_sample()
+        mutate(invalid)
+        result = _run_review_validator(invalid, tmp_path / f"discovery-{label}.json")
+        assert result.returncode != 0, label
+        assert expected in _review_validator_output(result)
+
+
+def test_outline_discovery_browser_runtime_matches_cli_fail_closed_contract():
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer runtime tests")
+
+    overlays = REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js"
+    state_store = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    data_validator = REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js"
+    sample = _outline_discovery_validator_sample()
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = [
+  {json.dumps(str(overlays))},
+  {json.dumps(str(state_store))},
+  {json.dumps(str(data_validator))}
+].map((path) => fs.readFileSync(path, "utf8")).join(String.fromCharCode(10));
+const context = {{
+  window: {{ SpecCompassDom: {{}} }},
+  localStorage: {{ setItem: () => undefined, removeItem: () => undefined, getItem: () => null }},
+  console,
+  SUPPORTED_SCHEMA_VERSIONS: new Set([1, 2]),
+  SUPPORTED_SCHEMA_VERSION: 2
+}};
+vm.createContext(context);
+vm.runInContext(source, context);
+const valid = {json.dumps(sample, ensure_ascii=False)};
+if (context.validateReviewData(valid) !== "") throw new Error("valid discovery rejected");
+for (const [label, mutate] of [
+  ["unsafe-path", (data) => data.artifact_path = "../outline-discovery-data.json"],
+  ["missing-source", (data) => data.source_snapshot = []],
+  ["duplicate-question", (data) => data.question_groups[0].questions.push(structuredClone(data.question_groups[0].questions[0]))],
+  ["one-candidate", (data) => data.question_groups[0].questions[0].candidates.pop()],
+  ["unknown-recommendation", (data) => data.question_groups[0].questions[0].recommended_candidate_ids = ["missing"]],
+  ["multiple-recommendations", (data) => data.question_groups[0].questions[0].recommended_candidate_ids = ["goal-quality", "goal-speed"]],
+  ["multiple-selection", (data) => data.question_groups[0].questions[0].selection_mode = "multiple"],
+  ["missing-operation", (data) => data.question_groups[0].questions[0].free_input.allowed_operations.pop()]
+]) {{
+  const invalid = structuredClone(valid);
+  mutate(invalid);
+  const result = context.validateReviewData(invalid);
+  if (!result) throw new Error(label + " was accepted");
+}}
+"""
+    result = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_outline_discovery_renderer_tracks_unexported_work_and_mobile_navigation_contract():
+    renderer = (REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js").read_text(encoding="utf-8")
+    data_loader = (REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js").read_text(encoding="utf-8")
+    feature_nav = (REVIEW_ROOT / "renderer" / "scripts" / "feature-nav.js").read_text(encoding="utf-8")
+    styles = (REVIEW_ROOT / "renderer" / "styles" / "review-ui.css").read_text(encoding="utf-8")
+    prd = _command("prd")
+
+    assert "hasUnexportedOutlineDiscoveryWork" in renderer
+    assert "hasOutlineDiscoveryDraft" in renderer
+    assert "hasUnexportedOutlineDiscoveryWork" in data_loader
+    assert "hasUnexportedOutlineDiscoveryWork" in feature_nav
+    assert 'params.get("outline-discovery")' in feature_nav
+    assert "has_outline_discovery" in feature_nav
+    assert "has_outline_discovery" in prd
+    assert re.search(
+        r"@media\s*\(max-width:\s*600px\).*?\.discovery-non-authorizing-banner\s*\{[^}]*flex-direction:\s*column",
+        styles,
+        re.DOTALL,
+    )
+    assert re.search(r"\.discovery-non-authorizing-banner\s+strong\s*\{[^}]*white-space:\s*nowrap", styles, re.DOTALL)
+
+
+def test_outline_intent_ledger_validator_rejects_duplicate_and_forward_supersede(tmp_path):
+    valid = _run_review_validator(_outline_intent_ledger_sample(), tmp_path / "ledger-valid.json")
+    assert valid.returncode == 0, _review_validator_output(valid)
+
+    duplicate = _outline_intent_ledger_sample()
+    duplicate["events"][1]["delta_id"] = "delta-001"
+    result = _run_review_validator(duplicate, tmp_path / "ledger-duplicate.json")
+    assert result.returncode != 0
+    assert "duplicate delta_id" in _review_validator_output(result)
+
+    forward = _outline_intent_ledger_sample()
+    forward["events"][0]["supersedes_delta_id"] = "delta-002"
+    result = _run_review_validator(forward, tmp_path / "ledger-forward.json")
+    assert result.returncode != 0
+    assert "earlier event" in _review_validator_output(result)
+
+
+def test_outline_intent_ledger_allows_empty_exclude_value_but_not_empty_content_operations(tmp_path):
+    exclude = _outline_intent_ledger_sample()
+    exclude["events"] = [
+        {
+            **exclude["events"][0],
+            "operation": "exclude",
+            "candidate_id": "goal-quality",
+            "target_id": None,
+            "value": "",
+            "source_tag": "user",
+        }
+    ]
+    result = _run_review_validator(exclude, tmp_path / "ledger-exclude-empty-value.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+    for operation in ("confirm_candidate", "add", "replace", "context_note"):
+        invalid = _outline_intent_ledger_sample()
+        event = invalid["events"][0]
+        event.update(
+            {
+                "operation": operation,
+                "candidate_id": "goal-quality" if operation == "confirm_candidate" else None,
+                "target_id": "goal-primary" if operation == "replace" else None,
+                "value": "",
+                "source_tag": "user-confirmed" if operation == "confirm_candidate" else "user",
+            }
+        )
+        result = _run_review_validator(invalid, tmp_path / f"ledger-{operation}-empty-value.json")
+        assert result.returncode != 0, operation
+        assert "value is required" in _review_validator_output(result)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("artifact_path", "/tmp/specs/001-outline/prd/review/outline-review-data.json"),
+        ("artifact_path", "specs/001-outline/../prd/review/outline-review-data.json"),
+        ("outline_source_path", "C:/repo/specs/001-outline/spec-outline.md"),
+        ("outline_source_path", "specs//001-outline/spec-outline.md"),
+    ),
+)
+def test_outline_review_validator_rejects_unsafe_repository_paths(tmp_path, field, value):
+    sample = _outline_review_validator_sample()
+    sample[field] = value
+    if field == "outline_source_path":
+        for view in sample["modules"][0]["views"]:
+            view["source_path"] = value
+
+    result = _run_review_validator(sample, tmp_path / f"outline-unsafe-{field}.json")
+    assert result.returncode != 0
+    assert "safe repository-relative path" in _review_validator_output(result)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("screens", [{"id": "screen-detail"}]),
+        ("flow_steps", [{"id": "step-1"}]),
+        ("api_endpoints", ["POST /confirm"]),
+        ("database_models", ["OutlineConfirmation"]),
+        ("implementation_tasks", ["create controller"]),
+    ),
+)
+def test_outline_review_validator_rejects_downstream_design_detail(tmp_path, field, value):
+    sample = _outline_review_validator_sample()
+    sample["modules"][0]["views"][0][field] = value
+    result = _run_review_validator(sample, tmp_path / f"outline-forbidden-{field}.json")
+    assert result.returncode != 0
+    assert "outline downstream design detail" in _review_validator_output(result)
+
+
+def test_outline_renderer_launcher_package_and_digest_contracts_are_present():
+    renderer = _review_renderer_bundle()
+    launcher = (REVIEW_ROOT / "scripts" / "serve-review.mjs").read_text(encoding="utf-8")
+    package = (REVIEW_ROOT / "renderer" / "scripts" / "confirmation-package.js").read_text(encoding="utf-8")
+    assert 'data?.review_type === "outline" ? "views"' in renderer
+    assert "renderOutlinePreview" in renderer
+    assert "?outline=" in renderer and "outline-review-data.json" in renderer
+    assert "--outline" in launcher and "prd/review/outline-review-data.json" in launcher
+    assert "prd/review/outline-confirmation.md" in package
+    assert "outline_digest" in package and "source_authority_ids" in package
+    assert OUTLINE_DIGEST.is_file()
+
+
+def test_outline_authorization_identity_and_v1_draft_migration_are_documented():
+    prd = (COMMANDS_DIR / "prd.md").read_text(encoding="utf-8")
+    renderer_readme = RENDERER_README.read_text(encoding="utf-8")
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+
+    for content, label in ((prd, "prd command"), (command_spec, "command spec"), (skill, "review-data skill")):
+        assert "review-data-id.mjs" in content, label
+        assert "current" in content and "complete" in content, label
+        assert "recompute" in content, label
+
+    assert "recursively sorts object keys" in command_spec
+    assert "preserves array order" in command_spec
+    assert "covers every review field" in command_spec
+    assert "pre-v2 `localStorage` key" in renderer_readme
+    assert "new key is absent" in renderer_readme
+    assert "draft migration only" in renderer_readme
+
+
+def test_outline_digest_is_deterministic_and_normalizes_text_and_authority_order(tmp_path):
+    source = tmp_path / "spec-outline.md"
+    source.write_bytes(b"# Outline\r\nvalue   \r\n")
+    command = ["node", str(OUTLINE_DIGEST), str(source)]
+    first = subprocess.run([*command, "source-b", "source-a"], text=True, capture_output=True, check=False)
+    source.write_bytes(b"# Outline\nvalue\n")
+    second = subprocess.run([*command, "source-a", "source-b", "source-a"], text=True, capture_output=True, check=False)
+    assert first.returncode == second.returncode == 0, first.stderr + second.stderr
+    assert re.fullmatch(r"[0-9a-f]{64}\n?", first.stdout)
+    assert first.stdout.strip() == second.stdout.strip()
+
+
 def test_review_data_validator_accepts_valid_flow_and_ui_samples(tmp_path):
     """The deterministic validator should accept minimal valid review data."""
     if shutil.which("node") is None:
@@ -4467,6 +5222,420 @@ def test_review_data_validator_accepts_valid_flow_and_ui_samples(tmp_path):
         )
         assert result.returncode == 0, _review_validator_output(result)
         assert "review data validation passed" in result.stdout
+
+
+def test_review_priority_schema_supports_v2_without_changing_review_level_contract():
+    """Priority is an orthogonal v2 field while legacy v1 remains declared as readable."""
+    for path, review_type in ((FLOW_REVIEW_SCHEMA, "flow"), (UI_REVIEW_SCHEMA, "ui")):
+        schema = json.loads(path.read_text(encoding="utf-8"))
+        assert schema["properties"]["schema_version"] == {"type": "integer", "enum": [1, 2]}, review_type
+        node_properties = schema["$defs"]["node"]["properties"]
+        assert node_properties["confirmation_priority"]["enum"] == ["critical", "important", "normal"]
+        assert node_properties["priority_reason"]["minLength"] == 18
+        assert node_properties["critical_basis"]["minLength"] == 18
+        assert node_properties["review_level"]["enum"] == [
+            "must_confirm",
+            "recommended",
+            "uncertain",
+            "key_step",
+            "verified",
+            "system_arch",
+        ]
+
+
+def test_review_priority_schemas_require_critical_qualification_fields():
+    """Schema consumers must enforce the same critical evidence as the CLI and browser."""
+    critical_rule = {
+        "if": {
+            "properties": {"confirmation_priority": {"const": "critical"}},
+            "required": ["confirmation_priority"],
+        },
+        "then": {"required": ["critical_basis", "priority_reason"]},
+    }
+
+    for path, review_type in (
+        (FLOW_REVIEW_SCHEMA, "flow"),
+        (UI_REVIEW_SCHEMA, "ui"),
+        (OUTLINE_REVIEW_SCHEMA, "outline"),
+    ):
+        schema = json.loads(path.read_text(encoding="utf-8"))
+        assert critical_rule in schema["$defs"]["node"].get("allOf", []), review_type
+
+
+def test_review_data_validator_accepts_legacy_v1_and_valid_priority_v2(tmp_path):
+    """Existing review files remain readable while newly generated files use strict v2 priority data."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    for review_type in ("flow", "ui"):
+        legacy = _run_review_validator(
+            _review_validator_sample(review_type),
+            tmp_path / f"{review_type}-legacy-v1.json",
+        )
+        assert legacy.returncode == 0, _review_validator_output(legacy)
+
+        current = _run_review_validator(
+            _priority_review_validator_sample(review_type),
+            tmp_path / f"{review_type}-priority-v2.json",
+        )
+        assert current.returncode == 0, _review_validator_output(current)
+
+
+def test_review_data_validator_requires_priority_on_v2_actionable_nodes_only(tmp_path):
+    """Every actionable v2 node is prioritized, while informational nodes stay outside the budget."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    missing_priority = _priority_review_validator_sample("flow")
+    nodes = missing_priority["modules"][0]["diagrams"][0]["nodes"]
+    nodes[0].pop("confirmation_priority")
+    result = _run_review_validator(missing_priority, tmp_path / "missing-priority.json")
+    assert result.returncode != 0
+    assert "confirmation_priority is required for actionable schema v2 nodes" in _review_validator_output(result)
+
+    informational = _priority_review_validator_sample("flow")
+    info_node = informational["modules"][0]["diagrams"][0]["nodes"][2]
+    info_node.pop("confirmation_priority")
+    info_node.pop("options")
+    info_node.pop("recommended_option")
+    info_node["node_kind"] = "flow"
+    info_node["review_level"] = "verified"
+    result = _run_review_validator(informational, tmp_path / "informational-without-priority.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_review_data_validator_requires_concrete_critical_qualification(tmp_path):
+    """Critical priority needs both a severe-impact basis and an explicit reviewer-facing reason."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    for missing_field in ("critical_basis", "priority_reason"):
+        sample = _priority_review_validator_sample("ui", critical_indexes=(1,))
+        sample["modules"][0]["screens"][0]["nodes"][0].pop(missing_field)
+        result = _run_review_validator(sample, tmp_path / f"critical-missing-{missing_field}.json")
+        assert result.returncode != 0
+        assert missing_field in _review_validator_output(result)
+
+
+@pytest.mark.parametrize(
+    ("node_count", "allowed_critical", "rejected_critical"),
+    (
+        (0, 0, None),
+        (1, 1, None),
+        (10, 1, 2),
+        (11, 2, 3),
+        (20, 2, 3),
+        (21, 3, None),
+    ),
+)
+def test_review_data_validator_enforces_deterministic_critical_budget(
+    tmp_path,
+    node_count,
+    allowed_critical,
+    rejected_critical,
+):
+    """Critical is scarce: cap = N == 0 ? 0 : min(3, max(1, ceil(N / 10)))."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    allowed = _priority_review_validator_sample(
+        "flow",
+        node_count=node_count,
+        critical_indexes=tuple(range(1, allowed_critical + 1)),
+    )
+    allowed_path = tmp_path / f"critical-budget-{node_count}-allowed.json"
+    result = _run_review_validator(allowed, allowed_path)
+    assert result.returncode == 0, _review_validator_output(result)
+
+    if rejected_critical is None:
+        return
+    rejected = _priority_review_validator_sample(
+        "flow",
+        node_count=node_count,
+        critical_indexes=tuple(range(1, rejected_critical + 1)),
+    )
+    rejected_path = tmp_path / f"critical-budget-{node_count}-rejected.json"
+    original_bytes = json.dumps(rejected, ensure_ascii=False).encode("utf-8")
+    rejected_path.write_bytes(original_bytes)
+    result = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(rejected_path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert f"critical priority count {rejected_critical} exceeds cap" in _review_validator_output(result)
+    assert rejected_path.read_bytes() == original_bytes
+
+
+def test_review_browser_runtime_enforces_priority_and_normalizes_legacy_in_memory():
+    """Browser validation mirrors v2 priority rules while v1 is normalized without rewriting source data."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer runtime tests")
+
+    overlays = REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js"
+    state_store = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    data_validator = REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js"
+    data_loader = (REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js").read_text(encoding="utf-8")
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = [
+  {json.dumps(str(overlays))},
+  {json.dumps(str(state_store))},
+  {json.dumps(str(data_validator))}
+].map((path) => fs.readFileSync(path, "utf8")).join(String.fromCharCode(10)) + `
+const baseNode = {{
+  id: "N1",
+  label: "确认发布边界",
+  decision_background: "发布对象边界会决定真实数据由谁查看，错误选择将影响后续页面和验收。",
+  decision_summary: "现在需要确认发布对象边界，以便后续工作依据明确的授权范围继续。",
+  options: [{{ id: "OPTION_A", benefit: "明确边界", cost: "需要确认", consequence: "继续", next_exit: "continue", recommendation_reason: "当前证据最完整" }}, {{ id: "OPTION_B", benefit: "暂停", cost: "延期", consequence: "补充", next_exit: "needs-decision" }}],
+  recommended_option: "OPTION_A"
+}};
+const payload = (version, nodes) => ({{ schema_version: version, review_type: "flow", modules: [{{ diagrams: [{{ title: "发布", nodes }}] }}] }});
+if (validateReviewData(payload(1, [baseNode])) !== "") throw new Error("legacy v1 was rejected");
+if (validateReviewData(payload(2, [baseNode])) !== "") throw new Error("schema v2 was rejected before runtime validation");
+const missing = runtimeValidateReviewData(payload(2, [baseNode]));
+if (!missing.errors.some((message) => message.includes("confirmation_priority"))) throw new Error(JSON.stringify(missing));
+const overBudgetNodes = Array.from({{ length: 10 }}, (_, index) => ({{
+  ...baseNode,
+  id: "N" + (index + 1),
+  confirmation_priority: index < 2 ? "critical" : "normal",
+  critical_basis: index < 2 ? "错误决定会造成不可逆的敏感数据泄露，且没有安全默认值或可撤销路径。" : undefined,
+  priority_reason: index < 2 ? "这个边界需要负责人逐项确认，不能由模型批量采用默认推荐选项。" : undefined
+}}));
+const overBudget = runtimeValidateReviewData(payload(2, overBudgetNodes));
+if (!overBudget.errors.some((message) => message.includes("critical") && message.includes("上限"))) throw new Error(JSON.stringify(overBudget));
+`;
+const context = {{
+  window: {{ SpecCompassDom: {{}} }},
+  localStorage: {{ setItem: () => undefined, removeItem: () => undefined, getItem: () => null }},
+  console,
+  requiresNodeDecision: (node) => Boolean(node.recommended_option || (node.options || []).length || node.review_level === "must_confirm")
+}};
+vm.createContext(context);
+vm.runInContext(source, context);
+"""
+    result = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr or result.stdout
+
+    for token in (
+        "normalizeLegacyReviewData",
+        "schema_version === 1",
+        'confirmation_priority: "normal"',
+    ):
+        assert token in data_loader
+
+
+def test_outline_browser_runtime_matches_cli_identity_and_option_contracts():
+    """Browser acceptance must block identity drift and unexplained binary Outline decisions."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer runtime tests")
+
+    overlays = REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js"
+    state_store = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    data_validator = REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js"
+    sample = _outline_review_validator_sample()
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = [
+  {json.dumps(str(overlays))},
+  {json.dumps(str(state_store))},
+  {json.dumps(str(data_validator))}
+].map((path) => fs.readFileSync(path, "utf8")).join(String.fromCharCode(10));
+const base = {json.dumps(sample, ensure_ascii=False)};
+const context = {{
+  window: {{ SpecCompassDom: {{}} }},
+  localStorage: {{ setItem: () => undefined, removeItem: () => undefined, getItem: () => null }},
+  console,
+  requiresNodeDecision: (node) => Boolean(node.recommended_option || (node.options || []).length || node.review_level === "must_confirm")
+}};
+vm.createContext(context);
+vm.runInContext(source, context);
+const valid = context.runtimeValidateReviewData(structuredClone(base));
+if (valid.errors.length) throw new Error("valid sample rejected: " + JSON.stringify(valid));
+const normalizedDigestVariant = structuredClone(base);
+normalizedDigestVariant.outline_digest = "sha256:" + "A".repeat(64);
+const normalizedDigestBaseError = context.validateReviewData(normalizedDigestVariant);
+if (normalizedDigestBaseError) {{
+  throw new Error("normalized digest variant rejected by base validator: " + normalizedDigestBaseError);
+}}
+const normalizedDigestResult = context.runtimeValidateReviewData(normalizedDigestVariant);
+if (normalizedDigestResult.errors.length) {{
+  throw new Error("normalized digest variant rejected: " + JSON.stringify(normalizedDigestResult));
+}}
+const identityDrift = structuredClone(base);
+identityDrift.source_authority_ids = ["different-authority"];
+const identityResult = context.runtimeValidateReviewData(identityDrift);
+if (!identityResult.errors.some((message) => message.includes("source_authority_ids") && message.includes("exactly"))) {{
+  throw new Error("authority identity drift accepted: " + JSON.stringify(identityResult));
+}}
+const unexplainedBinary = structuredClone(base);
+delete unexplainedBinary.modules[0].views[0].nodes[0].options_count_rationale;
+const binaryResult = context.runtimeValidateReviewData(unexplainedBinary);
+if (!binaryResult.errors.some((message) => message.includes("options_count_rationale"))) {{
+  throw new Error("unexplained binary decision accepted: " + JSON.stringify(binaryResult));
+}}
+"""
+    result = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_review_data_identity_covers_full_review_contract(tmp_path: Path):
+    """Changing visible review meaning must invalidate draft and package identity."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer identity tests")
+
+    script = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    sample = _outline_review_validator_sample()
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+const context = {{
+  window: {{ SpecCompassDom: {{}} }},
+  console,
+  localStorage: {{ setItem: () => undefined, removeItem: () => undefined, getItem: () => null }},
+  reviewData: null,
+  state: {{}},
+  STORAGE_PREFIX: "test:",
+  create: () => ({{}}),
+  requiresNodeDecision: () => true,
+  $: () => ({{ textContent: "", classList: {{ toggle: () => undefined }} }})
+}};
+vm.createContext(context);
+vm.runInContext(source, context);
+const base = {json.dumps(sample, ensure_ascii=False)};
+const baseId = context.reviewDataIdentifier(base);
+const optionChanged = structuredClone(base);
+optionChanged.modules[0].views[0].nodes[0].options[0].label = "接受不同的产品边界";
+if (context.reviewDataIdentifier(optionChanged) === baseId) {{
+  throw new Error("option content did not change review-data identity");
+}}
+const viewChanged = structuredClone(base);
+viewChanged.modules[0].views[1].recommended_first_slice = "改为另一个首个交付切片";
+if (context.reviewDataIdentifier(viewChanged) === baseId) {{
+  throw new Error("outline view content did not change review-data identity");
+}}
+console.log(baseId);
+"""
+    result = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr or result.stdout
+
+    review_data = tmp_path / "outline-review-data.json"
+    review_data.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+    cli_result = subprocess.run(
+        ["node", REVIEW_DATA_ID, review_data],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert cli_result.returncode == 0, cli_result.stderr or cli_result.stdout
+    assert cli_result.stdout.strip() == result.stdout.strip()
+
+
+def test_schema_v1_renderer_loads_legacy_local_storage_identity():
+    """Adding in-memory normal priority must not discard existing v1 browser drafts."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer state migration tests")
+
+    state_store = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    data_loader = REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const stateSource = fs.readFileSync({json.dumps(str(state_store))}, "utf8");
+const loaderSource = fs.readFileSync({json.dumps(str(data_loader))}, "utf8");
+const stored = {{ N1: {{ status: "DRAFT", draft_option: "OPTION_B", note: "保留旧草稿" }} }};
+const storage = new Map();
+const context = {{
+  window: {{ SpecCompassDom: {{}}, location: {{ protocol: "http:", hostname: "127.0.0.1" }} }},
+  console,
+  STORAGE_PREFIX: "test:",
+  reviewData: null,
+  state: {{}},
+  create: () => ({{}}),
+  requiresNodeDecision: (node) => Boolean(node.recommended_option || (node.options || []).length),
+  $: () => ({{ textContent: "", disabled: false, classList: {{ toggle: () => undefined }} }}),
+  localStorage: {{
+    getItem: (key) => storage.has(key) ? storage.get(key) : null,
+    setItem: (key, value) => storage.set(key, value),
+    removeItem: (key) => storage.delete(key)
+  }}
+}};
+vm.createContext(context);
+vm.runInContext(stateSource, context);
+const legacy = {{
+  schema_version: 1,
+  review_type: "flow",
+  artifact_path: "specs/001/flows/review/flow-review-data.json",
+  batch_id: "FLOW-001",
+  project: {{ name: "Demo", feature: "001" }},
+  source_snapshot: [{{ path: "specs/001/spec.md" }}],
+  modules: [{{ id: "M1", diagrams: [{{ id: "D1", nodes: [{{
+    id: "N1",
+    review_level: "must_confirm",
+    options: [{{ id: "OPTION_A" }}, {{ id: "OPTION_B" }}],
+    recommended_option: "OPTION_A"
+  }}] }}] }}]
+}};
+const legacyKey = context.legacyStorageKey(legacy);
+storage.set(legacyKey, JSON.stringify(stored));
+const loaderContext = {{ ...context, acceptReviewData: () => true }};
+vm.createContext(loaderContext);
+vm.runInContext(loaderSource.split('$("load-flow")')[0], loaderContext);
+context.reviewData = loaderContext.normalizeLegacyReviewData(legacy);
+context.loadState();
+if (context.state.N1?.note !== "保留旧草稿") {{
+  throw new Error("legacy v1 draft was not restored: " + JSON.stringify(context.state));
+}}
+"""
+    result = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_review_renderer_exposes_priority_counts_filters_badges_and_individual_critical_handling():
+    """The rail makes scarce critical decisions visible without changing review-level semantics."""
+    renderer = _review_renderer_bundle()
+    html = REVIEW_PAGE_RENDERER.read_text(encoding="utf-8")
+    review_ui = (REVIEW_ROOT / "renderer" / "styles" / "review-ui.css").read_text(encoding="utf-8")
+
+    for token in (
+        "priorityLabel",
+        "priorityCounts",
+        "selectedPriority",
+        "criticalRequiresIndividual",
+        "非常重要",
+        "重要",
+        "普通",
+    ):
+        assert token in renderer
+    for token in ('id="priority-filters"', 'data-priority="critical"', 'data-priority="important"', 'data-priority="normal"'):
+        assert token in html
+    assert "priority-badge" in review_ui
+    assert "priority-critical" in review_ui
+    assert "confirmation_priority" in renderer
+    assert "review_level" in renderer
+
+
+def test_flow_ui_generation_contract_controls_critical_priority_before_validation():
+    """Generation guidance must rank and downgrade critical candidates rather than using the cap as a quota."""
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    for content, label in ((_command("flow"), "flow"), (_command("ui"), "ui"), (skill, "review-data skill")):
+        assert "schema_version: 2" in content, label
+        assert "confirmation_priority" in content, label
+        assert "critical_basis" in content, label
+        assert "priority_reason" in content, label
+        assert "min(3, max(1, ceil(N / 10)))" in content, label
+        assert "zero critical" in content or "0 个 critical" in content, label
+        assert "downgrade" in content or "降级" in content, label
+        assert "individual" in content or "逐项" in content or "单项" in content, label
+        assert "bulk" in content or "批量" in content, label
 
 
 def test_review_data_validator_rejects_missing_recommendation_and_unsplit_large_diagram(tmp_path):
@@ -5236,6 +6405,7 @@ const context = {{
   $: () => ({{ textContent: "", classList: {{ toggle: () => undefined }} }}),
   state: {{
     missing: {{ status: "MISSING" }},
+    critical: {{ status: "MISSING" }},
     draft: {{ status: "DRAFT", draft_option: "OPTION_B", note: "keep draft" }},
     recommended: {{ status: "SAVED_RECOMMENDED", option: "OPTION_B" }},
     submitted: {{ status: "SAVED_SUBMITTED", option: "OPTION_B", note: "keep choice" }}
@@ -5247,6 +6417,7 @@ vm.createContext(context);
 vm.runInContext(source, context);
 const nodes = [
   {{ id: "missing", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
+  {{ id: "critical", confirmation_priority: "critical", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
   {{ id: "draft", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
   {{ id: "recommended", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
   {{ id: "submitted", recommended_option: "OPTION_A", options: [{{ id: "OPTION_A" }}] }},
@@ -5256,11 +6427,14 @@ const nodes = [
 const before = JSON.parse(JSON.stringify(context.state));
 const result = context.applyRecommendedToMissing(nodes);
 if (result.savedRecommended !== 1) throw new Error(`expected one save, got ${{result.savedRecommended}}`);
-if (result.drafts !== 1 || result.saved !== 2 || result.missingRecommendation !== 2) {{
+if (result.drafts !== 1 || result.saved !== 2 || result.missingRecommendation !== 2 || result.criticalRequiresIndividual !== 1) {{
   throw new Error(`unexpected summary: ${{JSON.stringify(result)}}`);
 }}
 if (context.state.missing.status !== "SAVED_RECOMMENDED" || context.state.missing.option !== "OPTION_A") {{
   throw new Error("eligible missing node was not saved with its recommendation");
+}}
+if (JSON.stringify(context.state.critical) !== JSON.stringify(before.critical)) {{
+  throw new Error("critical node was bulk-saved instead of requiring individual confirmation");
 }}
 for (const id of ["draft", "recommended", "submitted"]) {{
   if (JSON.stringify(context.state[id]) !== JSON.stringify(before[id])) {{

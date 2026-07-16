@@ -33,6 +33,43 @@ REVIEW_LAUNCHER = (
     / "scripts"
     / "serve-review.mjs"
 )
+CONFIRMATION_PACKAGE = (
+    PROJECT_ROOT
+    / "templates"
+    / "project"
+    / ".specify"
+    / "review"
+    / "renderer"
+    / "scripts"
+    / "confirmation-package.js"
+)
+DISCOVERY_RESPONSE_PACKAGE = (
+    PROJECT_ROOT
+    / "templates"
+    / "project"
+    / ".specify"
+    / "review"
+    / "renderer"
+    / "scripts"
+    / "discovery-response-package.js"
+)
+
+DISCOVERY_DISTRIBUTION_ASSETS = (
+    Path("renderer/scripts/discovery-response-package.js"),
+    Path("renderer/scripts/outline-discovery-renderer.js"),
+    Path("schemas/outline-discovery-data.schema.json"),
+    Path("schemas/outline-discovery-response.schema.json"),
+    Path("schemas/outline-intent-ledger.schema.json"),
+    Path("scripts/apply-outline-discovery.mjs"),
+)
+
+
+REVIEW_DATA_PATHS = {
+    "flow": "flows/review/flow-review-data.json",
+    "ui": "ui/review/ui-review-data.json",
+    "outline": "prd/review/outline-review-data.json",
+    "outline-discovery": "prd/review/outline-discovery-data.json",
+}
 
 
 class ReviewProject:
@@ -42,9 +79,7 @@ class ReviewProject:
         self.feature = feature
 
     def data_path(self, review_type: str) -> Path:
-        if review_type == "flow":
-            return self.root / "specs" / self.feature / "flows" / "review" / "flow-review-data.json"
-        return self.root / "specs" / self.feature / "ui" / "review" / "ui-review-data.json"
+        return self.root / "specs" / self.feature / REVIEW_DATA_PATHS[review_type]
 
 
 @pytest.fixture
@@ -79,9 +114,9 @@ def review_project(tmp_path: Path) -> ReviewProject:
 
     payload = {"schema_version": 1, "review_type": "flow", "modules": []}
     project = ReviewProject(tmp_path, launcher, feature)
-    for review_type in ("flow", "ui"):
+    for review_type in ("flow", "ui", "outline", "outline-discovery"):
         data_path = project.data_path(review_type)
-        data_path.parent.mkdir(parents=True)
+        data_path.parent.mkdir(parents=True, exist_ok=True)
         data_path.write_text(
             json.dumps({**payload, "review_type": review_type}),
             encoding="utf-8",
@@ -187,7 +222,19 @@ def test_launcher_is_distributed_and_force_refresh_preserves_project_content(tmp
     installed_launcher = project / ".specify" / "review" / "scripts" / "serve-review.mjs"
     assert installed_launcher.read_bytes() == REVIEW_LAUNCHER.read_bytes()
 
+    source_review_root = PROJECT_ROOT / "templates" / "project" / ".specify" / "review"
+    installed_review_root = project / ".specify" / "review"
+    for relative_path in DISCOVERY_DISTRIBUTION_ASSETS:
+        assert (installed_review_root / relative_path).read_bytes() == (
+            source_review_root / relative_path
+        ).read_bytes()
+
     installed_launcher.write_text("// stale launcher\n", encoding="utf-8")
+    for relative_path in DISCOVERY_DISTRIBUTION_ASSETS:
+        (installed_review_root / relative_path).write_text(
+            "stale Discovery asset\n",
+            encoding="utf-8",
+        )
     project_marker = project / "specs" / "001-existing" / "project-marker.txt"
     project_marker.parent.mkdir(parents=True)
     project_marker.write_text("keep project content\n", encoding="utf-8")
@@ -195,6 +242,10 @@ def test_launcher_is_distributed_and_force_refresh_preserves_project_content(tmp
     refreshed = runner.invoke(app, [*init_args, "--force"])
     assert refreshed.exit_code == 0, refreshed.output
     assert installed_launcher.read_bytes() == REVIEW_LAUNCHER.read_bytes()
+    for relative_path in DISCOVERY_DISTRIBUTION_ASSETS:
+        assert (installed_review_root / relative_path).read_bytes() == (
+            source_review_root / relative_path
+        ).read_bytes()
     assert project_marker.read_text(encoding="utf-8") == "keep project content\n"
 
 
@@ -203,6 +254,10 @@ def test_launcher_is_distributed_and_force_refresh_preserves_project_content(tmp
     (
         (),
         ("--flow", "feature", "--ui", "feature"),
+        ("--flow", "feature", "--outline", "feature"),
+        ("--ui", "feature", "--outline", "feature"),
+        ("--flow", "feature", "--ui", "feature", "--outline", "feature"),
+        ("--outline", "feature", "--outline-discovery", "feature"),
         ("--flow", "../feature"),
         ("--flow", ".hidden"),
         ("--flow", "feature..next"),
@@ -226,9 +281,10 @@ def test_launcher_rejects_invalid_arguments(review_project: ReviewProject, args:
     assert "SPECCOMPASS_REVIEW_URL=" not in result.stdout
 
 
+@pytest.mark.parametrize("review_type", ("flow", "ui", "outline", "outline-discovery"))
 @pytest.mark.parametrize("missing", ("renderer", "data"))
 def test_launcher_does_not_become_ready_when_required_file_is_missing(
-    review_project: ReviewProject, missing: str
+    review_project: ReviewProject, missing: str, review_type: str
 ):
     if missing == "renderer":
         (
@@ -239,10 +295,10 @@ def test_launcher_does_not_become_ready_when_required_file_is_missing(
             / "speccompass-review-renderer.html"
         ).unlink()
     else:
-        review_project.data_path("flow").unlink()
+        review_project.data_path(review_type).unlink()
 
     result = subprocess.run(
-        _launcher_command(review_project),
+        _launcher_command(review_project, review_type),
         cwd=review_project.root,
         text=True,
         encoding="utf-8",
@@ -255,7 +311,7 @@ def test_launcher_does_not_become_ready_when_required_file_is_missing(
     assert "SPECCOMPASS_REVIEW_URL=" not in result.stdout
 
 
-@pytest.mark.parametrize("review_type", ("flow", "ui"))
+@pytest.mark.parametrize("review_type", ("flow", "ui", "outline", "outline-discovery"))
 def test_launcher_emits_matching_url_after_http_self_checks(
     review_project: ReviewProject, review_type: str
 ):
@@ -271,10 +327,233 @@ def test_launcher_emits_matching_url_after_http_self_checks(
             assert response.status == 200
         data_url = (
             f"http://127.0.0.1:{parsed.port}/specs/{review_project.feature}/"
-            + ("flows/review/flow-review-data.json" if review_type == "flow" else "ui/review/ui-review-data.json")
+            + REVIEW_DATA_PATHS[review_type]
         )
         with _http_request(data_url) as response:
             assert response.status == 200
+
+
+def test_confirmation_package_rejects_unknown_type_and_repeats_outline_identity():
+    if shutil.which("node") is None:
+        pytest.skip("node is required for confirmation package tests")
+
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(CONFIRMATION_PACKAGE))}, "utf8");
+const context = {{ window: {{}}, console, TextEncoder }};
+vm.createContext(context);
+vm.runInContext(source, context);
+const api = context.window.SpecCompassConfirmationPackage;
+
+for (const reviewType of ["unknown", "", null]) {{
+  try {{
+    api.splitConfirmationPackage({{ review_type: reviewType, modules: [] }});
+    throw new Error(`unsupported review type was accepted: ${{reviewType}}`);
+  }} catch (error) {{
+    if (!String(error.message || error).includes("review_type")) throw error;
+  }}
+}}
+
+const normalizedDigestParts = api.splitConfirmationPackage({{
+  review_type: "outline",
+  schema_version: 2,
+  review_data_id: "outline-review-data-v1",
+  outline_digest: "sha256:" + "A".repeat(64),
+  source_authority_ids: ["prd-v3"],
+  source_review_data: "specs/001-test/prd/review/outline-review-data.json",
+  modules: []
+}});
+if (normalizedDigestParts.length !== 1 || normalizedDigestParts[0].outline_digest !== {json.dumps("a" * 64)}) {{
+  throw new Error("outline digest was not normalized to canonical lowercase hex");
+}}
+
+try {{
+  api.splitConfirmationPackage({{
+    review_type: "outline",
+    schema_version: 2,
+    review_data_id: "outline-review-data-v1",
+    outline_digest: {json.dumps("a" * 64)},
+    source_authority_ids: ["prd-v3"],
+    source_review_data: "specs/001-test/prd/review/outline-review-data.json",
+    target_path: "specs/001-test/flows/review/flow-confirmation.md",
+    modules: []
+  }});
+  throw new Error("outline package accepted a Flow confirmation target");
+}} catch (error) {{
+  if (!String(error.message || error).includes("target_path")) throw error;
+}}
+
+const records = Array.from({{ length: 35 }}, (_, index) => ({{
+  target_ref: `outline-view:node-${{index}}`,
+  target_label: `Outline decision ${{index}}`,
+  selected_option: "OPTION_A",
+  reviewer_note: "identity-preserving package content ".repeat(90)
+}}));
+const parts = api.splitConfirmationPackage({{
+  review_type: "outline",
+  schema_version: 2,
+  batch_id: "OUTLINE-BATCH-TEST",
+  review_data_id: "outline-review-data-v1",
+  outline_digest: {json.dumps("a" * 64)},
+  source_authority_ids: ["prd-v3", "research-v2"],
+  source_review_data: "specs/001-test/prd/review/outline-review-data.json",
+  modules: [{{ module_id: "outline", module_title: "Outline", records }}]
+}}, 30000);
+if (parts.length < 2) throw new Error("expected an outline multipart package");
+for (const part of parts) {{
+  if (part.version !== 1) throw new Error("confirmation package format version changed");
+  if (part.schema_version !== 2) throw new Error("review data schema version was lost");
+  if (part.review_type !== "outline") throw new Error("outline review type was lost");
+  if (part.review_data_id !== "outline-review-data-v1") throw new Error("review_data_id was not repeated");
+  if (part.outline_digest !== {json.dumps("a" * 64)}) throw new Error("outline_digest was not repeated");
+  if (JSON.stringify(part.source_authority_ids) !== JSON.stringify(["prd-v3", "research-v2"])) {{
+    throw new Error("source_authority_ids were not repeated");
+  }}
+  if (part.target_path !== "specs/001-test/prd/review/outline-confirmation.md") {{
+    throw new Error(`bad outline target: ${{part.target_path}}`);
+  }}
+}}
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        cwd=PROJECT_ROOT,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_discovery_and_confirmation_packages_are_type_isolated_and_non_authorizing():
+    if shutil.which("node") is None:
+        pytest.skip("node is required for response package tests")
+
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const confirmationSource = fs.readFileSync({json.dumps(str(CONFIRMATION_PACKAGE))}, "utf8");
+const discoverySource = fs.readFileSync({json.dumps(str(DISCOVERY_RESPONSE_PACKAGE))}, "utf8");
+const context = {{ window: {{}}, console, TextEncoder }};
+vm.createContext(context);
+vm.runInContext(confirmationSource, context);
+vm.runInContext(discoverySource, context);
+const confirmation = context.window.SpecCompassConfirmationPackage;
+const discovery = context.window.SpecCompassDiscoveryResponsePackage;
+
+try {{
+  confirmation.splitConfirmationPackage({{ review_type: "outline_discovery", modules: [] }});
+  throw new Error("confirmation package accepted discovery data");
+}} catch (error) {{
+  if (!String(error.message || error).includes("review_type")) throw error;
+}}
+
+const reviewData = {{
+  schema_version: 1,
+  review_type: "outline_discovery",
+  interaction_mode: "discovery",
+  artifact_path: "specs/001-test/prd/review/outline-discovery-data.json",
+  outline_maturity: "explore",
+  batch_id: "DISCOVERY-001",
+  authorization_effect: "none",
+  next_route: "/sp.prd",
+  project: {{ feature: "001-test" }},
+  question_groups: [{{
+    id: "group-1",
+    questions: Array.from({{ length: 5 }}, (_, index) => ({{
+      id: `question-${{index + 1}}`,
+      target_kind: ["goal", "user", "problem", "scope", "context"][index],
+      selection_mode: "single",
+      allow_none_of_the_above: true,
+      free_input: {{ enabled: true, allowed_operations: ["confirm_candidate", "add", "replace", "exclude", "context_note"] }},
+      candidates: [
+        {{ id: `candidate-${{index + 1}}-a`, value: `候选 ${{index + 1}}A` }},
+        {{ id: `candidate-${{index + 1}}-b`, value: `候选 ${{index + 1}}B` }}
+      ],
+      recommended_candidate_ids: [`candidate-${{index + 1}}-a`],
+      recommendation_reason: "当前来源支持先选择候选 A 继续收敛。"
+    }}))
+  }}]
+}};
+
+try {{
+  discovery.buildDiscoveryResponse({{ review_data: {{ ...reviewData, review_type: "outline" }}, responses: [] }});
+  throw new Error("discovery package accepted confirmation data");
+}} catch (error) {{
+  if (!String(error.message || error).includes("outline_discovery")) throw error;
+}}
+
+try {{
+  discovery.buildDiscoveryResponse({{ review_data: reviewData, responses: [] }});
+  throw new Error("empty discovery response was accepted");
+}} catch (error) {{
+  if (!String(error.message || error).includes("at least one")) throw error;
+}}
+
+const operations = ["confirm_candidate", "add", "replace", "exclude", "context_note"];
+const responses = operations.map((operation, index) => ({{
+  question_id: `question-${{index + 1}}`,
+  operation,
+  candidate_id: operation === "confirm_candidate" || operation === "exclude" ? `candidate-${{index + 1}}-a` : null,
+  target_id: operation === "replace" ? "existing-scope" : null,
+  value: operation === "confirm_candidate" ? "" : `用户输入 ${{index + 1}}`,
+  none_of_the_above: operation === "add"
+}}));
+const response = discovery.buildDiscoveryResponse({{ review_data: reviewData, responses }});
+if (response.format !== "speccompass-outline-discovery-response") throw new Error("wrong discovery format");
+if (response.authorization_effect !== "none") throw new Error("discovery became authorizing");
+if (response.next_route !== "/sp.prd") throw new Error("wrong discovery next route");
+if (response.deltas.length !== 5) throw new Error("five operations were not preserved");
+if (JSON.stringify(response.deltas.map((delta) => delta.operation)) !== JSON.stringify(operations)) {{
+  throw new Error("operation order or identity changed");
+}}
+if (response.deltas[0].source_tag !== "user-confirmed") throw new Error("confirmed candidate provenance was lost");
+if (response.deltas.slice(1).some((delta) => delta.source_tag !== "user")) throw new Error("user provenance was lost");
+if (!response.deltas[1].none_of_the_above) throw new Error("none-of-the-above was lost");
+
+const fallbackData = structuredClone(reviewData);
+delete fallbackData.question_groups[0].questions[4].target_kind;
+const fallback = discovery.buildDiscoveryResponse({{
+  review_data: fallbackData,
+  responses: [responses[4]]
+}});
+if (fallback.deltas[0].target_kind !== "context") throw new Error("target_kind fallback was not applied");
+
+for (const [label, invalidResponse] of [
+  ["confirm-none", {{ ...responses[0], none_of_the_above: true }}],
+  ["add-candidate", {{ ...responses[1], candidate_id: "candidate-2-a" }}],
+  ["replace-without-target", {{ ...responses[2], target_id: null }}],
+  ["exclude-two-targets", {{ ...responses[3], target_id: "existing-scope" }}],
+  ["context-with-target", {{ ...responses[4], target_id: "existing-context" }}]
+]) {{
+  try {{
+    discovery.buildDiscoveryResponse({{ review_data: reviewData, responses: [invalidResponse] }});
+    throw new Error(`${{label}} was accepted`);
+  }} catch (error) {{
+    if (!String(error.message || error).includes("operation")) throw error;
+  }}
+}}
+
+try {{
+  discovery.buildDiscoveryResponse({{
+    review_data: reviewData,
+    responses: [{{ question_id: "question-1", operation: "confirm_candidate", candidate_id: "unknown" }}]
+  }});
+  throw new Error("unknown candidate was accepted");
+}} catch (error) {{
+  if (!String(error.message || error).includes("candidate_id")) throw error;
+}}
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        cwd=PROJECT_ROOT,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 @pytest.mark.parametrize(

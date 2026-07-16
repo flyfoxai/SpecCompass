@@ -118,7 +118,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Published Flow/UI review confirmation improvements as the release focus." \
+              "- Added staged PRD Outline review and three-level Flow/UI confirmation priorities." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

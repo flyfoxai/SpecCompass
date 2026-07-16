@@ -10,6 +10,7 @@
 # - flow/ui subject confusion by obvious SP control-plane terms
 # - trace Expand Docs file liveness
 # - repeated spec-outline blocker signature without new route/evidence
+# - PRD outline confirmation readiness and legacy compatibility
 # - high-risk READY_FOR_SPECIFY outline missing owner review as WARN
 # - minimum Evidence Signature shape and unbacked human-confirmation markers
 # - obvious @r0/@t0 status tag drift
@@ -856,10 +857,10 @@ function Invoke-ReadyOutlineSourceSnapshotCheck {
     $outline = Join-Path $FeatureDir 'spec-outline.md'
     if (-not (Test-Path -LiteralPath $outline -PathType Leaf)) { return }
 
+    if ($script:outlineDecisionCount -ne 1 -or $script:outlineCurrentStatus -ne 'READY_FOR_SPECIFY') { return }
+
     $outlineText = Get-Content -LiteralPath $outline -Raw
     $outlineLower = $outlineText.ToLowerInvariant()
-
-    if (-not $outlineLower.Contains('ready_for_specify')) { return }
     if (-not $outlineLower.Contains('based on') -or (
         -not $outlineLower.Contains('source snapshot') -and
         -not $outlineLower.Contains('source authority summary') -and
@@ -873,14 +874,341 @@ function Invoke-OutlineOwnerReviewRequiredCheck {
     $outline = Join-Path $FeatureDir 'spec-outline.md'
     if (-not (Test-Path -LiteralPath $outline -PathType Leaf)) { return }
 
-    $outlineText = Get-Content -LiteralPath $outline -Raw
-    $outlineLower = $outlineText.ToLowerInvariant()
+    if ($script:outlineDecisionCount -ne 1 -or $script:outlineCurrentStatus -ne 'READY_FOR_SPECIFY') { return }
 
-    if (-not $outlineLower.Contains('ready_for_specify')) { return }
+    $outlineText = Get-Content -LiteralPath $outline -Raw
     if ([regex]::IsMatch($outlineText, '(?im)^\s{0,3}#{1,6}\s+([0-9]+[.)]\s+)?owner review required([\s:：-].*)?$')) { return }
 
     if (Test-OwnerReviewOutlineSignal $outlineText) {
         Add-Finding -Severity 'WARN' -Code 'OWNER_REVIEW_REQUIRED_MISSING' -Message 'spec-outline.md is READY_FOR_SPECIFY and contains high-risk or owner-decision signals, but no Owner Review Required block. This is a candidate warning; /sp.analyze or /sp.gate should decide whether owner confirmation is required before promotion.' -File $outline -NextStep '/sp.clarify'
+    }
+}
+
+$script:outlineDecisionCount = 0
+$script:outlineCurrentStatus = ''
+$script:outlineConfirmationContract = $false
+$script:outlineContractVersion = ''
+$script:outlineReviewDataPath = ''
+$script:outlineReviewDataId = ''
+$script:outlineRecordedDigest = ''
+$script:outlineAuthorityIds = ''
+$script:outlineConfirmationPath = ''
+
+function Initialize-OutlineCurrentState {
+    $outline = Join-Path $FeatureDir 'spec-outline.md'
+    $script:outlineDecisionCount = 0
+    $script:outlineCurrentStatus = ''
+    $script:outlineConfirmationContract = $false
+    $script:outlineContractVersion = ''
+    $script:outlineReviewDataPath = ''
+    $script:outlineReviewDataId = ''
+    $script:outlineRecordedDigest = ''
+    $script:outlineAuthorityIds = ''
+    $script:outlineConfirmationPath = ''
+    if (-not (Test-Path -LiteralPath $outline -PathType Leaf)) { return }
+
+    $inFence = $false
+    $inDecision = $false
+    $directFields = $false
+    $decisionLevel = 0
+    $capturedStatus = ''
+    $inConfirmation = $false
+    $confirmationLevel = 0
+
+    foreach ($line in Get-Content -LiteralPath $outline) {
+        if ($line -match '^\s{0,3}(```|~~~)') {
+            $inFence = -not $inFence
+            continue
+        }
+        if ($inFence) { continue }
+
+        $heading = [regex]::Match($line, '^\s{0,3}(#{1,6})\s+(.+?)\s*#*\s*$')
+        if ($heading.Success) {
+            $level = $heading.Groups[1].Value.Length
+            $title = $heading.Groups[2].Value.Trim()
+            $title = [regex]::Replace($title, '^\d+[.)]\s+', '')
+            if ($inConfirmation -and $level -le $confirmationLevel) {
+                $inConfirmation = $false
+            }
+            if ($title -ieq 'Outline Decision') {
+                $script:outlineDecisionCount++
+                $inDecision = $true
+                $directFields = $true
+                $decisionLevel = $level
+                continue
+            }
+            if ($title -ieq 'Outline Confirmation') {
+                $script:outlineConfirmationContract = $true
+                $inConfirmation = $true
+                $confirmationLevel = $level
+            }
+            if ($inDecision) {
+                if ($level -gt $decisionLevel) { $directFields = $false }
+                else { $inDecision = $false }
+            }
+            continue
+        }
+
+        if ($inConfirmation) {
+            $metadataMatch = [regex]::Match($line, '^\s*[-*+]\s+(.+?)\s*:\s*(.*?)\s*$')
+            if ($metadataMatch.Success) {
+                $metadataKey = ($metadataMatch.Groups[1].Value -replace '[*_]', '').Trim().ToLowerInvariant()
+                $metadataKey = [regex]::Replace($metadataKey, '[ -]+', '_')
+                $metadataValue = Clean-Cell $metadataMatch.Groups[2].Value
+                switch ($metadataKey) {
+                    'contract_version' { $script:outlineContractVersion = $metadataValue }
+                    'review_data' { $script:outlineReviewDataPath = $metadataValue }
+                    'review_data_id' { $script:outlineReviewDataId = $metadataValue }
+                    'outline_digest' { $script:outlineRecordedDigest = $metadataValue }
+                    'source_authority_ids' { $script:outlineAuthorityIds = $metadataValue }
+                    'confirmation' { $script:outlineConfirmationPath = $metadataValue }
+                }
+            }
+            continue
+        }
+
+        if (-not $inDecision -or -not $directFields) { continue }
+        $statusMatch = [regex]::Match(
+            $line,
+            '^\s*[-*+]\s+(?:\*\*|__)?status(?:\*\*|__)?\s*:\s*(.+?)\s*$',
+            [System.Text.RegularExpressions.RegexOptions]::IgnoreCase
+        )
+        if ($statusMatch.Success -and -not $capturedStatus) {
+            $capturedStatus = ($statusMatch.Groups[1].Value -replace '[`*]', '').Trim('_').Trim().ToUpperInvariant()
+        }
+    }
+
+    if ($script:outlineDecisionCount -eq 1) {
+        $script:outlineCurrentStatus = $capturedStatus
+    }
+}
+
+function Normalize-OutlineDigest {
+    param([AllowNull()][string]$Value)
+    $clean = Clean-Cell $Value
+    $clean = [regex]::Replace($clean, '^sha256:', '', [System.Text.RegularExpressions.RegexOptions]::IgnoreCase)
+    return $clean.ToLowerInvariant()
+}
+
+function Normalize-OutlineIdList {
+    param([AllowNull()][string]$Value)
+    if ($null -eq $Value) { $Value = '' }
+    $clean = $Value.Trim()
+    if ($clean.StartsWith('[')) { $clean = $clean.Substring(1) }
+    if ($clean.EndsWith(']')) { $clean = $clean.Substring(0, $clean.Length - 1) }
+    $items = @(
+        $clean -split ',' |
+            ForEach-Object { ($_ -replace '[`"]', '').Trim() } |
+            Where-Object { $_ } |
+            Sort-Object -Unique -CaseSensitive
+    )
+    return $items -join ','
+}
+
+function Get-OutlineConfirmationField {
+    param(
+        [string]$Path,
+        [string]$Key
+    )
+    $lines = @(Get-Content -LiteralPath $Path)
+    if ($lines.Count -eq 0 -or $lines[0].TrimEnd([char[]]@("`r")) -ne '---') { return '' }
+    for ($index = 1; $index -lt $lines.Count; $index++) {
+        $line = $lines[$index]
+        if ($line.TrimEnd([char[]]@("`r")) -eq '---') { break }
+        $match = [regex]::Match($line, '^\s*([^:]+)\s*:\s*(.*?)\s*$')
+        if ($match.Success -and $match.Groups[1].Value.Trim() -ieq $Key) {
+            return $match.Groups[2].Value.Trim()
+        }
+    }
+    return ''
+}
+
+function Get-OutlineDigestHelperPath {
+    $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $FeatureDir '../..'))
+    $candidates = @(
+        (Join-Path $repoRoot '.specify/review/scripts/outline-digest.mjs'),
+        ([System.IO.Path]::GetFullPath((Join-Path $scriptDir '../../templates/project/.specify/review/scripts/outline-digest.mjs')))
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return ''
+}
+
+function Get-ReviewDataIdHelperPath {
+    $repoRoot = [System.IO.Path]::GetFullPath((Join-Path $FeatureDir '../..'))
+    $candidates = @(
+        (Join-Path $repoRoot '.specify/review/scripts/review-data-id.mjs'),
+        ([System.IO.Path]::GetFullPath((Join-Path $scriptDir '../../templates/project/.specify/review/scripts/review-data-id.mjs')))
+    )
+    foreach ($candidate in $candidates) {
+        if (Test-Path -LiteralPath $candidate -PathType Leaf) { return $candidate }
+    }
+    return ''
+}
+
+function Invoke-ReadyOutlineConfirmationCheck {
+    if ($script:outlineCurrentStatus -ne 'READY_FOR_SPECIFY') { return }
+
+    $outline = Join-Path $FeatureDir 'spec-outline.md'
+    $featureName = Split-Path -Leaf ($FeatureDir.TrimEnd([char[]]@('/', '\')))
+    $expectedReviewPath = "specs/$featureName/prd/review/outline-review-data.json"
+    $expectedConfirmationPath = "specs/$featureName/prd/review/outline-confirmation.md"
+    $reviewFile = Join-Path $FeatureDir 'prd/review/outline-review-data.json'
+    $confirmationFile = Join-Path $FeatureDir 'prd/review/outline-confirmation.md'
+
+    if (
+        $script:outlineContractVersion -ne '1' -or
+        $script:outlineReviewDataPath -ne $expectedReviewPath -or
+        $script:outlineConfirmationPath -ne $expectedConfirmationPath -or
+        -not $script:outlineReviewDataId -or
+        -not $script:outlineRecordedDigest -or
+        -not $script:outlineAuthorityIds -or
+        -not (Test-Path -LiteralPath $reviewFile -PathType Leaf) -or
+        -not (Test-Path -LiteralPath $confirmationFile -PathType Leaf)
+    ) {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_MISSING' -Message 'READY_FOR_SPECIFY under the new contract requires complete Outline Confirmation metadata, outline review data, and a git-trackable outline-confirmation.md written from the verified package.' -File $outline -NextStep '/sp.prd'
+        return
+    }
+
+    try {
+        $reviewData = Get-Content -LiteralPath $reviewFile -Raw | ConvertFrom-Json -ErrorAction Stop
+    } catch {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_MISSING' -Message 'outline-review-data.json is missing or invalid JSON, so its authorization identity cannot be verified.' -File $reviewFile -NextStep '/sp.prd'
+        return
+    }
+
+    if ($reviewData.artifact_path -ne $expectedReviewPath -or $reviewData.outline_source_path -ne "specs/$featureName/spec-outline.md") {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_IDENTITY_MISMATCH' -Message "The review-data artifact identity does not point to this feature's current outline contract." -File $reviewFile -NextStep '/sp.prd'
+        return
+    }
+
+    $confirmationDocumentType = (Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'document_type')).ToLowerInvariant()
+    $confirmationReviewType = (Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'review_type')).ToLowerInvariant()
+    $confirmationSchemaVersion = Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'schema_version')
+    $confirmationReviewPath = Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'review_data_artifact')
+    $confirmationReviewId = Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'review_data_id')
+    $confirmationDigest = Get-OutlineConfirmationField -Path $confirmationFile -Key 'outline_digest'
+    $confirmationAuthorities = Get-OutlineConfirmationField -Path $confirmationFile -Key 'source_authority_ids'
+    $humanConfirmation = (Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'human_confirmation')).ToLowerInvariant()
+    $batchReviewStatus = (Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'batch_review_status')).ToLowerInvariant()
+    $needsDecision = Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'needs_decision_items')
+    $unresolved = Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'unresolved_decision_items')
+    $draftExcluded = Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'draft_excluded_items')
+    $revisionRequests = Clean-Cell (Get-OutlineConfirmationField -Path $confirmationFile -Key 'revision_requests')
+
+    if (
+        $confirmationDocumentType -ne 'sp_human_confirmation' -or
+        $confirmationReviewType -ne 'outline' -or
+        $confirmationSchemaVersion -ne '1' -or
+        -not $confirmationReviewPath -or
+        -not $confirmationReviewId -or
+        -not $confirmationDigest -or
+        -not $confirmationAuthorities -or
+        -not $humanConfirmation -or
+        -not $batchReviewStatus -or
+        -not $needsDecision -or
+        -not $unresolved -or
+        -not $draftExcluded -or
+        -not $revisionRequests
+    ) {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_MISSING' -Message 'outline-confirmation.md must carry complete machine-readable authorization metadata in its opening YAML frontmatter.' -File $confirmationFile -NextStep '/sp.prd'
+        return
+    }
+
+    $normalizedAuthorities = Normalize-OutlineIdList $script:outlineAuthorityIds
+    $helper = Get-OutlineDigestHelperPath
+    $node = Get-Command node -ErrorAction SilentlyContinue
+    if (-not $helper -or -not $node) {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_STALE' -Message 'The canonical outline digest helper is unavailable, so freshness cannot be verified.' -File $outline -NextStep '/sp.prd'
+        return
+    }
+
+    $authorityArgs = @()
+    if ($normalizedAuthorities) { $authorityArgs = @($normalizedAuthorities -split ',') }
+    $nodePath = [string]$node.Path
+    if (-not $nodePath) { $nodePath = [string]$node.Source }
+    $currentDigest = (& $nodePath $helper $outline @authorityArgs 2>$null | Out-String).Trim()
+    if (
+        $LASTEXITCODE -ne 0 -or
+        -not $currentDigest -or
+        (Normalize-OutlineDigest $script:outlineRecordedDigest) -ne (Normalize-OutlineDigest $currentDigest) -or
+        (Normalize-OutlineDigest ([string]$reviewData.outline_digest)) -ne (Normalize-OutlineDigest $currentDigest) -or
+        (Normalize-OutlineDigest $confirmationDigest) -ne (Normalize-OutlineDigest $currentDigest)
+    ) {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_STALE' -Message 'The current outline digest does not match the Outline metadata, review data, and confirmation document. Regenerate the review and reconfirm in /sp.prd.' -File $outline -NextStep '/sp.prd'
+        return
+    }
+
+    $reviewDataIdHelper = Get-ReviewDataIdHelperPath
+    $currentReviewDataId = ''
+    if ($reviewDataIdHelper) {
+        $currentReviewDataId = (& $nodePath $reviewDataIdHelper $reviewFile 2>$null | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0) { $currentReviewDataId = '' }
+    }
+    if (
+        -not $currentReviewDataId -or
+        $script:outlineReviewDataId -ne $currentReviewDataId -or
+        $confirmationReviewPath -ne $expectedReviewPath -or
+        $confirmationReviewId -ne $currentReviewDataId
+    ) {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_IDENTITY_MISMATCH' -Message 'outline-confirmation.md was produced for a different review-data identity.' -File $confirmationFile -NextStep '/sp.prd'
+        return
+    }
+
+    $reviewAuthorities = @($reviewData.source_authority_ids) -join ','
+    if (
+        (Normalize-OutlineIdList $reviewAuthorities) -ne $normalizedAuthorities -or
+        (Normalize-OutlineIdList $confirmationAuthorities) -ne $normalizedAuthorities
+    ) {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_AUTHORITY_MISMATCH' -Message 'Source authority IDs differ between the current outline, review data, and confirmation document.' -File $confirmationFile -NextStep '/sp.prd'
+        return
+    }
+
+    if (
+        $humanConfirmation -ne 'confirmed' -or
+        $batchReviewStatus -ne 'confirmed' -or
+        $needsDecision -ne '[]' -or
+        $unresolved -ne '[]' -or
+        $draftExcluded -ne '[]' -or
+        $revisionRequests -ne '[]'
+    ) {
+        Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_UNRESOLVED' -Message 'Outline confirmation is not complete: confirmed status is required and needs-decision, unresolved, draft, and revision-request lists must all be empty before /sp.specify.' -File $confirmationFile -NextStep '/sp.prd'
+    }
+}
+
+function Invoke-OutlineConfirmationGateCheck {
+    $outline = Join-Path $FeatureDir 'spec-outline.md'
+    if (-not (Test-Path -LiteralPath $outline -PathType Leaf)) { return }
+
+    if ($script:outlineConfirmationContract) {
+        if ($script:outlineDecisionCount -gt 1) {
+            Add-Finding -Severity 'ERROR' -Code 'OUTLINE_DECISION_STATUS_AMBIGUOUS' -Message 'spec-outline.md contains multiple Outline Decision sections. Keep exactly one current decision before evaluating outline confirmation.' -File $outline -NextStep '/sp.prd'
+            return
+        }
+        if ($script:outlineDecisionCount -eq 0 -or -not $script:outlineCurrentStatus) {
+            Add-Finding -Severity 'ERROR' -Code 'OUTLINE_DECISION_STATUS_MISSING' -Message 'The new outline-confirmation contract requires one Outline Decision section with a direct Status field.' -File $outline -NextStep '/sp.prd'
+            return
+        }
+        if ($script:outlineCurrentStatus -eq 'AWAITING_OUTLINE_CONFIRMATION') {
+            Add-Finding -Severity 'ERROR' -Code 'OUTLINE_CONFIRMATION_PENDING' -Message 'The outline is semantically ready but still awaits verified graphical confirmation. Complete or consume the Outline confirmation package in /sp.prd before /sp.specify.' -File $outline -NextStep '/sp.prd'
+            return
+        }
+        $validStatuses = @(
+            'READY_FOR_SPECIFY', 'NEEDS_PRD', 'NEEDS_CLARIFY', 'NEEDS_SOURCE',
+            'SPLIT_REQUIRED', 'NEEDS_DECISION', 'BLOCKED'
+        )
+        if ($script:outlineCurrentStatus -notin $validStatuses) {
+            Add-Finding -Severity 'ERROR' -Code 'OUTLINE_DECISION_STATUS_INVALID' -Message "Outline Decision has an unsupported Status: $($script:outlineCurrentStatus)." -File $outline -NextStep '/sp.prd'
+        }
+        if ($script:outlineCurrentStatus -eq 'READY_FOR_SPECIFY') {
+            Invoke-ReadyOutlineConfirmationCheck
+        }
+        return
+    }
+
+    if ($script:outlineDecisionCount -eq 1 -and $script:outlineCurrentStatus -eq 'READY_FOR_SPECIFY') {
+        Add-Finding -Severity 'WARN' -Code 'LEGACY_OUTLINE_CONFIRMATION_DEPRECATED' -Message 'This legacy READY_FOR_SPECIFY outline has no Outline Confirmation contract. It remains usable for one minor-release compatibility window; the next /sp.prd refresh must generate graphical review data and require fresh confirmation.' -File $outline -NextStep '/sp.prd'
     }
 }
 
@@ -1029,6 +1357,8 @@ Invoke-TraceExpandDocsLivenessCheck
 Invoke-SubjectConfusionArtifactCheck -RelativeRoot 'flows' -NextStep '/sp.flow'
 Invoke-SubjectConfusionArtifactCheck -RelativeRoot 'ui' -NextStep '/sp.ui'
 Invoke-OutlineRepeatedBlockerSignatureCheck
+Initialize-OutlineCurrentState
+Invoke-OutlineConfirmationGateCheck
 Invoke-ReadyOutlineSourceSnapshotCheck
 Invoke-OutlineOwnerReviewRequiredCheck
 Invoke-EvidenceSignatureBlockCheck

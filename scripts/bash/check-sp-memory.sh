@@ -10,6 +10,7 @@
 # - flow/ui subject confusion by obvious SP control-plane terms
 # - trace Expand Docs file liveness
 # - repeated spec-outline blocker signature without new route/evidence
+# - PRD outline confirmation readiness and legacy compatibility
 # - high-risk READY_FOR_SPECIFY outline missing owner review as WARN
 # - minimum Evidence Signature shape and unbacked human-confirmation markers
 # - obvious @r0/@t0 status tag drift
@@ -862,15 +863,380 @@ check_outline_repeated_blocker_signature() {
     fi
 }
 
+OUTLINE_DECISION_COUNT=0
+OUTLINE_CURRENT_STATUS=""
+OUTLINE_CONFIRMATION_CONTRACT=false
+OUTLINE_CONTRACT_VERSION=""
+OUTLINE_REVIEW_DATA_PATH=""
+OUTLINE_REVIEW_DATA_ID=""
+OUTLINE_RECORDED_DIGEST=""
+OUTLINE_AUTHORITY_IDS=""
+OUTLINE_CONFIRMATION_PATH=""
+
+load_outline_current_state() {
+    local outline="$FEATURE_DIR/spec-outline.md"
+    OUTLINE_DECISION_COUNT=0
+    OUTLINE_CURRENT_STATUS=""
+    OUTLINE_CONFIRMATION_CONTRACT=false
+    OUTLINE_CONTRACT_VERSION=""
+    OUTLINE_REVIEW_DATA_PATH=""
+    OUTLINE_REVIEW_DATA_ID=""
+    OUTLINE_RECORDED_DIGEST=""
+    OUTLINE_AUTHORITY_IDS=""
+    OUTLINE_CONFIRMATION_PATH=""
+    [[ -f "$outline" ]] || return 0
+
+    local kind value
+    while IFS=$'\t' read -r kind value || [[ -n "$kind" ]]; do
+        case "$kind" in
+            decision_count) OUTLINE_DECISION_COUNT="$value" ;;
+            status) OUTLINE_CURRENT_STATUS="$(printf '%s' "$value" | tr '[:lower:]' '[:upper:]')" ;;
+            confirmation_count)
+                [[ "$value" -gt 0 ]] && OUTLINE_CONFIRMATION_CONTRACT=true
+                ;;
+            contract_version) OUTLINE_CONTRACT_VERSION="$(clean_cell "$value")" ;;
+            review_data) OUTLINE_REVIEW_DATA_PATH="$(clean_cell "$value")" ;;
+            review_data_id) OUTLINE_REVIEW_DATA_ID="$(clean_cell "$value")" ;;
+            outline_digest) OUTLINE_RECORDED_DIGEST="$(clean_cell "$value")" ;;
+            source_authority_ids) OUTLINE_AUTHORITY_IDS="$(clean_cell "$value")" ;;
+            confirmation) OUTLINE_CONFIRMATION_PATH="$(clean_cell "$value")" ;;
+        esac
+    done < <(awk '
+        function trim_value(value) {
+            sub(/^[ \t]+/, "", value)
+            sub(/[ \t]+$/, "", value)
+            return value
+        }
+        function heading_info(line,    value, hashes, title) {
+            value = line
+            sub(/^[ ]{0,3}/, "", value)
+            if (value !~ /^#+[ \t]+/) return 0
+            hashes = value
+            sub(/[ \t].*$/, "", hashes)
+            if (length(hashes) > 6) return 0
+            heading_level = length(hashes)
+            title = value
+            sub(/^#+[ \t]+/, "", title)
+            sub(/[ \t]+#+[ \t]*$/, "", title)
+            title = trim_value(title)
+            sub(/^[0-9]+[.)][ \t]+/, "", title)
+            heading_title = tolower(trim_value(title))
+            return 1
+        }
+        BEGIN {
+            in_fence = 0
+            in_decision = 0
+            direct_fields = 0
+            decision_count = 0
+            confirmation_count = 0
+            status = ""
+            in_confirmation = 0
+            confirmation_level = 0
+        }
+        /^[ ]{0,3}(```|~~~)/ {
+            in_fence = !in_fence
+            next
+        }
+        in_fence { next }
+        {
+            if (heading_info($0)) {
+                if (heading_title == "outline decision") {
+                    decision_count++
+                    in_decision = 1
+                    direct_fields = 1
+                    decision_level = heading_level
+                    next
+                }
+                if (heading_title == "outline confirmation") confirmation_count++
+                if (heading_title == "outline confirmation") {
+                    in_confirmation = 1
+                    confirmation_level = heading_level
+                    next
+                }
+                if (in_confirmation && heading_level <= confirmation_level) in_confirmation = 0
+                if (in_decision) {
+                    if (heading_level > decision_level) direct_fields = 0
+                    else in_decision = 0
+                }
+                next
+            }
+            if (in_confirmation) {
+                metadata = trim_value($0)
+                if (metadata ~ /^[-*+][ \t]+/) {
+                    sub(/^[-*+][ \t]+/, "", metadata)
+                    colon = index(metadata, ":")
+                    if (colon > 0) {
+                        metadata_key = tolower(trim_value(substr(metadata, 1, colon - 1)))
+                        gsub(/[*_]/, "", metadata_key)
+                        gsub(/[ -]+/, "_", metadata_key)
+                        metadata_value = trim_value(substr(metadata, colon + 1))
+                        if (metadata_key == "contract_version" || metadata_key == "review_data" ||
+                            metadata_key == "review_data_id" || metadata_key == "outline_digest" ||
+                            metadata_key == "source_authority_ids" || metadata_key == "confirmation") {
+                            print metadata_key "\t" metadata_value
+                        }
+                    }
+                }
+                next
+            }
+            if (!in_decision || !direct_fields) next
+            value = trim_value($0)
+            if (value !~ /^[-*+][ \t]+/) next
+            sub(/^[-*+][ \t]+/, "", value)
+            normalized = value
+            gsub(/[*_]/, "", normalized)
+            lower = tolower(normalized)
+            if (lower ~ /^status[ \t]*:/) {
+                colon = index(value, ":")
+                if (colon > 0 && status == "") {
+                    status = trim_value(substr(value, colon + 1))
+                    gsub(/[`*]/, "", status)
+                    sub(/^__/, "", status)
+                    sub(/__$/, "", status)
+                    status = trim_value(status)
+                }
+            }
+        }
+        END {
+            print "decision_count\t" decision_count
+            if (decision_count == 1 && status != "") print "status\t" status
+            print "confirmation_count\t" confirmation_count
+        }
+    ' "$outline")
+    return 0
+}
+
+normalize_outline_digest() {
+    local value
+    value="$(clean_cell "${1:-}")"
+    value="${value#sha256:}"
+    printf '%s' "$(to_lower "$value")"
+}
+
+normalize_outline_id_list() {
+    local value="${1:-}"
+    value="${value#[}"
+    value="${value%]}"
+    printf '%s' "$value" | tr ',' '\n' | sed -E 's/[`"]//g; s/^[[:space:]]+//; s/[[:space:]]+$//' | awk 'NF' | LC_ALL=C sort -u | paste -sd, -
+}
+
+extract_confirmation_field() {
+    local file="$1"
+    local requested_key="$2"
+    awk -v requested_key="$requested_key" '
+        NR == 1 {
+            first = $0
+            sub(/\r$/, "", first)
+            if (first != "---") exit
+            in_frontmatter = 1
+            next
+        }
+        in_frontmatter && $0 ~ /^---\r?$/ { exit }
+        !in_frontmatter { next }
+        {
+            line = $0
+            sub(/^[ \t]+/, "", line)
+            colon = index(line, ":")
+            if (colon == 0) next
+            key = tolower(substr(line, 1, colon - 1))
+            gsub(/[ \t]/, "", key)
+            if (key == tolower(requested_key)) {
+                value = substr(line, colon + 1)
+                sub(/^[ \t]+/, "", value)
+                sub(/[ \t]+$/, "", value)
+                print value
+                exit
+            }
+        }
+    ' "$file"
+}
+
+outline_digest_helper_path() {
+    local repo_root source_helper candidate
+    repo_root="$(CDPATH="" cd "$FEATURE_DIR/../.." 2>/dev/null && pwd)"
+    source_helper="$SCRIPT_DIR/../../templates/project/.specify/review/scripts/outline-digest.mjs"
+    for candidate in \
+        "$repo_root/.specify/review/scripts/outline-digest.mjs" \
+        "$source_helper"; do
+        [[ -f "$candidate" ]] && {
+            printf '%s' "$candidate"
+            return 0
+        }
+    done
+    return 1
+}
+
+review_data_id_helper_path() {
+    local repo_root source_helper candidate
+    repo_root="$(CDPATH="" cd "$FEATURE_DIR/../.." 2>/dev/null && pwd)"
+    source_helper="$SCRIPT_DIR/../../templates/project/.specify/review/scripts/review-data-id.mjs"
+    for candidate in \
+        "$repo_root/.specify/review/scripts/review-data-id.mjs" \
+        "$source_helper"; do
+        [[ -f "$candidate" ]] && {
+            printf '%s' "$candidate"
+            return 0
+        }
+    done
+    return 1
+}
+
+check_ready_outline_confirmation() {
+    local outline="$FEATURE_DIR/spec-outline.md"
+    [[ "$OUTLINE_CURRENT_STATUS" == "READY_FOR_SPECIFY" ]] || return 0
+
+    local feature_name expected_review_path expected_confirmation_path
+    feature_name="$(basename "$FEATURE_DIR")"
+    expected_review_path="specs/$feature_name/prd/review/outline-review-data.json"
+    expected_confirmation_path="specs/$feature_name/prd/review/outline-confirmation.md"
+    local review_file="$FEATURE_DIR/prd/review/outline-review-data.json"
+    local confirmation_file="$FEATURE_DIR/prd/review/outline-confirmation.md"
+
+    if [[ "$OUTLINE_CONTRACT_VERSION" != "1" || "$OUTLINE_REVIEW_DATA_PATH" != "$expected_review_path" ||
+          "$OUTLINE_CONFIRMATION_PATH" != "$expected_confirmation_path" || -z "$OUTLINE_REVIEW_DATA_ID" ||
+          -z "$OUTLINE_RECORDED_DIGEST" || -z "$OUTLINE_AUTHORITY_IDS" || ! -f "$review_file" ||
+          ! -f "$confirmation_file" ]]; then
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_MISSING" "READY_FOR_SPECIFY under the new contract requires complete Outline Confirmation metadata, outline review data, and a git-trackable outline-confirmation.md written from the verified package." "$outline" "/sp.prd"
+        return 0
+    fi
+
+    local review_identity
+    review_identity="$(node -e '
+        const fs = require("fs");
+        const value = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+        console.log(`digest\t${value.outline_digest || ""}`);
+        console.log(`authority\t${Array.isArray(value.source_authority_ids) ? value.source_authority_ids.join(",") : ""}`);
+        console.log(`artifact\t${value.artifact_path || ""}`);
+        console.log(`source\t${value.outline_source_path || ""}`);
+      ' "$review_file" 2>/dev/null)" || {
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_MISSING" "outline-review-data.json is missing or invalid JSON, so its authorization identity cannot be verified." "$review_file" "/sp.prd"
+        return 0
+    }
+    local review_digest="" review_authorities="" review_artifact="" review_source="" kind value
+    while IFS=$'\t' read -r kind value || [[ -n "$kind" ]]; do
+        case "$kind" in
+            digest) review_digest="$value" ;;
+            authority) review_authorities="$value" ;;
+            artifact) review_artifact="$value" ;;
+            source) review_source="$value" ;;
+        esac
+    done <<< "$review_identity"
+
+    if [[ "$review_artifact" != "$expected_review_path" || "$review_source" != "specs/$feature_name/spec-outline.md" ]]; then
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_IDENTITY_MISMATCH" "The review-data artifact identity does not point to this feature's current outline contract." "$review_file" "/sp.prd"
+        return 0
+    fi
+
+    local confirmation_document_type confirmation_review_type confirmation_schema_version
+    local confirmation_review_path confirmation_review_id confirmation_digest confirmation_authorities
+    local human_confirmation batch_review_status needs_decision unresolved draft_excluded revision_requests
+    confirmation_document_type="$(to_lower "$(clean_cell "$(extract_confirmation_field "$confirmation_file" "document_type")")")"
+    confirmation_review_type="$(to_lower "$(clean_cell "$(extract_confirmation_field "$confirmation_file" "review_type")")")"
+    confirmation_schema_version="$(clean_cell "$(extract_confirmation_field "$confirmation_file" "schema_version")")"
+    confirmation_review_path="$(clean_cell "$(extract_confirmation_field "$confirmation_file" "review_data_artifact")")"
+    confirmation_review_id="$(clean_cell "$(extract_confirmation_field "$confirmation_file" "review_data_id")")"
+    confirmation_digest="$(extract_confirmation_field "$confirmation_file" "outline_digest")"
+    confirmation_authorities="$(extract_confirmation_field "$confirmation_file" "source_authority_ids")"
+    human_confirmation="$(to_lower "$(clean_cell "$(extract_confirmation_field "$confirmation_file" "human_confirmation")")")"
+    batch_review_status="$(to_lower "$(clean_cell "$(extract_confirmation_field "$confirmation_file" "batch_review_status")")")"
+    needs_decision="$(clean_cell "$(extract_confirmation_field "$confirmation_file" "needs_decision_items")")"
+    unresolved="$(clean_cell "$(extract_confirmation_field "$confirmation_file" "unresolved_decision_items")")"
+    draft_excluded="$(clean_cell "$(extract_confirmation_field "$confirmation_file" "draft_excluded_items")")"
+    revision_requests="$(clean_cell "$(extract_confirmation_field "$confirmation_file" "revision_requests")")"
+
+    if [[ "$confirmation_document_type" != "sp_human_confirmation" || "$confirmation_review_type" != "outline" ||
+          "$confirmation_schema_version" != "1" || -z "$confirmation_review_path" || -z "$confirmation_review_id" ||
+          -z "$confirmation_digest" || -z "$confirmation_authorities" || -z "$human_confirmation" ||
+          -z "$batch_review_status" || -z "$needs_decision" || -z "$unresolved" || -z "$draft_excluded" ||
+          -z "$revision_requests" ]]; then
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_MISSING" "outline-confirmation.md must carry complete machine-readable authorization metadata in its opening YAML frontmatter." "$confirmation_file" "/sp.prd"
+        return 0
+    fi
+
+    local normalized_authorities helper current_digest review_id_helper current_review_data_id
+    normalized_authorities="$(normalize_outline_id_list "$OUTLINE_AUTHORITY_IDS")"
+    helper="$(outline_digest_helper_path)" || helper=""
+    if [[ -z "$helper" ]] || ! command -v node >/dev/null 2>&1; then
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_STALE" "The canonical outline digest helper is unavailable, so freshness cannot be verified." "$outline" "/sp.prd"
+        return 0
+    fi
+    local -a authority_args=()
+    if [[ -n "$normalized_authorities" ]]; then
+        IFS=',' read -ra authority_args <<< "$normalized_authorities"
+    fi
+    current_digest="$(node "$helper" "$outline" "${authority_args[@]}" 2>/dev/null)" || current_digest=""
+    if [[ -z "$current_digest" || "$(normalize_outline_digest "$OUTLINE_RECORDED_DIGEST")" != "$(normalize_outline_digest "$current_digest")" ||
+          "$(normalize_outline_digest "$review_digest")" != "$(normalize_outline_digest "$current_digest")" ||
+          "$(normalize_outline_digest "$confirmation_digest")" != "$(normalize_outline_digest "$current_digest")" ]]; then
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_STALE" "The current outline digest does not match the Outline metadata, review data, and confirmation document. Regenerate the review and reconfirm in /sp.prd." "$outline" "/sp.prd"
+        return 0
+    fi
+
+    review_id_helper="$(review_data_id_helper_path)" || review_id_helper=""
+    current_review_data_id=""
+    if [[ -n "$review_id_helper" ]]; then
+        current_review_data_id="$(node "$review_id_helper" "$review_file" 2>/dev/null)" || current_review_data_id=""
+    fi
+    if [[ -z "$current_review_data_id" || "$OUTLINE_REVIEW_DATA_ID" != "$current_review_data_id" ||
+          "$confirmation_review_path" != "$expected_review_path" || "$confirmation_review_id" != "$current_review_data_id" ]]; then
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_IDENTITY_MISMATCH" "outline-confirmation.md was produced for a different review-data identity." "$confirmation_file" "/sp.prd"
+        return 0
+    fi
+
+    if [[ "$(normalize_outline_id_list "$review_authorities")" != "$normalized_authorities" ||
+          "$(normalize_outline_id_list "$confirmation_authorities")" != "$normalized_authorities" ]]; then
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_AUTHORITY_MISMATCH" "Source authority IDs differ between the current outline, review data, and confirmation document." "$confirmation_file" "/sp.prd"
+        return 0
+    fi
+
+    if [[ "$human_confirmation" != "confirmed" || "$batch_review_status" != "confirmed" ||
+          "$needs_decision" != "[]" || "$unresolved" != "[]" || "$draft_excluded" != "[]" ||
+          "$revision_requests" != "[]" ]]; then
+        add_finding "ERROR" "OUTLINE_CONFIRMATION_UNRESOLVED" "Outline confirmation is not complete: confirmed status is required and needs-decision, unresolved, draft, and revision-request lists must all be empty before /sp.specify." "$confirmation_file" "/sp.prd"
+    fi
+}
+
+check_outline_confirmation_gate() {
+    local outline="$FEATURE_DIR/spec-outline.md"
+    [[ -f "$outline" ]] || return 0
+
+    if $OUTLINE_CONFIRMATION_CONTRACT; then
+        if [[ "$OUTLINE_DECISION_COUNT" -gt 1 ]]; then
+            add_finding "ERROR" "OUTLINE_DECISION_STATUS_AMBIGUOUS" "spec-outline.md contains multiple Outline Decision sections. Keep exactly one current decision before evaluating outline confirmation." "$outline" "/sp.prd"
+            return 0
+        fi
+        if [[ "$OUTLINE_DECISION_COUNT" -eq 0 || -z "$OUTLINE_CURRENT_STATUS" ]]; then
+            add_finding "ERROR" "OUTLINE_DECISION_STATUS_MISSING" "The new outline-confirmation contract requires one Outline Decision section with a direct Status field." "$outline" "/sp.prd"
+            return 0
+        fi
+        case "$OUTLINE_CURRENT_STATUS" in
+            AWAITING_OUTLINE_CONFIRMATION)
+                add_finding "ERROR" "OUTLINE_CONFIRMATION_PENDING" "The outline is semantically ready but still awaits verified graphical confirmation. Complete or consume the Outline confirmation package in /sp.prd before /sp.specify." "$outline" "/sp.prd"
+                ;;
+            READY_FOR_SPECIFY|NEEDS_PRD|NEEDS_CLARIFY|NEEDS_SOURCE|SPLIT_REQUIRED|NEEDS_DECISION|BLOCKED)
+                ;;
+            *)
+                add_finding "ERROR" "OUTLINE_DECISION_STATUS_INVALID" "Outline Decision has an unsupported Status: $OUTLINE_CURRENT_STATUS." "$outline" "/sp.prd"
+                ;;
+        esac
+        [[ "$OUTLINE_CURRENT_STATUS" == "READY_FOR_SPECIFY" ]] && check_ready_outline_confirmation
+        return 0
+    fi
+
+    if [[ "$OUTLINE_DECISION_COUNT" -eq 1 && "$OUTLINE_CURRENT_STATUS" == "READY_FOR_SPECIFY" ]]; then
+        add_finding "WARN" "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" "This legacy READY_FOR_SPECIFY outline has no Outline Confirmation contract. It remains usable for one minor-release compatibility window; the next /sp.prd refresh must generate graphical review data and require fresh confirmation." "$outline" "/sp.prd"
+    fi
+}
+
 check_ready_outline_source_snapshot() {
     local outline="$FEATURE_DIR/spec-outline.md"
     [[ -f "$outline" ]] || return 0
 
+    [[ "$OUTLINE_DECISION_COUNT" -eq 1 && "$OUTLINE_CURRENT_STATUS" == "READY_FOR_SPECIFY" ]] || return 0
+
     local outline_text outline_lower
     outline_text="$(cat "$outline")"
     outline_lower="$(to_lower "$outline_text")"
-
-    [[ "$outline_lower" == *"ready_for_specify"* ]] || return 0
     [[ "$outline_lower" == *"based on"* ]] || {
         add_finding "WARN" "OUTLINE_SOURCE_SNAPSHOT_MISSING" "spec-outline.md is READY_FOR_SPECIFY but does not include the minimum source freshness fields. Add Based On plus Source Snapshot, Source Authority Summary, or Evidence Signature so /sp.specify can verify what evidence the outline was derived from." "$outline" "/sp.prd"
         return 0
@@ -884,11 +1250,10 @@ check_outline_owner_review_required() {
     local outline="$FEATURE_DIR/spec-outline.md"
     [[ -f "$outline" ]] || return 0
 
+    [[ "$OUTLINE_DECISION_COUNT" -eq 1 && "$OUTLINE_CURRENT_STATUS" == "READY_FOR_SPECIFY" ]] || return 0
+
     local outline_text
     outline_text="$(cat "$outline")"
-    local outline_lower="$(to_lower "$outline_text")"
-
-    [[ "$outline_lower" == *"ready_for_specify"* ]] || return 0
     if grep -qiE '^[[:space:]]{0,3}#{1,6}[[:space:]]+([0-9]+[.)][[:space:]]+)?owner review required([[:space:]:：-].*)?$' "$outline"; then
         return 0
     fi
@@ -1039,6 +1404,8 @@ check_trace_expand_docs_liveness
 check_subject_confusion_artifacts "flows" "/sp.flow"
 check_subject_confusion_artifacts "ui" "/sp.ui"
 check_outline_repeated_blocker_signature
+load_outline_current_state
+check_outline_confirmation_gate
 check_ready_outline_source_snapshot
 check_outline_owner_review_required
 check_evidence_signature_blocks

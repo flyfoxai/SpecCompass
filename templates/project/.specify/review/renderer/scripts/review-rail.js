@@ -1,4 +1,4 @@
-/* Fixed SpecCompass review renderer infrastructure. Normal /sp.flow and /sp.ui only fill JSON review data. */
+/* Fixed SpecCompass review renderer infrastructure. Review commands only fill JSON review data. */
 const flowChangeTypes = [
   { value: "ADD_NODE", label: "新增流程节点" },
   { value: "DELETE_NODE", label: "删除流程节点" },
@@ -26,12 +26,28 @@ const uiChangeTypes = [
   { value: "OTHER", label: "其他 UI 修改" }
 ];
 
+const outlineChangeTypes = [
+  { value: "MODIFY_INTENT", label: "调整产品意图或用户问题" },
+  { value: "MODIFY_SCOPE", label: "调整范围或非目标" },
+  { value: "MODIFY_FIRST_SLICE", label: "调整推荐首切片" },
+  { value: "MODIFY_COVERAGE", label: "补充场景或验收种子" },
+  { value: "MODIFY_AUTHORITY", label: "修正来源权威或追溯范围" },
+  { value: "MODIFY_READINESS", label: "调整风险、阻断项或下一路由" },
+  { value: "OTHER", label: "其他纲要修改" }
+];
+
 function changeTypeOptions() {
-  return reviewData?.review_type === "ui" ? uiChangeTypes : flowChangeTypes;
+  if (reviewData?.review_type === "flow") return flowChangeTypes;
+  if (reviewData?.review_type === "ui") return uiChangeTypes;
+  if (reviewData?.review_type === "outline") return outlineChangeTypes;
+  return [];
 }
 
 function defaultChangeType() {
-  return reviewData?.review_type === "ui" ? "MODIFY_SCREEN_STRUCTURE" : "MODIFY_NODE";
+  if (reviewData?.review_type === "flow") return "MODIFY_NODE";
+  if (reviewData?.review_type === "ui") return "MODIFY_SCREEN_STRUCTURE";
+  if (reviewData?.review_type === "outline") return "MODIFY_SCOPE";
+  return "OTHER";
 }
 
 function hasDrafts() {
@@ -109,6 +125,13 @@ function renderRail() {
     : `${item?.title || "当前视图"}的确认点。`;
   $("show-all").classList.toggle("hidden", !selectedNodeId);
 
+  const counts = priorityCounts();
+  for (const button of $("priority-filters").querySelectorAll("[data-priority]")) {
+    const priority = button.dataset.priority;
+    button.textContent = `${priority === "all" ? "全部" : priorityLabel(priority)} ${priority === "all" ? Object.values(counts).reduce((sum, value) => sum + value, 0) : counts[priority]}`;
+    button.setAttribute("aria-pressed", String(selectedPriority === priority));
+  }
+
   const list = $("node-list");
   list.replaceChildren();
   for (const node of visibleNodes()) {
@@ -149,7 +172,12 @@ function nodeCard(node) {
   metaLeft.appendChild(dot);
   metaLeft.appendChild(document.createTextNode(`${levelLabel(node.review_level)} · ${node.owner || "待定"}`));
   meta.appendChild(metaLeft);
-  appendText(meta, "span", nodeStatusLabel(node, saved));
+  const metaRight = create("span", "node-meta-right");
+  if (node.confirmation_priority) {
+    appendText(metaRight, "span", priorityLabel(node.confirmation_priority), `priority-badge priority-${safeClassToken(node.confirmation_priority)}`);
+  }
+  appendText(metaRight, "span", nodeStatusLabel(node, saved));
+  meta.appendChild(metaRight);
   card.appendChild(meta);
 
   appendText(card, "h4", node.label || node.id || "未命名确认点");
@@ -192,7 +220,8 @@ function nodeCard(node) {
   card.appendChild(details);
 
   const feedback = create("div", `feedback ${saved.status === "DRAFT" ? "" : "hidden"}`);
-  const changeTypeLabel = create("label", "feedback-label", reviewData?.review_type === "ui" ? "修改类型" : "流程修改类型");
+  const changeTypeLabels = { flow: "流程修改类型", ui: "界面修改类型", outline: "纲要修改类型" };
+  const changeTypeLabel = create("label", "feedback-label", changeTypeLabels[reviewData?.review_type] || "修改类型");
   const changeTypeSelect = document.createElement("select");
   changeTypeSelect.name = "change_type";
   for (const changeType of changeTypeOptions()) {
@@ -214,7 +243,7 @@ function nodeCard(node) {
   changeTypeLabel.appendChild(changeTypeSelect);
   feedback.appendChild(changeTypeLabel);
   const textarea = document.createElement("textarea");
-  textarea.placeholder = "请用自然语言写清楚希望模型下一轮如何修改，不需要在这里直接改流程或界面。";
+  textarea.placeholder = "请用自然语言写清楚希望模型下一轮如何修改，不需要在这里直接改流程、界面或纲要。";
   textarea.value = saved.note || "";
   textarea.addEventListener("input", () => {
     const current = nodeState(node.id);
@@ -423,9 +452,12 @@ function buildRevisionRequest(module, item, node, saved, option) {
 function revisionRequestObject(module, item, node, saved, option) {
   const targetRef = `${module.id || module.title}:${item.id || item.title}:${node.id}`;
   const targetLabel = `${module.title || module.id} / ${item.title || item.id} / ${node.label || node.id}`;
-  const expectedAction = reviewData?.review_type === "ui"
-    ? "下一轮 /sp.ui 根据修改类型和审核意见调整 UI review data，再重新生成确认页。"
-    : "下一轮 /sp.flow 根据修改类型和审核意见调整 flow review data，再重新生成确认页。";
+  const expectedActions = {
+    flow: "下一轮 /sp.flow 根据修改类型和审核意见调整 flow review data，再重新生成确认页。",
+    ui: "下一轮 /sp.ui 根据修改类型和审核意见调整 UI review data，再重新生成确认页。",
+    outline: "下一轮 /sp.prd 根据修改类型和审核意见调整 spec-outline.md 与 Outline review data，再重新生成确认页。"
+  };
+  const expectedAction = expectedActions[reviewData?.review_type] || "停止处理并修正未知 review_type。";
   return {
     target_ref: summaryText(targetRef),
     target_label: summaryText(targetLabel),
@@ -533,6 +565,9 @@ function buildConfirmationRecord(module, item, node) {
     node_label: summaryText(node.label || node.id || ""),
     review_layer: summaryText(node.review_layer || ""),
     review_level: summaryText(node.review_level || ""),
+    confirmation_priority: summaryText(node.confirmation_priority || ""),
+    priority_reason: summaryText(node.priority_reason || ""),
+    critical_basis: summaryText(node.critical_basis || ""),
     owner: summaryText(node.owner || ""),
     bucket,
     status,
@@ -575,12 +610,14 @@ function buildConfirmationPackageInput() {
     });
   }
   return {
-    schema_version: SUPPORTED_SCHEMA_VERSION,
+    schema_version: reviewData.schema_version,
     review_type: reviewData.review_type,
     batch_id: reviewData.batch_id || "N/A",
     review_data_id: reviewDataIdentifier(),
     source_review_data: reviewData.artifact_path || "N/A",
     artifact_path: reviewData.artifact_path || "",
+    outline_digest: reviewData.outline_digest,
+    source_authority_ids: reviewData.source_authority_ids,
     target_path: window.SpecCompassConfirmationPackage?.safeWritebackTarget(reviewData),
     generated_at: new Date().toISOString(),
     groups,
@@ -668,8 +705,11 @@ function downloadConfirmationPackage() {
   const allReviewNodes = allNodes().map(({ node }) => node);
   const completion = summarizeRecommendationCompletion(allReviewNodes);
   if (completion.unfinished) {
+    const criticalText = completion.criticalRequiresIndividual
+      ? `\n其中 ${completion.criticalRequiresIndividual} 个非常重要确认点必须逐项处理，不会批量保存。`
+      : "";
     const confirmed = window.confirm(
-      `所有模块和流程还有 ${completion.unfinished} 个剩余未选项，其中 ${completion.canSaveRecommended} 个可按推荐自动保存。\n不会覆盖已有选择或草稿；缺少推荐选项的确认点会阻止下载。\n是否将剩余未选项按推荐设置并继续下载？`
+      `所有模块和流程还有 ${completion.unfinished} 个剩余未选项，其中 ${completion.canSaveRecommended} 个可按推荐自动保存。${criticalText}\n不会覆盖已有选择或草稿；缺少推荐选项或非常重要的确认点会阻止下载。\n是否将符合条件的剩余未选项按推荐设置并继续下载？`
     );
     if (!confirmed) {
       setStatus("已取消按推荐补齐，未下载确认包。");
@@ -688,6 +728,10 @@ function downloadConfirmationPackage() {
     }
     if (result.missingRecommendation) {
       setStatus(`仍有 ${result.missingRecommendation} 个剩余未选项缺少推荐选项，请人工处理后再下载确认包。`, true);
+      return;
+    }
+    if (result.criticalRequiresIndividual) {
+      setStatus(`仍有 ${result.criticalRequiresIndividual} 个非常重要确认点必须逐项处理，请完成后再下载确认包。`, true);
       return;
     }
   }

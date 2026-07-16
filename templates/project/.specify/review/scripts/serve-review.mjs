@@ -8,6 +8,13 @@ import { fileURLToPath } from "node:url";
 const LOOPBACK_HOST = "127.0.0.1";
 const SELF_CHECK_TIMEOUT_MS = 5_000;
 const FEATURE_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+const REVIEW_TYPES = new Set(["flow", "ui", "outline", "outline-discovery"]);
+const REVIEW_DATA_PATHS = {
+  flow: (feature) => `specs/${feature}/flows/review/flow-review-data.json`,
+  ui: (feature) => `specs/${feature}/ui/review/ui-review-data.json`,
+  outline: (feature) => `specs/${feature}/prd/review/outline-review-data.json`,
+  "outline-discovery": (feature) => `specs/${feature}/prd/review/outline-discovery-data.json`
+};
 const MIME_TYPES = new Map([
   [".html", "text/html; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
@@ -33,7 +40,7 @@ let shuttingDown = false;
 
 function usageError(message) {
   throw new Error(
-    `${message}\nUsage: node .specify/review/scripts/serve-review.mjs (--flow <feature> | --ui <feature>) [--port <0-65535>]`
+    `${message}\nUsage: node .specify/review/scripts/serve-review.mjs (--flow <feature> | --ui <feature> | --outline <feature> | --outline-discovery <feature>) [--port <0-65535>]`
   );
 }
 
@@ -45,8 +52,8 @@ function parseArguments(argv) {
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
-    if (argument === "--flow" || argument === "--ui") {
-      if (reviewType) usageError("Provide exactly one of --flow or --ui.");
+    if (argument.startsWith("--") && REVIEW_TYPES.has(argument.slice(2))) {
+      if (reviewType) usageError("Provide exactly one of --flow, --ui, --outline, or --outline-discovery.");
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) usageError(`${argument} requires a feature.`);
       reviewType = argument.slice(2);
@@ -71,7 +78,7 @@ function parseArguments(argv) {
     usageError(`Unknown argument: ${argument}`);
   }
 
-  if (!reviewType || !feature) usageError("Provide exactly one of --flow or --ui.");
+  if (!reviewType || !feature) usageError("Provide exactly one of --flow, --ui, --outline, or --outline-discovery.");
   if (!FEATURE_PATTERN.test(feature) || feature.includes("..")) {
     usageError("Feature must start with an alphanumeric character and contain only letters, digits, dots, underscores, or hyphens, without '..'.");
   }
@@ -206,9 +213,7 @@ async function main() {
   const projectRoot = resolve(dirname(launcherPath), "../../..");
   const realProjectRoot = await realpath(projectRoot);
   const rendererPath = ".specify/review/renderer/speccompass-review-renderer.html";
-  const dataPath = reviewType === "flow"
-    ? `specs/${feature}/flows/review/flow-review-data.json`
-    : `specs/${feature}/ui/review/ui-review-data.json`;
+  const dataPath = REVIEW_DATA_PATHS[reviewType](feature);
 
   await Promise.all([
     requireRegularFile(projectRoot, realProjectRoot, rendererPath),
