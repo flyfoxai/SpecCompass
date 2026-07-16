@@ -1,15 +1,99 @@
-/* Fixed SpecCompass review renderer infrastructure. Normal /sp.flow and /sp.ui only fill JSON review data. */
+/* Fixed SpecCompass review renderer infrastructure. Review commands only fill JSON review data. */
 function validateReviewData(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return "review data 必须是 JSON object。";
   }
-  if (data.schema_version !== SUPPORTED_SCHEMA_VERSION) {
-    return `schema_version 必须是 ${SUPPORTED_SCHEMA_VERSION}，当前为 ${data.schema_version ?? "未提供"}。`;
+  if (!SUPPORTED_SCHEMA_VERSIONS.has(data.schema_version)) {
+    return `schema_version 必须是 1 或 ${SUPPORTED_SCHEMA_VERSION}，当前为 ${data.schema_version ?? "未提供"}。`;
   }
-  if (data.review_type !== "flow" && data.review_type !== "ui") {
-    return "review_type 必须是 flow 或 ui。";
+  if (!new Set(["flow", "ui", "outline", "outline_discovery"]).has(data.review_type)) {
+    return "review_type 必须是 flow、ui、outline 或 outline_discovery。";
+  }
+  if (data.review_type === "outline_discovery") {
+    if (data.schema_version !== 1) return "outline_discovery 必须使用 schema_version 1。";
+    if (data.interaction_mode !== "discovery") return "outline_discovery 的 interaction_mode 必须是 discovery。";
+    if (!new Set(["explore", "frame"]).has(data.outline_maturity)) return "outline_maturity 必须是 explore 或 frame。";
+    if (data.authorization_effect !== "none" || data.next_route !== "/sp.prd") {
+      return "Outline 探索不能授权 /sp.specify，且 next_route 必须回到 /sp.prd。";
+    }
+    const artifactPath = String(data.artifact_path || "").replace(/\\/g, "/");
+    if (!runtimeIsSafeRepoPath(data.artifact_path) || !/^specs\/[^/]+\/prd\/review\/outline-discovery-data\.json$/.test(artifactPath)) {
+      return "outline discovery artifact_path 必须是安全的 specs/<feature>/prd/review/outline-discovery-data.json 路径。";
+    }
+    const feature = String(data.project?.feature || "").trim();
+    if (!data.project || typeof data.project !== "object" || Array.isArray(data.project)) return "Outline 探索 project 必须是 object。";
+    for (const key of ["name", "feature", "current_understanding", "discovery_goal"]) {
+      if (!String(data.project[key] || "").trim()) return `Outline 探索 project 缺少 ${key}。`;
+    }
+    if (!new RegExp(`^specs/${feature.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/prd/review/outline-discovery-data\\.json$`).test(artifactPath)) {
+      return "Outline 探索 project.feature 必须与 artifact_path 中的需求目录一致。";
+    }
+    if (!Array.isArray(data.source_snapshot) || !data.source_snapshot.length) return "Outline 探索至少需要一个来源。";
+    for (const source of data.source_snapshot) {
+      if (!runtimeIsSafeRepoPath(source?.path) || !String(source?.source_type || "").trim()) {
+        return "Outline 探索来源必须包含安全的仓库相对 path 和非空 source_type。";
+      }
+    }
+    if (!Array.isArray(data.question_groups) || !data.question_groups.length) return "Outline 探索至少需要一个问题组。";
+    const groupIds = new Set();
+    const questionIds = new Set();
+    for (const group of data.question_groups) {
+      if (!String(group?.id || "").trim() || groupIds.has(group.id)) return "Outline 探索问题组 ID 必须非空且唯一。";
+      groupIds.add(group.id);
+      if (!String(group?.title || "").trim() || !String(group?.summary || "").trim()) return "Outline 探索问题组必须包含 title 和 summary。";
+      if (!Array.isArray(group.questions) || !group.questions.length) return "Outline 探索问题组至少需要一个问题。";
+      for (const question of group.questions) {
+        if (!String(question?.id || "").trim() || questionIds.has(question.id)) return "Outline 探索问题 ID 必须非空且全局唯一。";
+        questionIds.add(question.id);
+        for (const key of ["target_kind", "prompt", "context", "recommendation_reason"]) {
+          if (!String(question?.[key] || "").trim()) return `Outline 探索问题缺少 ${key}。`;
+        }
+        if (question.selection_mode !== "single") return "Outline 探索 selection_mode 必须是 single。";
+        if (!Array.isArray(question.candidates) || question.candidates.length < 2 || question.candidates.length > 4) {
+          return "Outline 探索问题必须提供 2-4 个候选。";
+        }
+        const candidateIds = new Set();
+        for (const candidate of question.candidates) {
+          if (["id", "label", "value", "rationale"].some((key) => !String(candidate?.[key] || "").trim()) || candidateIds.has(candidate.id)) {
+            return "Outline 探索候选必须字段完整且 ID 唯一。";
+          }
+          candidateIds.add(candidate.id);
+        }
+        const recommendations = question.recommended_candidate_ids;
+        if (!Array.isArray(recommendations) || recommendations.length !== 1 || recommendations.some((id) => !candidateIds.has(id))) {
+          return "Outline 探索推荐项必须且只能引用当前问题中的一个候选。";
+        }
+        const operations = question.free_input?.allowed_operations;
+        const expectedOperations = new Set(["confirm_candidate", "add", "replace", "exclude", "context_note"]);
+        if (question.allow_none_of_the_above !== true || question.free_input?.enabled !== true || !Array.isArray(operations) ||
+            operations.length !== expectedOperations.size || new Set(operations).size !== expectedOperations.size ||
+            operations.some((operation) => !expectedOperations.has(operation))) {
+          return "Outline 探索必须启用以上都不符合和全部五种 Discovery 操作。";
+        }
+      }
+    }
+    return "";
+  }
+  if (data.review_type === "outline") {
+    if (data.schema_version !== 2) return "outline review data 必须使用 schema_version 2。";
+    if (!runtimeIsSafeRepoPath(data.outline_source_path)) return "outline_source_path 必须是安全的仓库相对路径。";
+    if (!/^(?:sha256:)?[0-9a-f]{64}$/i.test(String(data.outline_digest || ""))) {
+      return "outline_digest 必须是 64 位 SHA-256，可带 sha256: 前缀。";
+    }
+    if (!Array.isArray(data.source_authority_ids) || data.source_authority_ids.length === 0) {
+      return "source_authority_ids 必须是非空数组。";
+    }
   }
   return "";
+}
+
+function runtimeIsSafeRepoPath(value) {
+  const path = String(value || "").trim().replace(/\\/g, "/");
+  return Boolean(path) &&
+    !path.startsWith("/") &&
+    !/^[A-Za-z]:\//.test(path) &&
+    !path.includes("//") &&
+    path.split("/").every((segment) => segment && segment !== "." && segment !== "..");
 }
 
 const runtimeVagueActionExits = new Set([
@@ -76,10 +160,47 @@ function runtimeValidateReviewData(data) {
   const key = itemCollectionKey(data);
   const nodeIds = new Set();
   const componentIds = new Set();
+  let actionableCount = 0;
+  let criticalCount = 0;
+  const allowedPriorities = new Set(["critical", "important", "normal"]);
+  const outlineViewTypes = new Set(["intent_map", "scope_slice", "readiness_authority"]);
+  const outlineViewCounts = new Map(Array.from(outlineViewTypes, (type) => [type, 0]));
+  const forbiddenOutlineKeys = new Set([
+    "screens", "screen_regions", "components", "flow_steps", "edges", "api_endpoints",
+    "database_models", "implementation_tasks", "solution_design"
+  ]);
+
+  if (!Array.isArray(data.modules) || data.modules.length === 0) {
+    result.errors.push("review data 必须至少包含一个 module。");
+  }
+
+  if (data.review_type === "outline") {
+    const artifactPath = String(data.artifact_path || "").replace(/\\/g, "/");
+    const outlineSourcePath = String(data.outline_source_path || "").replace(/\\/g, "/");
+    if (!runtimeIsSafeRepoPath(data.artifact_path) || !/^specs\/[^/]+\/prd\/review\/outline-review-data\.json$/.test(artifactPath)) {
+      result.errors.push("outline artifact_path 必须是 specs/<feature>/prd/review/outline-review-data.json 形式的安全仓库相对路径。");
+    }
+    if (!runtimeIsSafeRepoPath(data.outline_source_path) || !/^specs\/[^/]+\/spec-outline\.md$/.test(outlineSourcePath)) {
+      result.errors.push("outline_source_path 必须是 specs/<feature>/spec-outline.md 形式的安全仓库相对路径。");
+    }
+    const authorityIds = data.source_authority_ids || [];
+    if (authorityIds.some((value) => !runtimeCompactText(value)) || new Set(authorityIds).size !== authorityIds.length) {
+      result.errors.push("source_authority_ids 必须只包含唯一的非空 ID。");
+    }
+    const forbidden = runtimeFindForbiddenOutlineKey(data, forbiddenOutlineKeys);
+    if (forbidden) result.errors.push(`outline downstream design detail is forbidden: ${forbidden}。`);
+  }
 
   for (const module of data.modules || []) {
     for (const item of module[key] || []) {
       const itemLabel = `${module.title || module.id || "未命名模块"} / ${item.title || item.id || "未命名视图"}`;
+      if (data.review_type === "outline") {
+        if (!outlineViewTypes.has(item.view_type)) {
+          result.errors.push(`${itemLabel} 的 view_type 无效。`);
+        } else {
+          outlineViewCounts.set(item.view_type, outlineViewCounts.get(item.view_type) + 1);
+        }
+      }
       if (data.review_type === "ui") {
         for (const key of ["business_context", "user_goal", "user_outcome"]) {
           if (!runtimeHasSubstantialText(item[key])) {
@@ -138,7 +259,27 @@ function runtimeValidateReviewData(data) {
         }
         localNodeIds.add(node.id);
         nodeIds.add(node.id);
-        if (requiresNodeDecision(node)) {
+        const actionable = requiresNodeDecision(node);
+        if (data.schema_version === 2) {
+          if (actionable) {
+            actionableCount += 1;
+            if (!allowedPriorities.has(node.confirmation_priority)) {
+              result.errors.push(`${node.label || node.id} 缺少有效 confirmation_priority；可选值为 critical、important、normal。`);
+            }
+            if (node.confirmation_priority === "critical") {
+              criticalCount += 1;
+              if (!runtimeHasSubstantialText(node.critical_basis)) {
+                result.errors.push(`${node.label || node.id} 的 critical_basis 不充分，必须说明严重影响且不存在安全默认值或可撤销路径。`);
+              }
+              if (!runtimeHasSubstantialText(node.priority_reason)) {
+                result.errors.push(`${node.label || node.id} 的 priority_reason 不充分，必须说明为什么需要负责人逐项确认。`);
+              }
+            }
+          } else if (node.confirmation_priority !== undefined || node.priority_reason !== undefined || node.critical_basis !== undefined) {
+            result.errors.push(`${node.label || node.id} 是信息节点，必须省略 confirmation_priority、priority_reason 和 critical_basis。`);
+          }
+        }
+        if (actionable) {
           if (!runtimeHasSubstantialText(node.decision_background)) {
             result.warnings.push(`${node.label || node.id} 缺少 decision_background，右侧栏需要用“背景信息”说明这个判断为什么存在。`);
           }
@@ -152,8 +293,10 @@ function runtimeValidateReviewData(data) {
           if (data.review_type === "ui" && node.review_level === "must_confirm" && (options.length < 3 || options.length > 4)) {
             result.warnings.push(`${node.label || node.id} 是必须确认节点，应提供 3-4 个可执行选项。`);
           }
-          if (options.length === 2 && (data.review_type === "flow" || node.review_level !== "must_confirm") && !runtimeHasSubstantialText(node.options_count_rationale)) {
-            result.warnings.push(`${node.label || node.id} 只有 2 个选项，需要用 options_count_rationale 说明为什么二元选择足够。`);
+          if (options.length === 2 && !runtimeHasSubstantialText(node.options_count_rationale)) {
+            const message = `${node.label || node.id} 只有 2 个选项，需要用 options_count_rationale 说明为什么二元选择足够。`;
+            if (data.review_type === "outline") result.errors.push(message);
+            else if (data.review_type === "flow" || node.review_level !== "must_confirm") result.warnings.push(message);
           }
           const optionIds = new Set(options.map((option) => option.id));
           for (const option of options) {
@@ -187,11 +330,58 @@ function runtimeValidateReviewData(data) {
     }
   }
 
+  if (data.schema_version === 2) {
+    const criticalCap = actionableCount === 0 ? 0 : Math.min(3, Math.max(1, Math.ceil(actionableCount / 10)));
+    if (criticalCount > criticalCap) {
+      result.errors.push(`critical 数量 ${criticalCount} 超过上限 ${criticalCap}（可确认节点 ${actionableCount} 个）；请先排序并将超额项降级为 important。`);
+    }
+  }
+
+  if (data.review_type === "outline") {
+    for (const type of outlineViewTypes) {
+      if (outlineViewCounts.get(type) !== 1) {
+        result.errors.push(`Outline view_type ${type} 必须全局 exactly once，当前 ${outlineViewCounts.get(type)} 个。`);
+      }
+    }
+    const readinessAuthorityIds = new Set();
+    for (const module of data.modules || []) {
+      for (const view of module.views || []) {
+        if (view.view_type !== "readiness_authority") continue;
+        for (const authority of view.source_authorities || []) {
+          if (runtimeCompactText(authority?.id)) readinessAuthorityIds.add(authority.id);
+        }
+      }
+    }
+    const declaredAuthorityIds = new Set(data.source_authority_ids || []);
+    const metadataOnly = [...declaredAuthorityIds].filter((id) => !readinessAuthorityIds.has(id));
+    const viewOnly = [...readinessAuthorityIds].filter((id) => !declaredAuthorityIds.has(id));
+    if (metadataOnly.length || viewOnly.length) {
+      result.errors.push(`source_authority_ids 必须 exactly match readiness_authority source_authorities（仅元数据：${metadataOnly.join(", ") || "无"}；仅视图：${viewOnly.join(", ") || "无"}）。`);
+    }
+  }
+
   const storageWarning = storageStatusWarning();
   if (storageWarning) {
     result.warnings.push(storageWarning);
   }
   return result;
+}
+
+function runtimeFindForbiddenOutlineKey(value, forbiddenKeys) {
+  if (!value || typeof value !== "object") return "";
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      const found = runtimeFindForbiddenOutlineKey(entry, forbiddenKeys);
+      if (found) return found;
+    }
+    return "";
+  }
+  for (const [key, entry] of Object.entries(value)) {
+    if (forbiddenKeys.has(key)) return key;
+    const found = runtimeFindForbiddenOutlineKey(entry, forbiddenKeys);
+    if (found) return found;
+  }
+  return "";
 }
 
 function rejectReviewData(messages) {
@@ -224,7 +414,7 @@ function acceptReviewData(data) {
     $("module-list").replaceChildren();
     $("module-title").textContent = "模块";
     $("module-summary").textContent = validationError;
-    $("item-title").textContent = "流程或界面";
+    $("item-title").textContent = "流程、界面或纲要视图";
     $("item-summary").textContent = "请先用 validate-review-data.mjs 修复数据，再打开确认页。";
     $("item-tabs").replaceChildren();
     $("diagram-view").replaceChildren(create("p", "error", validationError));
@@ -232,6 +422,17 @@ function acceptReviewData(data) {
     setStatus(validationError, true);
     return false;
   }
+  if (data.review_type === "outline_discovery") {
+    reviewData = data;
+    selectedModuleIndex = 0;
+    selectedItemIndex = 0;
+    selectedNodeId = null;
+    runtimeWarnings = [];
+    runtimeErrors = [];
+    renderOutlineDiscovery(data);
+    return true;
+  }
+  if (typeof leaveOutlineDiscoveryMode === "function") leaveOutlineDiscoveryMode();
   reviewData = data;
   selectedModuleIndex = 0;
   selectedItemIndex = 0;

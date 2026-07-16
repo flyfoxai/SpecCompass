@@ -7,6 +7,7 @@
 - 2026-06-21：新增统一确认页模板、Tiffany blue 视觉规范、前端框架选型调研与推荐架构。
 - 2026-06-21：补充统一用户信息提示机制，覆盖确认顺序、stale 传播、Stage Readiness、open-items、NEXT_COMMAND 和跨模块提醒。
 - 2026-06-21：根据 Gemini/Claude 复核意见补充静态页面工程边界、确认写回模式、授权 schema、source hash 校验、提示去重、门禁例外和跨依赖 stale 传播规则。
+- 2026-07-16：确认页扩展为 Flow/UI/PRD Outline 三种类型；新增确认优先级、Outline 图形确认、摘要身份绑定和 `/sp.specify` 门禁。本节后文的历史方案保留为演进记录，当前合同以第 17 节为准。
 
 ## 1. 背景与目标
 
@@ -1013,3 +1014,75 @@ DO_NOT_RUN: <当前不要运行的命令或 None>
 8. 增加 `.gitignore` 或文档规则：明确确认文档默认跟踪，review HTML 和辅助 JSON 按可再生成程度选择跟踪或忽略。
 
 本次建议先落地统一模板工程和文档约束，再决定 React Flow、Storybook、JSON Forms 等增强能力的触发条件。
+
+## 17. 2026-07-16 当前合同：确认优先级与 PRD Outline 图形确认
+
+本轮采用共享 renderer 的平衡演进方案。Flow、UI 与 Outline 共用加载、右侧确认栏、草稿状态和确认包基础设施，但各自保留独立 schema、数据路径、可视化语义和写回目标。Outline 是 `/sp.prd` 内部阶段，不新增强制 `/sp.outline` 命令，也不替代 `/sp.specify`。
+
+### 17.1 三种确认优先级
+
+新生成的 schema v2 actionable node 使用 `confirmation_priority`：
+
+- `critical` / 非常重要：错误决定会造成严重、难以撤回的影响，而且没有安全默认值或可逆路径。
+- `important` / 重要：会明显影响范围、体验、成本或验收，但存在受控修正路径。
+- `normal` / 普通：仍需人工确认，但风险和返工半径较小。
+
+优先级与 `review_level` 正交：前者决定人工注意力，后者继续表达原有审核义务。信息节点不填写优先级。`critical` 节点必须同时提供 `critical_basis` 和 `priority_reason`，且数量上限为：
+
+```text
+N == 0 ? 0 : min(3, max(1, ceil(N / 10)))
+```
+
+上限不是配额；没有真正符合条件的事项时应保持为零。生成器先按严重影响、不可逆性和安全默认路径缺失程度排序，把超额候选降为 `important`。校验器只拒绝，不修改输入。`critical` 必须逐项确认，不参与当前视图、模块、需求或下载前预填中的任何批量推荐操作。
+
+### 17.2 Outline 三个图形视图
+
+`/sp.prd` 在语义内容本可进入详细规格时，生成：
+
+```text
+specs/<feature>/spec-outline.md
+specs/<feature>/prd/review/outline-review-data.json
+specs/<feature>/prd/review/outline-confirmation.md
+```
+
+Outline review data 的 `review_type` 为 `outline`、`schema_version` 为 `2`，全文件必须且只能各有一个：
+
+1. `intent_map`：产品意图 -> 用户/角色 -> 问题切片 -> 能力边界。
+2. `scope_slice`：本期范围、明确非目标、场景与验收种子、推荐首切片。
+3. `readiness_authority`：来源权威、风险、开放项、阻断项和下一路由。
+
+Outline 只确认产品意图、范围和进入规格前的就绪度。数据中禁止出现详细流程步骤、UI 页面或组件、API、数据库模型、实现任务和方案级设计，避免在纲要阶段提前固化下游解法。
+
+交互入口为：
+
+```bash
+node .specify/review/scripts/serve-review.mjs --outline <feature>
+```
+
+launcher 只接受一个 review mode，并返回带 `?outline=<feature>` 的 `127.0.0.1` 地址。`specs/review-index.json` 使用 `has_outline_review` 表示当前需求是否已有 Outline 确认数据。
+
+### 17.3 状态、摘要和授权边界
+
+语义上已就绪但尚未完成图形确认的 Outline 使用 `AWAITING_OUTLINE_CONFIRMATION`。摘要由脚本对规范化的 `spec-outline.md` 内容和排序后的来源权威 ID 计算 SHA-256，不能由模型自行描述。确认包及最终 Markdown 确认文档必须绑定：
+
+- 当前 `outline_digest`；
+- 完整 `source_authority_ids`；
+- 当前 review-data identity；
+- 全部必要确认记录和所有分包身份字段。
+
+review-data identity 必须在完整 JSON 写入后由 `.specify/review/scripts/review-data-id.mjs` 计算。浏览器使用相同的递归键排序序列化和标识算法；下游门禁从当前文件重算，因此 option 文案、视图内容、优先级或其他 review 字段发生变化都会使旧确认失效，不能只保留原 ID 绕过重新确认。
+
+浏览器 `localStorage`、JSON review data 和下载到本地的确认包都不构成授权。只有写入目标路径、内容完整且身份匹配的 `outline-confirmation.md` 才能让 `/sp.prd` 把状态提升为 `READY_FOR_SPECIFY`。Outline 或来源权威发生实质变化后，旧确认立即 stale。`/sp.specify` 对新合同 Outline 必须拒绝 pending、missing、invalid、incomplete、stale 或 identity mismatch；旧的无合同标记 Outline 仅在一个小版本兼容窗口内告警放行，并在下一次 `/sp.prd` 刷新时进入新合同。
+
+### 17.4 PRD Outline 三级成熟度与双模式界面
+
+Outline 的完整程度使用独立字段 `outline_maturity = explore | frame | specify_ready`。`explore` 是一级方向探索，`frame` 是二级框架收敛，`specify_ready` 是三级完整大纲；它们不是 Markdown 标题深度，也不是 Flow/UI/Outline 单个确认点的 `review_level` 或 `confirmation_priority`。一级和二级允许成熟度随新证据前进或回退，只有三级可以进入正式 confirmation。
+
+共享 renderer 增加两种严格隔离的 `interaction_mode`：
+
+- `discovery` 读取 `outline-discovery-data.json`，展示 2-4 个业务候选、推荐理由、“以上都不适用”和自由输入，下载 `outline-discovery-response-*.json`。它只用于完善意图，不能授权 `/sp.specify`。
+- `confirmation` 读取现有 `outline-review-data.json`，继续使用 Review Data ID、Outline Digest、Source Authority IDs 和三视图正式确认合同。
+
+Discovery 的响应由 `/sp.prd` 校验后进入 append-only 的 `outline-intent-ledger.json`。操作固定为 `confirm_candidate`、`add`、`replace`、`exclude`、`context_note`；用户新输入写回为 `[src:user]`，接受候选写回为 `[src:user-confirmed]`，未接受候选保持 `[src:ai-proposed]`，并以 `<!-- intent-delta:<id> -->` 追踪。可替换条目使用 `<!-- intent-target:<id> -->`，替换或排除结果使用 `<!-- intent-ref:<delta-id>:<target-or-candidate-id> -->`，避免 helper 猜测自然语言指向。
+
+`/sp.prd` 先生成 `prd.md.tmp` 和 `spec-outline.md.tmp`，再调用 `node .specify/review/scripts/apply-outline-discovery.mjs --response <response-package> --prd-temp specs/<feature>/prd.md.tmp --outline-temp specs/<feature>/spec-outline.md.tmp`。helper 对有效事件先做 append-only 入账，再验证临时文档；验证失败不覆盖正式 PRD/Outline，事件保留为 pending，修正临时文档后允许用同一响应重试且不重复入账。只有对应 `intent-delta` 在当前正式 PRD 中恰好出现一次，事件才成为 consumed，之后的同 ID 重放必须拒绝；`supersedes_delta_id` 只能引用这种已消费事件，不能引用只入账但仍为 pending 的事件。helper 以 `specs/<feature>/prd/review/.outline-discovery-writeback.lock` 保证同一 feature 只有一个写回进程：active process 持锁时拒绝并发写回；回收进程退出后遗留的 stale lock 前，必须先独占 `.outline-discovery-writeback.recovery.lock` 并复核主锁身份。两个锁都带唯一所有权 ID，清理时不得删除已经换主的锁；如果死进程同时遗留两个锁，helper 失败关闭并保留现场，操作者确认没有写回进程后只删除恢复声明再重试。旧主锁已不存在时，helper 可在取得新主锁后清理孤立恢复声明。两份正式文档作为一组替换，任一替换失败都恢复旧版本；替换完成后的备份清理失败只告警，不得反向破坏已经提交的新文档。Discovery 与 confirmation 使用不同 schema 和数据包，任何一方都不能接受另一方的产物。

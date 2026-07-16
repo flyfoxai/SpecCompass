@@ -15,6 +15,24 @@ from tests.conftest import requires_bash
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 BASH_CHECK = PROJECT_ROOT / "scripts" / "bash" / "check-sp-memory.sh"
 POWERSHELL_CHECK = PROJECT_ROOT / "scripts" / "powershell" / "check-sp-memory.ps1"
+OUTLINE_DIGEST = (
+    PROJECT_ROOT
+    / "templates"
+    / "project"
+    / ".specify"
+    / "review"
+    / "scripts"
+    / "outline-digest.mjs"
+)
+REVIEW_DATA_ID = (
+    PROJECT_ROOT
+    / "templates"
+    / "project"
+    / ".specify"
+    / "review"
+    / "scripts"
+    / "review-data-id.mjs"
+)
 
 
 TRACE_INDEX = """# Trace Index
@@ -163,6 +181,133 @@ def _assert_bash_powershell_consistent(feature: Path, *, needs_human_review: boo
         finding["code"] for finding in bash_payload["findings"]
     ]
     return bash_payload, powershell_payload
+
+
+def _compute_outline_digest(outline: Path, authority_ids: list[str]) -> str:
+    if not shutil.which("node"):
+        pytest.skip("node is required for outline confirmation digest tests")
+    result = subprocess.run(
+        ["node", OUTLINE_DIGEST, outline, *authority_ids],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    return result.stdout.strip()
+
+
+def _compute_review_data_id(review_data: Path) -> str:
+    if not shutil.which("node"):
+        pytest.skip("node is required for review-data identity tests")
+    result = subprocess.run(
+        ["node", REVIEW_DATA_ID, review_data],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    return result.stdout.strip()
+
+
+def _write_outline_confirmation_contract(
+    feature: Path,
+    *,
+    status: str = "READY_FOR_SPECIFY",
+    review_data_id: str | None = None,
+    confirmation_review_data_id: str | None = None,
+    authority_ids: list[str] | None = None,
+    confirmation_authority_ids: list[str] | None = None,
+    stale_digest: bool = False,
+    write_confirmation: bool = True,
+    unresolved_items: list[str] | None = None,
+    draft_items: list[str] | None = None,
+) -> str:
+    authority_ids = authority_ids or ["prd-v3", "product-brief-v2"]
+    confirmation_authority_ids = confirmation_authority_ids or authority_ids
+    review_dir = feature / "prd" / "review"
+    review_dir.mkdir(parents=True, exist_ok=True)
+    outline = feature / "spec-outline.md"
+    feature_name = feature.name
+    digest_placeholder = "0" * 64
+    review_id_placeholder = "REVIEW_DATA_ID_PLACEHOLDER"
+    outline_template = f"""# Spec Outline
+
+## Outline Decision
+
+- Status: {status}
+- Based On: `prd.md`, `sources/product-brief.md`
+- Source Snapshot: prd.md sha256:abc123
+- Next Route: {'/sp.specify' if status == 'READY_FOR_SPECIFY' else '/sp.prd'}
+
+## Outline Confirmation
+
+- Contract Version: 1
+- Review Data: specs/{feature_name}/prd/review/outline-review-data.json
+- Review Data ID: {review_id_placeholder}
+- Outline Digest: {digest_placeholder}
+- Source Authority IDs: [{', '.join(authority_ids)}]
+- Confirmation: specs/{feature_name}/prd/review/outline-confirmation.md
+
+## Status History
+
+| Timestamp | Status | blocker-signature | next-route | evidence-summary |
+| --- | --- | --- | --- | --- |
+| 2026-07-16T09:00:00Z | AWAITING_OUTLINE_CONFIRMATION | none | /sp.prd | Review generated |
+"""
+    outline.write_text(outline_template, encoding="utf-8")
+    current_digest = _compute_outline_digest(outline, authority_ids)
+    recorded_digest = "f" * 64 if stale_digest else current_digest
+    outline.write_text(outline_template.replace(digest_placeholder, recorded_digest), encoding="utf-8")
+
+    review_file = review_dir / "outline-review-data.json"
+    review_file.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "review_type": "outline",
+                "artifact_path": f"specs/{feature_name}/prd/review/outline-review-data.json",
+                "outline_source_path": f"specs/{feature_name}/spec-outline.md",
+                "outline_digest": recorded_digest,
+                "source_authority_ids": authority_ids,
+                "batch_id": "outline-review-v1",
+            }
+        ),
+        encoding="utf-8",
+    )
+    effective_review_data_id = review_data_id or _compute_review_data_id(review_file)
+    outline.write_text(
+        outline.read_text(encoding="utf-8").replace(review_id_placeholder, effective_review_data_id),
+        encoding="utf-8",
+    )
+
+    if write_confirmation:
+        confirmation_id = confirmation_review_data_id or effective_review_data_id
+        unresolved_items = unresolved_items or []
+        draft_items = draft_items or []
+        (review_dir / "outline-confirmation.md").write_text(
+            f"""---
+document_type: sp_human_confirmation
+command: /sp.prd
+feature: {feature_name}
+schema_version: 1
+review_type: outline
+review_data_artifact: specs/{feature_name}/prd/review/outline-review-data.json
+review_data_id: {confirmation_id}
+outline_digest: {recorded_digest}
+source_authority_ids: [{', '.join(confirmation_authority_ids)}]
+batch_review_status: CONFIRMED
+human_confirmation: CONFIRMED
+needs_decision_items: []
+unresolved_decision_items: [{', '.join(unresolved_items)}]
+draft_excluded_items: [{', '.join(draft_items)}]
+revision_requests: []
+---
+
+# Outline Confirmation
+
+Verified from the downloaded confirmation package and written back by `/sp.prd`.
+""",
+            encoding="utf-8",
+        )
+    return current_digest
 
 
 @requires_bash
@@ -918,6 +1063,375 @@ def test_repeated_outline_signature_outside_status_history_is_ignored(tmp_path: 
 
 
 @requires_bash
+def test_outline_current_awaiting_ignores_historical_ready_state(tmp_path: Path):
+    feature = _feature(tmp_path)
+    (feature / "spec-outline.md").write_text(
+        """# Spec Outline
+
+## Outline Decision
+
+- Status: AWAITING_OUTLINE_CONFIRMATION
+- Next Route: /sp.prd
+
+## Outline Confirmation
+
+- Contract Version: 1
+- Review Data: specs/demo-feature/prd/review/outline-review-data.json
+
+## Status History
+
+| Timestamp | Status | blocker-signature | next-route | evidence-summary |
+| --- | --- | --- | --- | --- |
+| 2026-07-15T10:00:00Z | READY_FOR_SPECIFY | none | /sp.specify | Legacy ready state |
+""",
+        encoding="utf-8",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+    codes = [finding["code"] for finding in payload["findings"]]
+
+    assert payload["status"] == "FAIL"
+    assert codes == ["OUTLINE_CONFIRMATION_PENDING"]
+    assert "OUTLINE_SOURCE_SNAPSHOT_MISSING" not in codes
+    assert "OWNER_REVIEW_REQUIRED_MISSING" not in codes
+
+
+@requires_bash
+def test_outline_current_ready_uses_decision_not_historical_awaiting(tmp_path: Path):
+    feature = _feature(tmp_path)
+    (feature / "spec-outline.md").write_text(
+        """# Spec Outline
+
+## Outline Decision
+
+- Status: READY_FOR_SPECIFY
+- Next Route: /sp.specify
+
+## Status History
+
+| Timestamp | Status | blocker-signature | next-route | evidence-summary |
+| --- | --- | --- | --- | --- |
+| 2026-07-15T10:00:00Z | AWAITING_OUTLINE_CONFIRMATION | none | /sp.prd | Awaited confirmation |
+""",
+        encoding="utf-8",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+    codes = [finding["code"] for finding in payload["findings"]]
+
+    assert payload["status"] == "WARN"
+    assert "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" in codes
+    assert "OUTLINE_SOURCE_SNAPSHOT_MISSING" in codes
+    assert "OUTLINE_CONFIRMATION_PENDING" not in codes
+
+
+@requires_bash
+def test_outline_status_words_in_prose_and_fence_are_ignored(tmp_path: Path):
+    feature = _feature(tmp_path)
+    (feature / "spec-outline.md").write_text(
+        """# Spec Outline
+
+This example mentions READY_FOR_SPECIFY but is not the current decision.
+
+```markdown
+## Outline Decision
+- Status: READY_FOR_SPECIFY
+```
+""",
+        encoding="utf-8",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "PASS"
+    assert not any(f["code"].startswith("OUTLINE_CONFIRMATION_") for f in payload["findings"])
+    assert not any(f["code"] == "OUTLINE_SOURCE_SNAPSHOT_MISSING" for f in payload["findings"])
+
+
+@requires_bash
+def test_bold_status_in_numbered_outline_decision_is_current_state(tmp_path: Path):
+    feature = _feature(tmp_path)
+    (feature / "spec-outline.md").write_text(
+        """# Spec Outline
+
+## 2. Outline Decision
+
+- **Status**: READY_FOR_SPECIFY
+- **Based On**: `prd.md`
+- **Source Snapshot**: prd.md sha256:abc123
+- **Next Route**: /sp.specify
+""",
+        encoding="utf-8",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "WARN"
+    assert [f["code"] for f in payload["findings"]] == [
+        "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED"
+    ]
+
+
+@requires_bash
+def test_new_contract_outline_with_multiple_decision_sections_fails_closed(tmp_path: Path):
+    feature = _feature(tmp_path)
+    (feature / "spec-outline.md").write_text(
+        """# Spec Outline
+
+## Outline Decision
+
+- Status: AWAITING_OUTLINE_CONFIRMATION
+
+## Outline Confirmation
+
+- Contract Version: 1
+- Review Data: specs/demo-feature/prd/review/outline-review-data.json
+
+## 3. Outline Decision
+
+- Status: READY_FOR_SPECIFY
+""",
+        encoding="utf-8",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [f["code"] for f in payload["findings"]] == [
+        "OUTLINE_DECISION_STATUS_AMBIGUOUS"
+    ]
+
+
+@requires_bash
+def test_new_contract_outline_without_current_status_fails_closed(tmp_path: Path):
+    feature = _feature(tmp_path)
+    (feature / "spec-outline.md").write_text(
+        """# Spec Outline
+
+## Outline Decision
+
+- Next Route: /sp.prd
+
+## Outline Confirmation
+
+- Contract Version: 1
+- Review Data: specs/demo-feature/prd/review/outline-review-data.json
+""",
+        encoding="utf-8",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [f["code"] for f in payload["findings"]] == [
+        "OUTLINE_DECISION_STATUS_MISSING"
+    ]
+
+
+@requires_bash
+def test_legacy_ready_outline_warns_during_compatibility_window(tmp_path: Path):
+    feature = _feature(tmp_path)
+    (feature / "spec-outline.md").write_text(
+        """# Spec Outline
+
+## Outline Decision
+
+- Status: READY_FOR_SPECIFY
+- Based On: `prd.md`
+- Source Snapshot: prd.md sha256:abc123
+- Next Route: /sp.specify
+""",
+        encoding="utf-8",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "WARN"
+    assert [f["code"] for f in payload["findings"]] == [
+        "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED"
+    ]
+
+
+@requires_bash
+def test_new_contract_ready_outline_without_confirmation_fails(tmp_path: Path):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(feature, write_confirmation=False)
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [f["code"] for f in payload["findings"]] == [
+        "OUTLINE_CONFIRMATION_MISSING"
+    ]
+
+
+@requires_bash
+def test_new_contract_ready_outline_with_fresh_confirmation_passes(tmp_path: Path):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(feature)
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "PASS"
+    assert payload["findings"] == []
+
+
+@requires_bash
+def test_outline_confirmation_fields_outside_frontmatter_cannot_authorize(tmp_path: Path):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(feature)
+    review_data = json.loads(
+        (feature / "prd" / "review" / "outline-review-data.json").read_text(encoding="utf-8")
+    )
+    confirmation = feature / "prd" / "review" / "outline-confirmation.md"
+    confirmation.write_text(
+        f"""---
+document_type: sp_human_confirmation
+command: /sp.prd
+feature: {feature.name}
+schema_version: 1
+review_type: outline
+---
+
+# Outline Confirmation
+
+The following body text is descriptive and must not be parsed as authorization metadata.
+
+review_data_artifact: {review_data['artifact_path']}
+review_data_id: outline-review-data-v1
+outline_digest: {review_data['outline_digest']}
+source_authority_ids: [{', '.join(review_data['source_authority_ids'])}]
+batch_review_status: CONFIRMED
+human_confirmation: CONFIRMED
+needs_decision_items: []
+unresolved_decision_items: []
+draft_excluded_items: []
+revision_requests: []
+""",
+        encoding="utf-8",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [finding["code"] for finding in payload["findings"]] == [
+        "OUTLINE_CONFIRMATION_MISSING"
+    ]
+
+
+@requires_bash
+def test_new_contract_ready_outline_with_stale_digest_fails(tmp_path: Path):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(feature, stale_digest=True)
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [f["code"] for f in payload["findings"]] == [
+        "OUTLINE_CONFIRMATION_STALE"
+    ]
+
+
+@requires_bash
+def test_new_contract_ready_outline_with_review_identity_mismatch_fails(tmp_path: Path):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(
+        feature,
+        confirmation_review_data_id="different-review-data",
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [f["code"] for f in payload["findings"]] == [
+        "OUTLINE_CONFIRMATION_IDENTITY_MISMATCH"
+    ]
+
+
+@requires_bash
+def test_new_contract_ready_outline_with_tampered_review_data_fails(tmp_path: Path):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(feature)
+    review_file = feature / "prd" / "review" / "outline-review-data.json"
+    review_data = json.loads(review_file.read_text(encoding="utf-8"))
+    review_data["batch_id"] = "tampered-after-confirmation"
+    review_file.write_text(json.dumps(review_data), encoding="utf-8")
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [f["code"] for f in payload["findings"]] == [
+        "OUTLINE_CONFIRMATION_IDENTITY_MISMATCH"
+    ]
+
+
+@requires_bash
+def test_new_contract_ready_outline_with_authority_mismatch_fails(tmp_path: Path):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(
+        feature,
+        confirmation_authority_ids=["prd-v3", "different-brief"],
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [f["code"] for f in payload["findings"]] == [
+        "OUTLINE_CONFIRMATION_AUTHORITY_MISMATCH"
+    ]
+
+
+@requires_bash
+@pytest.mark.parametrize(
+    ("unresolved_items", "draft_items"),
+    [(["DEC-001"], []), ([], ["DRAFT-001"])],
+)
+def test_new_contract_ready_outline_with_unresolved_or_draft_records_fails(
+    tmp_path: Path,
+    unresolved_items: list[str],
+    draft_items: list[str],
+):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(
+        feature,
+        unresolved_items=unresolved_items,
+        draft_items=draft_items,
+    )
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "FAIL"
+    assert [f["code"] for f in payload["findings"]] == [
+        "OUTLINE_CONFIRMATION_UNRESOLVED"
+    ]
+
+
+@requires_bash
+@pytest.mark.parametrize(
+    "status",
+    [
+        "NEEDS_PRD",
+        "NEEDS_CLARIFY",
+        "NEEDS_SOURCE",
+        "SPLIT_REQUIRED",
+        "NEEDS_DECISION",
+        "BLOCKED",
+    ],
+)
+def test_new_contract_non_ready_outline_preserves_existing_route_without_gate_noise(
+    tmp_path: Path,
+    status: str,
+):
+    feature = _feature(tmp_path)
+    _write_outline_confirmation_contract(feature, status=status, write_confirmation=False)
+
+    payload, _ = _assert_bash_powershell_consistent(feature, needs_human_review=False)
+
+    assert payload["status"] == "PASS"
+    assert not any(f["code"].startswith("OUTLINE_CONFIRMATION_") for f in payload["findings"])
+
+
+@requires_bash
 def test_ready_outline_with_high_risk_signal_warns_when_owner_review_missing(tmp_path: Path):
     feature = _feature(tmp_path)
     (feature / "spec-outline.md").write_text(
@@ -968,7 +1482,8 @@ def test_ready_outline_with_owner_review_block_does_not_warn(tmp_path: Path):
 
     payload = _run_bash(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" for f in payload["findings"])
     assert not any(f["code"] == "OWNER_REVIEW_REQUIRED_MISSING" for f in payload["findings"])
 
 
@@ -999,7 +1514,8 @@ def test_ready_outline_with_deeper_owner_review_heading_does_not_warn(tmp_path: 
 
     payload = _run_bash(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" for f in payload["findings"])
     assert not any(f["code"] == "OWNER_REVIEW_REQUIRED_MISSING" for f in payload["findings"])
 
 
@@ -1026,7 +1542,8 @@ def test_ready_outline_with_h1_indented_owner_review_heading_does_not_warn(tmp_p
 
     payload = _run_bash(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" for f in payload["findings"])
     assert not any(f["code"] == "OWNER_REVIEW_REQUIRED_MISSING" for f in payload["findings"])
 
 
@@ -1071,7 +1588,8 @@ def test_ready_outline_without_high_risk_signal_does_not_warn(tmp_path: Path):
 
     payload = _run_bash(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" for f in payload["findings"])
     assert not any(f["code"] == "OWNER_REVIEW_REQUIRED_MISSING" for f in payload["findings"])
 
 
@@ -1118,7 +1636,8 @@ def test_ready_outline_with_source_snapshot_does_not_warn(tmp_path: Path):
 
     payload = _run_bash(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" for f in payload["findings"])
     assert not any(f["code"] == "OUTLINE_SOURCE_SNAPSHOT_MISSING" for f in payload["findings"])
 
 
@@ -1296,7 +1815,8 @@ def test_numbered_owner_review_heading_suppresses_warning(tmp_path: Path):
 
     payload = _run_bash(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED" for f in payload["findings"])
     assert not any(f["code"] == "OWNER_REVIEW_REQUIRED_MISSING" for f in payload["findings"])
 
 

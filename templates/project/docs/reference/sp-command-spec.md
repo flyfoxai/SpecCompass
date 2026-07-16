@@ -66,7 +66,20 @@ anything material remains uncertain. If those anchors are missing, use
 
 `sp.prd` must end with PRD-to-spec outline readiness. If the PRD has clear
 strategic goal, users, scope, capability map, and source authority, create or
-refresh `specs/<feature>/spec-outline.md` with `READY_FOR_SPECIFY`. If the PRD
+refresh `specs/<feature>/spec-outline.md` with
+`AWAITING_OUTLINE_CONFIRMATION`. Generate
+`specs/<feature>/prd/review/outline-review-data.json`, record its Review Data
+ID (computed from the complete JSON by
+`.specify/review/scripts/review-data-id.mjs`), `Outline Digest`, and
+`Source Authority IDs` in an `Outline Confirmation`
+block, and launch the fixed renderer with
+`node .specify/review/scripts/serve-review.mjs --outline <feature>`. Browser
+state, localStorage, preview completion, and download alone never authorize
+`sp.specify`. The downloaded package must be validated and written back as
+`specs/<feature>/prd/review/outline-confirmation.md`; only a package bound to
+the current review-data identity, canonical digest, and source authority, with
+no needs-decision, unresolved, draft-excluded, or revision-request records, may
+promote the outline to `READY_FOR_SPECIFY`. If the PRD
 still has key `[src:ai-proposed]`, `[uncertain:*]`, scope conflict, missing
 source authority, or unclear feature boundary, do not create a stable outline;
 append an `Outline Decision` to `prd.md` and route to `sp.clarify`, another
@@ -81,6 +94,74 @@ be only `NEEDS_PRD`, `NEEDS_CLARIFY`, `NEEDS_SOURCE`, `SPLIT_REQUIRED`,
 flow, UI, API, database, plan, tasks, or implementation design. `sp.outline` or
 PRD-embedded outline logic must not replace `sp.specify`; it only decides
 whether `sp.specify` may start.
+
+Before formal Outline confirmation, `sp.prd` must record the orthogonal
+`outline_maturity` field in `spec-outline.md`. Its only values are `explore`,
+`frame`, and `specify_ready`. `explore` is Level 1 direction discovery with
+deep user participation in goals, users, and the core problem. `frame` is Level
+2 convergence with deep user participation in scope, non-goals, first slice,
+scenarios, and high-impact business rules. `specify_ready` is Level 3, where
+confirmed product facts are structurally completed and checked against the
+Constitution. `frame` requires a confirmed goal, at least one confirmed user or
+role, and a clear core problem. `specify_ready` additionally requires stable,
+source-backed Level 2 boundaries. Regress from `frame` to `explore` when the
+confirmed goal, user/role, or core problem is withdrawn, replaced, or
+contradicted. Regress from `specify_ready` to `frame` when scope, non-goals,
+first slice, core scenarios, high-impact business rules, acceptance intent, or
+source authority changes materially; regress further when the Level 1 minimum
+is no longer confirmed. The Constitution must not invent target users, product
+goals, business rules, or scope. Maturity is independent from readiness,
+`review_level`, and `confirmation_priority`.
+
+Level 1 and Level 2 use `interaction_mode: discovery`; Level 3 uses
+`interaction_mode: confirmation`. Discovery writes
+`specs/<feature>/prd/review/outline-discovery-data.json`, offers 2-4 candidates
+with a recommendation, none of the above, and free-form input, and downloads an
+`outline-discovery-response-*.json` package. The five explicit operations are
+`confirm_candidate`, `add`, `replace`, `exclude`, and `context_note`.
+Discovery must never advance the Outline to `AWAITING_OUTLINE_CONFIRMATION` or
+`READY_FOR_SPECIFY` and never authorizes `sp.specify`.
+
+`sp.prd` explicitly consumes a named discovery response, validates feature and
+response identities, schema version, candidate and target references, allowed
+operations, and duplicate delta IDs, then appends accepted events to
+`specs/<feature>/prd/review/outline-intent-ledger.json`. The ledger is
+append-only; replacement, correction, or reversal is a later event whose
+`supersedes_delta_id` references an earlier accepted event that is already
+consumed by the current formal PRD, not a ledger-only pending event; that event remains
+auditable. Missing or duplicate formal PRD anchors, unsupported schema upgrades
+or downgrades, forward references, and cycles fail closed.
+Regenerate PRD and Outline into temporary outputs, then fail closed unless every
+consumed delta appears in the intended section with a stable
+`<!-- intent-delta:<id> -->` anchor and the correct provenance:
+`[src:user]` for new user text, `[src:user-confirmed]` for an accepted candidate,
+and `[src:ai-proposed]` for unaccepted candidates. Discovery schemas, response
+packages, and ledgers must not accept or emit the formal
+`outline-review-data.json` confirmation contract, and the formal confirmation
+consumer must not accept discovery artifacts. Level 3 review data is compiled
+one way by `sp.prd` from validated ledger state plus the current PRD/Outline; it
+is not produced by a confirmation consumer reading a discovery package.
+Existing replaceable PRD entries use `<!-- intent-target:<id> -->`; replacement
+and exclusion blocks use `<!-- intent-ref:<delta-id>:<target-or-candidate-id> -->`.
+Apply a named response with
+`node .specify/review/scripts/apply-outline-discovery.mjs --response <response-package> --prd-temp specs/<feature>/prd.md.tmp --outline-temp specs/<feature>/spec-outline.md.tmp`.
+The helper records valid new events before temporary-document validation. If
+validation fails, the formal PRD and Outline stay unchanged and those events
+remain pending; retry the same response after regenerating the temporary files.
+It serializes each feature with
+`specs/<feature>/prd/review/.outline-discovery-writeback.lock`. If an active
+process owns the lock, wait for that writeback to finish before retrying. A
+dead owner's stale lock is recovered only while the helper owns the exclusive
+`.outline-discovery-writeback.recovery.lock` claim and after it rechecks the
+main lock identity. Both locks carry unique ownership IDs; cleanup must not
+remove a lock that has changed owners. If a dead process left both locks, fail
+closed and preserve them until an operator verifies that no writeback is
+running and removes only the recovery claim. If the old main lock is already
+absent, remove an orphaned recovery claim only after acquiring a fresh main
+lock.
+
+Downstream stabilization requires `specs/<feature>/spec-outline.md` with `READY_FOR_SPECIFY`;
+an awaiting, blocked, missing, or stale Outline never authorizes `sp.specify`.
 `spec-outline.md` must include a lightweight `Source Authority Summary` listing
 stable sources, candidate-only sources, archived or missing sources, source
 rebase decisions, and what `sp.specify` may safely consume. Do not copy the full
@@ -92,6 +173,15 @@ current `prd.md`, source authority, feature boundary, and human decision
 records. Do not use file mtime or raw hashes as hard gates. Missing, stale, or
 mismatched outline evidence routes back to `sp.prd`, `sp.clarify`, source
 recovery, or feature split confirmation before `spec.md` is stabilized.
+For the new confirmation contract, the gate must recompute the Review Data ID
+from the current complete JSON with `.specify/review/scripts/review-data-id.mjs`.
+The canonical identity recursively sorts object keys, preserves array order, and
+covers every review field. Missing helpers or JSON, missing confirmation, stale
+digest, review identity mismatch, source-authority mismatch, or unresolved review
+records are hard failures owned by `sp.prd`. Legacy `READY_FOR_SPECIFY` outlines without an
+`Outline Confirmation` block remain warning-only for one minor-release
+compatibility window; the next `sp.prd` refresh must generate the graphical
+confirmation contract.
 Existing `spec-outline.md` status is not static. Each `sp.prd` refresh must
 re-read the current PRD, source evidence, and existing outline, then recompute
 readiness from current evidence. `NEEDS_PRD` may upgrade only after product

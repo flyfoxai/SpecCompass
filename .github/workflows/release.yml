@@ -44,26 +44,21 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Flow/UI Review Confirmation
+          ## PRD Outline and Review Priorities
 
-          This release improves the SpecCompass Flow/UI review workflow:
+          This release makes human confirmation more focused:
 
-          - Flow and UI review pages open through the fixed Web renderer with short auto-load parameters.
-          - Reviewers can accept recommendations or submit structured natural-language revision requests.
-          - Reviewers can apply recommendations to all remaining items or only the current view without overwriting saved choices or drafts.
-          - Confirmation-package download checks every module, offers to fill valid remaining recommendations, and blocks unresolved items without a valid recommendation.
-          - The review page remains a confirmation surface, not a direct Flow/UI editor.
-          - Flow checkpoints identify the business trigger, responsible role, result change, and next responsibility; decision exits must state the real condition or recovery reason.
-          - UI screens explain why they exist, who enters them, what users must accomplish, and what result they obtain before showing the product interface.
-          - Flow and UI use separate review data contracts: Flow facts support UI decisions as traceable evidence but do not become product controls, branches, or diagrams.
-
-          Release notes intentionally summarize shipped review tooling and user-facing behavior. Methodology documents are not published as the release theme; supporting documentation, tests, and maintenance commits remain tracked in git history and CHANGELOG.md.
+          - `/sp.prd` now develops Outline maturity in stages. Early discovery offers 2-4 candidates, one recommendation, and direct user input.
+          - Mature Outlines receive a visual, identity-bound confirmation before `/sp.specify`.
+          - Flow and UI confirmation points now use `critical`, `important`, and `normal` priorities.
+          - Critical points are deliberately limited, require a reason, and must be confirmed individually.
+          - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install
 
           \`\`\`bash
           uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecCompass.git@${VERSION}
-          specify init my-project
+          specify init my-project --integration codex
           \`\`\`
 
           NOTES_EOF

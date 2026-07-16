@@ -1,4 +1,4 @@
-/* Fixed SpecCompass review renderer infrastructure. Normal /sp.flow and /sp.ui only fill JSON review data. UI dynamic marker behavior is displayed as plain text, not animation. */
+/* Fixed SpecCompass review renderer infrastructure. Review commands only fill JSON review data. UI dynamic marker behavior is displayed as plain text, not animation. */
 function render() {
   if (!reviewData) {
     return;
@@ -96,7 +96,12 @@ function renderCenter() {
   const tabs = $("item-tabs");
   tabs.replaceChildren();
   tabs.setAttribute("role", "tablist");
-  tabs.setAttribute("aria-label", reviewData.review_type === "ui" ? "当前业务模块内的界面切换" : "当前业务模块内的流程切换");
+  const tabLabels = {
+    flow: "当前业务模块内的流程切换",
+    ui: "当前业务模块内的界面切换",
+    outline: "当前功能纲要的视图切换"
+  };
+  tabs.setAttribute("aria-label", tabLabels[reviewData.review_type]);
   currentItems().forEach((entry, index) => {
     const mustCount = countItemMust(entry);
     const button = document.createElement("button");
@@ -121,8 +126,15 @@ function renderCenter() {
     view.appendChild(renderUiScreen(item));
     return;
   }
-
-  view.appendChild(renderFlowDiagram(item));
+  if (reviewData.review_type === "flow") {
+    view.appendChild(renderFlowDiagram(item));
+    return;
+  }
+  if (reviewData.review_type === "outline") {
+    view.appendChild(renderOutlinePreview(item));
+    return;
+  }
+  view.appendChild(create("p", "error", `不支持的 review_type：${reviewData.review_type}`));
 }
 
 function renderFlowDiagram(item) {

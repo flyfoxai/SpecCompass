@@ -27,6 +27,8 @@
       <div class="tools">
         <button id="load-flow">加载 flow-review-data.json</button>
         <button id="load-ui">加载 ui-review-data.json</button>
+        <button id="load-outline">加载 outline-review-data.json</button>
+        <button id="load-outline-discovery">加载 outline-discovery-data.json</button>
         <input id="file-input" class="hidden" type="file" accept="application/json,.json">
         <button id="download-package" class="primary">下载确认包</button>
         <button id="copy-summary">复制确认摘要兜底</button>
@@ -71,8 +73,14 @@
             <ol id="authorization-steps" class="authorization-steps">
               <li><strong>本地选择</strong>：点击推荐项会保存到浏览器草稿；建议确认不计入红色待处理必审。</li>
               <li><strong>下载确认包</strong>：点击顶部按钮生成可交给模型写回的 JSON 包。</li>
-              <li><strong>写回确认文档</strong>：确认包写入 flow-confirmation.md 或 ui-confirmation.md 后才是正式授权。</li>
+              <li><strong>写回确认文档</strong>：确认包写入对应的 flow、UI 或 Outline confirmation 文档后才是正式授权。</li>
             </ol>
+            <div id="priority-filters" class="priority-filters" aria-label="按确认优先级筛选">
+              <button type="button" data-priority="all" aria-pressed="true">全部 0</button>
+              <button type="button" data-priority="critical" aria-pressed="false">非常重要 0</button>
+              <button type="button" data-priority="important" aria-pressed="false">重要 0</button>
+              <button type="button" data-priority="normal" aria-pressed="false">普通 0</button>
+            </div>
             <div class="rail-actions">
               <button id="show-all" class="hidden">显示全部确认点</button>
               <button id="bulk-view-recommended">当前视图按推荐保存</button>
@@ -93,7 +101,10 @@
   <script defer src="scripts/state-store.js?v=20260713-localhost-scope"></script>
   <script defer src="scripts/data-validator.js?v=20260626-ui-layout"></script>
   <script defer src="scripts/confirmation-package.js?v=20260629-confirmation-package"></script>
+  <script defer src="scripts/discovery-response-package.js?v=20260716-outline-discovery"></script>
   <script defer src="scripts/ui-preview-renderer.js?v=20260626-ui-layout"></script>
+  <script defer src="scripts/outline-preview-renderer.js?v=20260716-outline-review"></script>
+  <script defer src="scripts/outline-discovery-renderer.js?v=20260716-outline-discovery"></script>
   <script defer src="scripts/review-rail.js?v=20260711-recommendation-completion"></script>
   <script defer src="scripts/right-rail-resizer.js?v=20260702-right-rail"></script>
   <script defer src="scripts/feature-nav.js?v=20260701-feature-nav"></script>

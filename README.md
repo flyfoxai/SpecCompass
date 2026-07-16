@@ -1,88 +1,43 @@
 <div align="center">
-    <h1>SpecCompass</h1>
-    <h3><em>Spec-driven development for AI coding agents, with visual confirmation before implementation.</em></h3>
+  <h1>SpecCompass</h1>
+  <p><em>Spec-driven development for AI coding agents, with human confirmation before implementation.</em></p>
 </div>
 
-SpecCompass is an enhanced fork of [github/spec-kit](https://github.com/github/spec-kit). It keeps the upstream installation and agent integrations, then adds a layered control loop for AI-assisted software work.
+SpecCompass extends [GitHub Spec Kit](https://github.com/github/spec-kit) with a controlled path from product intent to verified implementation. Chinese documentation: [README.zh-CN.md](./README.zh-CN.md).
 
-The core idea: do not let an agent jump from intent to code. Clarify direction first, show the flow and UI for human confirmation, then implement only the confirmed scope with evidence.
+## Core capabilities
 
-Chinese documentation: [README.zh-CN.md](./README.zh-CN.md)
+- **PRD Outline review**: `/sp.prd` builds the outline in stages. Early stages present 2-4 candidates, a recommendation, and free-text input; a mature outline requires formal visual confirmation before `/sp.specify`.
+- **Flow and UI review**: `/sp.flow` and `/sp.ui` provide visual confirmation pages. Decisions are ranked `critical`, `important`, or `normal`; critical items are limited and always confirmed individually.
+- **Controlled delivery**: planning, analysis, gates, implementation, and verification stay linked to confirmed scope and evidence.
 
-![SpecCompass command responsibility map](./docs/assets/speccompass-command-map-en.svg)
+Typical workflow:
 
-![SpecCompass layered process](./docs/assets/speccompass-layered-flow-en.svg)
-
-## What changes
-
-SpecCompass turns specifications into a control mechanism for agent work:
-
-- **Intent before execution**: product goals, constraints, and missing decisions are captured before planning
-- **Smart routing**: when you do not know the next step, run `/sp.route`; it reads project state, uses the agent to choose the next safe command, and avoids guesswork
-- **Visible review before code**: flow and UI are shown in Web review pages before implementation
-- **Business context in every review**: Flow checkpoints explain the trigger, responsible role, result, and next responsibility; every UI screen explains why it exists, who enters it, what they need to accomplish, and which Flow facts support the design
-- **Recommended choices**: the agent explains each option in plain language, including when to choose it, what the agent will change next, and how it affects scope, schedule, risk, implementation, and tests
-- **Authorization records**: confirmed flow and UI decisions become the source for later work
-- **Bounded implementation**: coding starts from selected tasks, declared scope, and current verification evidence
-
-## How work moves
-
-1. Capture product intent with `/sp.prd`, `/sp.specify`, and `/sp.clarify`
-2. When unsure what to do next, run `/sp.route` to recover direction and get the next safe command
-3. Generate or refresh business and architecture flows with `/sp.flow`, then review and confirm them visually
-4. Generate or refresh screen structure and interaction choices with `/sp.ui`, then review and confirm the UI preview
-5. Prepare the delivery boundary with `/sp.bundle`, `/sp.plan`, and `/sp.tasks`
-6. Close the document chain before coding: `/sp.analyze` checks evidence, then `/sp.gate` authorizes the stage
-7. Implement only authorized work with `/sp.implement`
-
-This keeps human judgment at the points where it matters, while keeping the agent focused on work it can verify.
-
-## Operating guardrails
-
-`/sp.route y` is only a safe continuation shortcut. It relies on `speckit.route.v1`, `continueAllowed`, `fallback-log.md`, and the `REPEATED_FALLBACK` stop rule; human decisions and unclear blockers route back to `/sp.clarify`.
-
-Implementation review starts from the `Delta Summary`, current diff, task packet, trace/open-items, and the task `Read Set` before broader source reading.
-
-For controlled multi-agent work, one coordinator assigns eligible worksets, workers submit `Delta Summary` and `Proposed Updates`, and failures fall back to single-agent recovery.
-
-## Visual confirmation
-
-`/sp.flow` first generates or refreshes the business and architecture flow artifacts, then creates a review page for modules, process diagrams, decision points, and recommended choices. Each checkpoint is written around a real trigger, responsible role, business result, and next responsibility so a reviewer can understand its place in the larger process.
-
-`/sp.ui` first generates or refreshes the screen map, page structure, UI regions, controls, states, and key interaction choices, then creates a review page for visual confirmation. Each Screen also records its business context, primary users, entry scenario, user goal, outcome, and Flow references. Flow is evidence for UI decisions, not a substitute for the visible screen design.
-
-Both pages use a right-side review rail. Reviewers can accept the recommendation or submit a structured natural-language revision request. Recommended options must explain the background, next model action, downstream impact, and recommendation reason. The browser page is not an editor; the generated confirmation document is what authorizes later model revisions and implementation.
-
-Review page examples:
-
-![SpecCompass flow review confirmation page](./docs/assets/speccompass-flow-review-preview.png)
-
-![SpecCompass UI review confirmation page](./docs/assets/speccompass-ui-review-preview.png)
-
-## Start using SpecCompass
-
-Install the SpecCompass fork:
-
-```bash
-uv tool install specify-cli --from git+https://github.com/flyfoxai/SpecCompass.git
+```text
+/sp.prd -> /sp.specify -> /sp.flow -> /sp.ui
+        -> /sp.bundle -> /sp.plan -> /sp.tasks
+        -> /sp.analyze -> /sp.gate -> /sp.implement
 ```
 
-Create a Codex-ready project:
+Use `/sp.route` when the next step is unclear.
+
+## Install
 
 ```bash
+uv tool install specify-cli --force \
+  --from git+https://github.com/flyfoxai/SpecCompass.git
+
 specify init my-project --integration codex
 cd my-project
 specify check
 ```
 
-In Codex, use `$sp-*` skills as the stable entry point, for example `$sp-plan`, `$sp-flow`, and `$sp-ui`.
+For an existing project, upgrading the CLI does not update the templates already copied into that project. Commit local changes, then refresh the managed templates from the project root:
 
-## Read more
+```bash
+specify init . --integration codex --force
+```
 
-README stays focused on the implementation idea. The detailed rules for PRD intake, flow/UI confirmation, implementation readiness, blocker closeout, verification, and multi-agent coordination live in [SP Project Methodology](./docs/reference/sp-project-methodology.md).
+Replace `codex` with your integration. Use `/sp.*` commands on slash-command hosts and `$sp-*` skills in Codex.
 
-SpecCompass keeps the upstream Spec Kit installation style where practical. For users, this repository is the install target: install SpecCompass, initialize a project, then use `/sp.*` on slash-command hosts or `$sp-*` skills in Codex.
-
-## License
-
-This project follows the upstream Spec Kit license. See [LICENSE](./LICENSE).
+Detailed rules: [SP Project Methodology](./docs/reference/sp-project-methodology.md). License: [LICENSE](./LICENSE).

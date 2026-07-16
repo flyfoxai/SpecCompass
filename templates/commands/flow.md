@@ -455,6 +455,17 @@ vocabulary instead.
   / 流程简介, fullscreen-capable diagram metadata, stable node IDs, review
   labels, globally unique `node.id` values across the whole review data file,
   `review_layer`, `review_level`, owner, `node_kind`, source refs,
+  `schema_version: 2`, and an orthogonal `confirmation_priority` for every
+  actionable confirmation node. Priority values are `critical`, `important`,
+  and `normal`; informational nodes omit them. A `critical` node also requires
+  substantial `critical_basis` and reviewer-facing `priority_reason`. Rank all
+  actionable candidates by severe impact, irreversibility, and absence of a
+  safe default before assigning priority. The maximum is
+  `N == 0 ? 0 : min(3, max(1, ceil(N / 10)))`; this is an upper bound, not a
+  quota, and zero critical / 0 个 critical is preferred when none qualifies.
+  Downgrade / 降级 excess candidates to `important` before validation. Every
+  critical point requires individual / 逐项 confirmation and is excluded from
+  every bulk / 批量 recommended-option action.
   tiered `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices,
   `recommended_option`, required `decision_background`, required
   `decision_summary`, required `benefit`, required `cost`, required

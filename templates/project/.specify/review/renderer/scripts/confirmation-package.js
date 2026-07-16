@@ -1,7 +1,8 @@
-/* Fixed SpecCompass review renderer infrastructure. Normal /sp.flow and /sp.ui only fill JSON review data. */
+/* Fixed SpecCompass review renderer infrastructure. Review commands only fill JSON review data. */
 (function () {
   const FORMAT = "speccompass-confirmation-package";
   const VERSION = 1;
+  const REVIEW_TYPES = new Set(["flow", "ui", "outline"]);
   const DEFAULT_MAX_UTF8_BYTES = 100000;
   // Covers final continuation anchors and per-part counters after candidate sizing.
   const PACKING_HEADROOM_BYTES = 1800;
@@ -41,6 +42,13 @@
     );
   }
 
+  function assertReviewType(reviewType) {
+    if (typeof reviewType !== "string" || !REVIEW_TYPES.has(reviewType)) {
+      throw new Error("review_type must be one of flow, ui, or outline");
+    }
+    return reviewType;
+  }
+
   function assertSafeRepoPath(path, fieldName = "target_path") {
     const value = String(path || "").trim().replace(/\\/g, "/");
     if (!value) throw new Error(`${fieldName} is required`);
@@ -55,21 +63,26 @@
 
   function assertConfirmationTargetPath(path, reviewType) {
     const value = assertSafeRepoPath(path);
-    const match = reviewType === "ui"
-      ? value.match(/^specs\/([^/]+)\/ui\/review\/ui-confirmation\.md$/)
-      : value.match(/^specs\/([^/]+)\/flows\/review\/flow-confirmation\.md$/);
+    const targetPatterns = {
+      flow: /^specs\/([^/]+)\/flows\/review\/flow-confirmation\.md$/,
+      ui: /^specs\/([^/]+)\/ui\/review\/ui-confirmation\.md$/,
+      outline: /^specs\/([^/]+)\/prd\/review\/outline-confirmation\.md$/
+    };
+    const expectedPaths = {
+      flow: "specs/<feature>/flows/review/flow-confirmation.md",
+      ui: "specs/<feature>/ui/review/ui-confirmation.md",
+      outline: "specs/<feature>/prd/review/outline-confirmation.md"
+    };
+    const normalizedReviewType = assertReviewType(reviewType);
+    const match = value.match(targetPatterns[normalizedReviewType]);
     if (!match || !isSafeFeatureId(match[1])) {
-      throw new Error(
-        reviewType === "ui"
-          ? "target_path must point to specs/<feature>/ui/review/ui-confirmation.md"
-          : "target_path must point to specs/<feature>/flows/review/flow-confirmation.md"
-      );
+      throw new Error(`target_path must point to ${expectedPaths[normalizedReviewType]}`);
     }
     return value;
   }
 
   function safeWritebackTarget(data = {}) {
-    const reviewType = data.review_type === "ui" ? "ui" : "flow";
+    const reviewType = assertReviewType(data.review_type);
     if (data.target_path) {
       return assertConfirmationTargetPath(data.target_path, reviewType);
     }
@@ -78,19 +91,26 @@
     if (artifactPath) {
       const flowMatch = artifactPath.match(/^specs\/([^/.][^/]*)\/flows\/review\/flow-review-data\.json$/);
       const uiMatch = artifactPath.match(/^specs\/([^/.][^/]*)\/ui\/review\/ui-review-data\.json$/);
+      const outlineMatch = artifactPath.match(/^specs\/([^/.][^/]*)\/prd\/review\/outline-review-data\.json$/);
       if (reviewType === "flow" && flowMatch) {
         return assertConfirmationTargetPath(`specs/${flowMatch[1]}/flows/review/flow-confirmation.md`, reviewType);
       }
       if (reviewType === "ui" && uiMatch) {
         return assertConfirmationTargetPath(`specs/${uiMatch[1]}/ui/review/ui-confirmation.md`, reviewType);
       }
+      if (reviewType === "outline" && outlineMatch) {
+        return assertConfirmationTargetPath(`specs/${outlineMatch[1]}/prd/review/outline-confirmation.md`, reviewType);
+      }
     }
 
     const feature = data.project?.feature;
     if (isSafeFeatureId(feature)) {
-      const target = reviewType === "ui"
-        ? `specs/${feature}/ui/review/ui-confirmation.md`
-        : `specs/${feature}/flows/review/flow-confirmation.md`;
+      const targetPaths = {
+        flow: `specs/${feature}/flows/review/flow-confirmation.md`,
+        ui: `specs/${feature}/ui/review/ui-confirmation.md`,
+        outline: `specs/${feature}/prd/review/outline-confirmation.md`
+      };
+      const target = targetPaths[reviewType];
       return assertConfirmationTargetPath(target, reviewType);
     }
 
@@ -163,10 +183,33 @@
     return (modules || []).reduce((count, module) => count + (module.records || []).length, 0);
   }
 
+  function normalizeOutlineIdentity(input, reviewType, reviewDataId) {
+    if (reviewType !== "outline") {
+      return { outlineDigest: undefined, sourceAuthorityIds: undefined };
+    }
+    if (reviewDataId === "N/A") {
+      throw new Error("review_data_id is required for outline confirmation packages");
+    }
+    const outlineDigest = cleanText(input.outline_digest).replace(/^sha256:/i, "").toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(outlineDigest)) {
+      throw new Error("outline_digest must be a 64-character SHA-256 digest with an optional sha256: prefix");
+    }
+    if (!Array.isArray(input.source_authority_ids) || input.source_authority_ids.length === 0) {
+      throw new Error("source_authority_ids must be a non-empty array for outline confirmation packages");
+    }
+    const sourceAuthorityIds = input.source_authority_ids.map((value) => cleanText(value));
+    if (sourceAuthorityIds.some((value) => !value) || new Set(sourceAuthorityIds).size !== sourceAuthorityIds.length) {
+      throw new Error("source_authority_ids must contain unique non-empty strings");
+    }
+    return { outlineDigest, sourceAuthorityIds };
+  }
+
   function normalizeInput(input = {}, maxBytes = DEFAULT_MAX_UTF8_BYTES) {
-    const reviewType = input.review_type === "ui" ? "ui" : "flow";
+    const reviewType = assertReviewType(input.review_type);
     const modules = (input.modules || []).map(normalizeModule);
     const unauthorizedDraftCount = countUnauthorizedDrafts(modules);
+    const reviewDataId = cleanText(input.review_data_id, "N/A");
+    const { outlineDigest, sourceAuthorityIds } = normalizeOutlineIdentity(input, reviewType, reviewDataId);
     return {
       format: FORMAT,
       version: VERSION,
@@ -174,7 +217,9 @@
       review_type: reviewType,
       package_session_id: cleanText(input.package_session_id, createPackageSessionId(input)),
       batch_id: cleanText(input.batch_id, "N/A"),
-      review_data_id: cleanText(input.review_data_id, "N/A"),
+      review_data_id: reviewDataId,
+      outline_digest: outlineDigest,
+      source_authority_ids: sourceAuthorityIds,
       source_review_data: cleanText(input.source_review_data || input.artifact_path, "N/A"),
       target_path: safeWritebackTarget({ ...input, review_type: reviewType }),
       max_utf8_bytes: maxBytes,
@@ -186,7 +231,7 @@
         purpose: "This package records reviewer choices from the SpecCompass review page.",
         writeback_rule: "Write one confirmation Markdown document to target_path. Do not reinterpret the choices, do not summarize away records, and keep revision_requests actionable. If part_count is greater than 1, do not write a single part as the complete confirmation document; collect all parts first, verify summed part_record_count equals total_record_count, merge records by part_index, then write one coherent target_path update.",
         split_rule: "If part_count is greater than 1, collect all parts with the same package_session_id before final writeback, verify the number of files equals part_count, verify each part repeats the same total_record_count, verify the sum of part_record_count equals total_record_count, then process packages in part_index order. continuation_from and continuation_to are boundary anchors only; each part is self-contained, each module segment repeats module_context, and each record repeats module_id/module_title so choices keep their module ownership after splitting.",
-        merge_verification: "For multi-part packages, collect exactly part_count files with the same package_session_id, review_type, batch_id, review_data_id, source_review_data, and target_path. Verify all parts repeat the same total_record_count and that sum(part_record_count) == total_record_count before writing. If any part is missing, duplicated, from another session, or fails the count formula, stop and ask for the missing/correct package instead of writing target_path.",
+        merge_verification: "For multi-part packages, collect exactly part_count files with the same package_session_id, review_type, batch_id, review_data_id, outline_digest, source_authority_ids, source_review_data, and target_path. Verify all parts repeat the same total_record_count and that sum(part_record_count) == total_record_count before writing. If any part is missing, duplicated, from another session, or fails the identity or count checks, stop and ask for the missing/correct package instead of writing target_path.",
         groups_rule: "When groups.summary_only is true, modules[].records is the authoritative review detail and groups only carries counts to avoid repeated oversized summaries. Rebuild revision_requests from records[].revision_request when needed.",
         draft_rule: "Records with status DRAFT, bucket draft_excluded_items, authorization_state EXCLUDED_DRAFT, or is_authorized_decision false must not be written as authorized decisions. They are excluded drafts for follow-up only.",
         authorization_rule: "Browser localStorage is not authorization. The confirmation document at target_path is the authorization artifact.",
@@ -196,6 +241,8 @@
             "review_type",
             "batch_id",
             "review_data_id",
+            "outline_digest",
+            "source_authority_ids",
             "source_review_data",
             "package_session_id",
             "target_path",
@@ -245,6 +292,8 @@
       package_session_id: base.package_session_id,
       batch_id: base.batch_id,
       review_data_id: base.review_data_id,
+      outline_digest: base.outline_digest,
+      source_authority_ids: base.source_authority_ids,
       source_review_data: base.source_review_data,
       target_path: base.target_path,
       max_utf8_bytes: base.max_utf8_bytes,

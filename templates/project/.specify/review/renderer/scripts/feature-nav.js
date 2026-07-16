@@ -26,9 +26,11 @@
     const params = new URLSearchParams(window.location.search);
     const flow = params.get("flow");
     const ui = params.get("ui");
-    if (flow && ui) return null;
-    const mode = flow ? "flow" : ui ? "ui" : "";
-    const feature = flow || ui || "";
+    const outline = params.get("outline");
+    const outlineDiscovery = params.get("outline-discovery");
+    if ([flow, ui, outline, outlineDiscovery].filter(Boolean).length > 1) return null;
+    const mode = flow ? "flow" : ui ? "ui" : outline ? "outline" : outlineDiscovery ? "outline-discovery" : "";
+    const feature = flow || ui || outline || outlineDiscovery || "";
     if (!mode || !isValidFeatureId(feature)) return null;
     return { mode, feature };
   }
@@ -53,20 +55,28 @@
         feature: entry.feature,
         title: entry.title || entry.feature,
         has_flow_review: entry.has_flow_review === true,
-        has_ui_review: entry.has_ui_review === true
+        has_ui_review: entry.has_ui_review === true,
+        has_outline_review: entry.has_outline_review === true,
+        has_outline_discovery: entry.has_outline_discovery === true
       }))
       .sort((left, right) => left.order - right.order || left.feature.localeCompare(right.feature));
   }
 
   function hasModeReview(entry, mode) {
-    return mode === "flow" ? entry.has_flow_review : entry.has_ui_review;
+    if (mode === "flow") return entry.has_flow_review;
+    if (mode === "ui") return entry.has_ui_review;
+    if (mode === "outline-discovery") return entry.has_outline_discovery;
+    return entry.has_outline_review;
   }
 
   function hasUnsavedReviewWork() {
     try {
       const draftResult = typeof hasDrafts === "function" ? hasDrafts() : false;
       const unexportedResult = typeof hasUnexportedSavedChoices === "function" ? hasUnexportedSavedChoices() : false;
-      return Boolean(draftResult || unexportedResult);
+      const discoveryResult = typeof hasUnexportedOutlineDiscoveryWork === "function"
+        ? hasUnexportedOutlineDiscoveryWork()
+        : false;
+      return Boolean(draftResult || unexportedResult || discoveryResult);
     } catch (_error) {
       return false;
     }
@@ -74,8 +84,11 @@
 
   function navigateToFeature(mode, feature) {
     if (hasUnsavedReviewWork()) {
+      const isDiscovery = mode === "outline-discovery";
       const confirmed = window.confirm(
-        "当前页面有本地选择或尚未导出的确认结果。离开前请先下载确认包；仍要切换到其他需求吗？"
+        isDiscovery
+          ? "当前页面有尚未下载的 Outline 探索响应。离开前请先保存并下载；仍要切换到其他需求吗？"
+          : "当前页面有本地选择或尚未导出的确认结果。离开前请先下载确认包；仍要切换到其他需求吗？"
       );
       if (!confirmed) return;
     }
@@ -104,7 +117,7 @@
     const current = features[currentIndex];
     const currentStatus = hasModeReview(current, config.mode)
       ? `当前需求：${current.title}`
-      : `当前需求：${current.title}，${config.mode === "flow" ? "flow" : "UI"} 复核数据待生成`;
+      : `当前需求：${current.title}，${config.mode === "flow" ? "flow" : config.mode === "ui" ? "UI" : config.mode === "outline-discovery" ? "Outline 探索" : "Outline"}数据待生成`;
     setNote(currentStatus);
 
     const previousFeature = features[currentIndex - 1];
@@ -168,9 +181,9 @@
 
   const config = urlConfig();
   if (!config) {
-    setDisabled(navElement("prev-feature"), true, "未使用 ?flow=<feature> 或 ?ui=<feature> 打开。");
-    setDisabled(navElement("next-feature"), true, "未使用 ?flow=<feature> 或 ?ui=<feature> 打开。");
-    setNote("未识别当前需求；使用 ?flow=<feature> 或 ?ui=<feature> 后可显示需求级导航。");
+    setDisabled(navElement("prev-feature"), true, "未使用受支持的需求复核参数打开。");
+    setDisabled(navElement("next-feature"), true, "未使用受支持的需求复核参数打开。");
+    setNote("未识别当前需求；使用 ?flow=<feature>、?ui=<feature>、?outline=<feature> 或 ?outline-discovery=<feature> 后可显示需求级导航。");
     return;
   }
 
