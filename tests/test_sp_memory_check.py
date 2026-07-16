@@ -2209,7 +2209,11 @@ def test_powershell_checker_deeper_owner_review_heading_suppresses_warning_when_
     )
     payload = _run_powershell(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(
+        f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED"
+        for f in payload["findings"]
+    )
     assert not any(f["code"] == "OWNER_REVIEW_REQUIRED_MISSING" for f in payload["findings"])
 
 
@@ -2255,7 +2259,11 @@ def test_powershell_checker_source_snapshot_suppresses_warning_when_available(tm
     )
     payload = _run_powershell(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(
+        f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED"
+        for f in payload["findings"]
+    )
     assert not any(f["code"] == "OUTLINE_SOURCE_SNAPSHOT_MISSING" for f in payload["findings"])
 
 
@@ -2311,7 +2319,11 @@ def test_powershell_checker_numbered_owner_review_heading_suppresses_warning_whe
     )
     payload = _run_powershell(feature)
 
-    assert payload["status"] == "PASS"
+    assert payload["status"] == "WARN"
+    assert any(
+        f["code"] == "LEGACY_OUTLINE_CONFIRMATION_DEPRECATED"
+        for f in payload["findings"]
+    )
     assert not any(f["code"] == "OWNER_REVIEW_REQUIRED_MISSING" for f in payload["findings"])
 
 
