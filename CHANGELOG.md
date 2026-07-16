@@ -2,6 +2,16 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.34] - 2026-07-16
+
+### Changed
+
+- Added staged PRD Outline review and three-level Flow/UI confirmation priorities.
+- test: use file URL for Node preload on Windows
+- test: align PowerShell outline compatibility warnings
+- feat: add staged PRD outline review
+- chore: begin 0.10.34.dev0 development
+
 ## [0.10.33] - 2026-07-15
 
 ### Changed
