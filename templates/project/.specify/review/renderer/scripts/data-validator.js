@@ -1,4 +1,144 @@
 /* Fixed SpecCompass review renderer infrastructure. Review commands only fill JSON review data. */
+const OUTLINE_DISCOVERY_DENSITY_BUDGET = Object.freeze({
+  max_visible_nodes_per_map: 18,
+  max_depth: 3,
+  max_children_per_node: 4,
+  layer_balance_min_nodes: 8,
+  max_layer_share: 0.6,
+});
+
+function validateOutlineDiscoveryTopologyRuntime(data) {
+  const budget = data.density_budget;
+  if (!budget || typeof budget !== "object" || Array.isArray(budget)) return "Outline 探索缺少密度预算。";
+  for (const [key, expected] of Object.entries(OUTLINE_DISCOVERY_DENSITY_BUDGET)) {
+    if (budget[key] !== expected) return `Outline 探索密度预算 ${key} 必须是 ${expected}。`;
+  }
+  if (!Array.isArray(data.maps) || data.maps.length < 3) return "Outline 探索至少需要总图、业务分图和全局约束图。";
+  const mapsById = new Map();
+  for (const map of data.maps) {
+    if (["map_id", "title", "summary", "map_kind", "root_node_id"].some((key) => !String(map?.[key] || "").trim())) {
+      return "Outline 探索导图字段不完整。";
+    }
+    if (mapsById.has(map.map_id)) return "Outline 探索 map_id 必须唯一。";
+    if (!new Set(["overview", "branch", "global_constraints"]).has(map.map_kind)) return "Outline 探索 map_kind 不受支持。";
+    if (!(typeof map.parent_map_id === "string" || map.parent_map_id === null)) return "Outline 探索 parent_map_id 必须是字符串或 null。";
+    mapsById.set(map.map_id, map);
+  }
+  if (data.maps.filter((map) => map.map_kind === "overview").length !== 1) return "Outline 探索必须且只能有一个总图。";
+  if (data.maps.filter((map) => map.map_kind === "global_constraints").length !== 1) return "Outline 探索必须且只能有一个全局约束图。";
+  for (const map of data.maps) {
+    if (map.map_kind === "overview" ? map.parent_map_id !== null : !mapsById.has(map.parent_map_id)) {
+      return "Outline 探索导图的父图引用无效。";
+    }
+  }
+  for (const map of data.maps) {
+    const visited = new Set([map.map_id]);
+    let cursor = map;
+    while (cursor.parent_map_id !== null) {
+      cursor = mapsById.get(cursor.parent_map_id);
+      if (!cursor) break;
+      if (visited.has(cursor.map_id)) return "Outline 导图之间不能包含父图循环。";
+      visited.add(cursor.map_id);
+    }
+  }
+
+  if (!Array.isArray(data.outline_nodes) || !data.outline_nodes.length) return "Outline 探索至少需要一个导图节点。";
+  const nodeKinds = new Set(["root", "goal", "role", "domain", "scope", "problem", "scenario", "capability", "acceptance", "risk", "constraint", "map_link"]);
+  const sourceStatuses = new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]);
+  const nodesById = new Map();
+  const nodesByMap = new Map(data.maps.map((map) => [map.map_id, []]));
+  for (const node of data.outline_nodes) {
+    if (["node_id", "map_id", "node_kind", "label", "summary", "source_status"].some((key) => !String(node?.[key] || "").trim())) {
+      return "Outline 探索节点字段不完整。";
+    }
+    if (!(typeof node.parent_node_id === "string" || node.parent_node_id === null)) return "Outline 探索 parent_node_id 必须是字符串或 null。";
+    if (nodesById.has(node.node_id)) return "Outline 探索 node_id 必须唯一。";
+    if (!mapsById.has(node.map_id) || !nodeKinds.has(node.node_kind) || !sourceStatuses.has(node.source_status)) {
+      return "Outline 探索节点类型、来源或所属导图无效。";
+    }
+    nodesById.set(node.node_id, node);
+    nodesByMap.get(node.map_id).push(node);
+  }
+  for (const map of data.maps) {
+    const mapNodes = nodesByMap.get(map.map_id);
+    if (mapNodes.length > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_visible_nodes_per_map) return "单张 Outline 导图最多显示 18 个节点。";
+    const root = nodesById.get(map.root_node_id);
+    if (!root || root.map_id !== map.map_id || root.node_kind !== "root" || root.parent_node_id !== null ||
+        mapNodes.filter((node) => node.parent_node_id === null).length !== 1) {
+      return "Outline 探索每张导图必须有且只有一个合法根节点。";
+    }
+  }
+  const childrenByParent = new Map();
+  for (const node of data.outline_nodes) {
+    if (node.parent_node_id !== null) {
+      const parent = nodesById.get(node.parent_node_id);
+      if (!parent || parent.map_id !== node.map_id) return "Outline 节点的父节点必须存在于同一张导图。";
+      const children = childrenByParent.get(parent.node_id) || [];
+      children.push(node);
+      childrenByParent.set(parent.node_id, children);
+    }
+  }
+  if ([...childrenByParent.values()].some((children) => children.length > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_children_per_node)) {
+    return "Outline 节点最多有 4 个直接子节点。";
+  }
+  for (const map of data.maps) {
+    const mapNodes = nodesByMap.get(map.map_id);
+    const layers = new Map();
+    for (const node of mapNodes) {
+      let depth = 1;
+      let cursor = node;
+      const visited = new Set([node.node_id]);
+      while (cursor.parent_node_id !== null) {
+        const parent = nodesById.get(cursor.parent_node_id);
+        if (!parent || parent.map_id !== map.map_id) break;
+        if (visited.has(parent.node_id)) return "Outline 导图不能包含父子循环。";
+        visited.add(parent.node_id);
+        depth += 1;
+        cursor = parent;
+      }
+      if (depth > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_depth) return "单张 Outline 导图最多展示 3 层。";
+      layers.set(depth, (layers.get(depth) || 0) + 1);
+    }
+    if (mapNodes.length >= OUTLINE_DISCOVERY_DENSITY_BUDGET.layer_balance_min_nodes &&
+        Math.max(...layers.values()) / mapNodes.length > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_layer_share) {
+      return "Outline 导图任一层不能承载超过 60% 的节点。";
+    }
+  }
+  const childMapLinkCounts = new Map();
+  for (const node of data.outline_nodes) {
+    const map = mapsById.get(node.map_id);
+    if (map.map_kind === "global_constraints" && node.node_kind === "constraint" &&
+        (!Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length)) {
+      return "全局约束节点必须列出至少一个受影响的业务节点。";
+    }
+    if (node.child_map_id !== undefined) {
+      const childMap = mapsById.get(node.child_map_id);
+      if (node.node_kind !== "map_link" || !childMap || childMap.parent_map_id !== node.map_id) return "Outline 下钻节点必须指向直接子图。";
+      childMapLinkCounts.set(node.child_map_id, (childMapLinkCounts.get(node.child_map_id) || 0) + 1);
+    } else if (node.node_kind === "map_link") {
+      return "Outline 下钻节点缺少 child_map_id。";
+    }
+    if (node.affected_node_ids !== undefined) {
+      if (map.map_kind !== "global_constraints" || node.node_kind !== "constraint" || !Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length) {
+        return "affected_node_ids 只能用于全局约束节点。";
+      }
+      if (new Set(node.affected_node_ids).size !== node.affected_node_ids.length) {
+        return "全局约束的受影响节点不能重复。";
+      }
+      for (const id of node.affected_node_ids) {
+        const affected = nodesById.get(id);
+        if (!affected || mapsById.get(affected.map_id).map_kind !== "branch") return "全局约束只能关联业务分图节点。";
+      }
+    }
+  }
+  for (const map of data.maps) {
+    if (map.map_kind !== "overview" && childMapLinkCounts.get(map.map_id) !== 1) {
+      return "Outline 子图必须且只能从父图链接一次。";
+    }
+  }
+  return { mapsById, nodesById };
+}
+
 function validateReviewData(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return "review data 必须是 JSON object。";
@@ -10,7 +150,7 @@ function validateReviewData(data) {
     return "review_type 必须是 flow、ui、outline 或 outline_discovery。";
   }
   if (data.review_type === "outline_discovery") {
-    if (data.schema_version !== 1) return "outline_discovery 必须使用 schema_version 1。";
+    if (data.schema_version !== 2) return "outline_discovery 必须使用 schema_version 2。";
     if (data.interaction_mode !== "discovery") return "outline_discovery 的 interaction_mode 必须是 discovery。";
     if (!new Set(["explore", "frame"]).has(data.outline_maturity)) return "outline_maturity 必须是 explore 或 frame。";
     if (data.authorization_effect !== "none" || data.next_route !== "/sp.prd") {
@@ -34,6 +174,8 @@ function validateReviewData(data) {
         return "Outline 探索来源必须包含安全的仓库相对 path 和非空 source_type。";
       }
     }
+    const topology = validateOutlineDiscoveryTopologyRuntime(data);
+    if (typeof topology === "string") return topology;
     if (!Array.isArray(data.question_groups) || !data.question_groups.length) return "Outline 探索至少需要一个问题组。";
     const groupIds = new Set();
     const questionIds = new Set();
@@ -41,13 +183,16 @@ function validateReviewData(data) {
       if (!String(group?.id || "").trim() || groupIds.has(group.id)) return "Outline 探索问题组 ID 必须非空且唯一。";
       groupIds.add(group.id);
       if (!String(group?.title || "").trim() || !String(group?.summary || "").trim()) return "Outline 探索问题组必须包含 title 和 summary。";
+      if (!topology.mapsById.has(group.map_id)) return "Outline 探索问题组必须绑定现有导图。";
       if (!Array.isArray(group.questions) || !group.questions.length) return "Outline 探索问题组至少需要一个问题。";
       for (const question of group.questions) {
         if (!String(question?.id || "").trim() || questionIds.has(question.id)) return "Outline 探索问题 ID 必须非空且全局唯一。";
         questionIds.add(question.id);
-        for (const key of ["target_kind", "prompt", "context", "recommendation_reason"]) {
+        for (const key of ["outline_node_id", "target_kind", "prompt", "context", "recommendation_reason"]) {
           if (!String(question?.[key] || "").trim()) return `Outline 探索问题缺少 ${key}。`;
         }
+        const questionNode = topology.nodesById.get(question.outline_node_id);
+        if (!questionNode || questionNode.map_id !== group.map_id) return "Outline 探索问题必须绑定当前导图中的现有节点。";
         if (question.selection_mode !== "single") return "Outline 探索 selection_mode 必须是 single。";
         if (!Array.isArray(question.candidates) || question.candidates.length < 2 || question.candidates.length > 4) {
           return "Outline 探索问题必须提供 2-4 个候选。";

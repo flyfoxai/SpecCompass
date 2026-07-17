@@ -8,6 +8,19 @@ import process from "node:process";
 const OPERATIONS = new Set(["confirm_candidate", "add", "replace", "exclude", "context_note"]);
 const MATURITIES = new Set(["explore", "frame"]);
 const SOURCE_TAGS = new Set(["user", "user-confirmed"]);
+const OUTLINE_MAP_KINDS = new Set(["overview", "branch", "global_constraints"]);
+const OUTLINE_NODE_KINDS = new Set([
+  "root", "goal", "role", "domain", "scope", "problem", "scenario", "capability",
+  "acceptance", "risk", "constraint", "map_link",
+]);
+const OUTLINE_SOURCE_STATUSES = new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]);
+const DENSITY_BUDGET = Object.freeze({
+  max_visible_nodes_per_map: 18,
+  max_depth: 3,
+  max_children_per_node: 4,
+  layer_balance_min_nodes: 8,
+  max_layer_share: 0.6,
+});
 const SECTION_BY_TARGET_KIND = new Map([
   ["goal", "Strategic Goal"],
   ["user", "Target Users and Roles"],
@@ -101,7 +114,7 @@ function requireNullableString(value, label) {
 
 function validateResponseEnvelope(response) {
   requireObject(response, "response");
-  if (response.schema_version !== 1) fail("response schema_version must be 1");
+  if (response.schema_version !== 2) fail("response schema_version must be 2");
   if (response.format !== "speccompass-outline-discovery-response") fail("response format is not an Outline discovery response");
   if (response.review_type !== "outline_discovery") fail("response review_type must be outline_discovery");
   for (const key of ["response_id", "batch_id", "feature", "source_review_data", "generated_at"]) {
@@ -116,15 +129,16 @@ function validateResponseEnvelope(response) {
   if (!Array.isArray(response.deltas) || response.deltas.length === 0) fail("response deltas must not be empty");
 }
 
-function buildQuestionIndex(source) {
+function buildQuestionIndex(source, topology) {
   const questions = new Map();
   const groupIds = new Set();
   const groups = Array.isArray(source.question_groups) ? source.question_groups : [];
   if (groups.length === 0) fail("source question_groups must not be empty");
   for (const [groupIndex, group] of groups.entries()) {
     requireObject(group, `source question_group[${groupIndex}]`);
-    for (const key of ["id", "title", "summary"]) requireString(group[key], `source question_group[${groupIndex}] ${key}`);
+    for (const key of ["id", "title", "summary", "map_id"]) requireString(group[key], `source question_group[${groupIndex}] ${key}`);
     if (groupIds.has(group.id)) fail(`duplicate source question_group id: ${group.id}`);
+    if (!topology.mapsById.has(group.map_id)) fail(`source question_group ${group.id} map_id is unknown`);
     groupIds.add(group.id);
     if (!Array.isArray(group.questions) || group.questions.length === 0) {
       fail(`source question_group ${group.id} questions must not be empty`);
@@ -133,6 +147,11 @@ function buildQuestionIndex(source) {
       requireString(question?.id, "source question_id");
       if (questions.has(question.id)) fail(`duplicate source question_id: ${question.id}`);
       requireString(question.target_kind, `source question ${question.id} target_kind`);
+      requireString(question.outline_node_id, `source question ${question.id} outline_node_id`);
+      const questionNode = topology.nodesById.get(question.outline_node_id);
+      if (!questionNode || questionNode.map_id !== group.map_id) {
+        fail(`source question ${question.id} outline_node_id must belong to its question group map`);
+      }
       if (!SECTION_BY_TARGET_KIND.has(question.target_kind)) {
         fail(`source question ${question.id} target_kind is unsupported`);
       }
@@ -174,16 +193,137 @@ function buildQuestionIndex(source) {
       ) {
         fail(`source question ${question.id} allowed_operations must contain all five operations exactly once`);
       }
-      questions.set(question.id, { ...question, candidatesById: candidates });
+      questions.set(question.id, { ...question, map_id: group.map_id, candidatesById: candidates });
     }
   }
   if (questions.size === 0) fail("source must contain at least one question");
   return questions;
 }
 
+function validateSourceTopology(source) {
+  requireObject(source.density_budget, "source density_budget");
+  for (const [key, expected] of Object.entries(DENSITY_BUDGET)) {
+    if (source.density_budget[key] !== expected) fail(`source density_budget.${key} must be ${expected}`);
+  }
+  if (!Array.isArray(source.maps) || source.maps.length < 3) fail("source maps must contain overview, branch, and global constraints");
+  const mapsById = new Map();
+  for (const [index, map] of source.maps.entries()) {
+    requireObject(map, `source map[${index}]`);
+    for (const key of ["map_id", "title", "summary", "map_kind", "root_node_id"]) requireString(map[key], `source map[${index}] ${key}`);
+    requireNullableString(map.parent_map_id, `source map[${index}] parent_map_id`);
+    if (mapsById.has(map.map_id)) fail(`duplicate source map_id: ${map.map_id}`);
+    if (!OUTLINE_MAP_KINDS.has(map.map_kind)) fail(`source map ${map.map_id} map_kind is unsupported`);
+    mapsById.set(map.map_id, map);
+  }
+  if (source.maps.filter((map) => map.map_kind === "overview").length !== 1) fail("source must contain exactly one overview map");
+  if (source.maps.filter((map) => map.map_kind === "global_constraints").length !== 1) fail("source must contain exactly one global_constraints map");
+  for (const map of source.maps) {
+    if (map.map_kind === "overview" ? map.parent_map_id !== null : !mapsById.has(map.parent_map_id)) {
+      fail(`source map ${map.map_id} parent_map_id is invalid`);
+    }
+  }
+  for (const map of source.maps) {
+    const visited = new Set([map.map_id]);
+    let cursor = map;
+    while (cursor.parent_map_id !== null) {
+      cursor = mapsById.get(cursor.parent_map_id);
+      if (!cursor) break;
+      if (visited.has(cursor.map_id)) fail("source maps must not contain parent cycles");
+      visited.add(cursor.map_id);
+    }
+  }
+
+  if (!Array.isArray(source.outline_nodes) || !source.outline_nodes.length) fail("source outline_nodes must not be empty");
+  const nodesById = new Map();
+  const nodesByMap = new Map(source.maps.map((map) => [map.map_id, []]));
+  for (const [index, node] of source.outline_nodes.entries()) {
+    requireObject(node, `source outline_node[${index}]`);
+    for (const key of ["node_id", "map_id", "node_kind", "label", "summary", "source_status"]) requireString(node[key], `source outline_node[${index}] ${key}`);
+    requireNullableString(node.parent_node_id, `source outline_node[${index}] parent_node_id`);
+    if (nodesById.has(node.node_id)) fail(`duplicate source node_id: ${node.node_id}`);
+    if (!mapsById.has(node.map_id)) fail(`source node ${node.node_id} map_id is unknown`);
+    if (!OUTLINE_NODE_KINDS.has(node.node_kind)) fail(`source node ${node.node_id} node_kind is unsupported`);
+    if (!OUTLINE_SOURCE_STATUSES.has(node.source_status)) fail(`source node ${node.node_id} source_status is unsupported`);
+    nodesById.set(node.node_id, node);
+    nodesByMap.get(node.map_id).push(node);
+  }
+  const childrenByParent = new Map();
+  for (const node of source.outline_nodes) {
+    if (node.parent_node_id !== null) {
+      const parent = nodesById.get(node.parent_node_id);
+      if (!parent || parent.map_id !== node.map_id) fail(`source node ${node.node_id} parent_node_id is invalid`);
+      const children = childrenByParent.get(parent.node_id) || [];
+      children.push(node);
+      childrenByParent.set(parent.node_id, children);
+    }
+  }
+  for (const [parentId, children] of childrenByParent.entries()) {
+    if (children.length > DENSITY_BUDGET.max_children_per_node) fail(`source node ${parentId} exceeds child density budget`);
+  }
+  for (const map of source.maps) {
+    const mapNodes = nodesByMap.get(map.map_id);
+    if (mapNodes.length > DENSITY_BUDGET.max_visible_nodes_per_map) fail(`source map ${map.map_id} exceeds visible node budget`);
+    const root = nodesById.get(map.root_node_id);
+    if (!root || root.map_id !== map.map_id || root.node_kind !== "root" || root.parent_node_id !== null ||
+        mapNodes.filter((node) => node.parent_node_id === null).length !== 1) fail(`source map ${map.map_id} root is invalid`);
+    const layers = new Map();
+    for (const node of mapNodes) {
+      let depth = 1;
+      let cursor = node;
+      const visited = new Set([node.node_id]);
+      while (cursor.parent_node_id !== null) {
+        const parent = nodesById.get(cursor.parent_node_id);
+        if (visited.has(parent.node_id)) fail(`source map ${map.map_id} contains a parent cycle`);
+        visited.add(parent.node_id);
+        depth += 1;
+        cursor = parent;
+      }
+      if (depth > DENSITY_BUDGET.max_depth) fail(`source map ${map.map_id} exceeds depth budget`);
+      layers.set(depth, (layers.get(depth) || 0) + 1);
+    }
+    if (mapNodes.length >= DENSITY_BUDGET.layer_balance_min_nodes &&
+        Math.max(...layers.values()) / mapNodes.length > DENSITY_BUDGET.max_layer_share) {
+      fail(`source map ${map.map_id} exceeds layer balance budget`);
+    }
+  }
+  const childMapLinkCounts = new Map();
+  for (const node of source.outline_nodes) {
+    const map = mapsById.get(node.map_id);
+    if (map.map_kind === "global_constraints" && node.node_kind === "constraint" &&
+        (!Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length)) {
+      fail(`source global constraint node ${node.node_id} must list at least one affected business node`);
+    }
+    if (node.child_map_id !== undefined) {
+      const childMap = mapsById.get(node.child_map_id);
+      if (node.node_kind !== "map_link" || !childMap || childMap.parent_map_id !== node.map_id) fail(`source node ${node.node_id} child_map_id is invalid`);
+      childMapLinkCounts.set(node.child_map_id, (childMapLinkCounts.get(node.child_map_id) || 0) + 1);
+    } else if (node.node_kind === "map_link") fail(`source map_link node ${node.node_id} requires child_map_id`);
+    if (node.affected_node_ids !== undefined) {
+      if (map.map_kind !== "global_constraints" || node.node_kind !== "constraint" || !Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length) {
+        fail(`source node ${node.node_id} affected_node_ids are invalid`);
+      }
+      if (new Set(node.affected_node_ids).size !== node.affected_node_ids.length) {
+        fail(`source node ${node.node_id} affected_node_ids must be unique`);
+      }
+      for (const affectedId of node.affected_node_ids) {
+        const affected = nodesById.get(affectedId);
+        if (!affected || mapsById.get(affected.map_id).map_kind !== "branch") {
+          fail(`source node ${node.node_id} affected_node_ids must reference business branch nodes`);
+        }
+      }
+    }
+  }
+  for (const map of source.maps) {
+    if (map.map_kind !== "overview" && childMapLinkCounts.get(map.map_id) !== 1) {
+      fail(`source map ${map.map_id} must be linked exactly once from its parent map`);
+    }
+  }
+  return { mapsById, nodesById };
+}
+
 function validateSourceIdentity(source, response, expectedSourcePath) {
   requireObject(source, "source discovery data");
-  if (source.schema_version !== 1) fail("source schema_version must be 1");
+  if (source.schema_version !== 2) fail("source schema_version must be 2");
   if (source.review_type !== "outline_discovery" || source.interaction_mode !== "discovery") {
     fail("source must be Outline discovery data");
   }
@@ -206,6 +346,7 @@ function validateSourceIdentity(source, response, expectedSourcePath) {
     requireString(snapshot.path, `source snapshot[${index}] path`);
     requireString(snapshot.source_type, `source snapshot[${index}] source_type`);
   }
+  return validateSourceTopology(source);
 }
 
 function present(value) {
@@ -215,7 +356,7 @@ function present(value) {
 function validateDeltaShape(delta, index, questions, seenDeltaIds, seenQuestionIds) {
   const label = `delta[${index}]`;
   requireObject(delta, label);
-  for (const key of ["delta_id", "question_id", "target_kind", "operation", "source_tag"]) {
+  for (const key of ["delta_id", "question_id", "outline_node_id", "target_kind", "operation", "source_tag"]) {
     requireString(delta[key], `${label} ${key}`);
   }
   if (seenDeltaIds.has(delta.delta_id)) fail(`duplicate delta_id: ${delta.delta_id}`);
@@ -224,6 +365,9 @@ function validateDeltaShape(delta, index, questions, seenDeltaIds, seenQuestionI
   seenQuestionIds.add(delta.question_id);
   const question = questions.get(delta.question_id);
   if (!question) fail(`${label} question_id is unknown: ${delta.question_id}`);
+  if (delta.outline_node_id !== question.outline_node_id) {
+    fail(`${label} outline_node_id does not match question_id ${delta.question_id}`);
+  }
   if (delta.target_kind !== question.target_kind) fail(`${label} target_kind does not match question_id ${delta.question_id}`);
   if (!SECTION_BY_TARGET_KIND.has(delta.target_kind)) fail(`${label} target_kind is unsupported: ${delta.target_kind}`);
   if (!OPERATIONS.has(delta.operation)) fail(`${label} operation is unsupported: ${delta.operation}`);
@@ -295,13 +439,15 @@ function validateTargetReference(prd, delta) {
 
 function validateExistingLedger(ledger, feature) {
   requireObject(ledger, "intent ledger");
-  if (ledger.schema_version !== 1 || ledger.format !== "speccompass-outline-intent-ledger") {
+  if (![1, 2].includes(ledger.schema_version) || ledger.format !== "speccompass-outline-intent-ledger") {
     fail("intent ledger format or schema_version is invalid");
   }
   if (ledger.feature !== feature) fail("intent ledger feature does not match response feature");
   if (!Array.isArray(ledger.events)) fail("intent ledger events must be an array");
   const earlier = new Set();
-  for (const [index, event] of ledger.events.entries()) {
+  const normalizedEvents = [];
+  for (const [index, rawEvent] of ledger.events.entries()) {
+    const event = ledger.schema_version === 1 ? { ...rawEvent, outline_node_id: null } : rawEvent;
     const label = `intent event[${index}]`;
     requireObject(event, label);
     for (const key of ["delta_id", "response_id", "target_kind", "operation", "source_tag", "recorded_at"]) {
@@ -315,6 +461,7 @@ function validateExistingLedger(ledger, feature) {
     requireNullableString(event.candidate_id, `${label} candidate_id`);
     requireNullableString(event.target_id, `${label} target_id`);
     requireNullableString(event.supersedes_delta_id, `${label} supersedes_delta_id`);
+    requireNullableString(event.outline_node_id, `${label} outline_node_id`);
     if (typeof event.value !== "string") fail(`${label} value must be a string`);
     const hasCandidate = present(event.candidate_id);
     const hasTarget = present(event.target_id);
@@ -339,7 +486,9 @@ function validateExistingLedger(ledger, feature) {
       fail(`intent event[${index}] supersedes_delta_id must reference an earlier event`);
     }
     earlier.add(event.delta_id);
+    normalizedEvents.push(event);
   }
+  return { ...ledger, schema_version: 2, events: normalizedEvents };
 }
 
 function eventFor(response, delta) {
@@ -347,6 +496,7 @@ function eventFor(response, delta) {
     delta_id: delta.delta_id,
     response_id: response.response_id,
     maturity: response.outline_maturity,
+    outline_node_id: delta.outline_node_id,
     target_kind: delta.target_kind,
     operation: delta.operation,
     candidate_id: delta.candidate_id,
@@ -363,6 +513,7 @@ function sameEvent(left, right) {
     "delta_id",
     "response_id",
     "maturity",
+    "outline_node_id",
     "target_kind",
     "operation",
     "candidate_id",
@@ -668,8 +819,8 @@ async function main() {
   const releaseLock = await acquireFeatureLock(featureRoot, response.feature);
   try {
     const source = await readJson(sourcePath.resolved, "source discovery data");
-    validateSourceIdentity(source, response, expectedSource);
-    const questions = buildQuestionIndex(source);
+    const topology = validateSourceIdentity(source, response, expectedSource);
+    const questions = buildQuestionIndex(source, topology);
     const seenDeltaIds = new Set();
     const seenQuestionIds = new Set();
     const deltas = response.deltas.map((delta, index) =>
@@ -684,9 +835,9 @@ async function main() {
 
     const ledger = await exists(ledgerPath)
       ? await readJson(ledgerPath, "intent ledger")
-      : { schema_version: 1, format: "speccompass-outline-intent-ledger", feature: response.feature, events: [] };
-    validateExistingLedger(ledger, response.feature);
-    const nextLedger = prepareLedger(response, deltas, ledger, currentPrd);
+      : { schema_version: 2, format: "speccompass-outline-intent-ledger", feature: response.feature, events: [] };
+    const normalizedLedger = validateExistingLedger(ledger, response.feature);
+    const nextLedger = prepareLedger(response, deltas, normalizedLedger, currentPrd);
     await writeJsonAtomic(ledgerPath, nextLedger);
 
     const temporaryPrd = await readText(prdTempPath.resolved, "temporary PRD");

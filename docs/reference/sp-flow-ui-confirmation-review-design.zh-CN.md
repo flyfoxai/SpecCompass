@@ -1080,8 +1080,12 @@ Outline 的完整程度使用独立字段 `outline_maturity = explore | frame | 
 
 共享 renderer 增加两种严格隔离的 `interaction_mode`：
 
-- `discovery` 读取 `outline-discovery-data.json`，展示 2-4 个业务候选、推荐理由、“以上都不适用”和自由输入，下载 `outline-discovery-response-*.json`。它只用于完善意图，不能授权 `/sp.specify`。
+- `discovery` 读取 `outline-discovery-data.json`，先展示 XMind 风格导图，再展示当前节点的 2-4 个业务候选、推荐理由、“以上都不适用”和自由输入，下载 `outline-discovery-response-*.json`。它只用于完善意图，不能授权 `/sp.specify`。
 - `confirmation` 读取现有 `outline-review-data.json`，继续使用 Review Data ID、Outline Digest、Source Authority IDs 和三视图正式确认合同。
+
+Discovery 的地图结构固定分为一张全局总图、一张或多张业务分图、一张全局约束/治理图。总图通过分图入口建立项目全貌；业务分图承载具体业务分支；影响多个业务分支的政策、合规、审计、权限和安全规则放入全局约束图，并通过受影响节点 ID 反向标出覆盖范围。每张图和每个节点使用稳定 ID，每个问题必须绑定一个节点；用户点击节点后，右侧只显示该节点的问题，分支选项不得脱离上下文进入全局问题池。
+
+信息密度使用固定预算约束：单图最多 18 个可见节点、最多 3 层、单节点最多 4 个直接子节点；单图达到 8 个节点后，任一层最多占全部节点的 60%。renderer 根据实际层数分配画布列宽，生成端在超限前重排或拆分业务分图，从数据和显示两端共同避免一层过密、其他层空置。一级和二级保留用户深度参与的判断；三级由模型按 Constitution 检查结构与治理覆盖，但不得生成未经确认的业务事实。
 
 Discovery 的响应由 `/sp.prd` 校验后进入 append-only 的 `outline-intent-ledger.json`。操作固定为 `confirm_candidate`、`add`、`replace`、`exclude`、`context_note`；用户新输入写回为 `[src:user]`，接受候选写回为 `[src:user-confirmed]`，未接受候选保持 `[src:ai-proposed]`，并以 `<!-- intent-delta:<id> -->` 追踪。可替换条目使用 `<!-- intent-target:<id> -->`，替换或排除结果使用 `<!-- intent-ref:<delta-id>:<target-or-candidate-id> -->`，避免 helper 猜测自然语言指向。
 
