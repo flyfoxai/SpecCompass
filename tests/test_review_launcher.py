@@ -450,7 +450,7 @@ try {{
 }}
 
 const reviewData = {{
-  schema_version: 1,
+  schema_version: 2,
   review_type: "outline_discovery",
   interaction_mode: "discovery",
   artifact_path: "specs/001-test/prd/review/outline-discovery-data.json",
@@ -461,8 +461,10 @@ const reviewData = {{
   project: {{ feature: "001-test" }},
   question_groups: [{{
     id: "group-1",
+    map_id: "map-branch",
     questions: Array.from({{ length: 5 }}, (_, index) => ({{
       id: `question-${{index + 1}}`,
+      outline_node_id: `node-${{index + 1}}`,
       target_kind: ["goal", "user", "problem", "scope", "context"][index],
       selection_mode: "single",
       allow_none_of_the_above: true,

@@ -76,6 +76,19 @@ const allowedNodeKinds = new Set([
 ]);
 const allowedOptionIds = new Set(["OPTION_A", "OPTION_B", "OPTION_C", "OPTION_D"]);
 const allowedDiscoveryOperations = new Set(["confirm_candidate", "add", "replace", "exclude", "context_note"]);
+const outlineDiscoveryDensityBudget = Object.freeze({
+  max_visible_nodes_per_map: 18,
+  max_depth: 3,
+  max_children_per_node: 4,
+  layer_balance_min_nodes: 8,
+  max_layer_share: 0.6,
+});
+const allowedOutlineMapKinds = new Set(["overview", "branch", "global_constraints"]);
+const allowedOutlineNodeKinds = new Set([
+  "root", "goal", "role", "domain", "scope", "problem", "scenario",
+  "capability", "acceptance", "risk", "constraint", "map_link",
+]);
+const allowedOutlineSourceStatuses = new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]);
 const legacyConfirmationValues = new Set(["APPROVED", "REJECTED"]);
 const supportedSchemaVersions = new Set([1, 2]);
 const forbiddenReviewDataKeys = new Set([
@@ -1533,14 +1546,191 @@ function validateItem(reviewType, schemaVersion, module, item, itemIndex, global
   }
 }
 
+function validateOutlineDiscoveryTopology(data) {
+  const budget = data.density_budget;
+  if (!budget || typeof budget !== "object" || Array.isArray(budget)) {
+    fail("outline discovery density_budget must be an object");
+  } else {
+    for (const [key, expected] of Object.entries(outlineDiscoveryDensityBudget)) {
+      if (budget[key] !== expected) fail(`outline discovery density_budget.${key} must be ${expected}`);
+    }
+  }
+
+  const maps = asArray(data.maps);
+  if (maps.length < 3) fail("outline discovery maps must contain overview, branch, and global_constraints maps");
+  const mapsById = new Map();
+  for (const [index, map] of maps.entries()) {
+    const label = `outline map[${index}]`;
+    for (const key of ["map_id", "title", "summary", "map_kind", "root_node_id"]) {
+      if (!String(map?.[key] || "").trim()) fail(`${label}: ${key} is required`);
+    }
+    if (mapsById.has(map?.map_id)) fail(`duplicate outline map_id ${map?.map_id}`);
+    if (!allowedOutlineMapKinds.has(map?.map_kind)) fail(`${label}: unsupported map_kind ${map?.map_kind}`);
+    if (!(typeof map?.parent_map_id === "string" || map?.parent_map_id === null)) {
+      fail(`${label}: parent_map_id must be string or null`);
+    }
+    mapsById.set(map?.map_id, map);
+  }
+  const overviewMaps = maps.filter((map) => map?.map_kind === "overview");
+  const constraintMaps = maps.filter((map) => map?.map_kind === "global_constraints");
+  if (overviewMaps.length !== 1) fail("outline discovery must contain exactly one overview map");
+  if (constraintMaps.length !== 1) fail("outline discovery must contain exactly one global_constraints map");
+  for (const map of maps) {
+    if (map.map_kind === "overview") {
+      if (map.parent_map_id !== null) fail(`overview map ${map.map_id} parent_map_id must be null`);
+    } else if (!mapsById.has(map.parent_map_id)) {
+      fail(`outline map ${map.map_id} parent_map_id must reference an existing map`);
+    }
+  }
+  for (const map of maps) {
+    const visited = new Set([map.map_id]);
+    let cursor = map;
+    while (cursor.parent_map_id !== null) {
+      cursor = mapsById.get(cursor.parent_map_id);
+      if (!cursor) break;
+      if (visited.has(cursor.map_id)) {
+        fail("outline maps must not contain parent cycles");
+        break;
+      }
+      visited.add(cursor.map_id);
+    }
+  }
+
+  const nodes = asArray(data.outline_nodes);
+  if (!nodes.length) fail("outline discovery outline_nodes must not be empty");
+  const nodesById = new Map();
+  const nodesByMap = new Map(maps.map((map) => [map.map_id, []]));
+  for (const [index, node] of nodes.entries()) {
+    const label = `outline node[${index}]`;
+    for (const key of ["node_id", "map_id", "node_kind", "label", "summary", "source_status"]) {
+      if (!String(node?.[key] || "").trim()) fail(`${label}: ${key} is required`);
+    }
+    if (!(typeof node?.parent_node_id === "string" || node?.parent_node_id === null)) {
+      fail(`${label}: parent_node_id must be string or null`);
+    }
+    if (nodesById.has(node?.node_id)) fail(`duplicate outline node_id ${node?.node_id}`);
+    if (!mapsById.has(node?.map_id)) fail(`${label}: map_id must reference an existing map`);
+    if (!allowedOutlineNodeKinds.has(node?.node_kind)) fail(`${label}: unsupported node_kind ${node?.node_kind}`);
+    if (!allowedOutlineSourceStatuses.has(node?.source_status)) fail(`${label}: unsupported source_status ${node?.source_status}`);
+    nodesById.set(node?.node_id, node);
+    if (nodesByMap.has(node?.map_id)) nodesByMap.get(node.map_id).push(node);
+  }
+
+  for (const map of maps) {
+    const mapNodes = nodesByMap.get(map.map_id) || [];
+    if (mapNodes.length > outlineDiscoveryDensityBudget.max_visible_nodes_per_map) {
+      fail(`outline map ${map.map_id} may contain at most 18 visible nodes`);
+    }
+    const root = nodesById.get(map.root_node_id);
+    if (!root || root.map_id !== map.map_id || root.node_kind !== "root" || root.parent_node_id !== null) {
+      fail(`outline map ${map.map_id} root_node_id must reference its root node`);
+    }
+    if (mapNodes.filter((node) => node.parent_node_id === null).length !== 1) {
+      fail(`outline map ${map.map_id} must contain exactly one root node`);
+    }
+  }
+
+  const childrenByParent = new Map();
+  for (const node of nodes) {
+    if (node.parent_node_id !== null) {
+      const parent = nodesById.get(node.parent_node_id);
+      if (!parent || parent.map_id !== node.map_id) {
+        fail(`outline node ${node.node_id} parent_node_id must reference a node in the same map`);
+      } else {
+        const children = childrenByParent.get(parent.node_id) || [];
+        children.push(node);
+        childrenByParent.set(parent.node_id, children);
+      }
+    }
+  }
+  for (const [parentId, children] of childrenByParent.entries()) {
+    if (children.length > outlineDiscoveryDensityBudget.max_children_per_node) {
+      fail(`outline node ${parentId} may have at most 4 direct children`);
+    }
+  }
+
+  for (const map of maps) {
+    const mapNodes = nodesByMap.get(map.map_id) || [];
+    const layerCounts = new Map();
+    for (const node of mapNodes) {
+      let depth = 1;
+      let cursor = node;
+      const visited = new Set([node.node_id]);
+      while (cursor.parent_node_id !== null) {
+        const parent = nodesById.get(cursor.parent_node_id);
+        if (!parent || parent.map_id !== map.map_id) break;
+        if (visited.has(parent.node_id)) {
+          fail(`outline map ${map.map_id} must not contain parent cycles`);
+          break;
+        }
+        visited.add(parent.node_id);
+        depth += 1;
+        cursor = parent;
+      }
+      if (depth > outlineDiscoveryDensityBudget.max_depth) {
+        fail(`outline map ${map.map_id} exceeds maximum depth 3`);
+      }
+      layerCounts.set(depth, (layerCounts.get(depth) || 0) + 1);
+    }
+    if (mapNodes.length >= outlineDiscoveryDensityBudget.layer_balance_min_nodes) {
+      const largestLayer = Math.max(...layerCounts.values());
+      if (largestLayer / mapNodes.length > outlineDiscoveryDensityBudget.max_layer_share) {
+        fail(`outline map ${map.map_id} layer may contain at most 60% of visible nodes`);
+      }
+    }
+  }
+
+  const childMapLinkCounts = new Map();
+  for (const node of nodes) {
+    const map = mapsById.get(node.map_id);
+    if (map?.map_kind === "global_constraints" && node.node_kind === "constraint" &&
+        (!Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length)) {
+      fail(`outline global constraint node ${node.node_id} must list at least one affected business node`);
+    }
+    if (node.child_map_id !== undefined) {
+      const childMap = mapsById.get(node.child_map_id);
+      if (node.node_kind !== "map_link" || !childMap || childMap.parent_map_id !== node.map_id) {
+        fail(`outline node ${node.node_id} child_map_id must link to a direct child map`);
+      } else {
+        childMapLinkCounts.set(node.child_map_id, (childMapLinkCounts.get(node.child_map_id) || 0) + 1);
+      }
+    } else if (node.node_kind === "map_link") {
+      fail(`outline map_link node ${node.node_id} requires child_map_id`);
+    }
+    if (node.affected_node_ids !== undefined) {
+      if (map?.map_kind !== "global_constraints" || node.node_kind !== "constraint" ||
+          !Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length) {
+        fail(`outline node ${node.node_id} affected_node_ids are only allowed on global constraint nodes`);
+      } else {
+        if (new Set(node.affected_node_ids).size !== node.affected_node_ids.length) {
+          fail(`outline node ${node.node_id} affected_node_ids must be unique`);
+        }
+        for (const affectedId of node.affected_node_ids) {
+          const affected = nodesById.get(affectedId);
+          if (!affected || mapsById.get(affected.map_id)?.map_kind !== "branch") {
+            fail(`outline node ${node.node_id} affected_node_ids must reference business branch nodes`);
+          }
+        }
+      }
+    }
+  }
+  for (const map of maps) {
+    if (map.map_kind !== "overview" && childMapLinkCounts.get(map.map_id) !== 1) {
+      fail(`outline map ${map.map_id} must be linked exactly once from its parent map`);
+    }
+  }
+  return { mapsById, nodesById };
+}
+
 function validateOutlineDiscovery(data) {
   for (const key of [
     "schema_version", "review_type", "interaction_mode", "artifact_path", "outline_maturity",
-    "batch_id", "project", "source_snapshot", "question_groups", "authorization_effect", "next_route"
+    "batch_id", "project", "source_snapshot", "density_budget", "maps", "outline_nodes",
+    "question_groups", "authorization_effect", "next_route"
   ]) {
     if (data[key] === undefined || data[key] === null || data[key] === "") fail(`missing ${key}`);
   }
-  if (data.schema_version !== 1) fail("outline discovery requires schema_version 1");
+  if (data.schema_version !== 2) fail("outline discovery requires schema_version 2");
   if (data.interaction_mode !== "discovery") fail("outline discovery interaction_mode must be discovery");
   if (!new Set(["explore", "frame"]).has(data.outline_maturity)) {
     fail("outline discovery outline_maturity must be explore or frame");
@@ -1575,6 +1765,8 @@ function validateOutlineDiscovery(data) {
     }
   }
 
+  const { mapsById, nodesById } = validateOutlineDiscoveryTopology(data);
+
   const groups = asArray(data.question_groups);
   if (!groups.length) fail("outline discovery question_groups must contain at least one group");
   const groupIds = new Set();
@@ -1587,6 +1779,7 @@ function validateOutlineDiscovery(data) {
     for (const key of ["title", "summary"]) {
       if (!String(group?.[key] || "").trim()) fail(`${groupLabel}: ${key} is required`);
     }
+    if (!mapsById.has(group?.map_id)) fail(`${groupLabel}: map_id must reference an existing map`);
     const questions = asArray(group?.questions);
     if (!questions.length) fail(`${groupLabel}: questions must contain at least one question`);
     for (const [questionIndex, question] of questions.entries()) {
@@ -1594,9 +1787,12 @@ function validateOutlineDiscovery(data) {
       if (!String(question?.id || "").trim()) fail(`${questionLabel}: id is required`);
       else if (questionIds.has(question.id)) fail(`duplicate discovery question id ${question.id}`);
       questionIds.add(question?.id);
-      for (const key of ["target_kind", "prompt", "context", "selection_mode", "recommendation_reason"]) {
+      for (const key of ["outline_node_id", "target_kind", "prompt", "context", "selection_mode", "recommendation_reason"]) {
         if (!String(question?.[key] || "").trim()) fail(`${questionLabel}: ${key} is required`);
       }
+      const questionNode = nodesById.get(question?.outline_node_id);
+      if (!questionNode) fail(`${questionLabel}: outline_node_id must reference an existing node`);
+      else if (questionNode.map_id !== group?.map_id) fail(`${questionLabel}: outline_node_id must belong to the question group map`);
       if (question?.selection_mode !== "single") {
         fail(`${questionLabel}: selection_mode must be single`);
       }
@@ -1632,7 +1828,7 @@ function validateOutlineDiscovery(data) {
 }
 
 function validateOutlineDiscoveryResponse(data) {
-  if (data.schema_version !== 1) fail("outline discovery response requires schema_version 1");
+  if (data.schema_version !== 2) fail("outline discovery response requires schema_version 2");
   if (data.review_type !== "outline_discovery") fail("outline discovery response review_type must be outline_discovery");
   if (data.authorization_effect !== "none") fail("outline discovery response authorization_effect must be none");
   if (data.next_route !== "/sp.prd") fail("outline discovery response next_route must be /sp.prd");
@@ -1656,7 +1852,7 @@ function validateOutlineDiscoveryResponse(data) {
     if (!String(delta?.delta_id || "").trim()) fail(`${label}: delta_id is required`);
     else if (deltaIds.has(delta.delta_id)) fail(`duplicate delta_id ${delta.delta_id}`);
     deltaIds.add(delta?.delta_id);
-    for (const key of ["question_id", "target_kind"]) {
+    for (const key of ["question_id", "outline_node_id", "target_kind"]) {
       if (!String(delta?.[key] || "").trim()) fail(`${label}: ${key} is required`);
     }
     if (questionIds.has(delta?.question_id)) fail(`${label}: question_id occurs more than once`);
@@ -1693,7 +1889,7 @@ function validateOutlineDiscoveryResponse(data) {
 }
 
 function validateOutlineIntentLedger(data) {
-  if (data.schema_version !== 1) fail("outline intent ledger requires schema_version 1");
+  if (![1, 2].includes(data.schema_version)) fail("outline intent ledger requires schema_version 1 or 2");
   if (!String(data.feature || "").trim()) fail("outline intent ledger feature is required");
   if (!Array.isArray(data.events)) fail("outline intent ledger events must be an array");
   const earlierIds = new Set();
@@ -1706,6 +1902,12 @@ function validateOutlineIntentLedger(data) {
     }
     for (const key of ["response_id", "target_kind", "operation", "source_tag", "recorded_at"]) {
       if (!String(event?.[key] ?? "").trim()) fail(`${label}: ${key} is required`);
+    }
+    if (data.schema_version === 2 && !(typeof event?.outline_node_id === "string" || event?.outline_node_id === null)) {
+      fail(`${label}: outline_node_id must be string or null`);
+    } else if (data.schema_version === 1 && event?.outline_node_id !== undefined &&
+               !(typeof event.outline_node_id === "string" || event.outline_node_id === null)) {
+      fail(`${label}: outline_node_id must be string or null when present`);
     }
     if (!new Set(["explore", "frame"]).has(event?.maturity)) fail(`${label}: maturity must be explore or frame`);
     if (!allowedDiscoveryOperations.has(event?.operation)) fail(`${label}: unsupported operation ${event?.operation}`);

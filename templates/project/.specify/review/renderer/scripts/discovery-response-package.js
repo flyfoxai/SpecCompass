@@ -41,6 +41,9 @@
     if (reviewData.interaction_mode !== "discovery") {
       throw new Error("outline_discovery interaction_mode must be discovery");
     }
+    if (reviewData.schema_version !== 2) {
+      throw new Error("outline_discovery schema_version must be 2");
+    }
     if (!new Set(["explore", "frame"]).has(reviewData.outline_maturity)) {
       throw new Error("outline_discovery outline_maturity must be explore or frame");
     }
@@ -50,6 +53,12 @@
   }
 
   function normalizeResponse(response, question, index, responseId) {
+    const outlineNodeId = cleanText(question.outline_node_id);
+    if (!outlineNodeId) throw new Error(`outline_node_id is required for question_id ${question.id}`);
+    const suppliedNodeId = cleanText(response?.outline_node_id);
+    if (suppliedNodeId && suppliedNodeId !== outlineNodeId) {
+      throw new Error(`outline_node_id does not match question_id ${question.id}`);
+    }
     const operation = cleanText(response?.operation);
     if (!OPERATIONS.has(operation)) throw new Error(`unsupported discovery operation: ${operation || "missing"}`);
     if (!(question.free_input?.allowed_operations || []).includes(operation)) {
@@ -99,6 +108,7 @@
     return {
       delta_id: `${responseId}-delta-${String(index + 1).padStart(3, "0")}`,
       question_id: question.id,
+      outline_node_id: outlineNodeId,
       target_kind: cleanText(question.target_kind, "context"),
       operation,
       candidate_id: candidateId,
@@ -128,7 +138,7 @@
     });
 
     return {
-      schema_version: 1,
+      schema_version: 2,
       format: FORMAT,
       response_id: responseId,
       review_type: "outline_discovery",

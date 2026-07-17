@@ -10,7 +10,7 @@
     "next_route", "generated_at", "deltas"
   ],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "format": {"const": "speccompass-outline-discovery-response"},
     "response_id": {"type": "string", "minLength": 1},
     "review_type": {"const": "outline_discovery"},
@@ -28,13 +28,14 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "delta_id", "question_id", "target_kind", "operation", "candidate_id",
+        "delta_id", "question_id", "outline_node_id", "target_kind", "operation", "candidate_id",
         "target_id", "value", "source_tag", "none_of_the_above",
         "supersedes_delta_id"
       ],
       "properties": {
         "delta_id": {"type": "string", "minLength": 1},
         "question_id": {"type": "string", "minLength": 1},
+        "outline_node_id": {"type": "string", "minLength": 1},
         "target_kind": {"type": "string", "minLength": 1},
         "operation": {"enum": ["confirm_candidate", "add", "replace", "exclude", "context_note"]},
         "candidate_id": {"type": ["string", "null"]},

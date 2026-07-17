@@ -39,7 +39,7 @@ def _write_json(path: Path, value: dict) -> None:
 
 def _discovery_data(feature: str = "001-outline") -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "review_type": "outline_discovery",
         "interaction_mode": "discovery",
         "artifact_path": f"specs/{feature}/prd/review/outline-discovery-data.json",
@@ -54,14 +54,37 @@ def _discovery_data(feature: str = "001-outline") -> dict:
         "source_snapshot": [
             {"path": f"specs/{feature}/prd.md", "source_type": "prd"},
         ],
+        "density_budget": {
+            "max_visible_nodes_per_map": 18,
+            "max_depth": 3,
+            "max_children_per_node": 4,
+            "layer_balance_min_nodes": 8,
+            "max_layer_share": 0.6,
+        },
+        "maps": [
+            {"map_id": "map-overview", "title": "Project", "summary": "Project overview.", "map_kind": "overview", "root_node_id": "node-project", "parent_map_id": None},
+            {"map_id": "map-branch", "title": "Requirements", "summary": "Business branch.", "map_kind": "branch", "root_node_id": "node-branch", "parent_map_id": "map-overview"},
+            {"map_id": "map-governance", "title": "Governance", "summary": "Global constraints.", "map_kind": "global_constraints", "root_node_id": "node-governance", "parent_map_id": "map-overview"},
+        ],
+        "outline_nodes": [
+            {"node_id": "node-project", "parent_node_id": None, "map_id": "map-overview", "node_kind": "root", "label": "Project", "summary": "Project root.", "source_status": "user"},
+            {"node_id": "node-branch-link", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "Requirements", "summary": "Business branch.", "source_status": "ai-proposed", "child_map_id": "map-branch"},
+            {"node_id": "node-governance-link", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "Governance", "summary": "Global rules.", "source_status": "doc", "child_map_id": "map-governance"},
+            {"node_id": "node-branch", "parent_node_id": None, "map_id": "map-branch", "node_kind": "root", "label": "Requirements", "summary": "Requirements root.", "source_status": "ai-proposed"},
+            {"node_id": "node-goal", "parent_node_id": "node-branch", "map_id": "map-branch", "node_kind": "goal", "label": "Goal", "summary": "Product goal.", "source_status": "unresolved"},
+            {"node_id": "node-governance", "parent_node_id": None, "map_id": "map-governance", "node_kind": "root", "label": "Governance", "summary": "Governance root.", "source_status": "doc"},
+            {"node_id": "node-source-rule", "parent_node_id": "node-governance", "map_id": "map-governance", "node_kind": "constraint", "label": "Source rule", "summary": "AI proposals remain proposals.", "source_status": "doc", "affected_node_ids": ["node-goal"]},
+        ],
         "question_groups": [
             {
                 "id": "direction",
                 "title": "Direction",
                 "summary": "Confirm the product direction.",
+                "map_id": "map-branch",
                 "questions": [
                     {
                         "id": "goal-question",
+                        "outline_node_id": "node-goal",
                         "target_kind": "goal",
                         "prompt": "What should this product achieve first?",
                         "context": "The current goal is not yet stable.",
@@ -106,7 +129,7 @@ def _discovery_data(feature: str = "001-outline") -> dict:
 def _response(feature: str = "001-outline") -> dict:
     value = "Confirm product facts before detailed specification."
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "format": "speccompass-outline-discovery-response",
         "response_id": "response-001",
         "review_type": "outline_discovery",
@@ -121,6 +144,7 @@ def _response(feature: str = "001-outline") -> dict:
             {
                 "delta_id": "delta-001",
                 "question_id": "goal-question",
+                "outline_node_id": "node-goal",
                 "target_kind": "goal",
                 "operation": "confirm_candidate",
                 "candidate_id": "goal-quality",
@@ -268,7 +292,7 @@ def test_outline_discovery_writeback_appends_ledger_and_replaces_both_documents(
     assert result.returncode == 0, _output(result)
     ledger = json.loads(paths["ledger"].read_text(encoding="utf-8"))
     assert ledger == {
-        "schema_version": 1,
+        "schema_version": 2,
         "format": "speccompass-outline-intent-ledger",
         "feature": "001-outline",
         "events": [
@@ -276,6 +300,7 @@ def test_outline_discovery_writeback_appends_ledger_and_replaces_both_documents(
                 "delta_id": "delta-001",
                 "response_id": "response-001",
                 "maturity": "explore",
+                "outline_node_id": "node-goal",
                 "target_kind": "goal",
                 "operation": "confirm_candidate",
                 "candidate_id": "goal-quality",
@@ -661,6 +686,61 @@ def test_writeback_rejects_malformed_discovery_source_contract(tmp_path, source_
     assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
 
 
+@pytest.mark.parametrize(
+    ("impact_mutation", "expected"),
+    (
+        ("missing", "must list at least one affected business node"),
+        ("empty", "must list at least one affected business node"),
+        ("overview", "must reference business branch nodes"),
+        ("duplicate", "must be unique"),
+    ),
+)
+def test_writeback_rejects_invalid_global_constraint_impacts(
+    tmp_path,
+    impact_mutation,
+    expected,
+):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    constraint = next(
+        node for node in source["outline_nodes"] if node["node_id"] == "node-source-rule"
+    )
+    if impact_mutation == "missing":
+        constraint.pop("affected_node_ids")
+    elif impact_mutation == "empty":
+        constraint["affected_node_ids"] = []
+    elif impact_mutation == "overview":
+        constraint["affected_node_ids"] = ["node-project"]
+    else:
+        constraint["affected_node_ids"] = ["node-goal", "node-goal"]
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert expected in _output(result)
+    assert not paths["ledger"].exists()
+    assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (("node_kind", "unknown-kind"), ("source_status", "unknown-source")),
+)
+def test_writeback_rejects_unknown_outline_node_enums(tmp_path, field, value):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    source["outline_nodes"][1][field] = value
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert field in _output(result)
+    assert not paths["ledger"].exists()
+    assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
+
+
 def test_writeback_rejects_conflicting_source_tags_in_temporary_delta_block(tmp_path):
     paths = _prepare_project(tmp_path)
     paths["prd_temp"].write_text(
@@ -688,7 +768,7 @@ def test_writeback_rejects_conflicting_source_tags_in_temporary_delta_block(tmp_
 @pytest.mark.parametrize(
     ("mutate", "expected"),
     (
-        (lambda response, source: response.__setitem__("schema_version", 2), "schema_version"),
+        (lambda response, source: response.__setitem__("schema_version", 1), "schema_version"),
         (lambda response, source: response.__setitem__("feature", "002-other"), "feature"),
         (lambda response, source: response.__setitem__("batch_id", "other-batch"), "batch_id"),
         (lambda response, source: response.__setitem__("outline_maturity", "frame"), "maturity"),

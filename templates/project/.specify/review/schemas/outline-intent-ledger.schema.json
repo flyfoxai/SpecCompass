@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["schema_version", "format", "feature", "events"],
   "properties": {
-    "schema_version": {"const": 1},
+    "schema_version": {"const": 2},
     "format": {"const": "speccompass-outline-intent-ledger"},
     "feature": {"type": "string", "minLength": 1},
     "events": {"type": "array", "items": {"$ref": "#/$defs/event"}}
@@ -16,7 +16,7 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "delta_id", "response_id", "maturity", "target_kind", "operation",
+        "delta_id", "response_id", "maturity", "outline_node_id", "target_kind", "operation",
         "candidate_id", "target_id", "value", "source_tag", "recorded_at",
         "supersedes_delta_id"
       ],
@@ -24,6 +24,7 @@
         "delta_id": {"type": "string", "minLength": 1},
         "response_id": {"type": "string", "minLength": 1},
         "maturity": {"enum": ["explore", "frame"]},
+        "outline_node_id": {"type": ["string", "null"]},
         "target_kind": {"type": "string", "minLength": 1},
         "operation": {"enum": ["confirm_candidate", "add", "replace", "exclude", "context_note"]},
         "candidate_id": {"type": ["string", "null"]},

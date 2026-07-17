@@ -1853,6 +1853,27 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "supersedes_delta_id" in prd
     assert "must remain auditable in the append-only ledger" in prd
     assert "schema version is unsupported" in prd
+    assert "XMind-style maps" in prd
+    assert "exactly one `overview` map" in prd
+    assert "at least one business `branch` map" in prd
+    assert "exactly one `global_constraints` map" in prd
+    assert "one concrete `outline_node_id`" in prd
+    assert "max_visible_nodes_per_map: 18" in prd
+    assert "max_depth: 3" in prd
+    assert "max_children_per_node: 4" in prd
+    assert "max_layer_share: 0.6" in prd
+    assert "affected business `node_id` values" in prd
+
+    for content in (methodology, design):
+        assert "XMind 风格" in content
+        assert "全局总图" in content
+        assert "业务分图" in content
+        assert "全局约束" in content
+        assert "稳定 ID" in content
+        assert "最多 18 个可见节点" in content
+        assert "最多 3 层" in content
+        assert "最多 4 个直接子节点" in content
+        assert "60%" in content
     assert "do not guess or silently upcast it" in prd
     assert "do not downgrade it to an incompatible earlier contract" in prd
     assert "must reference an earlier accepted event" in prd
@@ -4754,7 +4775,7 @@ def _outline_review_validator_sample() -> dict:
 
 def _outline_discovery_validator_sample() -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "review_type": "outline_discovery",
         "interaction_mode": "discovery",
         "artifact_path": "specs/001-outline/prd/review/outline-discovery-data.json",
@@ -4773,14 +4794,68 @@ def _outline_discovery_validator_sample() -> dict:
                 "anchors": ["Product Intent"],
             }
         ],
+        "density_budget": {
+            "max_visible_nodes_per_map": 18,
+            "max_depth": 3,
+            "max_children_per_node": 4,
+            "layer_balance_min_nodes": 8,
+            "max_layer_share": 0.6,
+        },
+        "maps": [
+            {
+                "map_id": "map-overview",
+                "title": "项目全局",
+                "summary": "只展示目标、角色、业务域、范围和全局约束入口。",
+                "map_kind": "overview",
+                "root_node_id": "node-project",
+                "parent_map_id": None,
+            },
+            {
+                "map_id": "map-requirements",
+                "title": "需求形成",
+                "summary": "下钻确认需求输入、评审和验收边界。",
+                "map_kind": "branch",
+                "root_node_id": "node-requirements-root",
+                "parent_map_id": "map-overview",
+            },
+            {
+                "map_id": "map-governance",
+                "title": "全局约束与治理",
+                "summary": "集中呈现影响多个业务分支的规则。",
+                "map_kind": "global_constraints",
+                "root_node_id": "node-governance-root",
+                "parent_map_id": "map-overview",
+            },
+        ],
+        "outline_nodes": [
+            {"node_id": "node-project", "parent_node_id": None, "map_id": "map-overview", "node_kind": "root", "label": "Outline Discovery", "summary": "在详细规格前形成稳定产品框架。", "source_status": "user"},
+            {"node_id": "node-goal", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "goal", "label": "产品目标", "summary": "补齐真实目标、用户和核心问题。", "source_status": "user"},
+            {"node_id": "node-role-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "role", "label": "产品负责人", "summary": "深度参与一级和二级框架。", "source_status": "doc"},
+            {"node_id": "node-requirements-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "需求形成", "summary": "进入业务分图。", "source_status": "user-confirmed", "child_map_id": "map-requirements"},
+            {"node_id": "node-governance-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "全局约束", "summary": "进入政策与治理图。", "source_status": "doc", "child_map_id": "map-governance"},
+            {"node_id": "node-requirements-root", "parent_node_id": None, "map_id": "map-requirements", "node_kind": "root", "label": "需求形成", "summary": "从输入到可确认框架。", "source_status": "user-confirmed"},
+            {"node_id": "node-owner", "parent_node_id": "node-requirements-root", "map_id": "map-requirements", "node_kind": "role", "label": "产品负责人", "summary": "提供业务事实和选择。", "source_status": "doc"},
+            {"node_id": "node-input", "parent_node_id": "node-requirements-root", "map_id": "map-requirements", "node_kind": "capability", "label": "需求输入", "summary": "收集目标、用户、范围和背景。", "source_status": "ai-proposed"},
+            {"node_id": "node-review", "parent_node_id": "node-requirements-root", "map_id": "map-requirements", "node_kind": "capability", "label": "框架评审", "summary": "在导图分支上确认或补充。", "source_status": "ai-proposed"},
+            {"node_id": "node-problem", "parent_node_id": "node-input", "map_id": "map-requirements", "node_kind": "problem", "label": "核心问题", "summary": "明确最需要解决的问题。", "source_status": "unresolved"},
+            {"node_id": "node-scope", "parent_node_id": "node-input", "map_id": "map-requirements", "node_kind": "scope", "label": "范围", "summary": "区分本期和非目标。", "source_status": "unresolved"},
+            {"node_id": "node-scenario", "parent_node_id": "node-review", "map_id": "map-requirements", "node_kind": "scenario", "label": "核心场景", "summary": "描述业务如何发生。", "source_status": "ai-proposed"},
+            {"node_id": "node-acceptance", "parent_node_id": "node-review", "map_id": "map-requirements", "node_kind": "acceptance", "label": "验收种子", "summary": "保留可进入规格的结果边界。", "source_status": "ai-proposed"},
+            {"node_id": "node-governance-root", "parent_node_id": None, "map_id": "map-governance", "node_kind": "root", "label": "全局约束与治理", "summary": "只保留横切规则。", "source_status": "doc"},
+            {"node_id": "node-source-rule", "parent_node_id": "node-governance-root", "map_id": "map-governance", "node_kind": "constraint", "label": "来源权威", "summary": "模型建议不能自动成为事实。", "source_status": "doc", "affected_node_ids": ["node-input", "node-review"]},
+            {"node_id": "node-confirm-rule", "parent_node_id": "node-governance-root", "map_id": "map-governance", "node_kind": "constraint", "label": "确认边界", "summary": "探索响应不能授权规格阶段。", "source_status": "doc", "affected_node_ids": ["node-acceptance"]},
+            {"node_id": "node-constitution-rule", "parent_node_id": "node-governance-root", "map_id": "map-governance", "node_kind": "constraint", "label": "Constitution", "summary": "三级内容受项目原则约束。", "source_status": "doc", "affected_node_ids": ["node-scenario", "node-acceptance"]},
+        ],
         "question_groups": [
             {
                 "id": "direction",
                 "title": "方向探索",
                 "summary": "先确认产品目标和核心用户，不在本轮假定完整范围。",
+                "map_id": "map-requirements",
                 "questions": [
                     {
                         "id": "goal",
+                        "outline_node_id": "node-input",
                         "target_kind": "goal",
                         "prompt": "这项产品工作最需要优先解决什么目标？",
                         "context": "现有资料只表达了提高需求质量，尚未确认最重要的业务结果。",
@@ -4824,7 +4899,7 @@ def _outline_discovery_validator_sample() -> dict:
 
 def _outline_intent_ledger_sample() -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "format": "speccompass-outline-intent-ledger",
         "feature": "001-outline",
         "events": [
@@ -4832,6 +4907,7 @@ def _outline_intent_ledger_sample() -> dict:
                 "delta_id": "delta-001",
                 "response_id": "response-001",
                 "maturity": "explore",
+                "outline_node_id": "node-input",
                 "target_kind": "goal",
                 "operation": "confirm_candidate",
                 "candidate_id": "goal-quality",
@@ -4845,6 +4921,7 @@ def _outline_intent_ledger_sample() -> dict:
                 "delta_id": "delta-002",
                 "response_id": "response-002",
                 "maturity": "frame",
+                "outline_node_id": "node-input",
                 "target_kind": "goal",
                 "operation": "replace",
                 "candidate_id": None,
@@ -4894,11 +4971,21 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         assert path.is_file(), path
 
     discovery = json.loads(OUTLINE_DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
+    assert discovery["properties"]["schema_version"] == {"const": 2}
     assert discovery["properties"]["review_type"] == {"const": "outline_discovery"}
     assert discovery["properties"]["interaction_mode"] == {"const": "discovery"}
     assert discovery["properties"]["outline_maturity"]["enum"] == ["explore", "frame"]
     assert discovery["properties"]["authorization_effect"] == {"const": "none"}
+    assert {"density_budget", "maps", "outline_nodes"} <= set(discovery["required"])
+    assert discovery["properties"]["density_budget"]["properties"] == {
+        "max_visible_nodes_per_map": {"const": 18},
+        "max_depth": {"const": 3},
+        "max_children_per_node": {"const": 4},
+        "layer_balance_min_nodes": {"const": 8},
+        "max_layer_share": {"const": 0.6},
+    }
     question = discovery["$defs"]["question"]
+    assert "outline_node_id" in question["required"]
     assert question["properties"]["selection_mode"] == {"const": "single"}
     assert question["properties"]["candidates"]["minItems"] == 2
     assert question["properties"]["candidates"]["maxItems"] == 4
@@ -4922,6 +5009,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     }
 
     response = json.loads(OUTLINE_DISCOVERY_RESPONSE_SCHEMA.read_text(encoding="utf-8"))
+    assert response["properties"]["schema_version"] == {"const": 2}
     assert response["properties"]["format"] == {"const": "speccompass-outline-discovery-response"}
     assert response["properties"]["authorization_effect"] == {"const": "none"}
     assert response["properties"]["next_route"] == {"const": "/sp.prd"}
@@ -4932,11 +5020,14 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "exclude",
         "context_note",
     ]
+    assert "outline_node_id" in response["$defs"]["delta"]["required"]
 
     ledger = json.loads(OUTLINE_INTENT_LEDGER_SCHEMA.read_text(encoding="utf-8"))
+    assert ledger["properties"]["schema_version"] == {"const": 2}
     assert ledger["properties"]["format"] == {"const": "speccompass-outline-intent-ledger"}
     assert ledger["properties"]["events"]["items"]["$ref"] == "#/$defs/event"
     assert "supersedes_delta_id" in ledger["$defs"]["event"]["properties"]
+    assert "outline_node_id" in ledger["$defs"]["event"]["required"]
 
     accepted = _run_review_validator(_outline_discovery_validator_sample(), tmp_path / "discovery-valid.json")
     assert accepted.returncode == 0, _review_validator_output(accepted)
@@ -4991,6 +5082,56 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
             lambda data: data["question_groups"][0]["questions"][0]["free_input"]["allowed_operations"].pop(),
             "five discovery operations",
         ),
+        (
+            "unknown-question-node",
+            lambda data: data["question_groups"][0]["questions"][0].__setitem__("outline_node_id", "node-missing"),
+            "outline_node_id must reference",
+        ),
+        (
+            "too-many-children",
+            lambda data: data["outline_nodes"].append({"node_id": "node-extra-child", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "scope", "label": "额外范围", "summary": "触发直接子节点预算。", "source_status": "ai-proposed"}),
+            "at most 4 direct children",
+        ),
+        (
+            "too-deep",
+            lambda data: data["outline_nodes"].append({"node_id": "node-depth-four", "parent_node_id": "node-problem", "map_id": "map-requirements", "node_kind": "acceptance", "label": "过深细节", "summary": "触发三层深度预算。", "source_status": "ai-proposed"}),
+            "maximum depth 3",
+        ),
+        (
+            "unbalanced-layer",
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-owner").__setitem__("parent_node_id", "node-input"),
+            "layer may contain at most 60%",
+        ),
+        (
+            "map-parent-cycle",
+            lambda data: (
+                next(map_ for map_ in data["maps"] if map_["map_id"] == "map-requirements").__setitem__("parent_map_id", "map-governance"),
+                next(map_ for map_ in data["maps"] if map_["map_id"] == "map-governance").__setitem__("parent_map_id", "map-requirements"),
+            ),
+            "must not contain parent cycles",
+        ),
+        (
+            "duplicate-child-map-entry",
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-role-entry").update(
+                {"node_kind": "map_link", "child_map_id": "map-requirements"}
+            ),
+            "must be linked exactly once",
+        ),
+        (
+            "missing-global-constraint-impact",
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-source-rule").pop("affected_node_ids"),
+            "must list at least one affected business node",
+        ),
+        (
+            "overview-constraint-impact",
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-source-rule").__setitem__("affected_node_ids", ["node-project"]),
+            "must reference business branch nodes",
+        ),
+        (
+            "duplicate-global-constraint-impact",
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-source-rule").__setitem__("affected_node_ids", ["node-input", "node-input"]),
+            "affected_node_ids must be unique",
+        ),
     ):
         invalid = _outline_discovery_validator_sample()
         mutate(invalid)
@@ -5034,7 +5175,25 @@ for (const [label, mutate] of [
   ["unknown-recommendation", (data) => data.question_groups[0].questions[0].recommended_candidate_ids = ["missing"]],
   ["multiple-recommendations", (data) => data.question_groups[0].questions[0].recommended_candidate_ids = ["goal-quality", "goal-speed"]],
   ["multiple-selection", (data) => data.question_groups[0].questions[0].selection_mode = "multiple"],
-  ["missing-operation", (data) => data.question_groups[0].questions[0].free_input.allowed_operations.pop()]
+  ["missing-operation", (data) => data.question_groups[0].questions[0].free_input.allowed_operations.pop()],
+  ["map-parent-cycle", (data) => {{
+    data.maps.find((map) => map.map_id === "map-requirements").parent_map_id = "map-governance";
+    data.maps.find((map) => map.map_id === "map-governance").parent_map_id = "map-requirements";
+  }}],
+  ["duplicate-child-map-entry", (data) => {{
+    const node = data.outline_nodes.find((item) => item.node_id === "node-role-entry");
+    node.node_kind = "map_link";
+    node.child_map_id = "map-requirements";
+  }}],
+  ["missing-global-constraint-impact", (data) => {{
+    delete data.outline_nodes.find((item) => item.node_id === "node-source-rule").affected_node_ids;
+  }}],
+  ["overview-constraint-impact", (data) => {{
+    data.outline_nodes.find((item) => item.node_id === "node-source-rule").affected_node_ids = ["node-project"];
+  }}],
+  ["duplicate-global-constraint-impact", (data) => {{
+    data.outline_nodes.find((item) => item.node_id === "node-source-rule").affected_node_ids = ["node-input", "node-input"];
+  }}]
 ]) {{
   const invalid = structuredClone(valid);
   mutate(invalid);
@@ -5068,6 +5227,57 @@ def test_outline_discovery_renderer_tracks_unexported_work_and_mobile_navigation
     assert re.search(r"\.discovery-non-authorizing-banner\s+strong\s*\{[^}]*white-space:\s*nowrap", styles, re.DOTALL)
 
 
+def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_selected_node():
+    renderer = (REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js").read_text(encoding="utf-8")
+    styles = (REVIEW_ROOT / "renderer" / "styles" / "review-ui.css").read_text(encoding="utf-8")
+
+    for token in (
+        "outlineDiscoveryActiveMapId",
+        "outlineDiscoveryActiveNodeId",
+        "outlineDiscoveryMaps",
+        "outlineDiscoveryNodesForMap",
+        "renderOutlineDiscoveryMindmap",
+        "selectOutlineDiscoveryNode",
+        "openOutlineDiscoveryMap",
+        "child_map_id",
+        "affected_node_ids",
+        "canvas.dataset.levelCount",
+        "outline_node_id",
+        "question.outline_node_id === outlineDiscoveryActiveNodeId",
+        "downloadOutlineDiscoveryResponse",
+    ):
+        assert token in renderer, token
+
+    for token in (
+        ".discovery-map-list",
+        ".discovery-mindmap",
+        ".discovery-mindmap-node",
+        ".discovery-mindmap-node.is-selected",
+        ".discovery-mindmap-node[data-source-status",
+        ".discovery-affected-nodes",
+        '.discovery-mindmap[data-level-count="2"]',
+        ".discovery-question-panel .discovery-candidates",
+        ".discovery-question-panel .discovery-input-grid",
+        "overflow-x: auto",
+    ):
+        assert token in styles, token
+
+
+def test_outline_discovery_renderer_does_not_use_question_groups_as_primary_navigation():
+    renderer = (REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js").read_text(encoding="utf-8")
+    assert "renderOutlineDiscoveryGroups();" not in renderer.split("function renderOutlineDiscoveryMindmap", 1)[0]
+    assert "outlineDiscoveryNodesForMap" in renderer
+    assert "renderOutlineDiscoveryNodeQuestions" in renderer
+    assert re.search(r"function renderOutlineDiscoveryRail\(\) \{\s*updateOutlineDiscoveryProgress\(\);", renderer)
+
+
+def test_outline_discovery_renderer_clears_discovery_downloads_when_leaving_mode():
+    renderer = (REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js").read_text(encoding="utf-8")
+    leave_mode = renderer.split("function leaveOutlineDiscoveryMode()", 1)[1].split("\n}", 1)[0]
+
+    assert "clearPackageDownloadLinks();" in leave_mode
+
+
 def test_outline_intent_ledger_validator_rejects_duplicate_and_forward_supersede(tmp_path):
     valid = _run_review_validator(_outline_intent_ledger_sample(), tmp_path / "ledger-valid.json")
     assert valid.returncode == 0, _review_validator_output(valid)
@@ -5083,6 +5293,22 @@ def test_outline_intent_ledger_validator_rejects_duplicate_and_forward_supersede
     result = _run_review_validator(forward, tmp_path / "ledger-forward.json")
     assert result.returncode != 0
     assert "earlier event" in _review_validator_output(result)
+
+
+def test_outline_intent_ledger_validator_reads_legacy_v1_without_weakening_v2(tmp_path):
+    legacy = _outline_intent_ledger_sample()
+    legacy["schema_version"] = 1
+    for event in legacy["events"]:
+        event.pop("outline_node_id")
+
+    accepted = _run_review_validator(legacy, tmp_path / "ledger-v1.json")
+    assert accepted.returncode == 0, _review_validator_output(accepted)
+
+    invalid_v2 = _outline_intent_ledger_sample()
+    invalid_v2["events"][0].pop("outline_node_id")
+    rejected = _run_review_validator(invalid_v2, tmp_path / "ledger-v2-missing-node.json")
+    assert rejected.returncode != 0
+    assert "outline_node_id" in _review_validator_output(rejected)
 
 
 def test_outline_intent_ledger_allows_empty_exclude_value_but_not_empty_content_operations(tmp_path):

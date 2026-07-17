@@ -7,7 +7,7 @@ SpecCompass extends [GitHub Spec Kit](https://github.com/github/spec-kit) with a
 
 ## Core capabilities
 
-- **PRD Outline review**: `/sp.prd` builds the outline in stages. Early stages present 2-4 candidates, a recommendation, and free-text input; a mature outline requires formal visual confirmation before `/sp.specify`.
+- **PRD Outline review**: `/sp.prd` builds a staged mind map with an overview, business branches, node-based choices, and free-text input; a mature outline requires formal visual confirmation before `/sp.specify`.
 - **Flow and UI review**: `/sp.flow` and `/sp.ui` provide visual confirmation pages. Decisions are ranked `critical`, `important`, or `normal`; critical items are limited and always confirmed individually.
 - **Controlled delivery**: planning, analysis, gates, implementation, and verification stay linked to confirmed scope and evidence.
 
