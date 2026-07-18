@@ -34,11 +34,11 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## PRD Outline and Review Priorities" in release_workflow
-    assert "`/sp.prd` now develops Outline maturity in stages" in release_workflow
-    assert "visual, identity-bound confirmation before `/sp.specify`" in release_workflow
-    assert "`critical`, `important`, and `normal` priorities" in release_workflow
-    assert "must be confirmed individually" in release_workflow
+    assert "## Business-first PRD Outline" in release_workflow
+    assert "extracts source-backed business objects" in release_workflow
+    assert "must reference a validated business chain" in release_workflow
+    assert "read-only governance context" in release_workflow
+    assert "instead of inventing affected business nodes" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow

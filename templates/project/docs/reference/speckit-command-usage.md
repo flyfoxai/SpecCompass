@@ -213,6 +213,10 @@ export SPECIFY_FEATURE=001-photo-albums
 
 然后由 `spec-outline.md` 的 outline readiness 判断是否可以进入 `/sp.specify`。后续命令不应把 `main` 或 `master` 这种普通分支误当成 feature。
 
+`/sp.prd` 生成 Level 1 时分两阶段处理。先从用户输入、当前 PRD、已接受决策和正式业务来源提取 `business_context`，包括 `product_subject`、`business_objects`、`operations`、`outcomes`、`business_chains` 和证据缺口；再把有来源的完整业务链编译为业务能力主干和分图。一级分支必须说清产品实际储存、判断、控制、交易、交付或核验什么，不能用“目标、用户、问题、范围、全局认知”代替业务内容。进入 `frame` 至少要有一条由用户确认或正式文档支持的完整业务链。
+
+PRD 页面可以同时展示 `constitution_snapshot`，但固定为 `read_only` 和 `governance_only`。它只是 Constitution 的只读治理快照：不参与业务推断，不产生问题或推荐，不写入 PRD，也不能成为 discovery delta 的目标。`/sp.constitution` 继续负责正式长期治理规则；`/sp.prd` 只负责产品事实、业务能力和范围。
+
 ## 6. Integration / Preset / Extension / Workflow 机制
 
 Integration 负责安装 agent 命令文件、上下文文件和 manifest。升级、切换、卸载时应保留用户改过的文件，除非显式 `--force`。

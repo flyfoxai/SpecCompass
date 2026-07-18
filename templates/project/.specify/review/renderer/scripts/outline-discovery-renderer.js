@@ -70,6 +70,32 @@ function outlineDiscoveryQuestionsForNode(nodeId, data = reviewData) {
   return outlineDiscoveryQuestions(data).filter((question) => question.outline_node_id === nodeId);
 }
 
+function outlineDiscoveryBusinessContext(data = reviewData) {
+  return data?.business_context || {};
+}
+
+function outlineDiscoveryBusinessTitle(data = reviewData) {
+  const subject = outlineDiscoveryBusinessContext(data).product_subject;
+  return subject?.label || data?.project?.name || "业务全景";
+}
+
+function outlineDiscoveryBusinessSummary(data = reviewData, map = null) {
+  const context = outlineDiscoveryBusinessContext(data);
+  const chains = Array.isArray(context.business_chains) ? context.business_chains : [];
+  const mapChainIds = new Set(
+    map
+      ? outlineDiscoveryNodesForMap(map.map_id, data).flatMap((node) => node.business_chain_refs || [])
+      : []
+  );
+  const chain = chains.find((candidate) => mapChainIds.has(candidate.chain_id)) || chains[0] || null;
+  if (!chain) return context.product_subject?.summary || data?.project?.current_understanding || "尚未形成可追溯的业务闭环。";
+  const operations = new Map((context.operations || []).map((operation) => [operation.operation_id, operation.label]));
+  const outcomes = new Map((context.outcomes || []).map((outcome) => [outcome.outcome_id, outcome.label]));
+  const action = (chain.operation_refs || []).map((id) => operations.get(id)).filter(Boolean).join("、");
+  const result = (chain.outcome_refs || []).map((id) => outcomes.get(id)).filter(Boolean).join("、");
+  return [chain.trigger_or_input, action, result].filter(Boolean).join(" → ") || chain.label;
+}
+
 function outlineDiscoveryResponse(questionId) {
   if (!outlineDiscoveryState.responses[questionId]) {
     outlineDiscoveryState.responses[questionId] = {
@@ -153,8 +179,8 @@ function renderOutlineDiscovery(data = reviewData) {
     outlineDiscoveryActiveNodeId = activeMap?.root_node_id || null;
   }
   $("page-title").textContent = `SpecCompass - ${data.project?.name || "项目"} / Outline 探索`;
-  $("page-note").textContent = "先看项目全局，再进入业务分图或全局约束图；保存结果只回到 /sp.prd，不会授权 /sp.specify。";
-  $("project-overview").textContent = data.project?.current_understanding || "尚未形成稳定产品框架。";
+  $("page-note").textContent = "先核对产品实际处理的业务，再进入分支补充；保存结果只回到 /sp.prd，不会授权 /sp.specify。";
+  $("project-overview").textContent = outlineDiscoveryBusinessSummary(data);
   $("data-warnings").classList.add("hidden");
   $("download-package").textContent = "保存并继续完善";
   $("copy-summary").classList.add("hidden");
@@ -163,8 +189,8 @@ function renderOutlineDiscovery(data = reviewData) {
   const steps = $("authorization-steps");
   steps.replaceChildren();
   for (const text of [
-    "点击节点查看该分支的问题；一级、二级由你补充，三级再按 Constitution 生成。",
-    "点击地图入口可下钻；政策、合规和治理统一放在全局约束图，并标出影响的业务节点。",
+    "先核对业务闭环和能力分支，再点击节点查看与该业务有关的问题。",
+    "一级、二级需要你确认或补充；更细内容只能依据已确认业务事实继续展开。",
     "保存后下载结构化探索响应，再交回 /sp.prd；本页没有授权能力。"
   ]) appendText(steps, "li", text);
   renderOutlineDiscoveryMaps();
@@ -225,8 +251,8 @@ function renderOutlineDiscoveryCurrentMap() {
   $("next-module").onclick = () => openOutlineDiscoveryMap(maps[Math.min(maps.length - 1, mapIndex + 1)]?.map_id);
   $("module-title").textContent = map?.title || "Outline 导图";
   $("module-summary").textContent = map?.summary || reviewData.project?.discovery_goal || "继续补齐产品事实。";
-  $("item-title").textContent = "项目全局思维导图";
-  $("item-summary").textContent = "根节点保持稳定，分支节点承载业务语义；点击节点后，右侧只显示该节点绑定的问题。";
+  $("item-title").textContent = outlineDiscoveryBusinessTitle();
+  $("item-summary").textContent = outlineDiscoveryBusinessSummary(reviewData, map);
   $("item-tabs").replaceChildren();
   const view = $("diagram-view");
   view.replaceChildren();
@@ -234,7 +260,45 @@ function renderOutlineDiscoveryCurrentMap() {
   appendText(banner, "strong", "探索模式");
   appendText(banner, "span", "不会授权 /sp.specify；地图和选择结果只供 /sp.prd 继续完善 PRD 和 Outline。");
   view.appendChild(banner);
+  const businessContext = create("section", "discovery-business-context");
+  appendText(businessContext, "span", "业务闭环", "discovery-context-label");
+  appendText(businessContext, "strong", outlineDiscoveryBusinessTitle());
+  appendText(businessContext, "p", outlineDiscoveryBusinessSummary(reviewData, map));
+  view.appendChild(businessContext);
   view.appendChild(renderOutlineDiscoveryMindmap(map));
+  view.appendChild(renderOutlineDiscoveryConstitution());
+}
+
+function renderOutlineDiscoveryConstitution(data = reviewData) {
+  const constitution = data?.constitution_snapshot || {};
+  const panel = create("section", "discovery-constitution-panel");
+  const header = create("div", "discovery-constitution-header");
+  const heading = create("div");
+  appendText(heading, "span", "项目治理", "discovery-context-label");
+  appendText(heading, "h3", "Constitution", "discovery-constitution-title");
+  header.appendChild(heading);
+  appendText(header, "span", "只读", "discovery-read-only-badge");
+  panel.appendChild(header);
+  appendText(panel, "p", constitution.source_path || ".specify/memory/constitution.md", "discovery-constitution-source");
+
+  if (constitution.availability === "available") {
+    const clauses = create("div", "discovery-constitution-clauses");
+    if (Array.isArray(constitution.clauses) && constitution.clauses.length) {
+      for (const clause of constitution.clauses) {
+        const item = create("article", "discovery-constitution-clause");
+        appendText(item, "strong", clause.title);
+        appendText(item, "p", clause.summary);
+        appendText(item, "small", `${clause.source_anchor} · ${clause.applicability_status}`);
+        clauses.appendChild(item);
+      }
+    } else {
+      appendText(clauses, "p", "当前 Constitution 中没有识别到与此需求直接相关的条款。", "discovery-constitution-empty");
+    }
+    panel.appendChild(clauses);
+  } else {
+    appendText(panel, "p", "未找到 Constitution。这里仅展示治理上下文，不影响业务能力图的生成。", "discovery-constitution-empty");
+  }
+  return panel;
 }
 
 function renderOutlineDiscoveryMindmap(map) {
@@ -267,6 +331,12 @@ function renderOutlineDiscoveryMindmap(map) {
   return canvas;
 }
 
+function hasUnmappedConstitutionImpact(node) {
+  return Array.isArray(node?.constitution_clause_refs)
+    && node.constitution_clause_refs.length > 0
+    && (!Array.isArray(node.affected_node_ids) || node.affected_node_ids.length === 0);
+}
+
 function renderOutlineDiscoveryNode(node) {
   const questions = outlineDiscoveryQuestionsForNode(node.node_id);
   const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
@@ -285,6 +355,8 @@ function renderOutlineDiscoveryNode(node) {
     const affected = create("span", "discovery-affected-count");
     affected.textContent = `影响 ${node.affected_node_ids.length} 个节点`;
     button.appendChild(affected);
+  } else if (hasUnmappedConstitutionImpact(node)) {
+    appendText(button, "span", "影响范围尚未映射", "discovery-affected-count");
   }
   button.addEventListener("click", () => {
     if (node.child_map_id) openOutlineDiscoveryMap(node.child_map_id);
@@ -316,6 +388,9 @@ function renderOutlineDiscoveryRail() {
       if (affectedNode) appendText(affected, "span", affectedNode.label || affectedId);
     }
     panel.appendChild(affected);
+  } else if (hasUnmappedConstitutionImpact(node)) {
+    appendText(panel, "h4", "影响范围");
+    appendText(panel, "p", "影响范围尚未映射。该条款仅供阅读，不会生成确认问题或修改业务 Outline。", "discovery-empty-copy");
   }
   nodeList.appendChild(panel);
   renderOutlineDiscoveryNodeQuestions(node, nodeList);

@@ -1832,7 +1832,6 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
         assert "[src:user-confirmed]" in content
         assert "[src:ai-proposed]" in content
         assert "intent-delta:" in content
-
     assert "Outline Maturity" in prd
     assert "2-4" in prd
     assert "none of the above" in prd.lower()
@@ -1899,6 +1898,46 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "specify init --force" in renderer_readme
     assert "already initialized" in renderer_readme
     assert "do not receive new templates automatically" in renderer_readme
+
+
+def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only():
+    """Level 1 must be compiled from business evidence, not generic methodology copy."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    prd = _command("prd")
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+    usage = (
+        PROJECT_ROOT
+        / "templates"
+        / "project"
+        / "docs"
+        / "reference"
+        / "speckit-command-usage.md"
+    ).read_text(encoding="utf-8")
+
+    for content in (methodology, prd, command_spec, usage):
+        assert "business_context" in content
+        assert "product_subject" in content
+        assert "business_objects" in content
+        assert "operations" in content
+        assert "outcomes" in content
+        assert "business_chains" in content
+        assert "constitution_snapshot" in content
+        assert "read_only" in content
+        assert "governance_only" in content
+
+    assert "Stage A - extract business semantics" in prd
+    assert "Stage B - compile the business maps" in prd
+    assert "complete business chain" in prd
+    assert "must not use Constitution content as business evidence" in prd
+    assert "must not create discovery questions from Constitution clauses" in prd
+    assert "must not write Constitution clauses into the PRD" in prd
+    assert "must not target Constitution clauses with discovery deltas" in prd
+    assert "business capability branches" in command_spec
+    assert "Constitution is displayed only as a read-only governance snapshot" in command_spec
+    assert "两阶段" in methodology
+    assert "完整业务链" in methodology
+    assert "只读治理快照" in methodology
+    assert "业务能力主干" in usage
 
 
 def test_task_packet_defaults_protect_shared_truth_and_worker_artifact_boundaries():
@@ -4775,25 +4814,104 @@ def _outline_review_validator_sample() -> dict:
 
 def _outline_discovery_validator_sample() -> dict:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "review_type": "outline_discovery",
         "interaction_mode": "discovery",
         "artifact_path": "specs/001-outline/prd/review/outline-discovery-data.json",
         "outline_maturity": "explore",
         "batch_id": "DISCOVERY-001",
         "project": {
-            "name": "Outline Discovery Example",
+            "name": "量化交易工作台",
             "feature": "001-outline",
-            "current_understanding": "团队希望先从零散产品想法中确认真实目标用户、核心问题和产品方向。",
-            "discovery_goal": "通过少量高价值候选和用户直接输入，把模糊想法收敛为可继续完善的产品大纲。",
+            "current_understanding": "系统接收行情和账户数据，生成交易意图，并在风险检查通过后形成可执行订单。",
+            "discovery_goal": "确认数据、策略和风险控制组成的首期业务闭环。",
         },
         "source_snapshot": [
             {
                 "path": "specs/001-outline/prd.md",
                 "source_type": "user_document",
-                "anchors": ["Product Intent"],
+                "anchors": ["Core Trading Loop"],
             }
         ],
+        "business_context": {
+            "product_subject": {
+                "label": "量化交易工作台",
+                "summary": "把市场与账户数据转化为经过风险约束的交易订单。",
+                "source_status": "user",
+                "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+            },
+            "business_objects": [
+                {
+                    "object_id": "object-market-account-data",
+                    "label": "行情与账户数据",
+                    "summary": "策略判断和风险检查所依赖的业务事实。",
+                    "source_status": "doc",
+                    "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+                },
+                {
+                    "object_id": "object-order",
+                    "label": "交易订单",
+                    "summary": "通过策略判断和风险检查后形成的执行对象。",
+                    "source_status": "doc",
+                    "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+                },
+            ],
+            "operations": [
+                {
+                    "operation_id": "operation-store-data",
+                    "label": "存储并更新交易数据",
+                    "summary": "持续保存行情、持仓和资金状态。",
+                    "object_refs": ["object-market-account-data"],
+                    "source_status": "doc",
+                    "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+                },
+                {
+                    "operation_id": "operation-decide-order",
+                    "label": "生成策略信号并执行风险检查",
+                    "summary": "依据最新数据产生交易意图，并检查仓位、损失和资金限制。",
+                    "object_refs": ["object-market-account-data", "object-order"],
+                    "source_status": "user-confirmed",
+                    "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+                },
+            ],
+            "outcomes": [
+                {
+                    "outcome_id": "outcome-controlled-order",
+                    "label": "形成受控订单",
+                    "summary": "合规交易意图被转换为可执行订单，超限意图被阻断并留下原因。",
+                    "source_status": "user-confirmed",
+                    "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+                }
+            ],
+            "business_chains": [
+                {
+                    "chain_id": "chain-trading-loop",
+                    "label": "从交易数据到受控订单",
+                    "trigger_or_input": "新行情、持仓或资金变化到达",
+                    "object_refs": ["object-market-account-data", "object-order"],
+                    "operation_refs": ["operation-store-data", "operation-decide-order"],
+                    "outcome_refs": ["outcome-controlled-order"],
+                    "source_status": "user-confirmed",
+                    "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+                }
+            ],
+            "evidence_gaps": [],
+        },
+        "constitution_snapshot": {
+            "source_path": ".specify/memory/constitution.md",
+            "availability": "available",
+            "display_mode": "read_only",
+            "application_scope": "governance_only",
+            "clauses": [
+                {
+                    "clause_id": "constitution-risk-review",
+                    "title": "高风险决策需要人工确认",
+                    "summary": "可能扩大交易风险的规则变更必须由责任人确认。",
+                    "source_anchor": "Risk Governance",
+                    "applicability_status": "applicable",
+                }
+            ],
+        },
         "density_budget": {
             "max_visible_nodes_per_map": 18,
             "max_depth": 3,
@@ -4804,18 +4922,18 @@ def _outline_discovery_validator_sample() -> dict:
         "maps": [
             {
                 "map_id": "map-overview",
-                "title": "项目全局",
-                "summary": "只展示目标、角色、业务域、范围和全局约束入口。",
+                "title": "量化交易业务全景",
+                "summary": "从交易数据进入，到风险受控订单形成。",
                 "map_kind": "overview",
                 "root_node_id": "node-project",
                 "parent_map_id": None,
             },
             {
-                "map_id": "map-requirements",
-                "title": "需求形成",
-                "summary": "下钻确认需求输入、评审和验收边界。",
+                "map_id": "map-trading-loop",
+                "title": "交易闭环",
+                "summary": "下钻查看数据存储、策略决策和风险控制。",
                 "map_kind": "branch",
-                "root_node_id": "node-requirements-root",
+                "root_node_id": "node-trading-root",
                 "parent_map_id": "map-overview",
             },
             {
@@ -4828,58 +4946,52 @@ def _outline_discovery_validator_sample() -> dict:
             },
         ],
         "outline_nodes": [
-            {"node_id": "node-project", "parent_node_id": None, "map_id": "map-overview", "node_kind": "root", "label": "Outline Discovery", "summary": "在详细规格前形成稳定产品框架。", "source_status": "user"},
-            {"node_id": "node-goal", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "goal", "label": "产品目标", "summary": "补齐真实目标、用户和核心问题。", "source_status": "user"},
-            {"node_id": "node-role-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "role", "label": "产品负责人", "summary": "深度参与一级和二级框架。", "source_status": "doc"},
-            {"node_id": "node-requirements-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "需求形成", "summary": "进入业务分图。", "source_status": "user-confirmed", "child_map_id": "map-requirements"},
-            {"node_id": "node-governance-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "全局约束", "summary": "进入政策与治理图。", "source_status": "doc", "child_map_id": "map-governance"},
-            {"node_id": "node-requirements-root", "parent_node_id": None, "map_id": "map-requirements", "node_kind": "root", "label": "需求形成", "summary": "从输入到可确认框架。", "source_status": "user-confirmed"},
-            {"node_id": "node-owner", "parent_node_id": "node-requirements-root", "map_id": "map-requirements", "node_kind": "role", "label": "产品负责人", "summary": "提供业务事实和选择。", "source_status": "doc"},
-            {"node_id": "node-input", "parent_node_id": "node-requirements-root", "map_id": "map-requirements", "node_kind": "capability", "label": "需求输入", "summary": "收集目标、用户、范围和背景。", "source_status": "ai-proposed"},
-            {"node_id": "node-review", "parent_node_id": "node-requirements-root", "map_id": "map-requirements", "node_kind": "capability", "label": "框架评审", "summary": "在导图分支上确认或补充。", "source_status": "ai-proposed"},
-            {"node_id": "node-problem", "parent_node_id": "node-input", "map_id": "map-requirements", "node_kind": "problem", "label": "核心问题", "summary": "明确最需要解决的问题。", "source_status": "unresolved"},
-            {"node_id": "node-scope", "parent_node_id": "node-input", "map_id": "map-requirements", "node_kind": "scope", "label": "范围", "summary": "区分本期和非目标。", "source_status": "unresolved"},
-            {"node_id": "node-scenario", "parent_node_id": "node-review", "map_id": "map-requirements", "node_kind": "scenario", "label": "核心场景", "summary": "描述业务如何发生。", "source_status": "ai-proposed"},
-            {"node_id": "node-acceptance", "parent_node_id": "node-review", "map_id": "map-requirements", "node_kind": "acceptance", "label": "验收种子", "summary": "保留可进入规格的结果边界。", "source_status": "ai-proposed"},
+            {"node_id": "node-project", "parent_node_id": None, "map_id": "map-overview", "node_kind": "root", "label": "量化交易工作台", "summary": "把行情和账户变化转化为经过风险约束的交易订单。", "source_status": "user", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-trading-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "交易闭环", "summary": "进入数据、策略和风险控制业务分图。", "source_status": "user-confirmed", "child_map_id": "map-trading-loop", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-governance-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "全局治理约束", "summary": "查看对交易业务生效的项目原则。", "source_status": "doc", "child_map_id": "map-governance"},
+            {"node_id": "node-trading-root", "parent_node_id": None, "map_id": "map-trading-loop", "node_kind": "root", "label": "从交易数据到受控订单", "summary": "接收数据，产生交易意图，风险放行后形成订单。", "source_status": "user-confirmed", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-data", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "capability", "label": "交易数据存储", "summary": "保存并更新行情、资金和持仓事实。", "source_status": "doc", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-strategy-risk", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "capability", "label": "策略与风险决策", "summary": "生成交易意图，并按仓位、损失和资金限制决定放行或阻断。", "source_status": "ai-proposed", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-order", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "acceptance", "label": "受控订单结果", "summary": "输出可执行订单，或记录风险阻断原因。", "source_status": "user-confirmed", "business_chain_refs": ["chain-trading-loop"]},
             {"node_id": "node-governance-root", "parent_node_id": None, "map_id": "map-governance", "node_kind": "root", "label": "全局约束与治理", "summary": "只保留横切规则。", "source_status": "doc"},
-            {"node_id": "node-source-rule", "parent_node_id": "node-governance-root", "map_id": "map-governance", "node_kind": "constraint", "label": "来源权威", "summary": "模型建议不能自动成为事实。", "source_status": "doc", "affected_node_ids": ["node-input", "node-review"]},
-            {"node_id": "node-confirm-rule", "parent_node_id": "node-governance-root", "map_id": "map-governance", "node_kind": "constraint", "label": "确认边界", "summary": "探索响应不能授权规格阶段。", "source_status": "doc", "affected_node_ids": ["node-acceptance"]},
-            {"node_id": "node-constitution-rule", "parent_node_id": "node-governance-root", "map_id": "map-governance", "node_kind": "constraint", "label": "Constitution", "summary": "三级内容受项目原则约束。", "source_status": "doc", "affected_node_ids": ["node-scenario", "node-acceptance"]},
+            {"node_id": "node-constitution-rule", "parent_node_id": "node-governance-root", "map_id": "map-governance", "node_kind": "constraint", "label": "高风险决策需要人工确认", "summary": "扩大交易风险的规则变更必须由责任人确认。", "source_status": "doc", "affected_node_ids": ["node-strategy-risk"], "constitution_clause_refs": ["constitution-risk-review"]},
         ],
         "question_groups": [
             {
                 "id": "direction",
-                "title": "方向探索",
-                "summary": "先确认产品目标和核心用户，不在本轮假定完整范围。",
-                "map_id": "map-requirements",
+                "title": "策略与风险边界",
+                "summary": "确认首期由系统覆盖的策略和风险决策范围。",
+                "map_id": "map-trading-loop",
                 "questions": [
                     {
-                        "id": "goal",
-                        "outline_node_id": "node-input",
+                        "id": "strategy-risk-scope",
+                        "outline_node_id": "node-strategy-risk",
                         "target_kind": "goal",
-                        "prompt": "这项产品工作最需要优先解决什么目标？",
-                        "context": "现有资料只表达了提高需求质量，尚未确认最重要的业务结果。",
+                        "prompt": "首期策略与风险控制应该覆盖到什么程度？",
+                        "context": "业务闭环已经明确，但策略类型和自动放行边界仍需用户确认。",
                         "selection_mode": "single",
                         "candidates": [
                             {
-                                "id": "goal-quality",
-                                "label": "先提高需求输入质量",
-                                "value": "让产品负责人在进入详细规格前补齐真实目标、用户和核心问题。",
-                                "rationale": "当前返工主要来自产品事实不足，而不是实现能力不足。",
+                                "id": "risk-basic",
+                                "label": "单策略加基础风控",
+                                "value": "首期支持一个交易策略，并在仓位、资金和单笔损失检查通过后生成订单。",
+                                "rationale": "可以用最小闭环验证数据、策略、风险和订单之间的业务关系。",
+                                "business_chain_refs": ["chain-trading-loop"],
                             },
                             {
-                                "id": "goal-speed",
-                                "label": "先缩短需求整理时间",
-                                "value": "减少从零散资料形成可讨论产品框架所需的轮次。",
-                                "rationale": "适合已有稳定产品方向、主要受整理效率影响的团队。",
+                                "id": "risk-multi",
+                                "label": "多策略加组合风控",
+                                "value": "首期同时运行多个策略，并按组合敞口和回撤统一决定订单是否放行。",
+                                "rationale": "覆盖更完整，但需要更多策略冲突和组合风险事实。",
+                                "business_chain_refs": ["chain-trading-loop"],
                             },
                         ],
-                        "recommended_candidate_ids": ["goal-quality"],
-                        "recommendation_reason": "当前输入不足以形成稳定框架，先确认产品事实能直接降低后续返工。",
+                        "recommended_candidate_ids": ["risk-basic"],
+                        "recommendation_reason": "单策略基础风控已经形成可核验业务闭环，且不会提前假定组合管理能力。",
                         "allow_none_of_the_above": True,
                         "free_input": {
                             "enabled": True,
-                            "label": "补充或改写业务目标",
+                            "label": "补充或改写策略与风险边界",
                             "allowed_operations": [
                                 "confirm_candidate",
                                 "add",
@@ -4899,7 +5011,7 @@ def _outline_discovery_validator_sample() -> dict:
 
 def _outline_intent_ledger_sample() -> dict:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "format": "speccompass-outline-intent-ledger",
         "feature": "001-outline",
         "events": [
@@ -4971,12 +5083,18 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         assert path.is_file(), path
 
     discovery = json.loads(OUTLINE_DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
-    assert discovery["properties"]["schema_version"] == {"const": 2}
+    assert discovery["properties"]["schema_version"] == {"const": 3}
     assert discovery["properties"]["review_type"] == {"const": "outline_discovery"}
     assert discovery["properties"]["interaction_mode"] == {"const": "discovery"}
     assert discovery["properties"]["outline_maturity"]["enum"] == ["explore", "frame"]
     assert discovery["properties"]["authorization_effect"] == {"const": "none"}
-    assert {"density_budget", "maps", "outline_nodes"} <= set(discovery["required"])
+    assert {"business_context", "constitution_snapshot", "density_budget", "maps", "outline_nodes"} <= set(discovery["required"])
+    assert discovery["properties"]["constitution_snapshot"]["properties"]["display_mode"] == {"const": "read_only"}
+    assert discovery["properties"]["constitution_snapshot"]["properties"]["application_scope"] == {"const": "governance_only"}
+    constitution_path = discovery["properties"]["constitution_snapshot"]["properties"]["source_path"]
+    assert constitution_path["pattern"] == r"^(?!/)(?![A-Za-z]:/)(?!\.\.?(?:/|$))(?!.*\/\.\.?(?:/|$))(?!.*//)[^/]+(?:/[^/]+)*$"
+    assert "business_chain_refs" in discovery["$defs"]["outline_node"]["properties"]
+    assert "constitution_clause_refs" in discovery["$defs"]["outline_node"]["properties"]
     assert discovery["properties"]["density_budget"]["properties"] == {
         "max_visible_nodes_per_map": {"const": 18},
         "max_depth": {"const": 3},
@@ -4989,6 +5107,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert question["properties"]["selection_mode"] == {"const": "single"}
     assert question["properties"]["candidates"]["minItems"] == 2
     assert question["properties"]["candidates"]["maxItems"] == 4
+    assert "business_chain_refs" in discovery["$defs"]["candidate"]["required"]
     assert question["properties"]["recommended_candidate_ids"]["minItems"] == 1
     assert question["properties"]["recommended_candidate_ids"]["maxItems"] == 1
     assert {
@@ -5009,7 +5128,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     }
 
     response = json.loads(OUTLINE_DISCOVERY_RESPONSE_SCHEMA.read_text(encoding="utf-8"))
-    assert response["properties"]["schema_version"] == {"const": 2}
+    assert response["properties"]["schema_version"] == {"const": 3}
     assert response["properties"]["format"] == {"const": "speccompass-outline-discovery-response"}
     assert response["properties"]["authorization_effect"] == {"const": "none"}
     assert response["properties"]["next_route"] == {"const": "/sp.prd"}
@@ -5023,7 +5142,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert "outline_node_id" in response["$defs"]["delta"]["required"]
 
     ledger = json.loads(OUTLINE_INTENT_LEDGER_SCHEMA.read_text(encoding="utf-8"))
-    assert ledger["properties"]["schema_version"] == {"const": 2}
+    assert ledger["properties"]["schema_version"] == {"const": 3}
     assert ledger["properties"]["format"] == {"const": "speccompass-outline-intent-ledger"}
     assert ledger["properties"]["events"]["items"]["$ref"] == "#/$defs/event"
     assert "supersedes_delta_id" in ledger["$defs"]["event"]["properties"]
@@ -5068,7 +5187,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         (
             "multiple-recommendations",
             lambda data: data["question_groups"][0]["questions"][0].__setitem__(
-                "recommended_candidate_ids", ["goal-quality", "goal-speed"]
+                "recommended_candidate_ids", ["risk-basic", "risk-multi"]
             ),
             "exactly one candidate",
         ),
@@ -5089,48 +5208,118 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         ),
         (
             "too-many-children",
-            lambda data: data["outline_nodes"].append({"node_id": "node-extra-child", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "scope", "label": "额外范围", "summary": "触发直接子节点预算。", "source_status": "ai-proposed"}),
-            "at most 4 direct children",
+            lambda data: data["outline_nodes"].append({"node_id": "node-abstract-spine", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "goal", "label": "产品目标", "summary": "用抽象目标占据一级主干。", "source_status": "user"}),
+            "direct children must be business or governance map links",
         ),
         (
             "too-deep",
-            lambda data: data["outline_nodes"].append({"node_id": "node-depth-four", "parent_node_id": "node-problem", "map_id": "map-requirements", "node_kind": "acceptance", "label": "过深细节", "summary": "触发三层深度预算。", "source_status": "ai-proposed"}),
+            lambda data: data["outline_nodes"].extend([
+                {"node_id": "node-depth-three", "parent_node_id": "node-data", "map_id": "map-trading-loop", "node_kind": "scenario", "label": "数据接收", "summary": "接收行情数据。", "source_status": "doc", "business_chain_refs": ["chain-trading-loop"]},
+                {"node_id": "node-depth-four", "parent_node_id": "node-depth-three", "map_id": "map-trading-loop", "node_kind": "scenario", "label": "数据校验", "summary": "校验行情数据。", "source_status": "doc", "business_chain_refs": ["chain-trading-loop"]},
+            ]),
             "maximum depth 3",
         ),
         (
             "unbalanced-layer",
-            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-owner").__setitem__("parent_node_id", "node-input"),
+            lambda data: data["outline_nodes"].extend([
+                {"node_id": f"node-data-{i}", "parent_node_id": "node-data" if i < 4 else "node-order", "map_id": "map-trading-loop", "node_kind": "scenario", "label": f"数据场景 {i}", "summary": "用于密度失衡测试。", "source_status": "doc", "business_chain_refs": ["chain-trading-loop"]}
+                for i in range(7)
+            ]),
             "layer may contain at most 60%",
         ),
         (
             "map-parent-cycle",
             lambda data: (
-                next(map_ for map_ in data["maps"] if map_["map_id"] == "map-requirements").__setitem__("parent_map_id", "map-governance"),
-                next(map_ for map_ in data["maps"] if map_["map_id"] == "map-governance").__setitem__("parent_map_id", "map-requirements"),
+                next(map_ for map_ in data["maps"] if map_["map_id"] == "map-trading-loop").__setitem__("parent_map_id", "map-governance"),
+                next(map_ for map_ in data["maps"] if map_["map_id"] == "map-governance").__setitem__("parent_map_id", "map-trading-loop"),
             ),
             "must not contain parent cycles",
         ),
         (
             "duplicate-child-map-entry",
-            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-role-entry").update(
-                {"node_kind": "map_link", "child_map_id": "map-requirements"}
-            ),
+            lambda data: data["outline_nodes"].append({"node_id": "node-duplicate-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "重复交易入口", "summary": "重复链接业务分图。", "source_status": "doc", "child_map_id": "map-trading-loop", "business_chain_refs": ["chain-trading-loop"]}),
             "must be linked exactly once",
         ),
         (
-            "missing-global-constraint-impact",
-            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-source-rule").pop("affected_node_ids"),
-            "must list at least one affected business node",
-        ),
-        (
             "overview-constraint-impact",
-            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-source-rule").__setitem__("affected_node_ids", ["node-project"]),
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-constitution-rule").__setitem__("affected_node_ids", ["node-project"]),
             "must reference business branch nodes",
         ),
         (
             "duplicate-global-constraint-impact",
-            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-source-rule").__setitem__("affected_node_ids", ["node-input", "node-input"]),
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-constitution-rule").__setitem__("affected_node_ids", ["node-data", "node-data"]),
             "affected_node_ids must be unique",
+        ),
+        (
+            "missing-business-object",
+            lambda data: data["business_context"]["business_chains"][0].__setitem__("object_refs", []),
+            "business chain must reference at least one business object",
+        ),
+        (
+            "unknown-business-source",
+            lambda data: data["business_context"]["business_chains"][0].__setitem__("source_refs", ["specs/001-outline/unknown.md#Fact"]),
+            "source_refs must reference source_snapshot",
+        ),
+        (
+            "evidence-gaps-not-array",
+            lambda data: data["business_context"].__setitem__("evidence_gaps", {}),
+            "evidence_gaps must be an array",
+        ),
+        (
+            "duplicate-evidence-gap",
+            lambda data: data["business_context"].__setitem__(
+                "evidence_gaps",
+                [
+                    {"gap_id": "gap-1", "summary": "缺少策略边界。", "business_chain_refs": ["chain-trading-loop"]},
+                    {"gap_id": "gap-1", "summary": "缺少风险边界。", "business_chain_refs": ["chain-trading-loop"]},
+                ],
+            ),
+            "duplicate evidence gap_id",
+        ),
+        (
+            "constitution-clauses-not-array",
+            lambda data: data["constitution_snapshot"].__setitem__("clauses", {}),
+            "constitution_snapshot.clauses must be an array",
+        ),
+        (
+            "branch-without-business-chain",
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-trading-entry").pop("business_chain_refs"),
+            "business branch must reference at least one business chain",
+        ),
+        (
+            "unbound-ai-proposal",
+            lambda data: data.__setitem__("question_groups", [{**data["question_groups"][0], "questions": []}]),
+            "ai-proposed business node must bind a question",
+        ),
+        (
+            "unbound-overview-ai-proposal",
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-trading-entry").__setitem__("source_status", "ai-proposed"),
+            "ai-proposed business node must bind a question",
+        ),
+        (
+            "constitution-as-business-evidence",
+            lambda data: data["business_context"]["business_chains"][0].__setitem__("source_refs", [".specify/memory/constitution.md#Risk Governance"]),
+            "Constitution cannot be business evidence",
+        ),
+        (
+            "mutable-constitution",
+            lambda data: data["constitution_snapshot"].__setitem__("display_mode", "editable"),
+            "constitution_snapshot.display_mode must be read_only",
+        ),
+        (
+            "unknown-constitution-clause",
+            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-constitution-rule").__setitem__("constitution_clause_refs", ["missing-clause"]),
+            "constitution_clause_refs must reference constitution_snapshot",
+        ),
+        (
+            "candidate-without-business-evidence",
+            lambda data: data["question_groups"][0]["questions"][0]["candidates"][0].pop("business_chain_refs"),
+            "business_chain_refs",
+        ),
+        (
+            "candidate-with-constitution-evidence",
+            lambda data: data["question_groups"][0]["questions"][0]["candidates"][0].__setitem__("business_chain_refs", ["constitution-risk-review"]),
+            "business_chain_refs",
         ),
     ):
         invalid = _outline_discovery_validator_sample()
@@ -5138,6 +5327,22 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         result = _run_review_validator(invalid, tmp_path / f"discovery-{label}.json")
         assert result.returncode != 0, label
         assert expected in _review_validator_output(result)
+
+    for impact in (None, []):
+        valid_without_known_impact = _outline_discovery_validator_sample()
+        constraint = next(
+            node for node in valid_without_known_impact["outline_nodes"]
+            if node["node_id"] == "node-constitution-rule"
+        )
+        if impact is None:
+            constraint.pop("affected_node_ids")
+        else:
+            constraint["affected_node_ids"] = impact
+        accepted = _run_review_validator(
+            valid_without_known_impact,
+            tmp_path / f"discovery-unknown-impact-{impact is None}.json",
+        )
+        assert accepted.returncode == 0, _review_validator_output(accepted)
 
 
 def test_outline_discovery_browser_runtime_matches_cli_fail_closed_contract():
@@ -5174,25 +5379,38 @@ for (const [label, mutate] of [
   ["one-candidate", (data) => data.question_groups[0].questions[0].candidates.pop()],
   ["unknown-recommendation", (data) => data.question_groups[0].questions[0].recommended_candidate_ids = ["missing"]],
   ["multiple-recommendations", (data) => data.question_groups[0].questions[0].recommended_candidate_ids = ["goal-quality", "goal-speed"]],
+  ["candidate-without-business-evidence", (data) => delete data.question_groups[0].questions[0].candidates[0].business_chain_refs],
+  ["candidate-with-constitution-evidence", (data) => data.question_groups[0].questions[0].candidates[0].business_chain_refs = ["constitution-risk-review"]],
   ["multiple-selection", (data) => data.question_groups[0].questions[0].selection_mode = "multiple"],
   ["missing-operation", (data) => data.question_groups[0].questions[0].free_input.allowed_operations.pop()],
+  ["missing-business-object", (data) => data.business_context.business_chains[0].object_refs = []],
+  ["unknown-business-source", (data) => data.business_context.business_chains[0].source_refs = ["specs/001-outline/unknown.md#Fact"]],
+  ["evidence-gaps-not-array", (data) => data.business_context.evidence_gaps = {{}}],
+  ["duplicate-evidence-gap", (data) => data.business_context.evidence_gaps = [
+    {{ gap_id: "gap-1", summary: "缺少策略边界。", business_chain_refs: ["chain-trading-loop"] }},
+    {{ gap_id: "gap-1", summary: "缺少风险边界。", business_chain_refs: ["chain-trading-loop"] }}
+  ]],
+  ["constitution-clauses-not-array", (data) => data.constitution_snapshot.clauses = {{}}],
+  ["business-branch-without-chain", (data) => delete data.outline_nodes.find((item) => item.node_id === "node-trading-entry").business_chain_refs],
+  ["unbound-ai-proposal", (data) => data.question_groups[0].questions = []],
+  ["unbound-overview-ai-proposal", (data) => data.outline_nodes.find((item) => item.node_id === "node-trading-entry").source_status = "ai-proposed"],
+  ["constitution-business-evidence", (data) => data.business_context.business_chains[0].source_refs = [".specify/memory/constitution.md#Risk Governance"]],
+  ["mutable-constitution", (data) => data.constitution_snapshot.display_mode = "editable"],
+  ["unknown-constitution-clause", (data) => data.outline_nodes.find((item) => item.node_id === "node-constitution-rule").constitution_clause_refs = ["missing-clause"]],
   ["map-parent-cycle", (data) => {{
-    data.maps.find((map) => map.map_id === "map-requirements").parent_map_id = "map-governance";
-    data.maps.find((map) => map.map_id === "map-governance").parent_map_id = "map-requirements";
+    data.maps.find((map) => map.map_id === "map-trading-loop").parent_map_id = "map-governance";
+    data.maps.find((map) => map.map_id === "map-governance").parent_map_id = "map-trading-loop";
   }}],
   ["duplicate-child-map-entry", (data) => {{
-    const node = data.outline_nodes.find((item) => item.node_id === "node-role-entry");
-    node.node_kind = "map_link";
-    node.child_map_id = "map-requirements";
-  }}],
-  ["missing-global-constraint-impact", (data) => {{
-    delete data.outline_nodes.find((item) => item.node_id === "node-source-rule").affected_node_ids;
+    const node = structuredClone(data.outline_nodes.find((item) => item.node_id === "node-trading-entry"));
+    node.node_id = "node-trading-entry-duplicate";
+    data.outline_nodes.push(node);
   }}],
   ["overview-constraint-impact", (data) => {{
-    data.outline_nodes.find((item) => item.node_id === "node-source-rule").affected_node_ids = ["node-project"];
+    data.outline_nodes.find((item) => item.node_id === "node-constitution-rule").affected_node_ids = ["node-project"];
   }}],
   ["duplicate-global-constraint-impact", (data) => {{
-    data.outline_nodes.find((item) => item.node_id === "node-source-rule").affected_node_ids = ["node-input", "node-input"];
+    data.outline_nodes.find((item) => item.node_id === "node-constitution-rule").affected_node_ids = ["node-data", "node-data"];
   }}]
 ]) {{
   const invalid = structuredClone(valid);
@@ -5200,9 +5418,68 @@ for (const [label, mutate] of [
   const result = context.validateReviewData(invalid);
   if (!result) throw new Error(label + " was accepted");
 }}
+for (const impact of [undefined, []]) {{
+  const allowed = structuredClone(valid);
+  const constraint = allowed.outline_nodes.find((item) => item.node_id === "node-constitution-rule");
+  if (impact === undefined) delete constraint.affected_node_ids;
+  else constraint.affected_node_ids = impact;
+  const result = context.validateReviewData(allowed);
+  if (result) throw new Error("unknown Constitution impact rejected: " + result);
+}}
 """
     result = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_outline_discovery_response_cli_rejects_constitution_targets(tmp_path):
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review response validation")
+
+    source = _outline_discovery_validator_sample()
+    source_path = tmp_path / "specs" / "001-outline" / "prd" / "review" / "outline-discovery-data.json"
+    source_path.parent.mkdir(parents=True)
+    source_path.write_text(json.dumps(source, ensure_ascii=False), encoding="utf-8")
+    response = {
+        "schema_version": 3,
+        "format": "speccompass-outline-discovery-response",
+        "response_id": "response-constitution",
+        "review_type": "outline_discovery",
+        "batch_id": source["batch_id"],
+        "feature": source["project"]["feature"],
+        "outline_maturity": source["outline_maturity"],
+        "source_review_data": "specs/001-outline/prd/review/outline-discovery-data.json",
+        "authorization_effect": "none",
+        "next_route": "/sp.prd",
+        "generated_at": "2026-07-18T08:00:00.000Z",
+        "deltas": [
+            {
+                "delta_id": "delta-constitution",
+                "question_id": "strategy-risk-scope",
+                "outline_node_id": "node-constitution-rule",
+                "target_kind": "goal",
+                "operation": "replace",
+                "candidate_id": None,
+                "target_id": "constitution-risk-review",
+                "value": "Modify governance from PRD.",
+                "source_tag": "user",
+                "none_of_the_above": False,
+                "supersedes_delta_id": None,
+            }
+        ],
+    }
+    response_path = tmp_path / "response.json"
+    response_path.write_text(json.dumps(response, ensure_ascii=False), encoding="utf-8")
+
+    result = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(response_path)],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "constitution" in _review_validator_output(result).lower()
 
 
 def test_outline_discovery_renderer_tracks_unexported_work_and_mobile_navigation_contract():
@@ -5245,6 +5522,7 @@ def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_sele
         "outline_node_id",
         "question.outline_node_id === outlineDiscoveryActiveNodeId",
         "downloadOutlineDiscoveryResponse",
+        "影响范围尚未映射",
     ):
         assert token in renderer, token
 
@@ -5259,6 +5537,59 @@ def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_sele
         ".discovery-question-panel .discovery-candidates",
         ".discovery-question-panel .discovery-input-grid",
         "overflow-x: auto",
+    ):
+        assert token in styles, token
+
+
+def test_outline_discovery_renderer_uses_business_context_and_shows_constitution_read_only():
+    renderer = (REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js").read_text(encoding="utf-8")
+    styles = (REVIEW_ROOT / "renderer" / "styles" / "review-ui.css").read_text(encoding="utf-8")
+
+    for token in (
+        "outlineDiscoveryBusinessContext",
+        "outlineDiscoveryBusinessTitle",
+        "outlineDiscoveryBusinessSummary",
+        "business_context",
+        "product_subject",
+        "business_chains",
+        "mapChainIds",
+        "outlineDiscoveryNodesForMap(map.map_id, data)",
+        "chains.find((candidate) => mapChainIds.has(candidate.chain_id))",
+        "trigger_or_input",
+        "renderOutlineDiscoveryConstitution",
+        "constitution_snapshot",
+        "constitution.source_path",
+        'constitution.availability === "available"',
+        "constitution.clauses",
+        "Array.isArray(constitution.clauses)",
+        "只读",
+        "项目治理",
+        "未找到 Constitution",
+    ):
+        assert token in renderer, token
+
+    assert '$("item-title").textContent = "项目全局思维导图"' not in renderer
+    assert "根节点保持稳定，分支节点承载业务语义" not in renderer
+    assert "三级再按 Constitution 生成" not in renderer
+    assert 'outlineDiscoveryBusinessSummary(reviewData, map)' in renderer
+
+    constitution_renderer = renderer.split("function renderOutlineDiscoveryConstitution", 1)[1].split("\n}", 1)[0]
+    for forbidden in (
+        "outlineDiscoveryResponse(",
+        "renderOutlineDiscoveryQuestion(",
+        'document.createElement("input")',
+        'document.createElement("select")',
+        'document.createElement("textarea")',
+        "addEventListener(",
+    ):
+        assert forbidden not in constitution_renderer
+
+    for token in (
+        ".discovery-business-context",
+        ".discovery-constitution-panel",
+        ".discovery-constitution-header",
+        ".discovery-constitution-clause",
+        ".discovery-constitution-source",
     ):
         assert token in styles, token
 
@@ -5295,18 +5626,21 @@ def test_outline_intent_ledger_validator_rejects_duplicate_and_forward_supersede
     assert "earlier event" in _review_validator_output(result)
 
 
-def test_outline_intent_ledger_validator_reads_legacy_v1_without_weakening_v2(tmp_path):
+@pytest.mark.parametrize("schema_version", [1, 2])
+def test_outline_intent_ledger_validator_rejects_legacy_versions(tmp_path, schema_version):
     legacy = _outline_intent_ledger_sample()
-    legacy["schema_version"] = 1
-    for event in legacy["events"]:
-        event.pop("outline_node_id")
+    legacy["schema_version"] = schema_version
 
-    accepted = _run_review_validator(legacy, tmp_path / "ledger-v1.json")
-    assert accepted.returncode == 0, _review_validator_output(accepted)
+    rejected = _run_review_validator(legacy, tmp_path / f"ledger-v{schema_version}.json")
+    assert rejected.returncode != 0
+    assert "schema_version 3" in _review_validator_output(rejected)
 
-    invalid_v2 = _outline_intent_ledger_sample()
-    invalid_v2["events"][0].pop("outline_node_id")
-    rejected = _run_review_validator(invalid_v2, tmp_path / "ledger-v2-missing-node.json")
+
+def test_outline_intent_ledger_validator_requires_v3_node_binding(tmp_path):
+    invalid = _outline_intent_ledger_sample()
+    invalid["events"][0].pop("outline_node_id")
+
+    rejected = _run_review_validator(invalid, tmp_path / "ledger-v3-missing-node.json")
     assert rejected.returncode != 0
     assert "outline_node_id" in _review_validator_output(rejected)
 

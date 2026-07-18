@@ -48,6 +48,18 @@ This shows installed tools and confirms the CLI is working.
 
 When SpecCompass releases new features (like new agent commands, skills, or updated templates), you need to refresh your project's SpecCompass files.
 
+### Regenerating active PRD Outline Discovery files
+
+Outline Discovery schema v3 adds source-backed business context and read-only Constitution context. Existing v1/v2 Discovery responses and intent ledgers are deliberately not rewritten or accepted as v3 because they do not contain the new evidence fields.
+
+Before continuing an active `/sp.prd` session after upgrading:
+
+1. Archive the existing `specs/<feature>/prd/review/outline-discovery-*.json` files and `specs/<feature>/prd/review/outline-intent-ledger.json` so the prior decisions remain auditable.
+2. Refresh the installed project templates with the command below.
+3. Run `/sp.prd` again to regenerate schema v3 Discovery data, then re-confirm the relevant choices.
+
+Do not change only the `schema_version` number in an old file. That would label incomplete v1/v2 data as v3 without adding the required business evidence.
+
 ### What gets updated?
 
 Running `specify init --here --force` will update:

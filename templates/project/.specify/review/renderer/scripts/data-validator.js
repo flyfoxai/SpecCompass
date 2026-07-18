@@ -105,21 +105,37 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
     }
   }
   const childMapLinkCounts = new Map();
+  const overviewMap = data.maps.find((map) => map.map_kind === "overview");
+  const overviewRoot = overviewMap ? nodesById.get(overviewMap.root_node_id) : null;
+  const globalMap = data.maps.find((map) => map.map_kind === "global_constraints");
+  const businessChainIds = new Set((data.business_context?.business_chains || []).map((chain) => chain?.chain_id));
+  const clauseIds = new Set((data.constitution_snapshot?.clauses || []).map((clause) => clause?.clause_id));
   for (const node of data.outline_nodes) {
     const map = mapsById.get(node.map_id);
-    if (map.map_kind === "global_constraints" && node.node_kind === "constraint" &&
-        (!Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length)) {
-      return "全局约束节点必须列出至少一个受影响的业务节点。";
+    const childMap = mapsById.get(node.child_map_id);
+    const isBusinessNode = map.map_kind === "branch" || (map.map_kind === "overview" && node.node_kind !== "root" && childMap?.map_kind !== "global_constraints");
+    if (node.parent_node_id === overviewRoot?.node_id && (node.node_kind !== "map_link" || !["branch", "global_constraints"].includes(childMap?.map_kind))) {
+      return "总图根节点的直接子节点只能是业务分图或全局治理分图入口。";
+    }
+    if (isBusinessNode || (map.map_kind === "overview" && node.node_kind === "root")) {
+      if (!Array.isArray(node.business_chain_refs) || !node.business_chain_refs.length) return "业务主干必须引用至少一条业务链。";
+      if (node.business_chain_refs.some((id) => !businessChainIds.has(id))) return "业务节点引用了不存在的业务链。";
+    } else if (node.business_chain_refs !== undefined) {
+      return "业务链引用只能出现在业务节点。";
+    }
+    if (node.constitution_clause_refs !== undefined &&
+        (map.map_kind !== "global_constraints" || node.node_kind !== "constraint" || !Array.isArray(node.constitution_clause_refs) ||
+         !node.constitution_clause_refs.length || node.constitution_clause_refs.some((id) => !clauseIds.has(id)))) {
+      return "Constitution 条款引用必须属于只读全局约束节点。";
     }
     if (node.child_map_id !== undefined) {
-      const childMap = mapsById.get(node.child_map_id);
       if (node.node_kind !== "map_link" || !childMap || childMap.parent_map_id !== node.map_id) return "Outline 下钻节点必须指向直接子图。";
       childMapLinkCounts.set(node.child_map_id, (childMapLinkCounts.get(node.child_map_id) || 0) + 1);
     } else if (node.node_kind === "map_link") {
       return "Outline 下钻节点缺少 child_map_id。";
     }
     if (node.affected_node_ids !== undefined) {
-      if (map.map_kind !== "global_constraints" || node.node_kind !== "constraint" || !Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length) {
+      if (map.map_kind !== "global_constraints" || node.node_kind !== "constraint" || !Array.isArray(node.affected_node_ids)) {
         return "affected_node_ids 只能用于全局约束节点。";
       }
       if (new Set(node.affected_node_ids).size !== node.affected_node_ids.length) {
@@ -139,18 +155,93 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
   return { mapsById, nodesById };
 }
 
+function validateOutlineDiscoveryBusinessRuntime(data) {
+  const context = data.business_context;
+  if (!context || typeof context !== "object" || Array.isArray(context)) return "Outline 探索缺少结构化业务语义。";
+  const sources = new Map((data.source_snapshot || []).map((source) => [String(source?.path || "").replace(/\\/g, "/"), source]));
+  const validateEvidence = (entry) => {
+    if (!new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]).has(entry?.source_status)) return "业务语义来源状态无效。";
+    if (!Array.isArray(entry?.source_refs) || !entry.source_refs.length) return "业务语义必须提供来源引用。";
+    for (const rawRef of entry.source_refs) {
+      const ref = String(rawRef || "").replace(/\\/g, "/");
+      const hash = ref.indexOf("#");
+      const sourcePath = hash < 0 ? ref : ref.slice(0, hash);
+      const anchor = hash < 0 ? "" : ref.slice(hash + 1);
+      if (sourcePath === data.constitution_snapshot?.source_path || /(?:^|\/)constitution\.md$/i.test(sourcePath)) return "Constitution 不能作为业务能力证据。";
+      const source = sources.get(sourcePath);
+      if (!source || (anchor && (!Array.isArray(source.anchors) || !source.anchors.includes(anchor)))) return "业务来源引用必须对应来源快照及其锚点。";
+    }
+    return "";
+  };
+  if (!context.product_subject || !String(context.product_subject.label || "").trim() || !String(context.product_subject.summary || "").trim()) return "业务主语字段不完整。";
+  let error = validateEvidence(context.product_subject);
+  if (error) return error;
+  const collect = (key, idKey, requiredTextFields = ["label", "summary"]) => {
+    const values = context[key];
+    if (!Array.isArray(values) || !values.length) return { error: `业务语义 ${key} 不能为空。` };
+    const ids = new Set();
+    for (const entry of values) {
+      if (!String(entry?.[idKey] || "").trim() || requiredTextFields.some((field) => !String(entry?.[field] || "").trim()) || ids.has(entry[idKey])) {
+        return { error: `业务语义 ${key} 字段不完整或 ID 重复。` };
+      }
+      ids.add(entry[idKey]);
+      error = validateEvidence(entry);
+      if (error) return { error };
+    }
+    return { values, ids };
+  };
+  const objects = collect("business_objects", "object_id"); if (objects.error) return objects.error;
+  const operations = collect("operations", "operation_id"); if (operations.error) return operations.error;
+  const outcomes = collect("outcomes", "outcome_id"); if (outcomes.error) return outcomes.error;
+  for (const operation of operations.values) {
+    if (!Array.isArray(operation.object_refs) || !operation.object_refs.length || operation.object_refs.some((id) => !objects.ids.has(id))) return "业务动作必须引用现有业务对象。";
+  }
+  const chains = collect("business_chains", "chain_id", ["label"]); if (chains.error) return chains.error;
+  for (const chain of chains.values) {
+    if (!String(chain.trigger_or_input || "").trim() || !Array.isArray(chain.object_refs) || !chain.object_refs.length || chain.object_refs.some((id) => !objects.ids.has(id)) ||
+        !Array.isArray(chain.operation_refs) || !chain.operation_refs.length || chain.operation_refs.some((id) => !operations.ids.has(id)) ||
+        !Array.isArray(chain.outcome_refs) || !chain.outcome_refs.length || chain.outcome_refs.some((id) => !outcomes.ids.has(id))) return "业务链必须包含有效的输入、对象、动作和结果。";
+  }
+  if (!Array.isArray(context.evidence_gaps)) return "业务证据缺口必须是数组。";
+  const evidenceGapIds = new Set();
+  for (const gap of context.evidence_gaps) {
+    if (!String(gap?.gap_id || "").trim() || !String(gap?.summary || "").trim() || !Array.isArray(gap.business_chain_refs) || !gap.business_chain_refs.length || gap.business_chain_refs.some((id) => !chains.ids.has(id))) return "业务证据缺口必须引用现有业务链。";
+    if (evidenceGapIds.has(gap.gap_id)) return "业务证据缺口包含重复 ID。";
+    evidenceGapIds.add(gap.gap_id);
+  }
+  if (data.outline_maturity === "frame" && !chains.values.some((chain) => ["user", "user-confirmed", "doc"].includes(chain.source_status))) return "Frame 阶段至少需要一条有来源支持的完整业务链。";
+  return "";
+}
+
+function validateOutlineDiscoveryConstitutionRuntime(data) {
+  const snapshot = data.constitution_snapshot;
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) return "Outline 探索缺少 Constitution 只读快照。";
+  if (!runtimeIsSafeRepoPath(snapshot.source_path)) return "Constitution 来源路径无效。";
+  if (!new Set(["available", "missing"]).has(snapshot.availability)) return "Constitution 可用状态无效。";
+  if (snapshot.display_mode !== "read_only" || snapshot.application_scope !== "governance_only") return "Constitution 在 PRD 中必须仅作只读治理展示。";
+  if (!Array.isArray(snapshot.clauses) || (snapshot.availability === "missing" && snapshot.clauses.length)) return "Constitution 条款与可用状态不一致。";
+  const ids = new Set();
+  const applicabilityStatuses = new Set(["applicable", "possibly_applicable", "not_applicable"]);
+  for (const clause of snapshot.clauses) {
+    if (["clause_id", "title", "summary", "source_anchor", "applicability_status"].some((key) => !String(clause?.[key] || "").trim()) || ids.has(clause.clause_id)) return "Constitution 条款字段不完整或 ID 重复。";
+    if (!applicabilityStatuses.has(clause.applicability_status)) return "Constitution 条款适用状态无效。";
+    ids.add(clause.clause_id);
+  }
+  return "";
+}
+
 function validateReviewData(data) {
   if (!data || typeof data !== "object" || Array.isArray(data)) {
     return "review data 必须是 JSON object。";
   }
   if (!SUPPORTED_SCHEMA_VERSIONS.has(data.schema_version)) {
-    return `schema_version 必须是 1 或 ${SUPPORTED_SCHEMA_VERSION}，当前为 ${data.schema_version ?? "未提供"}。`;
+    return `schema_version 必须是 1、2 或 ${SUPPORTED_SCHEMA_VERSION}，当前为 ${data.schema_version ?? "未提供"}。`;
   }
   if (!new Set(["flow", "ui", "outline", "outline_discovery"]).has(data.review_type)) {
     return "review_type 必须是 flow、ui、outline 或 outline_discovery。";
   }
   if (data.review_type === "outline_discovery") {
-    if (data.schema_version !== 2) return "outline_discovery 必须使用 schema_version 2。";
+    if (data.schema_version !== 3) return "outline_discovery 必须使用 schema_version 3。";
     if (data.interaction_mode !== "discovery") return "outline_discovery 的 interaction_mode 必须是 discovery。";
     if (!new Set(["explore", "frame"]).has(data.outline_maturity)) return "outline_maturity 必须是 explore 或 frame。";
     if (data.authorization_effect !== "none" || data.next_route !== "/sp.prd") {
@@ -174,11 +265,16 @@ function validateReviewData(data) {
         return "Outline 探索来源必须包含安全的仓库相对 path 和非空 source_type。";
       }
     }
+    let discoveryError = validateOutlineDiscoveryConstitutionRuntime(data);
+    if (discoveryError) return discoveryError;
+    discoveryError = validateOutlineDiscoveryBusinessRuntime(data);
+    if (discoveryError) return discoveryError;
     const topology = validateOutlineDiscoveryTopologyRuntime(data);
     if (typeof topology === "string") return topology;
     if (!Array.isArray(data.question_groups) || !data.question_groups.length) return "Outline 探索至少需要一个问题组。";
     const groupIds = new Set();
     const questionIds = new Set();
+    const businessChainIds = new Set(data.business_context.business_chains.map((chain) => chain.chain_id));
     for (const group of data.question_groups) {
       if (!String(group?.id || "").trim() || groupIds.has(group.id)) return "Outline 探索问题组 ID 必须非空且唯一。";
       groupIds.add(group.id);
@@ -193,6 +289,7 @@ function validateReviewData(data) {
         }
         const questionNode = topology.nodesById.get(question.outline_node_id);
         if (!questionNode || questionNode.map_id !== group.map_id) return "Outline 探索问题必须绑定当前导图中的现有节点。";
+        if (topology.mapsById.get(questionNode.map_id)?.map_kind === "global_constraints" || Array.isArray(questionNode.constitution_clause_refs)) return "Constitution 只读节点不能绑定确认问题。";
         if (question.selection_mode !== "single") return "Outline 探索 selection_mode 必须是 single。";
         if (!Array.isArray(question.candidates) || question.candidates.length < 2 || question.candidates.length > 4) {
           return "Outline 探索问题必须提供 2-4 个候选。";
@@ -201,6 +298,10 @@ function validateReviewData(data) {
         for (const candidate of question.candidates) {
           if (["id", "label", "value", "rationale"].some((key) => !String(candidate?.[key] || "").trim()) || candidateIds.has(candidate.id)) {
             return "Outline 探索候选必须字段完整且 ID 唯一。";
+          }
+          if (!Array.isArray(candidate.business_chain_refs) || !candidate.business_chain_refs.length ||
+              candidate.business_chain_refs.some((id) => !businessChainIds.has(id))) {
+            return "Outline 探索候选必须引用有效业务链作为依据。";
           }
           candidateIds.add(candidate.id);
         }
@@ -216,6 +317,14 @@ function validateReviewData(data) {
           return "Outline 探索必须启用以上都不符合和全部五种 Discovery 操作。";
         }
       }
+    }
+    const questionedNodeIds = new Set(data.question_groups.flatMap((group) => group.questions.map((question) => question.outline_node_id)));
+    for (const node of data.outline_nodes) {
+      const map = topology.mapsById.get(node.map_id);
+      const childKind = topology.mapsById.get(node.child_map_id)?.map_kind;
+      const isBusinessNode = map?.map_kind === "branch" ||
+        (map?.map_kind === "overview" && node.node_kind !== "root" && childKind !== "global_constraints");
+      if (node.source_status === "ai-proposed" && isBusinessNode && !questionedNodeIds.has(node.node_id)) return "AI 建议的业务节点必须绑定确认问题。";
     }
     return "";
   }

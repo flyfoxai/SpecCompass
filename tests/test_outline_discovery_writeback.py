@@ -39,7 +39,7 @@ def _write_json(path: Path, value: dict) -> None:
 
 def _discovery_data(feature: str = "001-outline") -> dict:
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "review_type": "outline_discovery",
         "interaction_mode": "discovery",
         "artifact_path": f"specs/{feature}/prd/review/outline-discovery-data.json",
@@ -52,8 +52,79 @@ def _discovery_data(feature: str = "001-outline") -> dict:
             "discovery_goal": "Confirm the primary product goal.",
         },
         "source_snapshot": [
-            {"path": f"specs/{feature}/prd.md", "source_type": "prd"},
+            {"path": f"specs/{feature}/prd.md", "source_type": "prd", "anchors": ["Trading Loop"]},
         ],
+        "business_context": {
+            "product_subject": {
+                "label": "Trading workbench",
+                "summary": "Turns market and account data into risk-controlled orders.",
+                "source_status": "user",
+                "source_refs": [f"specs/{feature}/prd.md#Trading Loop"],
+            },
+            "business_objects": [
+                {
+                    "object_id": "object-trading-data",
+                    "label": "Trading data",
+                    "summary": "Market, cash, and position facts.",
+                    "source_status": "doc",
+                    "source_refs": [f"specs/{feature}/prd.md#Trading Loop"],
+                },
+                {
+                    "object_id": "object-order",
+                    "label": "Order",
+                    "summary": "An executable or blocked trading instruction.",
+                    "source_status": "doc",
+                    "source_refs": [f"specs/{feature}/prd.md#Trading Loop"],
+                },
+            ],
+            "operations": [
+                {
+                    "operation_id": "operation-decide",
+                    "label": "Generate and check an order",
+                    "summary": "Generates a strategy intent and checks risk limits.",
+                    "object_refs": ["object-trading-data", "object-order"],
+                    "source_status": "user-confirmed",
+                    "source_refs": [f"specs/{feature}/prd.md#Trading Loop"],
+                }
+            ],
+            "outcomes": [
+                {
+                    "outcome_id": "outcome-controlled-order",
+                    "label": "Controlled order",
+                    "summary": "Produces an executable order or a recorded rejection.",
+                    "source_status": "user-confirmed",
+                    "source_refs": [f"specs/{feature}/prd.md#Trading Loop"],
+                }
+            ],
+            "business_chains": [
+                {
+                    "chain_id": "chain-trading-loop",
+                    "label": "Trading data to controlled order",
+                    "trigger_or_input": "Market or account data changes",
+                    "object_refs": ["object-trading-data", "object-order"],
+                    "operation_refs": ["operation-decide"],
+                    "outcome_refs": ["outcome-controlled-order"],
+                    "source_status": "user-confirmed",
+                    "source_refs": [f"specs/{feature}/prd.md#Trading Loop"],
+                }
+            ],
+            "evidence_gaps": [],
+        },
+        "constitution_snapshot": {
+            "source_path": ".specify/memory/constitution.md",
+            "availability": "available",
+            "display_mode": "read_only",
+            "application_scope": "governance_only",
+            "clauses": [
+                {
+                    "clause_id": "constitution-risk-review",
+                    "title": "Review high-risk decisions",
+                    "summary": "A responsible person confirms risk-expanding changes.",
+                    "source_anchor": "Risk Governance",
+                    "applicability_status": "applicable",
+                }
+            ],
+        },
         "density_budget": {
             "max_visible_nodes_per_map": 18,
             "max_depth": 3,
@@ -67,13 +138,13 @@ def _discovery_data(feature: str = "001-outline") -> dict:
             {"map_id": "map-governance", "title": "Governance", "summary": "Global constraints.", "map_kind": "global_constraints", "root_node_id": "node-governance", "parent_map_id": "map-overview"},
         ],
         "outline_nodes": [
-            {"node_id": "node-project", "parent_node_id": None, "map_id": "map-overview", "node_kind": "root", "label": "Project", "summary": "Project root.", "source_status": "user"},
-            {"node_id": "node-branch-link", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "Requirements", "summary": "Business branch.", "source_status": "ai-proposed", "child_map_id": "map-branch"},
+            {"node_id": "node-project", "parent_node_id": None, "map_id": "map-overview", "node_kind": "root", "label": "Trading workbench", "summary": "Turns trading data into controlled orders.", "source_status": "user", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-branch-link", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "Trading loop", "summary": "Business branch.", "source_status": "user-confirmed", "child_map_id": "map-branch", "business_chain_refs": ["chain-trading-loop"]},
             {"node_id": "node-governance-link", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "Governance", "summary": "Global rules.", "source_status": "doc", "child_map_id": "map-governance"},
-            {"node_id": "node-branch", "parent_node_id": None, "map_id": "map-branch", "node_kind": "root", "label": "Requirements", "summary": "Requirements root.", "source_status": "ai-proposed"},
-            {"node_id": "node-goal", "parent_node_id": "node-branch", "map_id": "map-branch", "node_kind": "goal", "label": "Goal", "summary": "Product goal.", "source_status": "unresolved"},
+            {"node_id": "node-branch", "parent_node_id": None, "map_id": "map-branch", "node_kind": "root", "label": "Trading loop", "summary": "Data, strategy, and risk decision.", "source_status": "user-confirmed", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-goal", "parent_node_id": "node-branch", "map_id": "map-branch", "node_kind": "capability", "label": "Strategy and risk decision", "summary": "Choose the first supported control boundary.", "source_status": "ai-proposed", "business_chain_refs": ["chain-trading-loop"]},
             {"node_id": "node-governance", "parent_node_id": None, "map_id": "map-governance", "node_kind": "root", "label": "Governance", "summary": "Governance root.", "source_status": "doc"},
-            {"node_id": "node-source-rule", "parent_node_id": "node-governance", "map_id": "map-governance", "node_kind": "constraint", "label": "Source rule", "summary": "AI proposals remain proposals.", "source_status": "doc", "affected_node_ids": ["node-goal"]},
+            {"node_id": "node-source-rule", "parent_node_id": "node-governance", "map_id": "map-governance", "node_kind": "constraint", "label": "Review high-risk decisions", "summary": "Risk-expanding changes require confirmation.", "source_status": "doc", "affected_node_ids": ["node-goal"], "constitution_clause_refs": ["constitution-risk-review"]},
         ],
         "question_groups": [
             {
@@ -95,12 +166,14 @@ def _discovery_data(feature: str = "001-outline") -> dict:
                                 "label": "Improve input quality",
                                 "value": "Confirm product facts before detailed specification.",
                                 "rationale": "Missing facts currently cause rework.",
+                                "business_chain_refs": ["chain-trading-loop"],
                             },
                             {
                                 "id": "goal-speed",
                                 "label": "Improve throughput",
                                 "value": "Shorten the time needed to organize requirements.",
                                 "rationale": "Useful when the product direction is already stable.",
+                                "business_chain_refs": ["chain-trading-loop"],
                             },
                         ],
                         "recommended_candidate_ids": ["goal-quality"],
@@ -129,7 +202,7 @@ def _discovery_data(feature: str = "001-outline") -> dict:
 def _response(feature: str = "001-outline") -> dict:
     value = "Confirm product facts before detailed specification."
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "format": "speccompass-outline-discovery-response",
         "response_id": "response-001",
         "review_type": "outline_discovery",
@@ -292,7 +365,7 @@ def test_outline_discovery_writeback_appends_ledger_and_replaces_both_documents(
     assert result.returncode == 0, _output(result)
     ledger = json.loads(paths["ledger"].read_text(encoding="utf-8"))
     assert ledger == {
-        "schema_version": 2,
+        "schema_version": 3,
         "format": "speccompass-outline-intent-ledger",
         "feature": "001-outline",
         "events": [
@@ -316,6 +389,64 @@ def test_outline_discovery_writeback_appends_ledger_and_replaces_both_documents(
     assert paths["outline"].read_text(encoding="utf-8") == _outline()
     assert not paths["prd_temp"].exists()
     assert not paths["outline_temp"].exists()
+
+
+def test_writeback_accepts_source_anchor_containing_hash(tmp_path):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    anchor = "Trading # Loop"
+    source["source_snapshot"][0]["anchors"] = [anchor]
+    source_ref = f"specs/001-outline/prd.md#{anchor}"
+    context = source["business_context"]
+    context["product_subject"]["source_refs"] = [source_ref]
+    for collection in ("business_objects", "operations", "outcomes", "business_chains"):
+        for entry in context[collection]:
+            entry["source_refs"] = [source_ref]
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode == 0, _output(result)
+
+
+def test_writeback_rejects_unsafe_constitution_source_path(tmp_path):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    source["constitution_snapshot"]["source_path"] = "../constitution.md"
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    output = _output(result).lower()
+    assert result.returncode != 0
+    assert "constitution_snapshot source_path" in output
+    assert "safe repository-relative path" in output
+    assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
+    assert paths["outline"].read_text(encoding="utf-8") == _outline()
+
+
+def test_writeback_rejects_legacy_ledger_with_refresh_guidance(tmp_path):
+    paths = _prepare_project(tmp_path)
+    _write_json(
+        paths["ledger"],
+        {
+            "schema_version": 2,
+            "format": "speccompass-outline-intent-ledger",
+            "feature": "001-outline",
+            "events": [],
+        },
+    )
+
+    result = _run_writeback(tmp_path, paths)
+
+    output = _output(result).lower()
+    assert result.returncode != 0
+    assert "schema_version 2" in output
+    assert "refresh" in output
+    assert "archive" in output
+    assert "re-confirm" in output
+    assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
+    assert paths["outline"].read_text(encoding="utf-8") == _outline()
 
 
 def test_invalid_temporary_output_keeps_documents_and_pending_event_can_retry(tmp_path):
@@ -653,7 +784,7 @@ def test_writeback_rejects_malformed_existing_ledger_event(tmp_path):
     _write_json(
         paths["ledger"],
         {
-            "schema_version": 1,
+            "schema_version": 3,
             "format": "speccompass-outline-intent-ledger",
             "feature": "001-outline",
             "events": [malformed_event],
@@ -687,10 +818,95 @@ def test_writeback_rejects_malformed_discovery_source_contract(tmp_path, source_
 
 
 @pytest.mark.parametrize(
+    ("mutate", "expected"),
+    (
+        (
+            lambda source: source["business_context"].__setitem__("evidence_gaps", {}),
+            "evidence_gaps must be an array",
+        ),
+        (
+            lambda source: source["business_context"].__setitem__(
+                "evidence_gaps",
+                [{"gap_id": "gap-missing-summary", "business_chain_refs": ["chain-trading-loop"]}],
+            ),
+            "evidence_gaps[0] summary",
+        ),
+        (
+            lambda source: source["business_context"].__setitem__(
+                "evidence_gaps",
+                [{"gap_id": "gap-unknown-chain", "summary": "Missing proof.", "business_chain_refs": ["chain-missing"]}],
+            ),
+            "business_chain_refs are invalid",
+        ),
+    ),
+)
+def test_writeback_rejects_invalid_business_evidence_gaps(tmp_path, mutate, expected):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    mutate(source)
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert expected in _output(result)
+    assert not paths["ledger"].exists()
+
+
+def test_writeback_rejects_frame_without_source_backed_business_chain(tmp_path):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    response = json.loads(paths["response"].read_text(encoding="utf-8"))
+    source["outline_maturity"] = "frame"
+    response["outline_maturity"] = "frame"
+    source["business_context"]["business_chains"][0]["source_status"] = "ai-proposed"
+    _write_json(paths["source"], source)
+    _write_json(paths["response"], response)
+    paths["outline"].write_text(_outline(maturity="frame"), encoding="utf-8")
+    paths["outline_temp"].write_text(_outline(maturity="frame"), encoding="utf-8")
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "frame requires at least one source-backed complete business chain" in _output(result)
+    assert not paths["ledger"].exists()
+
+
+def test_writeback_rejects_unbound_ai_proposed_overview_business_node(tmp_path):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    entry = next(node for node in source["outline_nodes"] if node["node_id"] == "node-branch-link")
+    entry["source_status"] = "ai-proposed"
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "ai-proposed business node must bind a question" in _output(result)
+    assert not paths["ledger"].exists()
+
+
+@pytest.mark.parametrize("impact_mutation", ["missing", "empty"])
+def test_writeback_allows_unknown_global_constraint_impacts(tmp_path, impact_mutation):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    constraint = next(
+        node for node in source["outline_nodes"] if node["node_id"] == "node-source-rule"
+    )
+    if impact_mutation == "missing":
+        constraint.pop("affected_node_ids")
+    else:
+        constraint["affected_node_ids"] = []
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode == 0, _output(result)
+
+
+@pytest.mark.parametrize(
     ("impact_mutation", "expected"),
     (
-        ("missing", "must list at least one affected business node"),
-        ("empty", "must list at least one affected business node"),
         ("overview", "must reference business branch nodes"),
         ("duplicate", "must be unique"),
     ),
@@ -705,11 +921,7 @@ def test_writeback_rejects_invalid_global_constraint_impacts(
     constraint = next(
         node for node in source["outline_nodes"] if node["node_id"] == "node-source-rule"
     )
-    if impact_mutation == "missing":
-        constraint.pop("affected_node_ids")
-    elif impact_mutation == "empty":
-        constraint["affected_node_ids"] = []
-    elif impact_mutation == "overview":
+    if impact_mutation == "overview":
         constraint["affected_node_ids"] = ["node-project"]
     else:
         constraint["affected_node_ids"] = ["node-goal", "node-goal"]
@@ -721,6 +933,27 @@ def test_writeback_rejects_invalid_global_constraint_impacts(
     assert expected in _output(result)
     assert not paths["ledger"].exists()
     assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
+
+
+@pytest.mark.parametrize("candidate_mutation", ["missing", "unknown"])
+def test_writeback_rejects_candidate_without_business_chain_provenance(
+    tmp_path,
+    candidate_mutation,
+):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    candidate = source["question_groups"][0]["questions"][0]["candidates"][0]
+    if candidate_mutation == "missing":
+        candidate.pop("business_chain_refs")
+    else:
+        candidate["business_chain_refs"] = ["constitution-risk-review"]
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "business_chain_refs" in _output(result)
+    assert not paths["ledger"].exists()
 
 
 @pytest.mark.parametrize(
@@ -769,6 +1002,7 @@ def test_writeback_rejects_conflicting_source_tags_in_temporary_delta_block(tmp_
     ("mutate", "expected"),
     (
         (lambda response, source: response.__setitem__("schema_version", 1), "schema_version"),
+        (lambda response, source: response.__setitem__("schema_version", 2), "schema_version"),
         (lambda response, source: response.__setitem__("feature", "002-other"), "feature"),
         (lambda response, source: response.__setitem__("batch_id", "other-batch"), "batch_id"),
         (lambda response, source: response.__setitem__("outline_maturity", "frame"), "maturity"),
@@ -828,6 +1062,100 @@ def test_writeback_rejects_formal_outline_confirmation_package(tmp_path):
     assert paths["outline"].read_text(encoding="utf-8") == _outline()
 
 
+def test_writeback_rejects_constitution_clause_as_delta_target(tmp_path):
+    paths = _prepare_project(tmp_path)
+    response = json.loads(paths["response"].read_text(encoding="utf-8"))
+    response["deltas"][0].update(
+        {
+            "operation": "replace",
+            "candidate_id": None,
+            "target_id": "constitution-risk-review",
+            "source_tag": "user",
+        }
+    )
+    _write_json(paths["response"], response)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "constitution" in _output(result).lower()
+    assert not paths["ledger"].exists()
+    assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
+
+
+def test_writeback_rejects_snapshot_clause_as_delta_target_without_reserved_prefix(tmp_path):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    source["constitution_snapshot"]["clauses"][0]["clause_id"] = "risk-review-rule"
+    source_rule = next(node for node in source["outline_nodes"] if node["node_id"] == "node-source-rule")
+    source_rule["constitution_clause_refs"] = ["risk-review-rule"]
+    response = json.loads(paths["response"].read_text(encoding="utf-8"))
+    response["deltas"][0].update(
+        {
+            "operation": "replace",
+            "candidate_id": None,
+            "target_id": "risk-review-rule",
+            "source_tag": "user",
+        }
+    )
+    _write_json(paths["source"], source)
+    _write_json(paths["response"], response)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "constitution" in _output(result).lower()
+    assert not paths["ledger"].exists()
+
+
+def test_writeback_rejects_constitution_evidence_with_windows_separators(tmp_path):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    source["source_snapshot"].append(
+        {"path": ".specify/memory/constitution.md", "source_type": "reference", "anchors": ["Risk Governance"]}
+    )
+    source["business_context"]["business_chains"][0]["source_refs"] = [
+        ".specify\\memory\\constitution.md#Risk Governance"
+    ]
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "constitution cannot be business evidence" in _output(result).lower()
+    assert not paths["ledger"].exists()
+
+
+def test_writeback_rejects_invalid_constitution_applicability_status(tmp_path):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    source["constitution_snapshot"]["clauses"][0]["applicability_status"] = "mandatory"
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "applicability_status" in _output(result)
+    assert not paths["ledger"].exists()
+
+
+def test_writeback_rejects_question_bound_to_constitution_node(tmp_path):
+    paths = _prepare_project(tmp_path)
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    source["question_groups"][0]["map_id"] = "map-governance"
+    source["question_groups"][0]["questions"][0]["outline_node_id"] = "node-source-rule"
+    response = json.loads(paths["response"].read_text(encoding="utf-8"))
+    response["deltas"][0]["outline_node_id"] = "node-source-rule"
+    _write_json(paths["source"], source)
+    _write_json(paths["response"], response)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "constitution" in _output(result).lower()
+    assert not paths["ledger"].exists()
+
+
 @pytest.mark.parametrize(
     ("prd_temp", "outline_temp", "expected"),
     (
@@ -882,11 +1210,12 @@ def test_replace_requires_existing_target_reference_and_accepted_superseded_even
         "source_tag": "user",
         "recorded_at": "2026-07-15T08:00:00.000Z",
         "supersedes_delta_id": None,
+        "outline_node_id": "node-goal",
     }
     _write_json(
         paths["ledger"],
         {
-            "schema_version": 1,
+            "schema_version": 3,
             "format": "speccompass-outline-intent-ledger",
             "feature": "001-outline",
             "events": [prior_event],
@@ -981,11 +1310,12 @@ def test_supersede_rejects_prior_event_that_is_still_pending(tmp_path):
         "source_tag": "user",
         "recorded_at": "2026-07-15T08:00:00.000Z",
         "supersedes_delta_id": None,
+        "outline_node_id": "node-goal",
     }
     _write_json(
         paths["ledger"],
         {
-            "schema_version": 1,
+            "schema_version": 3,
             "format": "speccompass-outline-intent-ledger",
             "feature": "001-outline",
             "events": [prior_event],
@@ -1033,11 +1363,12 @@ def test_supersede_rejects_duplicate_prior_delta_anchors(tmp_path):
         "source_tag": "user",
         "recorded_at": "2026-07-15T08:00:00.000Z",
         "supersedes_delta_id": None,
+        "outline_node_id": "node-goal",
     }
     _write_json(
         paths["ledger"],
         {
-            "schema_version": 1,
+            "schema_version": 3,
             "format": "speccompass-outline-intent-ledger",
             "feature": "001-outline",
             "events": [prior_event],
@@ -1133,6 +1464,52 @@ def test_response_schema_and_renderer_expose_supersession_without_guessing_it():
         / "discovery-response-package.js"
     ).read_text(encoding="utf-8")
     assert "supersedes_delta_id: null" in package
+
+
+def test_renderer_builds_schema_v3_discovery_response():
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer package tests")
+
+    package_path = (
+        PROJECT_ROOT
+        / "templates"
+        / "project"
+        / ".specify"
+        / "review"
+        / "renderer"
+        / "scripts"
+        / "discovery-response-package.js"
+    )
+    node_program = f"""
+const fs = require("node:fs");
+const vm = require("node:vm");
+const context = vm.createContext({{ window: {{}} }});
+vm.runInContext(fs.readFileSync({json.dumps(str(package_path))}, "utf8"), context);
+const result = context.window.SpecCompassDiscoveryResponsePackage.buildDiscoveryResponse({{
+  review_data: {json.dumps(_discovery_data())},
+  response_id: "response-renderer-v3",
+  generated_at: "2026-07-18T08:00:00.000Z",
+  responses: [{{
+    question_id: "goal-question",
+    operation: "confirm_candidate",
+    candidate_id: "goal-quality"
+  }}]
+}});
+process.stdout.write(JSON.stringify(result));
+"""
+
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        cwd=PROJECT_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    response = json.loads(result.stdout)
+    assert response["schema_version"] == 3
+    assert response["deltas"][0]["supersedes_delta_id"] is None
 
 
 def test_prd_writeback_helper_contract_is_documented_for_installed_projects():

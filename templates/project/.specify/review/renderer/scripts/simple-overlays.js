@@ -1,6 +1,6 @@
 /* Fixed SpecCompass review renderer infrastructure. Normal /sp.flow and /sp.ui only fill JSON review data. */
-const SUPPORTED_SCHEMA_VERSION = 2;
-const SUPPORTED_SCHEMA_VERSIONS = new Set([1, 2]);
+const SUPPORTED_SCHEMA_VERSION = 3;
+const SUPPORTED_SCHEMA_VERSIONS = new Set([1, 2, 3]);
 const STORAGE_PREFIX = "speccompass-review:";
 const DEFAULT_DATA_FILES = {
   flow: "flow-review-data.json",
