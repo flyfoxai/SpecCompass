@@ -333,6 +333,69 @@ def _expected_non_git_signature(project: Path) -> str:
     return hashlib.sha256(manifest).hexdigest()
 
 
+def _expected_git_signature(project: Path) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(project), "ls-files", "-co", "--exclude-standard", "-z"],
+        capture_output=True,
+        check=True,
+    )
+    entries = []
+    for raw_relative in result.stdout.split(b"\0"):
+        if not raw_relative:
+            continue
+        relative = raw_relative.decode("utf-8", errors="strict")
+        path = project / relative
+        if not path.is_file():
+            continue
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        entries.append(f"PATH\t{raw_relative.hex()}\t{digest}\n")
+
+    head_result = subprocess.run(
+        ["git", "-C", str(project), "rev-parse", "HEAD"],
+        capture_output=True,
+        text=True,
+    )
+    head = head_result.stdout.strip() if head_result.returncode == 0 else "NO_HEAD"
+    manifest = f"HEAD\t{head}\n{''.join(sorted(entries))}".encode()
+    return hashlib.sha256(manifest).hexdigest()
+
+
+def _write_non_ascii_git_signature_fixture(
+    project: Path, *, committed: bool = False
+) -> None:
+    subprocess.run(["git", "init", "-q"], cwd=project, check=True)
+    localized_paths = [
+        "验证/最小原型.txt",
+        "検証/試作.txt",
+        "검증/원형.txt",
+        "emoji/原型-🧪.txt",
+        "unicode/e\u0301.txt",
+        "spaces/a b.txt",
+    ]
+    if os.name != "nt":
+        localized_paths.append("controls/a\tb.txt")
+    for index, relative in enumerate(reversed(localized_paths)):
+        localized = project / relative
+        localized.parent.mkdir(parents=True, exist_ok=True)
+        localized.write_text(f"业务验证-{index}\n", encoding="utf-8")
+    if committed:
+        subprocess.run(["git", "add", "--all"], cwd=project, check=True)
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                "user.name=SP Lite Tests",
+                "-c",
+                "user.email=sp-lite-tests@example.invalid",
+                "commit",
+                "-qm",
+                "test fixture",
+            ],
+            cwd=project,
+            check=True,
+        )
+
+
 def _has_powershell() -> bool:
     try:
         result = subprocess.run(
@@ -368,8 +431,12 @@ def _current_powershell_signature(project: Path) -> str:
         cwd=project,
         capture_output=True,
         text=True,
-        check=True,
     )
+    if result.returncode != 0:
+        pytest.fail(
+            f"sp-lite-state.ps1 -Signature failed ({result.returncode})\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
     return result.stdout.strip()
 
 
@@ -1062,6 +1129,7 @@ def test_bash_non_git_signature_matches_the_utf8_hex_manifest_contract(tmp_path)
     project, _ = _init_project(tmp_path)
     paths = (
         project / "验证" / "原型-🧪.txt",
+        project / ".hidden" / "验证.txt",
         project / "controls" / "line\nbreak.txt",
         project / "literal\\backslash.txt",
     )
@@ -1073,30 +1141,30 @@ def test_bash_non_git_signature_matches_the_utf8_hex_manifest_contract(tmp_path)
 
 
 @requires_bash
-def test_bash_and_powershell_signatures_match_for_non_ascii_git_paths(tmp_path):
+@pytest.mark.parametrize("committed", [False, True])
+def test_bash_git_signature_matches_the_utf8_hex_manifest_contract(
+    tmp_path, committed
+):
     project, _ = _init_project(tmp_path)
-    subprocess.run(["git", "init", "-q"], cwd=project, check=True)
-    localized_paths = (
-        "验证/最小原型.txt",
-        "検証/試作.txt",
-        "검증/원형.txt",
-        "emoji/原型-🧪.txt",
-        "unicode/e\u0301.txt",
-        "spaces/a b.txt",
-        "controls/a\tb.txt",
-    )
-    for index, relative in enumerate(reversed(localized_paths)):
-        localized = project / relative
-        localized.parent.mkdir(parents=True, exist_ok=True)
-        localized.write_text(f"业务验证-{index}\n", encoding="utf-8")
+    _write_non_ascii_git_signature_fixture(project, committed=committed)
 
-    assert _current_powershell_signature(project) == _current_signature(project)
+    expected_signature = _expected_git_signature(project)
+    assert _current_signature(project) == expected_signature
 
 
-@requires_bash
-def test_bash_and_powershell_signatures_match_for_hidden_non_git_paths(tmp_path):
+@pytest.mark.parametrize("committed", [False, True])
+def test_powershell_git_signature_matches_the_utf8_hex_manifest_contract(
+    tmp_path, committed
+):
     project, _ = _init_project(tmp_path)
-    before = _current_signature(project)
+    _write_non_ascii_git_signature_fixture(project, committed=committed)
+
+    expected_signature = _expected_git_signature(project)
+    assert _current_powershell_signature(project) == expected_signature
+
+
+def test_powershell_non_git_signature_matches_the_utf8_hex_manifest_contract(tmp_path):
+    project, _ = _init_project(tmp_path)
 
     paths = [project / ".hidden" / "验证.txt"]
     if os.name != "nt":
@@ -1106,9 +1174,8 @@ def test_bash_and_powershell_signatures_match_for_hidden_non_git_paths(tmp_path)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(f"hidden-payload-{index}\n", encoding="utf-8")
 
-    bash_signature = _current_signature(project)
-    assert bash_signature != before
-    assert _current_powershell_signature(project) == bash_signature
+    expected_signature = _expected_non_git_signature(project)
+    assert _current_powershell_signature(project) == expected_signature
 
 
 @requires_bash
