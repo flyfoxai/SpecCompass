@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.1] - 2026-07-18
+
+### Changed
+
+- Added human-selected SP Lite rounds with global roadmap governance and deterministic owner routing.
+- test: skip invalid Windows tab filename
+- fix: make SP Lite signatures portable
+- chore: begin 0.11.1.dev0 development
+
 ## [0.11.0] - 2026-07-18
 
 ### Changed
