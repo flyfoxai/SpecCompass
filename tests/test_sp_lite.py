@@ -364,15 +364,16 @@ def _write_non_ascii_git_signature_fixture(
     project: Path, *, committed: bool = False
 ) -> None:
     subprocess.run(["git", "init", "-q"], cwd=project, check=True)
-    localized_paths = (
+    localized_paths = [
         "验证/最小原型.txt",
         "検証/試作.txt",
         "검증/원형.txt",
         "emoji/原型-🧪.txt",
         "unicode/e\u0301.txt",
         "spaces/a b.txt",
-        "controls/a\tb.txt",
-    )
+    ]
+    if os.name != "nt":
+        localized_paths.append("controls/a\tb.txt")
     for index, relative in enumerate(reversed(localized_paths)):
         localized = project / relative
         localized.parent.mkdir(parents=True, exist_ok=True)
