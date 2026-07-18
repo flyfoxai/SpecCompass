@@ -2,6 +2,18 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.0] - 2026-07-18
+
+### Changed
+
+- Added human-selected SP Lite rounds with global roadmap governance and deterministic owner routing.
+- fix: make SP Lite validation signatures deterministic
+- docs: define flexible SP Lite change governance
+- feat: add globally governed SP Lite rounds
+- chore: begin 0.10.37.dev0 development
+- chore: begin 0.10.36.dev0 development
+- chore: bump version to 0.10.35
+
 ## [0.10.36] - 2026-07-18
 
 ### Changed
