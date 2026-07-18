@@ -29,6 +29,7 @@ ARGUMENT_HINTS: dict[str, str] = {
     "specify": "Describe the feature you want to specify",
     "prd": "Optional product discovery or PRD shaping brief",
     "route": "Optional routing context or feature directory to inspect",
+    "lite": "Feature, round action, or Lite validation direction",
     "plan": "Optional guidance for the planning phase",
     "tasks": "Optional task generation constraints",
     "implement": "Optional implementation guidance or task filter",

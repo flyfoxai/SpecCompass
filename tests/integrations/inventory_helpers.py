@@ -57,6 +57,7 @@ def shared_init_files(
         f".specify/integrations/{integration_key}.manifest.json",
         ".specify/integrations/speckit.manifest.json",
         ".specify/workflows/speckit/workflow.yml",
+        ".specify/workflows/speckit-lite/workflow.yml",
         ".specify/workflows/workflow-registry.json",
     ]
     files.extend(root_template_files())

@@ -22,6 +22,30 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Active Lite Round
+
+Before normal execution, check `specs/<feature>/lite.md`. If it is absent or
+has no active selected round, preserve the full SP behavior of this command.
+For an active round, run the platform-appropriate installed `sp-lite-state`
+script with JSON output and accept only schema `speckit.lite.route.v1`. Read its
+`Active Round`, `Included Outline Anchors`, `Deferred Outline Anchors`, `Reuse Refs`,
+`Allowed Write Set`, `Required Historical Regressions`, `Global Status`, and
+`Blocker Route` before writing specification artifacts.
+
+Normal Lite specification work is authorized only when the fresh payload has
+`globalControl=CLEAR`, `continueAllowed=true`, and `next="/sp.specify"`. On any
+other normal route, stop without writing and return its `next`. A non-`CLEAR`
+route is resolution-only: proceed only when `Blocker Route` is `/sp.specify`
+and the human explicitly invoked that repair route. Limit that repair to the
+named conflict, stale, or regression references and the `Allowed Write Set`;
+do not advance the Lite lifecycle or clear coordinator state yourself. Return
+`/sp.lite sync` so the coordinator can recompute global control. All other
+non-`CLEAR` routes stop without writing.
+
+Within authorized scope, specify only included anchors, never absorb deferred
+anchors, and reuse cited prior evidence. The confirmed Outline remains the
+project completion boundary regardless of the current Lite scope.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before specification)**:

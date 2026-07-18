@@ -21,6 +21,14 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.RELEASE_PAT }}
 
+      - name: Require main branch
+        run: |
+          if [[ "${GITHUB_REF}" != "refs/heads/main" ]]; then
+            echo "Error: releases must start from refs/heads/main, not ${GITHUB_REF}."
+            echo "Re-run this workflow from main."
+            exit 1
+          fi
+
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
@@ -31,7 +39,7 @@ jobs:
         env:
           INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          LATEST_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n 1)
+          LATEST_TAG=$(git tag -l 'v*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
           LATEST_VERSION="${LATEST_TAG#v}"
           if [[ -z "$LATEST_TAG" ]]; then
             LATEST_VERSION="0.0.0"
@@ -100,7 +108,7 @@ jobs:
             # Get the previous tag by sorting all version tags numerically
             # (git describe --tags only finds tags reachable from HEAD,
             #  which misses tags on unmerged release branches)
-            PREVIOUS_TAG=$(git tag -l 'v*' --sort=-version:refname | head -n 1)
+            PREVIOUS_TAG=$(git tag -l 'v*' --sort=-version:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
 
             echo "Generating changelog from commits..."
             if [[ -n "$PREVIOUS_TAG" ]]; then
@@ -118,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added source-backed PRD business capability maps with read-only Constitution context." \
+              "- Added human-selected SP Lite rounds with global roadmap governance and deterministic owner routing." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

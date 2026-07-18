@@ -13,6 +13,41 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Active Lite Round
+
+Before normal execution, check `specs/<feature>/lite.md`. If it is absent or
+has no active selected round, preserve the full SP behavior of this command.
+If a round is active, read its `Active Round`, `Included Outline Anchors`,
+`Deferred Outline Anchors`, `Reuse Refs`, `Allowed Write Set`, `Required
+Historical Regressions`, `Global Status`, and `Blocker Route` before analysis.
+Run the platform-appropriate installed `sp-lite-state` script with JSON output
+and accept only schema `speckit.lite.route.v1`.
+
+Normal Lite analysis is authorized only when the fresh payload has
+`globalControl=CLEAR`, `continueAllowed=true`, and `next="/sp.analyze"`. On any
+other normal route, stop without writing and return its `next`. A non-`CLEAR`
+route is resolution-only: proceed only when `Blocker Route` is `/sp.analyze`
+and the human explicitly invoked that repair route. Limit that repair to the
+named conflict, stale, or regression references and the `Allowed Write Set`;
+do not advance the Lite lifecycle or clear coordinator state yourself. Return
+`/sp.lite sync` so the coordinator can recompute global control. All other
+non-`CLEAR` routes stop without writing.
+
+Analyze only the included anchors, never pull deferred anchors into the round,
+and reuse cited prior evidence instead of recreating it. The confirmed Outline
+remains the project completion boundary regardless of the current Lite scope.
+
+Run and record every `Required Historical Regressions` check as part of the
+cumulative analysis. A failure in a previously validated Lite round remains a
+blocking finding even when the current round is internally consistent.
+
+For a Lite PASS, return snapshot metadata containing the exact `Lite Round`,
+current `Lite Stage`, `Included Outline Anchors`, before-dispatch
+`Source Signature`, and independent current verdict. The coordinator must persist it at
+the stage-specific path under `lite-evidence/<LITE-RNNN>/`; the mutable
+`analysis.md` is never durable Lite evidence, and one snapshot must not be
+shared by different stages or rounds.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before analysis)**:

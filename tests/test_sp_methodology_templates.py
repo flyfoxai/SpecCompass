@@ -186,6 +186,65 @@ def test_risk_sensitive_commands_read_open_items_before_deciding():
         assert "memory/open-items.md" in content, command
 
 
+@pytest.mark.parametrize(
+    "command",
+    (
+        "specify",
+        "flow",
+        "ui",
+        "gate",
+        "bundle",
+        "plan",
+        "tasks",
+        "analyze",
+        "implement",
+    ),
+)
+def test_owner_commands_enforce_active_lite_round_scope(command):
+    content = _command(command)
+
+    for token in (
+        "## Active Lite Round",
+        "specs/<feature>/lite.md",
+        "Global Status",
+        "CLEAR",
+        "Included Outline Anchors",
+        "Deferred Outline Anchors",
+        "Reuse Refs",
+        "confirmed Outline",
+        "sp-lite-state",
+        "continueAllowed=true",
+        f"next=\"/sp.{command}\"",
+        f"Blocker Route` is `/sp.{command}`",
+        "/sp.lite sync",
+    ):
+        assert token in content, f"{command} missing {token}"
+
+
+def test_lite_owner_commands_keep_owner_specific_evidence():
+    flow = _command("flow")
+    ui = _command("ui")
+    plan = _command("plan")
+    tasks = _command("tasks")
+    analyze = _command("analyze")
+    gate = _command("gate")
+    implement = _command("implement")
+
+    for content, command in ((flow, "flow"), (ui, "ui")):
+        assert "Lite Round" in content, command
+        assert "SCOPED_CONFIRMATION" in content, command
+
+    for content, command in ((plan, "plan"), (tasks, "tasks")):
+        assert "Lite Round" in content, command
+        assert "Allowed Write Set" in content, command
+
+    for content, command in ((analyze, "analyze"), (gate, "gate")):
+        assert "Required Historical Regressions" in content, command
+
+    assert "real delta" in implement
+    assert "Regression Failures" in implement
+
+
 def test_planning_and_execution_commands_preserve_upward_fallback_rules():
     """Planning/task/implementation templates should not force local work when upstream docs are wrong."""
     expectations = {

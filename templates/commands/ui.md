@@ -13,6 +13,41 @@ $ARGUMENTS
 
 You MUST consider the user input before proceeding.
 
+## Active Lite Round
+
+Before normal execution, check `specs/<feature>/lite.md`. If it is absent or
+has no active selected round, preserve the full SP behavior of this command.
+If a round is active, read its `Active Round`, `Included Outline Anchors`,
+`Deferred Outline Anchors`, `Reuse Refs`, `Allowed Write Set`, `Required
+Historical Regressions`, `Global Status`, and `Blocker Route` before changing
+UI artifacts. Run the platform-appropriate installed `sp-lite-state` script
+with JSON output and accept only schema `speckit.lite.route.v1`.
+
+Normal Lite UI work is authorized only when the fresh payload has
+`globalControl=CLEAR`, `continueAllowed=true`, and `next="/sp.ui"`. On any other
+normal route, stop without writing and return its `next`. A non-`CLEAR` route
+is resolution-only: proceed only when `Blocker Route` is `/sp.ui` and the human
+explicitly invoked that repair route. Limit that repair to the named conflict,
+stale, or regression references and the `Allowed Write Set`; do not advance the
+Lite lifecycle or clear coordinator state yourself. Return `/sp.lite sync` so
+the coordinator can recompute global control. All other non-`CLEAR` routes stop
+without writing.
+
+Work only on the included anchors, never pull deferred anchors into the round,
+and reuse cited prior evidence instead of recreating it. The confirmed Outline
+remains the project completion boundary regardless of the current Lite scope.
+
+Label every Lite-scoped UI writeback with `Lite Round`. Human confirmation may
+use `SCOPED_CONFIRMATION` only for the included anchors; it does not confirm
+deferred anchors or the full feature.
+
+Before returning a completed Lite stage, publish round evidence in `ui/index.md`
+with these exact fields: `Lite Round`, `Lite Stage`, `Included Outline Anchors`,
+and `Source Signature`. Set the stage to `UI` and use the before-dispatch
+signature supplied by the coordinator. A reviewed Lite UI must also record
+`Human Confirmation: CONFIRMED`; otherwise return the review route and do not
+claim completion.
+
 # /sp.ui
 
 Use this command when the user wants to define or refresh the screen structure and UI interaction documents for the active feature.

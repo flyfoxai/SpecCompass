@@ -34,15 +34,27 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Business-first PRD Outline" in release_workflow
-    assert "extracts source-backed business objects" in release_workflow
-    assert "must reference a validated business chain" in release_workflow
-    assert "read-only governance context" in release_workflow
-    assert "instead of inventing affected business nodes" in release_workflow
+    assert "## SP Lite: globally governed rapid validation" in release_workflow
+    assert "requires an explicit human selection" in release_workflow
+    assert "confirmed Outline as their final completion boundary" in release_workflow
+    assert "blocks duplicate work, conflicting scope, stale evidence" in release_workflow
+    assert "routes exactly one existing SP owner command" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
+    assert r"- \`/sp.lite\` presents 2-3 validation directions" in release_workflow
+
+
+def test_release_changelog_summary_matches_lite_focus():
+    """The generated changelog should lead with the SP Lite user capability."""
+    trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Added human-selected SP Lite rounds" in trigger_workflow
+    assert "global roadmap governance" in trigger_workflow
+    assert "deterministic owner routing" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():
@@ -51,10 +63,26 @@ def test_release_trigger_rejects_non_incrementing_manual_versions():
         encoding="utf-8"
     )
 
-    assert "LATEST_TAG=$(git tag -l 'v[0-9]*.[0-9]*.[0-9]*' --sort=-version:refname | head -n 1)" in trigger_workflow
+    strict_tag_filter = (
+        "git tag -l 'v*' --sort=-version:refname | "
+        "grep -E '^v[0-9]+\\.[0-9]+\\.[0-9]+$' | head -n 1"
+    )
+    assert f"LATEST_TAG=$({strict_tag_filter})" in trigger_workflow
+    assert f"PREVIOUS_TAG=$({strict_tag_filter})" in trigger_workflow
+    assert trigger_workflow.count(strict_tag_filter) == 2
     assert "sort -V" in trigger_workflow
     assert "must be greater than latest tag" in trigger_workflow
     assert "Auto-incremented version" in trigger_workflow
+
+
+def test_release_trigger_only_runs_from_main():
+    """A release tag must never be created from a feature branch checkout."""
+    trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert 'if [[ "${GITHUB_REF}" != "refs/heads/main" ]]' in trigger_workflow
+    assert "Re-run this workflow from main" in trigger_workflow
 
 
 def test_release_process_documents_policy():

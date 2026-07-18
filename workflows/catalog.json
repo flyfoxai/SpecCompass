@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-04-13T00:00:00Z",
+  "updated_at": "2026-07-18T00:00:00Z",
   "catalog_url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/workflows/catalog.json",
   "workflows": {
     "speckit": {
@@ -11,6 +11,15 @@
       "version": "1.0.0",
       "url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/workflows/speckit/workflow.yml",
       "tags": ["sdd", "full-cycle"]
+    },
+    "speckit-lite": {
+      "id": "speckit-lite",
+      "name": "SpecCompass Lite Round",
+      "description": "Runs one human-selected, globally governed Lite validation round and re-enters from persisted evidence",
+      "author": "SpecCompass",
+      "version": "1.0.0",
+      "url": "https://raw.githubusercontent.com/flyfoxai/SpecCompass/main/workflows/speckit-lite/workflow.yml",
+      "tags": ["sdd", "lite", "prototype", "incremental"]
     }
   }
 }

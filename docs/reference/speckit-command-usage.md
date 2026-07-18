@@ -23,7 +23,7 @@
 - 官方安装方式：`uv tool install specify-cli --from git+https://github.com/github/spec-kit.git@v0.8.16 --force`
 - 官方实测版本：`specify 0.8.16`
 - 官方 Codex 测试目录：`/Users/hula/Projects/ASK3/upstream-codex-official-v0.8.16`
-- SP 当前开发版本：`specify 0.10.10`
+- SP Lite 首发版本：`specify 0.11.0`
 
 重要边界：
 
@@ -529,6 +529,42 @@ SP 对应增强：
 - 后续命令应消费当前 feature 的文档、memory、readiness 和 evidence，不应继续把最初的 `inputs.spec` 当成每一步的事实源。
 - SP 可以在 workflow 中加入 `/sp.analyze`、`/sp.gate`、memory 检查、风险闭环、headless 失败报告。
 - 但 workflow 的基本恢复、暂停、状态管理应尽量沿用原版机制。
+
+### 11.1 Lite 最小验证工作流
+
+当 PRD 和确认版 Outline 已经存在，但希望先运行最小原型做业务验证时，
+使用 `/sp.lite`。每次开启新一轮，命令会给出 2-3 个候选方向，等待人工选择、
+修改、组合或自定义；没有人工选择就不会创建活动轮次。
+
+```text
+/sp.lite init
+/sp.lite next
+```
+
+再次运行 `/sp.lite` 会读取 `specs/<feature>/lite.md`、上一轮结果和当前代码，
+可以在已有原型上增加功能，也可以开启与上一轮不直接相关的独立分支。所有
+轮次仍受同一份确认版 Outline 和全局路线约束：执行前检查重复覆盖、需求矛盾、
+共享接口、数据模型、权限、依赖、Allowed Write Set 和历史回归。只要发现冲突、
+旧证据或回归，就停止自动推进并交回对应的 `/sp.*` owner 处理，不能因为是
+Lite 就绕过。
+
+阻塞 owner 不会被自动执行。用户确认运行后，它只能修复路由中点名的冲突、
+失效证据或回归，并且不得超出 Allowed Write Set；修复结束必须返回
+`/sp.lite sync`，由 Lite 重新计算全局状态。普通阶段只有在新路由为 `CLEAR`、
+`continueAllowed=true` 且 `next` 正好等于当前 owner 时才允许写入，不能越序。
+
+内置 `speckit-lite` workflow 只负责重新进入 `/sp.lite`，不会在 YAML 中复制
+PRD、Flow、UI、Plan、Tasks、Implement 的固定顺序。每次选择新方向或继续下一轮
+时，都重新运行一次 workflow：
+
+```bash
+specify workflow run speckit-lite -i integration=codex -i spec="验证最小可运行的相册整理流程"
+specify workflow run speckit-lite -i integration=codex -i spec="增加下一项已选择能力" -i feature="001-photo-album"
+```
+
+一轮验证成功只代表该轮业务假设得到证据，不代表完整项目或生产准备完成。
+经过多轮 Lite 后，仍需覆盖确认版 Outline 的全部锚点，并关闭全局冲突和历史
+回归，才可声明 `OUTLINE_COMPLETE_VIA_LITE`。
 
 ## 12. Help 获取规则
 
