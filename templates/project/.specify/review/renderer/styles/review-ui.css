@@ -1556,6 +1556,32 @@ details {
   white-space: nowrap;
 }
 
+.discovery-business-context {
+  display: grid;
+  gap: 5px;
+  margin-bottom: 14px;
+  padding: 13px 15px;
+  border-left: 4px solid #198754;
+  background: #F2F9F5;
+}
+
+.discovery-business-context strong {
+  font-size: 16px;
+}
+
+.discovery-business-context p {
+  margin: 0;
+  color: #35534A;
+  line-height: 1.5;
+}
+
+.discovery-context-label {
+  color: var(--sc-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 @media (max-width: 600px) {
   .discovery-non-authorizing-banner {
     align-items: flex-start;
@@ -1835,6 +1861,70 @@ details {
   font-size: 12px;
 }
 
+.discovery-constitution-panel {
+  margin-top: 14px;
+  padding: 14px 15px;
+  border: 1px solid #D9C98E;
+  border-left: 4px solid #B58B32;
+  border-radius: var(--sc-radius);
+  background: #FFFCF2;
+}
+
+.discovery-constitution-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.discovery-constitution-title {
+  margin: 3px 0 0;
+  font-size: 16px;
+}
+
+.discovery-read-only-badge {
+  flex: none;
+  padding: 3px 7px;
+  border: 1px solid #D9C98E;
+  border-radius: 999px;
+  background: #FFF5CF;
+  color: #6D5310;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.discovery-constitution-source {
+  margin: 7px 0 11px;
+  color: var(--sc-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.discovery-constitution-clauses {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.discovery-constitution-clause {
+  min-width: 0;
+  padding: 10px 11px;
+  border-top: 1px solid #D9C98E;
+}
+
+.discovery-constitution-clause p,
+.discovery-constitution-empty {
+  margin: 5px 0;
+  color: #594C26;
+  line-height: 1.45;
+}
+
+.discovery-constitution-clause small {
+  color: var(--sc-muted);
+  overflow-wrap: anywhere;
+}
+
 .discovery-node-panel h3 {
   margin: 7px 0;
 }
@@ -1904,6 +1994,10 @@ details {
   .discovery-mindmap {
     grid-template-columns: repeat(3, minmax(190px, 1fr));
     min-height: 360px;
+  }
+
+  .discovery-constitution-clauses {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 

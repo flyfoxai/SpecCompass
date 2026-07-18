@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["schema_version", "format", "feature", "events"],
   "properties": {
-    "schema_version": {"const": 2},
+    "schema_version": {"const": 3},
     "format": {"const": "speccompass-outline-intent-ledger"},
     "feature": {"type": "string", "minLength": 1},
     "events": {"type": "array", "items": {"$ref": "#/$defs/event"}}

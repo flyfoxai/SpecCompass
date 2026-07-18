@@ -118,7 +118,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added staged PRD Outline review and three-level Flow/UI confirmation priorities." \
+              "- Added source-backed PRD business capability maps with read-only Constitution context." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

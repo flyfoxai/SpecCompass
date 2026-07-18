@@ -1681,11 +1681,34 @@ function validateOutlineDiscoveryTopology(data) {
   }
 
   const childMapLinkCounts = new Map();
+  const overviewMap = overviewMaps[0];
+  const overviewRoot = overviewMap ? nodesById.get(overviewMap.root_node_id) : null;
+  const businessChainIds = new Set(asArray(data.business_context?.business_chains).map((chain) => chain?.chain_id));
+  const constitutionClauseIds = new Set(asArray(data.constitution_snapshot?.clauses).map((clause) => clause?.clause_id));
   for (const node of nodes) {
     const map = mapsById.get(node.map_id);
-    if (map?.map_kind === "global_constraints" && node.node_kind === "constraint" &&
-        (!Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length)) {
-      fail(`outline global constraint node ${node.node_id} must list at least one affected business node`);
+    const isBusinessNode = map?.map_kind === "branch" || (map?.map_kind === "overview" && node.node_kind !== "root" && node.child_map_id !== constraintMaps[0]?.map_id);
+    if (node.parent_node_id === overviewRoot?.node_id &&
+        (node.node_kind !== "map_link" || !["branch", "global_constraints"].includes(mapsById.get(node.child_map_id)?.map_kind))) {
+      fail("overview root direct children must be business or governance map links");
+    }
+    if (isBusinessNode || (map?.map_kind === "overview" && node.node_kind === "root")) {
+      if (!Array.isArray(node.business_chain_refs) || !node.business_chain_refs.length) {
+        fail(`outline business branch must reference at least one business chain: ${node.node_id}`);
+      } else if (node.business_chain_refs.some((id) => !businessChainIds.has(id))) {
+        fail(`outline node ${node.node_id} business_chain_refs must reference business_context`);
+      }
+    } else if (node.business_chain_refs !== undefined) {
+      fail(`outline node ${node.node_id} business_chain_refs are only allowed on business nodes`);
+    }
+    if (node.constitution_clause_refs !== undefined) {
+      if (map?.map_kind !== "global_constraints" || node.node_kind !== "constraint") {
+        fail(`outline node ${node.node_id} constitution_clause_refs are only allowed on global constraint nodes`);
+      }
+      if (!Array.isArray(node.constitution_clause_refs) || !node.constitution_clause_refs.length ||
+          node.constitution_clause_refs.some((id) => !constitutionClauseIds.has(id))) {
+        fail(`outline node ${node.node_id} constitution_clause_refs must reference constitution_snapshot`);
+      }
     }
     if (node.child_map_id !== undefined) {
       const childMap = mapsById.get(node.child_map_id);
@@ -1699,7 +1722,7 @@ function validateOutlineDiscoveryTopology(data) {
     }
     if (node.affected_node_ids !== undefined) {
       if (map?.map_kind !== "global_constraints" || node.node_kind !== "constraint" ||
-          !Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length) {
+          !Array.isArray(node.affected_node_ids)) {
         fail(`outline node ${node.node_id} affected_node_ids are only allowed on global constraint nodes`);
       } else {
         if (new Set(node.affected_node_ids).size !== node.affected_node_ids.length) {
@@ -1722,15 +1745,116 @@ function validateOutlineDiscoveryTopology(data) {
   return { mapsById, nodesById };
 }
 
+function validateOutlineDiscoveryBusinessContext(data) {
+  const context = data.business_context;
+  if (!context || typeof context !== "object" || Array.isArray(context)) {
+    fail("outline discovery business_context must be an object");
+    return;
+  }
+  const sourcesByPath = new Map(asArray(data.source_snapshot).map((source) => [String(source?.path || "").replace(/\\/g, "/"), source]));
+  const validateSourceRefs = (entry, label) => {
+    if (!allowedOutlineSourceStatuses.has(entry?.source_status)) fail(`${label}: unsupported source_status`);
+    const refs = asArray(entry?.source_refs);
+    if (!refs.length) fail(`${label}: source_refs must not be empty`);
+    for (const ref of refs) {
+      const normalized = String(ref || "").replace(/\\/g, "/");
+      const hash = normalized.indexOf("#");
+      const sourcePath = hash === -1 ? normalized : normalized.slice(0, hash);
+      const anchor = hash === -1 ? "" : normalized.slice(hash + 1);
+      if (sourcePath === data.constitution_snapshot?.source_path || /(?:^|\/)constitution\.md$/i.test(sourcePath)) {
+        fail(`${label}: Constitution cannot be business evidence`);
+      }
+      const source = sourcesByPath.get(sourcePath);
+      if (!source || (anchor && (!Array.isArray(source.anchors) || !source.anchors.includes(anchor)))) {
+        fail(`${label}: source_refs must reference source_snapshot and its declared anchors`);
+      }
+    }
+  };
+  const subject = context.product_subject;
+  for (const key of ["label", "summary"]) if (!String(subject?.[key] || "").trim()) fail(`business product_subject.${key} is required`);
+  validateSourceRefs(subject, "business product_subject");
+
+  const collect = (key, idKey, requiredTextFields = ["label", "summary"]) => {
+    const values = asArray(context[key]);
+    if (!values.length) fail(`business_context.${key} must not be empty`);
+    const ids = new Set();
+    for (const [index, entry] of values.entries()) {
+      const label = `business_context.${key}[${index}]`;
+      for (const field of [idKey, ...requiredTextFields]) if (!String(entry?.[field] || "").trim()) fail(`${label}: ${field} is required`);
+      if (ids.has(entry?.[idKey])) fail(`${label}: duplicate ${idKey}`);
+      ids.add(entry?.[idKey]);
+      validateSourceRefs(entry, label);
+    }
+    return { values, ids };
+  };
+  const objects = collect("business_objects", "object_id");
+  const operations = collect("operations", "operation_id");
+  const outcomes = collect("outcomes", "outcome_id");
+  for (const [index, operation] of operations.values.entries()) {
+    if (!Array.isArray(operation.object_refs) || !operation.object_refs.length || operation.object_refs.some((id) => !objects.ids.has(id))) {
+      fail(`business operation[${index}] object_refs must reference business_objects`);
+    }
+  }
+  const chains = collect("business_chains", "chain_id", ["label"]);
+  for (const [index, chain] of chains.values.entries()) {
+    if (!String(chain?.trigger_or_input || "").trim()) fail(`business chain[${index}] trigger_or_input is required`);
+    if (!Array.isArray(chain.object_refs) || !chain.object_refs.length) fail("business chain must reference at least one business object");
+    else if (chain.object_refs.some((id) => !objects.ids.has(id))) fail(`business chain[${index}] object_refs must reference business_objects`);
+    if (!Array.isArray(chain.operation_refs) || !chain.operation_refs.length || chain.operation_refs.some((id) => !operations.ids.has(id))) {
+      fail(`business chain[${index}] operation_refs must reference operations`);
+    }
+    if (!Array.isArray(chain.outcome_refs) || !chain.outcome_refs.length || chain.outcome_refs.some((id) => !outcomes.ids.has(id))) {
+      fail(`business chain[${index}] outcome_refs must reference outcomes`);
+    }
+  }
+  if (!Array.isArray(context.evidence_gaps)) fail("business_context.evidence_gaps must be an array");
+  const evidenceGaps = Array.isArray(context.evidence_gaps) ? context.evidence_gaps : [];
+  const evidenceGapIds = new Set();
+  for (const [index, gap] of evidenceGaps.entries()) {
+    if (!String(gap?.gap_id || "").trim() || !String(gap?.summary || "").trim()) fail(`business evidence_gap[${index}] fields are required`);
+    if (evidenceGapIds.has(gap.gap_id)) fail(`duplicate evidence gap_id ${gap.gap_id}`);
+    evidenceGapIds.add(gap.gap_id);
+    if (!Array.isArray(gap?.business_chain_refs) || !gap.business_chain_refs.length || gap.business_chain_refs.some((id) => !chains.ids.has(id))) {
+      fail(`business evidence_gap[${index}] business_chain_refs must reference business_chains`);
+    }
+  }
+  if (data.outline_maturity === "frame" && !chains.values.some((chain) => ["user", "user-confirmed", "doc"].includes(chain.source_status))) {
+    fail("frame maturity requires at least one source-backed complete business chain");
+  }
+}
+
+function validateOutlineDiscoveryConstitution(data) {
+  const snapshot = data.constitution_snapshot;
+  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) fail("constitution_snapshot must be an object");
+  if (!isSafeRepositoryRelativePath(snapshot?.source_path)) fail("constitution_snapshot.source_path must be a safe repository-relative path");
+  if (!new Set(["available", "missing"]).has(snapshot?.availability)) fail("constitution_snapshot.availability is invalid");
+  if (snapshot?.display_mode !== "read_only") fail("constitution_snapshot.display_mode must be read_only");
+  if (snapshot?.application_scope !== "governance_only") fail("constitution_snapshot.application_scope must be governance_only");
+  if (!Array.isArray(snapshot?.clauses)) fail("constitution_snapshot.clauses must be an array");
+  const clauses = Array.isArray(snapshot?.clauses) ? snapshot.clauses : [];
+  if (snapshot?.availability === "missing" && clauses.length) fail("missing constitution_snapshot cannot contain clauses");
+  const ids = new Set();
+  for (const [index, clause] of clauses.entries()) {
+    for (const key of ["clause_id", "title", "summary", "source_anchor", "applicability_status"]) {
+      if (!String(clause?.[key] || "").trim()) fail(`constitution clause[${index}].${key} is required`);
+    }
+    if (ids.has(clause.clause_id)) fail(`duplicate constitution clause_id ${clause.clause_id}`);
+    ids.add(clause.clause_id);
+    if (!new Set(["applicable", "possibly_applicable", "not_applicable"]).has(clause.applicability_status)) {
+      fail(`constitution clause[${index}].applicability_status is invalid`);
+    }
+  }
+}
+
 function validateOutlineDiscovery(data) {
   for (const key of [
     "schema_version", "review_type", "interaction_mode", "artifact_path", "outline_maturity",
-    "batch_id", "project", "source_snapshot", "density_budget", "maps", "outline_nodes",
+    "batch_id", "project", "source_snapshot", "business_context", "constitution_snapshot", "density_budget", "maps", "outline_nodes",
     "question_groups", "authorization_effect", "next_route"
   ]) {
     if (data[key] === undefined || data[key] === null || data[key] === "") fail(`missing ${key}`);
   }
-  if (data.schema_version !== 2) fail("outline discovery requires schema_version 2");
+  if (data.schema_version !== 3) fail("outline discovery requires schema_version 3");
   if (data.interaction_mode !== "discovery") fail("outline discovery interaction_mode must be discovery");
   if (!new Set(["explore", "frame"]).has(data.outline_maturity)) {
     fail("outline discovery outline_maturity must be explore or frame");
@@ -1765,6 +1889,8 @@ function validateOutlineDiscovery(data) {
     }
   }
 
+  validateOutlineDiscoveryConstitution(data);
+  validateOutlineDiscoveryBusinessContext(data);
   const { mapsById, nodesById } = validateOutlineDiscoveryTopology(data);
 
   const groups = asArray(data.question_groups);
@@ -1793,6 +1919,10 @@ function validateOutlineDiscovery(data) {
       const questionNode = nodesById.get(question?.outline_node_id);
       if (!questionNode) fail(`${questionLabel}: outline_node_id must reference an existing node`);
       else if (questionNode.map_id !== group?.map_id) fail(`${questionLabel}: outline_node_id must belong to the question group map`);
+      const questionMap = questionNode ? mapsById.get(questionNode.map_id) : null;
+      if (questionMap?.map_kind === "global_constraints" || Array.isArray(questionNode?.constitution_clause_refs)) {
+        fail(`${questionLabel}: cannot bind a Constitution governance node`);
+      }
       if (question?.selection_mode !== "single") {
         fail(`${questionLabel}: selection_mode must be single`);
       }
@@ -1807,6 +1937,11 @@ function validateOutlineDiscovery(data) {
           if (!String(candidate?.[key] || "").trim()) fail(`${candidateLabel}: ${key} is required`);
         }
         if (candidateIds.has(candidate?.id)) fail(`${questionLabel}: duplicate candidate id ${candidate?.id}`);
+        const businessChainIds = new Set(asArray(data.business_context?.business_chains).map((chain) => chain?.chain_id));
+        if (!Array.isArray(candidate?.business_chain_refs) || !candidate.business_chain_refs.length ||
+            candidate.business_chain_refs.some((id) => !businessChainIds.has(id))) {
+          fail(`${candidateLabel}: business_chain_refs must reference business_context`);
+        }
         candidateIds.add(candidate?.id);
       }
       const recommendations = asArray(question?.recommended_candidate_ids);
@@ -1825,10 +1960,20 @@ function validateOutlineDiscovery(data) {
       }
     }
   }
+  const questionedNodeIds = new Set(groups.flatMap((group) => asArray(group?.questions).map((question) => question?.outline_node_id)));
+  for (const node of asArray(data.outline_nodes)) {
+    const map = mapsById.get(node.map_id);
+    const childKind = mapsById.get(node.child_map_id)?.map_kind;
+    const isBusinessNode = map?.map_kind === "branch" ||
+      (map?.map_kind === "overview" && node.node_kind !== "root" && childKind !== "global_constraints");
+    if (node?.source_status === "ai-proposed" && isBusinessNode && !questionedNodeIds.has(node.node_id)) {
+      fail(`ai-proposed business node must bind a question: ${node.node_id}`);
+    }
+  }
 }
 
 function validateOutlineDiscoveryResponse(data) {
-  if (data.schema_version !== 2) fail("outline discovery response requires schema_version 2");
+  if (data.schema_version !== 3) fail("outline discovery response requires schema_version 3");
   if (data.review_type !== "outline_discovery") fail("outline discovery response review_type must be outline_discovery");
   if (data.authorization_effect !== "none") fail("outline discovery response authorization_effect must be none");
   if (data.next_route !== "/sp.prd") fail("outline discovery response next_route must be /sp.prd");
@@ -1843,6 +1988,30 @@ function validateOutlineDiscoveryResponse(data) {
       sourcePath !== `specs/${data.feature}/prd/review/outline-discovery-data.json`) {
     fail("outline discovery response source_review_data must match its feature");
   }
+  let source = null;
+  const resolvedSourcePath = new URL(sourcePath, `file://${process.cwd().replace(/\\/g, "/")}/`);
+  try {
+    source = JSON.parse(fs.readFileSync(resolvedSourcePath, "utf8"));
+  } catch (error) {
+    fail(`outline discovery response source data is unavailable or invalid: ${error.message}`);
+  }
+  if (source) {
+    validateOutlineDiscovery(source);
+    if (source.batch_id !== data.batch_id || source.project?.feature !== data.feature ||
+        source.outline_maturity !== data.outline_maturity) {
+      fail("outline discovery response identity must match its source data");
+    }
+  }
+  const sourceMaps = new Map(asArray(source?.maps).map((map) => [map?.map_id, map]));
+  const sourceNodes = new Map(asArray(source?.outline_nodes).map((node) => [node?.node_id, node]));
+  const sourceQuestions = new Map(
+    asArray(source?.question_groups).flatMap((group) =>
+      asArray(group?.questions).map((question) => [question?.id, question]),
+    ),
+  );
+  const constitutionClauseIds = new Set(
+    asArray(source?.constitution_snapshot?.clauses).map((clause) => clause?.clause_id),
+  );
   const deltas = asArray(data.deltas);
   if (!deltas.length) fail("outline discovery response deltas must contain at least one delta");
   const deltaIds = new Set();
@@ -1854,6 +2023,17 @@ function validateOutlineDiscoveryResponse(data) {
     deltaIds.add(delta?.delta_id);
     for (const key of ["question_id", "outline_node_id", "target_kind"]) {
       if (!String(delta?.[key] || "").trim()) fail(`${label}: ${key} is required`);
+    }
+    const sourceQuestion = sourceQuestions.get(delta?.question_id);
+    const sourceNode = sourceNodes.get(delta?.outline_node_id);
+    if (!sourceQuestion || sourceQuestion.outline_node_id !== delta?.outline_node_id ||
+        sourceQuestion.target_kind !== delta?.target_kind) {
+      fail(`${label}: question and node must match source discovery data`);
+    }
+    if (sourceMaps.get(sourceNode?.map_id)?.map_kind === "global_constraints" ||
+        Array.isArray(sourceNode?.constitution_clause_refs) ||
+        constitutionClauseIds.has(delta?.target_id) || /^constitution(?:-|$)/i.test(String(delta?.target_id || ""))) {
+      fail(`${label}: Constitution content is read-only and cannot be a discovery target`);
     }
     if (questionIds.has(delta?.question_id)) fail(`${label}: question_id occurs more than once`);
     questionIds.add(delta?.question_id);
@@ -1889,7 +2069,7 @@ function validateOutlineDiscoveryResponse(data) {
 }
 
 function validateOutlineIntentLedger(data) {
-  if (![1, 2].includes(data.schema_version)) fail("outline intent ledger requires schema_version 1 or 2");
+  if (data.schema_version !== 3) fail("outline intent ledger requires schema_version 3");
   if (!String(data.feature || "").trim()) fail("outline intent ledger feature is required");
   if (!Array.isArray(data.events)) fail("outline intent ledger events must be an array");
   const earlierIds = new Set();
@@ -1903,11 +2083,8 @@ function validateOutlineIntentLedger(data) {
     for (const key of ["response_id", "target_kind", "operation", "source_tag", "recorded_at"]) {
       if (!String(event?.[key] ?? "").trim()) fail(`${label}: ${key} is required`);
     }
-    if (data.schema_version === 2 && !(typeof event?.outline_node_id === "string" || event?.outline_node_id === null)) {
+    if (!(typeof event?.outline_node_id === "string" || event?.outline_node_id === null)) {
       fail(`${label}: outline_node_id must be string or null`);
-    } else if (data.schema_version === 1 && event?.outline_node_id !== undefined &&
-               !(typeof event.outline_node_id === "string" || event.outline_node_id === null)) {
-      fail(`${label}: outline_node_id must be string or null when present`);
     }
     if (!new Set(["explore", "frame"]).has(event?.maturity)) fail(`${label}: maturity must be explore or frame`);
     if (!allowedDiscoveryOperations.has(event?.operation)) fail(`${label}: unsupported operation ${event?.operation}`);

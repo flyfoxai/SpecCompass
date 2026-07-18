@@ -114,7 +114,7 @@ function requireNullableString(value, label) {
 
 function validateResponseEnvelope(response) {
   requireObject(response, "response");
-  if (response.schema_version !== 2) fail("response schema_version must be 2");
+  if (response.schema_version !== 3) fail("response schema_version must be 3");
   if (response.format !== "speccompass-outline-discovery-response") fail("response format is not an Outline discovery response");
   if (response.review_type !== "outline_discovery") fail("response review_type must be outline_discovery");
   for (const key of ["response_id", "batch_id", "feature", "source_review_data", "generated_at"]) {
@@ -132,6 +132,9 @@ function validateResponseEnvelope(response) {
 function buildQuestionIndex(source, topology) {
   const questions = new Map();
   const groupIds = new Set();
+  const businessChainIds = new Set(
+    (source.business_context?.business_chains || []).map((chain) => chain?.chain_id),
+  );
   const groups = Array.isArray(source.question_groups) ? source.question_groups : [];
   if (groups.length === 0) fail("source question_groups must not be empty");
   for (const [groupIndex, group] of groups.entries()) {
@@ -151,6 +154,10 @@ function buildQuestionIndex(source, topology) {
       const questionNode = topology.nodesById.get(question.outline_node_id);
       if (!questionNode || questionNode.map_id !== group.map_id) {
         fail(`source question ${question.id} outline_node_id must belong to its question group map`);
+      }
+      if (topology.mapsById.get(questionNode.map_id)?.map_kind === "global_constraints" ||
+          Array.isArray(questionNode.constitution_clause_refs)) {
+        fail(`source question ${question.id} cannot bind a Constitution governance node`);
       }
       if (!SECTION_BY_TARGET_KIND.has(question.target_kind)) {
         fail(`source question ${question.id} target_kind is unsupported`);
@@ -172,6 +179,10 @@ function buildQuestionIndex(source, topology) {
           requireString(candidate?.[key], `source candidate ${candidate.id} ${key}`);
         }
         if (candidates.has(candidate.id)) fail(`duplicate candidate_id on question ${question.id}: ${candidate.id}`);
+        if (!Array.isArray(candidate.business_chain_refs) || !candidate.business_chain_refs.length ||
+            candidate.business_chain_refs.some((id) => !businessChainIds.has(id))) {
+          fail(`source candidate ${candidate.id} business_chain_refs must reference business_context`);
+        }
         candidates.set(candidate.id, candidate);
       }
       if (
@@ -197,6 +208,16 @@ function buildQuestionIndex(source, topology) {
     }
   }
   if (questions.size === 0) fail("source must contain at least one question");
+  const questionedNodeIds = new Set([...questions.values()].map((question) => question.outline_node_id));
+  for (const node of topology.nodesById.values()) {
+    const map = topology.mapsById.get(node.map_id);
+    const childKind = topology.mapsById.get(node.child_map_id)?.map_kind;
+    const isBusinessNode = map?.map_kind === "branch" ||
+      (map?.map_kind === "overview" && node.node_kind !== "root" && childKind !== "global_constraints");
+    if (node.source_status === "ai-proposed" && isBusinessNode && !questionedNodeIds.has(node.node_id)) {
+      fail(`source ai-proposed business node must bind a question: ${node.node_id}`);
+    }
+  }
   return questions;
 }
 
@@ -287,11 +308,33 @@ function validateSourceTopology(source) {
     }
   }
   const childMapLinkCounts = new Map();
+  const overviewMap = source.maps.find((map) => map.map_kind === "overview");
+  const overviewRoot = overviewMap ? nodesById.get(overviewMap.root_node_id) : null;
+  const businessChainIds = new Set((source.business_context?.business_chains || []).map((chain) => chain?.chain_id));
+  const clauseIds = new Set((source.constitution_snapshot?.clauses || []).map((clause) => clause?.clause_id));
   for (const node of source.outline_nodes) {
     const map = mapsById.get(node.map_id);
-    if (map.map_kind === "global_constraints" && node.node_kind === "constraint" &&
-        (!Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length)) {
-      fail(`source global constraint node ${node.node_id} must list at least one affected business node`);
+    const childKind = mapsById.get(node.child_map_id)?.map_kind;
+    const isBusinessNode = map.map_kind === "branch" || (map.map_kind === "overview" && node.node_kind !== "root" && childKind !== "global_constraints");
+    if (node.parent_node_id === overviewRoot?.node_id && (node.node_kind !== "map_link" || !["branch", "global_constraints"].includes(childKind))) {
+      fail("source overview direct children must be business or governance map links");
+    }
+    if (isBusinessNode || (map.map_kind === "overview" && node.node_kind === "root")) {
+      if (!Array.isArray(node.business_chain_refs) || !node.business_chain_refs.length) {
+        fail(`source business branch must reference at least one business chain: ${node.node_id}`);
+      }
+      if (node.business_chain_refs.some((id) => !businessChainIds.has(id))) {
+        fail(`source node ${node.node_id} business_chain_refs are invalid`);
+      }
+    } else if (node.business_chain_refs !== undefined) {
+      fail(`source node ${node.node_id} business_chain_refs are invalid outside business maps`);
+    }
+    if (node.constitution_clause_refs !== undefined) {
+      if (map.map_kind !== "global_constraints" || node.node_kind !== "constraint" ||
+          !Array.isArray(node.constitution_clause_refs) || !node.constitution_clause_refs.length ||
+          node.constitution_clause_refs.some((id) => !clauseIds.has(id))) {
+        fail(`source node ${node.node_id} constitution_clause_refs must reference Constitution snapshot clauses`);
+      }
     }
     if (node.child_map_id !== undefined) {
       const childMap = mapsById.get(node.child_map_id);
@@ -299,7 +342,7 @@ function validateSourceTopology(source) {
       childMapLinkCounts.set(node.child_map_id, (childMapLinkCounts.get(node.child_map_id) || 0) + 1);
     } else if (node.node_kind === "map_link") fail(`source map_link node ${node.node_id} requires child_map_id`);
     if (node.affected_node_ids !== undefined) {
-      if (map.map_kind !== "global_constraints" || node.node_kind !== "constraint" || !Array.isArray(node.affected_node_ids) || !node.affected_node_ids.length) {
+      if (map.map_kind !== "global_constraints" || node.node_kind !== "constraint" || !Array.isArray(node.affected_node_ids)) {
         fail(`source node ${node.node_id} affected_node_ids are invalid`);
       }
       if (new Set(node.affected_node_ids).size !== node.affected_node_ids.length) {
@@ -321,9 +364,102 @@ function validateSourceTopology(source) {
   return { mapsById, nodesById };
 }
 
-function validateSourceIdentity(source, response, expectedSourcePath) {
+function validateBusinessAndConstitution(root, source) {
+  const snapshot = source.constitution_snapshot;
+  requireObject(snapshot, "source constitution_snapshot");
+  const constitutionPath = repositoryPath(
+    root,
+    snapshot.source_path,
+    "source constitution_snapshot source_path",
+  ).normalized;
+  if (snapshot.display_mode !== "read_only" || snapshot.application_scope !== "governance_only") {
+    fail("source Constitution snapshot must be read-only governance context");
+  }
+  if (!new Set(["available", "missing"]).has(snapshot.availability)) fail("source Constitution snapshot availability is invalid");
+  if (!Array.isArray(snapshot.clauses)) fail("source Constitution snapshot clauses must be an array");
+  if (snapshot.availability === "missing" && snapshot.clauses.length) fail("missing Constitution snapshot cannot contain clauses");
+  const clauseIds = new Set();
+  for (const [index, clause] of snapshot.clauses.entries()) {
+    requireObject(clause, `source Constitution clause[${index}]`);
+    for (const key of ["clause_id", "title", "summary", "source_anchor", "applicability_status"]) requireString(clause[key], `source Constitution clause[${index}] ${key}`);
+    if (!new Set(["applicable", "possibly_applicable", "not_applicable"]).has(clause.applicability_status)) {
+      fail(`source Constitution clause[${index}] applicability_status is invalid`);
+    }
+    if (clauseIds.has(clause.clause_id)) fail(`duplicate Constitution clause_id: ${clause.clause_id}`);
+    clauseIds.add(clause.clause_id);
+  }
+
+  const context = source.business_context;
+  requireObject(context, "source business_context");
+  const normalizedConstitutionPath = constitutionPath;
+  const sourcePaths = new Map(source.source_snapshot.map((item) => [String(item.path).replace(/\\/g, "/"), item]));
+  const validateEvidence = (entry, label) => {
+    if (!OUTLINE_SOURCE_STATUSES.has(entry?.source_status)) fail(`${label} source_status is invalid`);
+    if (!Array.isArray(entry?.source_refs) || !entry.source_refs.length) fail(`${label} source_refs must not be empty`);
+    for (const ref of entry.source_refs) {
+      const normalizedRef = String(ref).replace(/\\/g, "/");
+      const hash = normalizedRef.indexOf("#");
+      const sourcePath = hash === -1 ? normalizedRef : normalizedRef.slice(0, hash);
+      const anchor = hash === -1 ? "" : normalizedRef.slice(hash + 1);
+      if (sourcePath === normalizedConstitutionPath || /(?:^|\/)constitution\.md$/i.test(sourcePath)) fail(`${label}: Constitution cannot be business evidence`);
+      const evidence = sourcePaths.get(sourcePath);
+      if (!evidence || (anchor && (!Array.isArray(evidence.anchors) || !evidence.anchors.includes(anchor)))) {
+        fail(`${label} source_refs must reference source_snapshot`);
+      }
+    }
+  };
+  requireObject(context.product_subject, "source business product_subject");
+  for (const key of ["label", "summary"]) requireString(context.product_subject[key], `source business product_subject ${key}`);
+  validateEvidence(context.product_subject, "source business product_subject");
+  const collect = (key, idKey, requiredTextFields = ["label", "summary"]) => {
+    if (!Array.isArray(context[key]) || !context[key].length) fail(`source business_context.${key} must not be empty`);
+    const ids = new Set();
+    for (const [index, entry] of context[key].entries()) {
+      requireObject(entry, `source business_context.${key}[${index}]`);
+      for (const field of [idKey, ...requiredTextFields]) requireString(entry[field], `source business_context.${key}[${index}] ${field}`);
+      if (ids.has(entry[idKey])) fail(`duplicate source business ${idKey}: ${entry[idKey]}`);
+      ids.add(entry[idKey]);
+      validateEvidence(entry, `source business_context.${key}[${index}]`);
+    }
+    return { values: context[key], ids };
+  };
+  const objects = collect("business_objects", "object_id");
+  const operations = collect("operations", "operation_id");
+  const outcomes = collect("outcomes", "outcome_id");
+  for (const operation of operations.values) {
+    if (!Array.isArray(operation.object_refs) || !operation.object_refs.length || operation.object_refs.some((id) => !objects.ids.has(id))) {
+      fail("source business operation object_refs are invalid");
+    }
+  }
+  const chains = collect("business_chains", "chain_id", ["label"]);
+  for (const chain of chains.values) {
+    requireString(chain.trigger_or_input, "source business chain trigger_or_input");
+    if (!Array.isArray(chain.object_refs) || !chain.object_refs.length) fail("source business chain must reference at least one business object");
+    if (chain.object_refs.some((id) => !objects.ids.has(id)) || !Array.isArray(chain.operation_refs) || !chain.operation_refs.length ||
+        chain.operation_refs.some((id) => !operations.ids.has(id)) || !Array.isArray(chain.outcome_refs) || !chain.outcome_refs.length ||
+        chain.outcome_refs.some((id) => !outcomes.ids.has(id))) fail("source business chain references are invalid");
+  }
+  if (!Array.isArray(context.evidence_gaps)) fail("source business_context.evidence_gaps must be an array");
+  const gapIds = new Set();
+  for (const [index, gap] of context.evidence_gaps.entries()) {
+    requireObject(gap, `source business_context.evidence_gaps[${index}]`);
+    for (const key of ["gap_id", "summary"]) requireString(gap[key], `source business_context.evidence_gaps[${index}] ${key}`);
+    if (gapIds.has(gap.gap_id)) fail(`duplicate source business evidence gap_id: ${gap.gap_id}`);
+    gapIds.add(gap.gap_id);
+    if (!Array.isArray(gap.business_chain_refs) || !gap.business_chain_refs.length ||
+        gap.business_chain_refs.some((id) => !chains.ids.has(id))) {
+      fail(`source business_context.evidence_gaps[${index}] business_chain_refs are invalid`);
+    }
+  }
+  if (source.outline_maturity === "frame" &&
+      !chains.values.some((chain) => ["user", "user-confirmed", "doc"].includes(chain.source_status))) {
+    fail("source frame requires at least one source-backed complete business chain");
+  }
+}
+
+function validateSourceIdentity(root, source, response, expectedSourcePath) {
   requireObject(source, "source discovery data");
-  if (source.schema_version !== 2) fail("source schema_version must be 2");
+  if (source.schema_version !== 3) fail("source schema_version must be 3");
   if (source.review_type !== "outline_discovery" || source.interaction_mode !== "discovery") {
     fail("source must be Outline discovery data");
   }
@@ -346,6 +482,7 @@ function validateSourceIdentity(source, response, expectedSourcePath) {
     requireString(snapshot.path, `source snapshot[${index}] path`);
     requireString(snapshot.source_type, `source snapshot[${index}] source_type`);
   }
+  validateBusinessAndConstitution(root, source);
   return validateSourceTopology(source);
 }
 
@@ -429,8 +566,11 @@ function sectionForTarget(markdown, targetKind) {
   return section;
 }
 
-function validateTargetReference(prd, delta) {
+function validateTargetReference(prd, delta, constitutionClauseIds) {
   if (!present(delta.target_id)) return;
+  if (/^constitution(?:-|$)/i.test(delta.target_id) || constitutionClauseIds.has(delta.target_id)) {
+    fail(`Constitution content is read-only and cannot be target_id: ${delta.target_id}`);
+  }
   const anchor = `<!-- intent-target:${delta.target_id} -->`;
   if (anchorCount(prd, anchor) !== 1) fail(`target_id must identify exactly one existing PRD target: ${delta.target_id}`);
   const section = sectionForTarget(prd, delta.target_kind);
@@ -439,15 +579,20 @@ function validateTargetReference(prd, delta) {
 
 function validateExistingLedger(ledger, feature) {
   requireObject(ledger, "intent ledger");
-  if (![1, 2].includes(ledger.schema_version) || ledger.format !== "speccompass-outline-intent-ledger") {
-    fail("intent ledger format or schema_version is invalid");
+  if (ledger.format !== "speccompass-outline-intent-ledger") {
+    fail("intent ledger format is invalid");
+  }
+  if (ledger.schema_version !== 3) {
+    fail(
+      `intent ledger schema_version ${ledger.schema_version ?? "missing"} is unsupported; ` +
+      "refresh the installed SpecCompass templates, archive the legacy ledger, regenerate Outline Discovery, and re-confirm the choices",
+    );
   }
   if (ledger.feature !== feature) fail("intent ledger feature does not match response feature");
   if (!Array.isArray(ledger.events)) fail("intent ledger events must be an array");
   const earlier = new Set();
   const normalizedEvents = [];
-  for (const [index, rawEvent] of ledger.events.entries()) {
-    const event = ledger.schema_version === 1 ? { ...rawEvent, outline_node_id: null } : rawEvent;
+  for (const [index, event] of ledger.events.entries()) {
     const label = `intent event[${index}]`;
     requireObject(event, label);
     for (const key of ["delta_id", "response_id", "target_kind", "operation", "source_tag", "recorded_at"]) {
@@ -488,7 +633,7 @@ function validateExistingLedger(ledger, feature) {
     earlier.add(event.delta_id);
     normalizedEvents.push(event);
   }
-  return { ...ledger, schema_version: 2, events: normalizedEvents };
+  return { ...ledger, schema_version: 3, events: normalizedEvents };
 }
 
 function eventFor(response, delta) {
@@ -819,7 +964,7 @@ async function main() {
   const releaseLock = await acquireFeatureLock(featureRoot, response.feature);
   try {
     const source = await readJson(sourcePath.resolved, "source discovery data");
-    const topology = validateSourceIdentity(source, response, expectedSource);
+    const topology = validateSourceIdentity(root, source, response, expectedSource);
     const questions = buildQuestionIndex(source, topology);
     const seenDeltaIds = new Set();
     const seenQuestionIds = new Set();
@@ -831,11 +976,12 @@ async function main() {
     const ledgerPath = path.join(featureRoot, "prd", "review", "outline-intent-ledger.json");
     const currentPrd = await readText(prdPath, "current PRD");
     await readText(outlinePath, "current Outline");
-    for (const delta of deltas) validateTargetReference(currentPrd, delta);
+    const constitutionClauseIds = new Set(source.constitution_snapshot.clauses.map((clause) => clause.clause_id));
+    for (const delta of deltas) validateTargetReference(currentPrd, delta, constitutionClauseIds);
 
     const ledger = await exists(ledgerPath)
       ? await readJson(ledgerPath, "intent ledger")
-      : { schema_version: 2, format: "speccompass-outline-intent-ledger", feature: response.feature, events: [] };
+      : { schema_version: 3, format: "speccompass-outline-intent-ledger", feature: response.feature, events: [] };
     const normalizedLedger = validateExistingLedger(ledger, response.feature);
     const nextLedger = prepareLedger(response, deltas, normalizedLedger, currentPrd);
     await writeJsonAtomic(ledgerPath, nextLedger);

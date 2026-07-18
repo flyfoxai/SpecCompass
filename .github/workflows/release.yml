@@ -44,14 +44,14 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## PRD Outline and Review Priorities
+          ## Business-first PRD Outline
 
-          This release makes human confirmation more focused:
+          This release makes Level 1 PRD review concrete and business-focused:
 
-          - `/sp.prd` now develops Outline maturity in stages. Early discovery offers 2-4 candidates, one recommendation, and direct user input.
-          - Mature Outlines receive a visual, identity-bound confirmation before `/sp.specify`.
-          - Flow and UI confirmation points now use `critical`, `important`, and `normal` priorities.
-          - Critical points are deliberately limited, require a reason, and must be confirmed individually.
+          - `/sp.prd` extracts source-backed business objects, actions, outcomes, and end-to-end chains before generating the Level 1 mind map.
+          - Node candidates and recommendations must reference a validated business chain.
+          - Constitution clauses appear as read-only governance context and cannot become PRD questions, recommendations, or writeback targets.
+          - Unknown governance impact is shown explicitly instead of inventing affected business nodes.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

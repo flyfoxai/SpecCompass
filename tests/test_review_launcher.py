@@ -450,7 +450,7 @@ try {{
 }}
 
 const reviewData = {{
-  schema_version: 2,
+  schema_version: 3,
   review_type: "outline_discovery",
   interaction_mode: "discovery",
   artifact_path: "specs/001-test/prd/review/outline-discovery-data.json",

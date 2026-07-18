@@ -101,8 +101,9 @@ Before formal Outline confirmation, `sp.prd` must record the orthogonal
 deep user participation in goals, users, and the core problem. `frame` is Level
 2 convergence with deep user participation in scope, non-goals, first slice,
 scenarios, and high-impact business rules. `specify_ready` is Level 3, where
-confirmed product facts are structurally completed and checked against the
-Constitution. `frame` requires a confirmed goal, at least one confirmed user or
+confirmed product facts are organized and checked for structural completeness.
+Constitution content remains display-only in `sp.prd`; formal governance
+decisions belong to `sp.constitution`. `frame` requires a confirmed goal, at least one confirmed user or
 role, and a clear core problem. `specify_ready` additionally requires stable,
 source-backed Level 2 boundaries. Regress from `frame` to `explore` when the
 confirmed goal, user/role, or core problem is withdrawn, replaced, or
@@ -112,6 +113,30 @@ source authority changes materially; regress further when the Level 1 minimum
 is no longer confirmed. The Constitution must not invent target users, product
 goals, business rules, or scope. Maturity is independent from readiness,
 `review_level`, and `confirmation_priority`.
+
+Level 1 generation is a two-stage compilation. Stage A extracts a structured
+`business_context` from user input, the current PRD, accepted intent events,
+and formal business sources: `product_subject`, `business_objects`,
+`operations`, `outcomes`, complete `business_chains`, and `evidence_gaps`.
+A complete business chain connects a trigger/input, business object,
+operation/control, observable outcome, and source references. Stage B compiles
+those chains into an Overview named for the real product or business loop and
+up to three cohesive business capability branches. Goals, users, problems,
+scope, and process commentary are supporting context, not Level 1 branches.
+`frame` requires at least one complete chain backed by a user-confirmed or
+formal-document source; AI-only chains remain questioned candidates.
+
+`sp.prd` reads Constitution content separately into `constitution_snapshot`
+with `display_mode: read_only` and `application_scope: governance_only`.
+The Constitution is displayed only as a read-only governance snapshot. It is
+not business evidence, cannot create questions or recommendations, is not
+written into the PRD, and cannot be targeted by discovery deltas. Business
+maps must remain valid when the snapshot is removed.
+
+Every Discovery candidate carries `business_chain_refs` to one or more entries
+in `business_context.business_chains`. This provenance is required for all
+candidates, including the recommended one, so Constitution prose cannot become
+a recommendation source without a real business-evidence chain.
 
 Level 1 and Level 2 use `interaction_mode: discovery`; Level 3 uses
 `interaction_mode: confirmation`. Discovery writes
