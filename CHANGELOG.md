@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.10.36] - 2026-07-18
+
+### Changed
+
+- Added source-backed PRD business capability maps with read-only Constitution context.
+- feat: make PRD outline discovery business-first
+
 ## [0.10.34] - 2026-07-16
 
 ### Changed
