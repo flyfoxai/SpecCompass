@@ -1645,6 +1645,118 @@ class TestWorkflowRegistry:
 class TestWorkflowCatalog:
     """Test WorkflowCatalog catalog resolution."""
 
+    def test_bundled_lite_workflow_reenters_only_the_lite_coordinator(self):
+        """Lite recovery must stay state-driven instead of duplicating owner order."""
+        from specify_cli.workflows.engine import WorkflowDefinition, validate_workflow
+
+        repo_root = Path(__file__).parent.parent
+        workflow_path = repo_root / "workflows" / "speckit-lite" / "workflow.yml"
+        definition = WorkflowDefinition.from_yaml(workflow_path)
+
+        assert validate_workflow(definition) == []
+        assert definition.id == "speckit-lite"
+        assert {"spec", "integration", "feature"}.issubset(definition.inputs)
+
+        command_steps = [step for step in definition.steps if step.get("command")]
+        assert [step["command"] for step in command_steps] == ["sp.lite"]
+
+        args = command_steps[0]["input"]["args"]
+        assert "{{ inputs.spec }}" in args
+        assert "{{ inputs.feature }}" in args
+        assert "persisted" in args.lower()
+        assert "human" in args.lower()
+        assert "re-enter" in args.lower()
+        assert "resume" not in args.lower()
+
+        serialized = workflow_path.read_text(encoding="utf-8")
+        assert definition.requires["speckit_version"] == ">=0.11.0"
+        assert "codex" in definition.requires["integrations"]["any"]
+        for owner in (
+            "sp.prd",
+            "sp.specify",
+            "sp.flow",
+            "sp.ui",
+            "sp.gate",
+            "sp.bundle",
+            "sp.plan",
+            "sp.tasks",
+            "sp.analyze",
+            "sp.implement",
+        ):
+            assert f"command: {owner}" not in serialized
+
+    def test_bundled_lite_workflow_is_catalogued_and_packaged(self):
+        repo_root = Path(__file__).parent.parent
+        catalog = json.loads(
+            (repo_root / "workflows" / "catalog.json").read_text(encoding="utf-8")
+        )
+        entry = catalog["workflows"]["speckit-lite"]
+
+        assert entry["id"] == "speckit-lite"
+        assert "human-selected" in entry["description"]
+        assert entry["url"].endswith("/workflows/speckit-lite/workflow.yml")
+
+        pyproject = (repo_root / "pyproject.toml").read_text(encoding="utf-8")
+        assert (
+            '"workflows/speckit-lite" = '
+            '"specify_cli/core_pack/workflows/speckit-lite"'
+        ) in pyproject
+
+    def test_init_installs_standard_and_lite_bundled_workflows(self, tmp_path):
+        from typer.testing import CliRunner
+
+        from specify_cli import app
+        from specify_cli.workflows.catalog import WorkflowRegistry
+        from specify_cli.workflows.engine import WorkflowEngine
+
+        project = tmp_path / "project"
+        result = CliRunner().invoke(
+            app,
+            [
+                "init",
+                str(project),
+                "--integration",
+                "codex",
+                "--no-git",
+                "--ignore-agent-tools",
+                "--script",
+                "sh",
+            ],
+        )
+
+        assert result.exit_code == 0, result.output
+        for workflow_id in ("speckit", "speckit-lite"):
+            assert (project / ".specify" / "workflows" / workflow_id / "workflow.yml").is_file()
+
+        installed = WorkflowRegistry(project).list()
+        assert set(installed) >= {"speckit", "speckit-lite"}
+        assert installed["speckit"]["source"] == "bundled"
+        assert installed["speckit-lite"]["source"] == "bundled"
+        assert WorkflowEngine(project).load_workflow("speckit-lite").id == "speckit-lite"
+
+    def test_lite_workflow_usage_is_documented_in_english_and_chinese(self):
+        repo_root = Path(__file__).parent.parent
+        quickstart = (repo_root / "docs" / "quickstart.md").read_text(encoding="utf-8")
+        command_usage = (
+            repo_root / "docs" / "reference" / "speckit-command-usage.md"
+        ).read_text(encoding="utf-8")
+
+        for token in ("/sp.lite", "human selection", "global roadmap", "speckit-lite"):
+            assert token in quickstart
+        for token in ("/sp.lite", "人工选择", "全局路线", "speckit-lite"):
+            assert token in command_usage
+
+        lite_quickstart = quickstart.split("### Run a Lite Validation Round", 1)[1].split(
+            "### Step 1", 1
+        )[0]
+        lite_usage = command_usage.split("### 11.1 Lite 最小验证工作流", 1)[1].split(
+            "## 12.", 1
+        )[0]
+        assert "workflow resume" not in lite_quickstart
+        assert "workflow resume" not in lite_usage
+        assert lite_quickstart.count("workflow run speckit-lite") >= 2
+        assert lite_usage.count("workflow run speckit-lite") >= 2
+
     def test_bundled_speckit_workflow_is_prd_first(self):
         """Built-in SpecCompass workflow must not regress to the upstream old chain."""
         repo_root = Path(__file__).parent.parent

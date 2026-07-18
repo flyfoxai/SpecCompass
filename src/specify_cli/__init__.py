@@ -1526,33 +1526,49 @@ def init(
             else:
                 tracker.skip("git", "--no-git flag")
 
-            # Install bundled speckit workflow
+            # Install bundled full and Lite workflows independently.
             try:
-                bundled_wf = _locate_bundled_workflow("speckit")
-                if bundled_wf:
-                    from .workflows.catalog import WorkflowRegistry
-                    from .workflows.engine import WorkflowDefinition
-                    wf_registry = WorkflowRegistry(project_path)
-                    if wf_registry.is_installed("speckit"):
-                        tracker.complete("workflow", "already installed")
-                    else:
-                        import shutil as _shutil
-                        dest_wf = project_path / ".specify" / "workflows" / "speckit"
-                        dest_wf.mkdir(parents=True, exist_ok=True)
-                        _shutil.copy2(
-                            bundled_wf / "workflow.yml",
-                            dest_wf / "workflow.yml",
-                        )
-                        definition = WorkflowDefinition.from_yaml(dest_wf / "workflow.yml")
-                        wf_registry.add("speckit", {
-                            "name": definition.name,
-                            "version": definition.version,
-                            "description": definition.description,
-                            "source": "bundled",
-                        })
-                        tracker.complete("workflow", "SP workflow installed")
+                import shutil as _shutil
+
+                from .workflows.catalog import WorkflowRegistry
+                from .workflows.engine import WorkflowDefinition
+
+                wf_registry = WorkflowRegistry(project_path)
+                installed_workflows: list[str] = []
+                existing_workflows: list[str] = []
+                missing_workflows: list[str] = []
+                for workflow_id in ("speckit", "speckit-lite"):
+                    bundled_wf = _locate_bundled_workflow(workflow_id)
+                    if bundled_wf is None:
+                        missing_workflows.append(workflow_id)
+                        continue
+                    if wf_registry.is_installed(workflow_id):
+                        existing_workflows.append(workflow_id)
+                        continue
+
+                    dest_wf = project_path / ".specify" / "workflows" / workflow_id
+                    dest_wf.mkdir(parents=True, exist_ok=True)
+                    _shutil.copy2(bundled_wf / "workflow.yml", dest_wf / "workflow.yml")
+                    definition = WorkflowDefinition.from_yaml(dest_wf / "workflow.yml")
+                    wf_registry.add(workflow_id, {
+                        "name": definition.name,
+                        "version": definition.version,
+                        "description": definition.description,
+                        "source": "bundled",
+                    })
+                    installed_workflows.append(workflow_id)
+
+                details = []
+                if installed_workflows:
+                    details.append(f"installed: {', '.join(installed_workflows)}")
+                if existing_workflows:
+                    details.append(f"already installed: {', '.join(existing_workflows)}")
+                if missing_workflows:
+                    details.append(f"not found: {', '.join(missing_workflows)}")
+                if installed_workflows or existing_workflows:
+                    tracker.complete("workflow", "; ".join(details))
                 else:
-                    tracker.skip("workflow", "bundled workflow not found")
+                    tracker.skip("workflow", "; ".join(details) or "bundled workflows not found")
             except Exception as wf_err:
                 sanitized_wf = str(wf_err).replace('\n', ' ').strip()
                 tracker.error("workflow", f"install failed: {sanitized_wf[:120]}")

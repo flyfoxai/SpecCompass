@@ -15,6 +15,45 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Active Lite Round
+
+Before normal execution, check `specs/<feature>/lite.md`. If it is absent or
+has no active selected round, preserve the full SP behavior of this command.
+If a round is active, read its `Active Round`, `Included Outline Anchors`,
+`Deferred Outline Anchors`, `Reuse Refs`, `Allowed Write Set`, `Required
+Historical Regressions`, `Regression Failures`, `Global Status`, and `Blocker
+Route` before editing code. Run the platform-appropriate installed
+`sp-lite-state` script with JSON output and accept only schema
+`speckit.lite.route.v1`.
+
+Normal Lite implementation is authorized only when the fresh payload has
+`globalControl=CLEAR`, `continueAllowed=true`, and `next="/sp.implement"`. On
+any other normal route, stop without writing and return its `next`. A
+non-`CLEAR` route is resolution-only: proceed only when `Blocker Route` is `/sp.implement`
+and the human explicitly invoked that repair route. Limit that
+repair to the named conflict, stale, or regression references and the `Allowed
+Write Set`; do not advance the Lite lifecycle or clear coordinator state
+yourself. Return `/sp.lite sync` so the coordinator can recompute global
+control. All other non-`CLEAR` routes stop without writing.
+
+Implement only the included anchors and declared write set, never pull deferred
+anchors into the round, and reuse cited prior evidence instead of recreating
+it. The confirmed Outline remains the project completion boundary regardless
+of the current Lite scope.
+
+The round must produce a real delta: a new or changed executable behavior and
+its validation evidence, not only duplicated documents or reused references.
+Run `Required Historical Regressions` after the delta. Any `Regression Failures`
+blocks completion and must be repaired or reconciled before implementation can
+advance.
+
+On successful Lite implementation, return these exact fields: `Lite Round`,
+`Lite Stage`, `Included Outline Anchors`, `Source Signature`, and non-empty
+`Completion Evidence` paths for the changed behavior and its checks. Set the
+stage to `IMPLEMENT` and use the before-dispatch signature from the coordinator.
+The coordinator records those fields in the round ledger; evidence from another
+round or a documentation-only delta cannot complete this stage.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before implementation)**:

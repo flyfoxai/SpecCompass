@@ -22,6 +22,35 @@ when `continueAllowed` is true. `REPEATED_FALLBACK`, `fallback-log.md` loop
 evidence, human decisions, and unknown blockers stop automatic continuation and
 route to `/sp.clarify` or the named owner decision path.
 
+### Run a Lite Validation Round
+
+After `/sp.prd` has produced the PRD and confirmed Outline, use `/sp.lite` when
+you want the smallest runnable prototype for business validation instead of the
+entire full-cycle scope at once. The command presents 2-3 directions and waits
+for human selection; you may choose, modify, combine, or replace them.
+
+```markdown
+/sp.lite init
+```
+
+Run `/sp.lite next` again after validation to add another cumulative feature or
+start an independent branch. Every round is checked against the global roadmap,
+prior rounds, shared contracts, write scopes, and historical regressions. A
+conflict, duplicate scope, stale dependency, or regression stops automatic
+progress and routes to the owning SP command. Blocker repair is human-invoked,
+limited to the named evidence and write set, and must return to `/sp.lite sync`
+before normal work can resume. A successful Lite round proves only its business
+hypothesis; the confirmed Outline remains the project completion boundary.
+
+The bundled `speckit-lite` workflow re-enters the same coordinator. It does not
+hard-code the downstream command order. Start a new workflow run for each Lite
+selection or continuation:
+
+```bash
+specify workflow run speckit-lite -i integration=codex -i spec="Validate the smallest useful photo-album flow"
+specify workflow run speckit-lite -i integration=codex -i spec="Add the next selected capability" -i feature="001-photo-album"
+```
+
 ### Step 1: Install Specify
 
 **In your terminal**, run the `specify` CLI command to initialize your project:

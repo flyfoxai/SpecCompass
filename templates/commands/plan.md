@@ -21,6 +21,41 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Active Lite Round
+
+Before normal execution, check `specs/<feature>/lite.md`. If it is absent or
+has no active selected round, preserve the full SP behavior of this command.
+If a round is active, read its `Active Round`, `Included Outline Anchors`,
+`Deferred Outline Anchors`, `Reuse Refs`, `Allowed Write Set`, `Required
+Historical Regressions`, `Global Status`, and `Blocker Route` before planning.
+Run the platform-appropriate installed `sp-lite-state` script with JSON output
+and accept only schema `speckit.lite.route.v1`.
+
+Normal Lite plan work is authorized only when the fresh payload has
+`globalControl=CLEAR`, `continueAllowed=true`, and `next="/sp.plan"`. On any
+other normal route, stop without writing and return its `next`. A non-`CLEAR`
+route is resolution-only: proceed only when `Blocker Route` is `/sp.plan` and
+the human explicitly invoked that repair route. Limit that repair to the named
+conflict, stale, or regression references and the `Allowed Write Set`; do not
+advance the Lite lifecycle or clear coordinator state yourself. Return
+`/sp.lite sync` so the coordinator can recompute global control. All other
+non-`CLEAR` routes stop without writing.
+
+Plan only the included anchors, never pull deferred anchors into the round, and
+reuse cited prior evidence instead of recreating it. The confirmed Outline
+remains the project completion boundary regardless of the current Lite scope.
+
+Label each Lite-scoped workset with `Lite Round` and constrain every file,
+shared contract, migration, and registry change to the round's `Allowed Write
+Set`. Route write-set overlap or an undeclared shared dependency back for
+reconciliation instead of creating a parallel plan.
+
+Before returning a completed Lite stage, publish round evidence in `plan.md`
+with these exact fields: `Lite Round`, `Lite Stage`, `Included Outline Anchors`,
+and `Source Signature`. Set the stage to `PLAN` and use the before-dispatch
+signature supplied by the coordinator. The approved Lite workset must record
+`Human Approval: CONFIRMED`; otherwise stop at the human plan gate.
+
 ## Pre-Execution Checks
 
 **Check for extension hooks (before planning)**:

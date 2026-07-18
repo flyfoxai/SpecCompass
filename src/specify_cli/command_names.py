@@ -20,6 +20,7 @@ CORE_COMMAND_STEMS = frozenset(
         "flow",
         "gate",
         "implement",
+        "lite",
         "plan",
         "prd",
         "route",

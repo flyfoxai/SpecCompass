@@ -1,0 +1,37 @@
+schema_version: "1.0"
+workflow:
+  id: "speckit-lite"
+  name: "SpecCompass Lite Round"
+  version: "1.0.0"
+  author: "SpecCompass"
+  description: "Re-enters one human-selected, globally governed Lite validation round from persisted project state."
+
+requires:
+  speckit_version: ">=0.11.0"
+  integrations:
+    any: ["codex", "copilot", "claude", "gemini"]
+
+inputs:
+  spec:
+    type: string
+    required: true
+    prompt: "Describe the business goal or validation need"
+  integration:
+    type: string
+    default: "copilot"
+    prompt: "Integration to use (e.g. claude, copilot, gemini)"
+  feature:
+    type: string
+    default: ""
+    prompt: "Existing feature identifier to re-enter (optional)"
+
+steps:
+  - id: lite
+    command: sp.lite
+    integration: "{{ inputs.integration }}"
+    input:
+      args: >-
+        Re-read persisted Lite and owner evidence before acting. Goal={{ inputs.spec }}.
+        Feature={{ inputs.feature }}. Re-enter the current round when one is active;
+        otherwise present the next human selection and stop at every human or
+        global-control gate.

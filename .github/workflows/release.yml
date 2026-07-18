@@ -44,14 +44,14 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Business-first PRD Outline
+          ## SP Lite: globally governed rapid validation
 
-          This release makes Level 1 PRD review concrete and business-focused:
+          This release adds a faster path from confirmed product intent to a runnable business-validation prototype:
 
-          - \`/sp.prd\` extracts source-backed business objects, actions, outcomes, and end-to-end chains before generating the Level 1 mind map.
-          - Node candidates and recommendations must reference a validated business chain.
-          - Constitution clauses appear as read-only governance context and cannot become PRD questions, recommendations, or writeback targets.
-          - Unknown governance impact is shown explicitly instead of inventing affected business nodes.
+          - \`/sp.lite\` presents 2-3 validation directions and requires an explicit human selection before each round starts.
+          - Cumulative and independent Lite rounds share the confirmed Outline as their final completion boundary.
+          - A deterministic global gate blocks duplicate work, conflicting scope, stale evidence, and historical regressions before dispatch.
+          - Each safe transition routes exactly one existing SP owner command; reduced Flow or UI work must remain inside the selected prototype boundary and record deferred Outline anchors.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

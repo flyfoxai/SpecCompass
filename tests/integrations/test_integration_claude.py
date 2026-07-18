@@ -376,6 +376,9 @@ class TestClaudeArgumentHints:
         """Claude hints should stay aligned with the bundled core command set."""
         assert set(ARGUMENT_HINTS) == set(CORE_COMMAND_STEMS)
 
+    def test_lite_argument_hint_names_round_direction(self):
+        assert ARGUMENT_HINTS["lite"] == "Feature, round action, or Lite validation direction"
+
     def test_hints_match_expected_values(self, tmp_path):
         """Each skill's argument-hint must match the expected text."""
         i = get_integration("claude")

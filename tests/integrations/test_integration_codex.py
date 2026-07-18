@@ -1,6 +1,6 @@
 """Tests for CodexIntegration."""
 
-from specify_cli.command_names import skill_directory_name
+from specify_cli.command_names import CORE_COMMAND_STEMS, skill_directory_name
 
 from .test_integration_base_skills import SkillsIntegrationTests
 
@@ -55,6 +55,19 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "sp-route.sh --json" in content
         assert "deterministic" in content
         assert "Do not auto-execute" in content
+
+    def test_codex_installs_lite_as_a_core_skill(self, tmp_path):
+        from specify_cli.integrations import get_integration
+        from specify_cli.integrations.manifest import IntegrationManifest
+
+        assert "lite" in CORE_COMMAND_STEMS
+        integration = get_integration("codex")
+        manifest = IntegrationManifest("codex", tmp_path)
+        integration.setup(tmp_path, manifest, script_type="sh")
+
+        skill_file = tmp_path / ".agents" / "skills" / "sp-lite" / "SKILL.md"
+        assert skill_file.exists()
+        assert "sp-lite-state.sh --json" in skill_file.read_text(encoding="utf-8")
 
     def test_codex_setup_removes_obsolete_project_local_codex_surfaces(self, tmp_path):
         from specify_cli.integrations import get_integration
