@@ -137,13 +137,19 @@ sha256_stream() {
 
 sha256_file() {
     local file="$1"
-    if command -v shasum >/dev/null 2>&1; then
-        shasum -a 256 "$file" | awk '{print $1}'
-    elif command -v sha256sum >/dev/null 2>&1; then
-        sha256sum "$file" | awk '{print $1}'
-    else
-        openssl dgst -sha256 "$file" | awk '{print $NF}'
-    fi
+    sha256_stream < "$file"
+}
+
+path_to_hex() {
+    local value="$1" byte code result="" i
+    local LC_ALL=C
+
+    for ((i = 0; i < ${#value}; i++)); do
+        byte=${value:i:1}
+        printf -v code '%d' "'$byte"
+        printf -v result '%s%02x' "$result" "$code"
+    done
+    printf '%s' "$result"
 }
 
 signature_excluded() {
@@ -159,9 +165,10 @@ signature_excluded() {
 }
 
 compute_input_signature() {
-    local root="$1" dir="$2" lite_relative="" relative file digest head
-    local manifest
+    local root="$1" dir="$2" lite_relative="" relative file digest head path_hex entry
+    local manifest entries
     manifest=$(mktemp)
+    entries=$(mktemp)
 
     if [[ "$dir" == "$root"/* ]]; then
         lite_relative="${dir#"$root"/}/lite.md"
@@ -175,19 +182,25 @@ compute_input_signature() {
             file="$root/$relative"
             [[ -f "$file" ]] || continue
             digest=$(sha256_file "$file")
-            printf '%s\t%s\n' "$relative" "$digest" >> "$manifest"
-        done < <(git -C "$root" ls-files -co --exclude-standard -z | LC_ALL=C sort -z)
+            path_hex=$(path_to_hex "$relative")
+            printf '%s\t%s\n' "$path_hex" "$digest" >> "$entries"
+        done < <(git -C "$root" ls-files -co --exclude-standard -z)
     else
         while IFS= read -r -d '' file; do
             relative="${file#"$root"/}"
             signature_excluded "$relative" "$lite_relative" && continue
             digest=$(sha256_file "$file")
-            printf '%s\t%s\n' "$relative" "$digest" >> "$manifest"
-        done < <(find "$root" -type f -print0 2>/dev/null | LC_ALL=C sort -z)
+            path_hex=$(path_to_hex "$relative")
+            printf '%s\t%s\n' "$path_hex" "$digest" >> "$entries"
+        done < <(find "$root" -type f -print0 2>/dev/null)
     fi
 
+    while IFS= read -r entry; do
+        printf 'PATH\t%s\n' "$entry" >> "$manifest"
+    done < <(LC_ALL=C sort "$entries")
+
     sha256_stream < "$manifest"
-    rm -f "$manifest"
+    rm -f "$manifest" "$entries"
 }
 
 prd_outline_ready() {
@@ -251,6 +264,7 @@ completed_stages=$(field_value "$lite_file" "Completed Owner Stages")
 skipped_stages=$(field_value "$lite_file" "Skipped Owner Stages")
 stage_evidence_refs=$(field_value "$lite_file" "Stage Evidence Refs")
 stage_source_signatures=$(field_value "$lite_file" "Stage Source Signatures")
+stage_validation_signatures=$(field_value "$lite_file" "Stage Validation Signatures")
 stage_skip_reasons=$(field_value "$lite_file" "Stage Skip Reasons")
 stage_skip_confirmations=$(field_value "$lite_file" "Stage Skip Confirmations")
 completion_evidence=$(field_value "$lite_file" "Completion Evidence")
@@ -305,6 +319,19 @@ stage_source_signature() {
             return
         fi
     done < <(printf '%s\n' "$stage_source_signatures" | tr ',' '\n')
+    return 1
+}
+
+stage_validation_is_current() {
+    local stage="$1" entry value
+    while IFS= read -r entry; do
+        entry="$(printf '%s' "$entry" | sed -E 's/^[[:space:]]+|[[:space:]]+$//g')"
+        if [[ "$entry" == "$stage="* ]]; then
+            value="${entry#*=}"
+            [[ "$value" =~ ^[0-9a-fA-F]{64}$ && "$value" == "$current_input" ]]
+            return
+        fi
+    done < <(printf '%s\n' "$stage_validation_signatures" | tr ',' '\n')
     return 1
 }
 
@@ -406,11 +433,13 @@ stage_skip_is_confirmed() {
 stage_evidence_valid() {
     local stage="$1" default_ref="$2" marker="$3" ref evidence_file
     if csv_has_token "$skipped_stages" "$stage"; then
-        [[ "$stage" == "FLOW" || "$stage" == "UI" ]] &&
+        stage_validation_is_current "$stage" &&
+            [[ "$stage" == "FLOW" || "$stage" == "UI" ]] &&
             stage_skip_has_reason "$stage" && stage_skip_is_confirmed "$stage"
         return
     fi
     csv_has_token "$completed_stages" "$stage" || return 1
+    stage_validation_is_current "$stage" || return 1
     if [[ "$stage" == "IMPLEMENT" ]]; then
         stage_source_signature "$stage" >/dev/null && has_refs "$completion_evidence"
         return

@@ -71,6 +71,8 @@ Durable authority
 
 协调器不得在内存里假设上一命令已经成功。每次调度前先把当时的 64 位输入签名写入 `Stage Source Signatures`，调度后重新读取文件并验证 readiness、确认范围和 blocker。Flow、UI、Bundle、Plan、Tasks 的完成产物必须同时绑定当前 `Lite Round`、`Lite Stage`、`Included Outline Anchors` 和该次调度前签名；Flow/UI 还必须有当前轮人工确认，Plan 必须有当前轮人工批准。协调器还要验证内容哈希与证据索引一致、确认时间晚于当前轮创建时间。旧轮内容可以复用，但旧轮 artifact 不能直接充当当前轮完成证据，也不能通过只改 round 字段变成本轮证据。
 
+`Stage Validation Signatures` 与原始来源签名分开：它为每个已完成或明确跳过的阶段保存最近一次完成影响判断后认可的全局输入签名。每次正常 owner delta 或 `/sp.lite sync` 改变全局签名时，只能把仍不受影响的阶段推进到新验证签名；受影响阶段必须撤销完成/跳过状态并返回对应 owner，原始 `Stage Source Signatures` 和不可变证据保留作审计。状态检查器要求所有前置阶段的验证签名与当前全局签名一致，防止旧快照和旧账本一起过期后仍被放行。
+
 Gate 和 Analyze 的 PASS 由协调器保存为 `lite-evidence/<LITE-RNNN>/` 下每阶段、每轮唯一的不可变快照，快照签名必须与当前轮账本中的阶段签名完全一致。Implement 必须返回同样的轮次、阶段、anchors、签名以及非空 Completion Evidence。Flow/UI 若不适用，也必须记录具体理由和人工确认的 `NOT_REQUIRED_CONFIRMED`，不能静默跳过。
 
 ## 每次调用的入口规则

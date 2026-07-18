@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -88,12 +90,24 @@ def _lite_state(
     skipped_stages: str = "None",
     stage_evidence_refs: str = "SPECIFY=spec.md",
     stage_source_signatures: str = "AUTO",
+    stage_validation_signatures: str = "AUTO",
     stage_skip_reasons: str = "None",
     stage_skip_confirmations: str = "None",
     completion_evidence: str = "None",
 ) -> str:
     if stage_source_signatures == "AUTO":
         stage_source_signatures = _stage_source_signatures()
+    if stage_validation_signatures == "AUTO":
+        stages = [
+            stage.strip()
+            for value in (completed_stages, skipped_stages)
+            if value not in ("", "None")
+            for stage in value.split(",")
+            if stage.strip()
+        ]
+        stage_validation_signatures = ",".join(
+            f"{stage}=VALIDATION_AUTO" for stage in stages
+        )
     return f"""# SP Lite
 
 ## Lite Control
@@ -141,6 +155,7 @@ def _lite_state(
 - Skipped Owner Stages: {skipped_stages}
 - Stage Evidence Refs: {stage_evidence_refs}
 - Stage Source Signatures: {stage_source_signatures}
+- Stage Validation Signatures: {stage_validation_signatures}
 - Stage Skip Reasons: {stage_skip_reasons}
 - Stage Skip Confirmations: {stage_skip_confirmations}
 """
@@ -260,12 +275,18 @@ def _resolve_auto_signatures(project: Path) -> None:
     if lite_file is None:
         return
     content = lite_file.read_text(encoding="utf-8")
-    if "Global Input Signature: AUTO" not in content:
-        return
-    signature = _current_signature(project)
-    content = content.replace("Global Input Signature: AUTO", f"Global Input Signature: {signature}")
-    content = content.replace("Current Input Signature: AUTO", f"Current Input Signature: {signature}")
-    lite_file.write_text(content, encoding="utf-8")
+    if "Global Input Signature: AUTO" in content or "=VALIDATION_AUTO" in content:
+        signature = _current_signature(project)
+        content = content.replace(
+            "Global Input Signature: AUTO",
+            f"Global Input Signature: {signature}",
+        )
+        content = content.replace(
+            "Current Input Signature: AUTO",
+            f"Current Input Signature: {signature}",
+        )
+        content = content.replace("=VALIDATION_AUTO", f"={signature}")
+        lite_file.write_text(content, encoding="utf-8")
 
 
 def _run_bash(project: Path) -> dict:
@@ -297,6 +318,19 @@ def _current_signature(project: Path) -> str:
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
     return result.stdout.strip()
+
+
+def _expected_non_git_signature(project: Path) -> str:
+    entries = []
+    for path in project.rglob("*"):
+        if not path.is_file():
+            continue
+        relative = path.relative_to(project).as_posix()
+        path_hex = relative.encode("utf-8").hex()
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        entries.append(f"PATH\t{path_hex}\t{digest}\n")
+    manifest = "".join(sorted(entries)).encode("utf-8")
+    return hashlib.sha256(manifest).hexdigest()
 
 
 def _has_powershell() -> bool:
@@ -634,6 +668,32 @@ def test_lite_state_rejects_snapshot_signature_not_in_round_ledger(tmp_path):
             state="NEEDS_BUNDLE",
             completed_stages="SPECIFY,FLOW,UI,BUSINESS_GATE",
             stage_evidence_refs=_stage_evidence_refs(),
+        ),
+        encoding="utf-8",
+    )
+
+    payload = _run_bash(project)
+
+    assert payload["next"] == "/sp.lite"
+    assert payload["blockerType"] == "INVALID_STAGE_EVIDENCE"
+    assert payload["continueAllowed"] is False
+
+
+@requires_bash
+def test_lite_state_rejects_protected_evidence_on_an_old_validation_baseline(tmp_path):
+    project, feature_dir = _init_project(tmp_path)
+    _write_foundation(feature_dir)
+    _write_owner_evidence(feature_dir)
+    old_signature = "c" * 64
+    (feature_dir / "lite.md").write_text(
+        _lite_state(
+            state="NEEDS_BUNDLE",
+            completed_stages="SPECIFY,FLOW,UI,BUSINESS_GATE",
+            stage_evidence_refs=_stage_evidence_refs(),
+            stage_validation_signatures=",".join(
+                f"{stage}={old_signature}"
+                for stage in ("SPECIFY", "FLOW", "UI", "BUSINESS_GATE")
+            ),
         ),
         encoding="utf-8",
     )
@@ -998,14 +1058,57 @@ def test_bash_signature_ignores_top_level_python_cache(tmp_path):
 
 
 @requires_bash
+def test_bash_non_git_signature_matches_the_utf8_hex_manifest_contract(tmp_path):
+    project, _ = _init_project(tmp_path)
+    paths = (
+        project / "验证" / "原型-🧪.txt",
+        project / "controls" / "line\nbreak.txt",
+        project / "literal\\backslash.txt",
+    )
+    for index, path in enumerate(paths):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"payload-{index}\n", encoding="utf-8")
+
+    assert _current_signature(project) == _expected_non_git_signature(project)
+
+
+@requires_bash
 def test_bash_and_powershell_signatures_match_for_non_ascii_git_paths(tmp_path):
     project, _ = _init_project(tmp_path)
     subprocess.run(["git", "init", "-q"], cwd=project, check=True)
-    localized = project / "验证" / "最小原型.txt"
-    localized.parent.mkdir()
-    localized.write_text("业务验证\n", encoding="utf-8")
+    localized_paths = (
+        "验证/最小原型.txt",
+        "検証/試作.txt",
+        "검증/원형.txt",
+        "emoji/原型-🧪.txt",
+        "unicode/e\u0301.txt",
+        "spaces/a b.txt",
+        "controls/a\tb.txt",
+    )
+    for index, relative in enumerate(reversed(localized_paths)):
+        localized = project / relative
+        localized.parent.mkdir(parents=True, exist_ok=True)
+        localized.write_text(f"业务验证-{index}\n", encoding="utf-8")
 
     assert _current_powershell_signature(project) == _current_signature(project)
+
+
+@requires_bash
+def test_bash_and_powershell_signatures_match_for_hidden_non_git_paths(tmp_path):
+    project, _ = _init_project(tmp_path)
+    before = _current_signature(project)
+
+    paths = [project / ".hidden" / "验证.txt"]
+    if os.name != "nt":
+        paths.append(project / "literal\\backslash.txt")
+
+    for index, path in enumerate(paths):
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(f"hidden-payload-{index}\n", encoding="utf-8")
+
+    bash_signature = _current_signature(project)
+    assert bash_signature != before
+    assert _current_powershell_signature(project) == bash_signature
 
 
 @requires_bash
@@ -1066,6 +1169,7 @@ def test_lite_artifact_template_separates_round_coverage_and_global_control():
         "Skipped Owner Stages",
         "Stage Evidence Refs",
         "Stage Source Signatures",
+        "Stage Validation Signatures",
         "Stage Skip Reasons",
         "Stage Skip Confirmations",
         "Schema: speckit.lite.orchestrator.v1",
@@ -1143,6 +1247,8 @@ def test_lite_command_uses_deterministic_global_route_and_human_selection():
         "refuse concurrent mutation",
         "explicit human-confirmed takeover",
         "release the lease",
+        "Stage Validation Signatures",
+        "impact-reconciled",
     ):
         assert token in content
 
@@ -1167,6 +1273,7 @@ def test_powershell_source_enforces_the_round_evidence_ledger():
 
     for token in (
         "Stage Source Signatures",
+        "Stage Validation Signatures",
         "Stage Skip Confirmations",
         "Test-RoundStageEvidence",
         "NOT_REQUIRED_CONFIRMED",

@@ -66,6 +66,18 @@ function Get-FileSha256([string]$Path) {
     return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
 }
 
+function Convert-PathToHex([string]$Path) {
+    $bytes = [Text.UTF8Encoding]::new($false, $true).GetBytes($Path)
+    return [BitConverter]::ToString($bytes).Replace('-', '').ToLowerInvariant()
+}
+
+function Convert-RelativePathSeparators([string]$Path) {
+    if ([IO.Path]::DirectorySeparatorChar -eq '\') {
+        return $Path.Replace('\', '/')
+    }
+    return $Path
+}
+
 function Get-GitNullDelimitedPaths([string]$Root) {
     $startInfo = [Diagnostics.ProcessStartInfo]::new()
     $startInfo.FileName = 'git'
@@ -106,35 +118,40 @@ function Get-InputSignature([string]$Root, [string]$Dir) {
     $dirFull = [IO.Path]::GetFullPath($Dir)
     $liteRelative = ''
     if ($dirFull.StartsWith("$rootFull$([IO.Path]::DirectorySeparatorChar)", [StringComparison]::Ordinal)) {
-        $liteRelative = ([IO.Path]::GetRelativePath($rootFull, (Join-Path $dirFull 'lite.md'))) -replace '\\', '/'
+        $liteRelative = Convert-RelativePathSeparators ([IO.Path]::GetRelativePath($rootFull, (Join-Path $dirFull 'lite.md')))
     }
 
     $lines = [Collections.Generic.List[string]]::new()
+    $entries = [Collections.Generic.List[string]]::new()
     & git -C $rootFull rev-parse --is-inside-work-tree *> $null
     if ($LASTEXITCODE -eq 0) {
         $head = [string]((& git -C $rootFull rev-parse HEAD 2>$null | Select-Object -First 1))
         if (-not $head) { $head = 'NO_HEAD' }
         $lines.Add("HEAD`t$head")
-        $relativePaths = @(Get-GitNullDelimitedPaths $rootFull)
-        [Array]::Sort($relativePaths, [StringComparer]::Ordinal)
-        foreach ($relative in $relativePaths) {
-            $relative = $relative -replace '\\', '/'
+        foreach ($relative in @(Get-GitNullDelimitedPaths $rootFull)) {
+            $relative = Convert-RelativePathSeparators $relative
             if (Test-SignatureExcluded $relative $liteRelative) { continue }
             $path = Join-Path $rootFull $relative
             if (Test-Path -LiteralPath $path -PathType Leaf) {
-                $lines.Add("$relative`t$(Get-FileSha256 $path)")
+                $pathHex = Convert-PathToHex $relative
+                $entries.Add("$pathHex`t$(Get-FileSha256 $path)")
             }
         }
     }
     else {
-        $relativePaths = @(Get-ChildItem -LiteralPath $rootFull -File -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
-            ([IO.Path]::GetRelativePath($rootFull, $_.FullName)) -replace '\\', '/'
-        })
-        [Array]::Sort($relativePaths, [StringComparer]::Ordinal)
-        foreach ($relative in $relativePaths) {
+        $files = @(Get-ChildItem -LiteralPath $rootFull -File -Recurse -Force -ErrorAction SilentlyContinue)
+        foreach ($file in $files) {
+            $relative = Convert-RelativePathSeparators ([IO.Path]::GetRelativePath($rootFull, $file.FullName))
             if (Test-SignatureExcluded $relative $liteRelative) { continue }
-            $lines.Add("$relative`t$(Get-FileSha256 (Join-Path $rootFull $relative))")
+            $pathHex = Convert-PathToHex $relative
+            $entries.Add("$pathHex`t$(Get-FileSha256 $file.FullName)")
         }
+    }
+
+    $sortedEntries = $entries.ToArray()
+    [Array]::Sort($sortedEntries, [StringComparer]::Ordinal)
+    foreach ($entry in $sortedEntries) {
+        $lines.Add("PATH`t$entry")
     }
 
     $manifest = if ($lines.Count) { ($lines -join "`n") + "`n" } else { '' }
@@ -230,6 +247,7 @@ $completedStages = Get-Field $liteFile 'Completed Owner Stages'
 $skippedStages = Get-Field $liteFile 'Skipped Owner Stages'
 $stageEvidenceRefs = Get-Field $liteFile 'Stage Evidence Refs'
 $stageSourceSignatures = Get-Field $liteFile 'Stage Source Signatures'
+$stageValidationSignatures = Get-Field $liteFile 'Stage Validation Signatures'
 $stageSkipReasons = Get-Field $liteFile 'Stage Skip Reasons'
 $stageSkipConfirmations = Get-Field $liteFile 'Stage Skip Confirmations'
 $completionEvidence = Get-Field $liteFile 'Completion Evidence'
@@ -274,6 +292,16 @@ function Get-StageSourceSignature([string]$Stage) {
         }
     }
     return ''
+}
+
+function Test-StageValidationCurrent([string]$Stage) {
+    foreach ($entry in @(Convert-Refs $stageValidationSignatures)) {
+        if ($entry.StartsWith("$Stage=", [StringComparison]::Ordinal)) {
+            $value = $entry.Substring($Stage.Length + 1)
+            return $value -cmatch '^[0-9a-fA-F]{64}$' -and $value -ceq $currentInput
+        }
+    }
+    return $false
 }
 
 function Get-EvidenceField([string]$EvidenceFile, [string]$Label) {
@@ -360,11 +388,13 @@ function Test-StageSkipConfirmation([string]$Stage) {
 
 function Test-StageEvidence([string]$Stage, [string]$DefaultRef, [string]$Marker) {
     if (Test-CsvToken $skippedStages $Stage) {
-        return $Stage -cin @('FLOW', 'UI') -and
+        return (Test-StageValidationCurrent $Stage) -and
+            $Stage -cin @('FLOW', 'UI') -and
             (Test-StageSkipReason $Stage) -and
             (Test-StageSkipConfirmation $Stage)
     }
     if (-not (Test-CsvToken $completedStages $Stage)) { return $false }
+    if (-not (Test-StageValidationCurrent $Stage)) { return $false }
     if ($Stage -ceq 'IMPLEMENT') {
         return [bool](Get-StageSourceSignature $Stage) -and (Test-Refs $completionEvidence)
     }

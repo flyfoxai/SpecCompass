@@ -118,7 +118,12 @@ evidence reference, the 64-character before-dispatch source signature in
 in `lite.md`; then recompute the
 signature with `sp-lite-state.sh --signature` from `scripts/bash`, or
 `sp-lite-state.ps1 -Signature` from `scripts/powershell`, and set both Global
-Input Signature and Current Input Signature to that value. Rerun `{SCRIPT}`
+Input Signature and Current Input Signature to that value. Update
+`Stage Validation Signatures` to that same value for every completed or explicitly
+skipped stage whose evidence remains valid after an impact-reconciled review.
+If the delta invalidates a stage, remove its completed/skipped status and
+validation entry, preserve its original source signature and evidence for the
+audit trail, and route back to that owner. Rerun `{SCRIPT}`
 only after this reconciliation, and only then decide whether another command is
 allowed. Do not precompute or emit a chain of owner commands.
 

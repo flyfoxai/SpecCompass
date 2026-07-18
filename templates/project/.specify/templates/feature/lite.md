@@ -61,6 +61,7 @@ or replaces it.
 - Skipped Owner Stages: None
 - Stage Evidence Refs: None
 - Stage Source Signatures: None
+- Stage Validation Signatures: None
 - Stage Skip Reasons: None
 - Stage Skip Confirmations: None
 
@@ -70,6 +71,12 @@ record the exact Lite Round, Lite Stage, Included Outline Anchors, and matching
 Source Signature; Flow/UI record Human Confirmation and Plan records Human
 Approval. A skipped Flow/UI stage requires a concrete reason plus
 `NOT_REQUIRED_CONFIRMED` in Stage Skip Confirmations.
+
+`Stage Validation Signatures` records the latest impact-reconciled global input
+signature for every completed or explicitly skipped stage. A sync may advance a
+stage to the new signature only after confirming the change does not invalidate
+that stage. Affected stages lose their completion/skip entry and must run again;
+the original source signature and immutable evidence are never rewritten.
 
 Gate and Analyze stages use immutable, round-scoped snapshots in
 `lite-evidence/<LITE-RNNN>/`. Each snapshot records its Lite Round, Lite Stage,
