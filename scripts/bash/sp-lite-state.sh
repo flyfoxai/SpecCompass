@@ -175,7 +175,9 @@ compute_input_signature() {
     fi
 
     if git -C "$root" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-        head=$(git -C "$root" rev-parse HEAD 2>/dev/null || printf 'NO_HEAD')
+        if ! head=$(git -C "$root" rev-parse HEAD 2>/dev/null); then
+            head="NO_HEAD"
+        fi
         printf 'HEAD\t%s\n' "$head" >> "$manifest"
         while IFS= read -r -d '' relative; do
             signature_excluded "$relative" "$lite_relative" && continue

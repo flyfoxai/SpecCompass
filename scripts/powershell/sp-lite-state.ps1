@@ -63,7 +63,19 @@ function Test-SignatureExcluded([string]$Relative, [string]$LiteRelative) {
 }
 
 function Get-FileSha256([string]$Path) {
-    return (Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash.ToLowerInvariant()
+    $stream = [IO.File]::OpenRead($Path)
+    try {
+        $sha = [Security.Cryptography.SHA256]::Create()
+        try {
+            return -join ($sha.ComputeHash($stream) | ForEach-Object { $_.ToString('x2') })
+        }
+        finally {
+            $sha.Dispose()
+        }
+    }
+    finally {
+        $stream.Dispose()
+    }
 }
 
 function Convert-PathToHex([string]$Path) {
@@ -125,14 +137,20 @@ function Get-InputSignature([string]$Root, [string]$Dir) {
     $entries = [Collections.Generic.List[string]]::new()
     & git -C $rootFull rev-parse --is-inside-work-tree *> $null
     if ($LASTEXITCODE -eq 0) {
-        $head = [string]((& git -C $rootFull rev-parse HEAD 2>$null | Select-Object -First 1))
-        if (-not $head) { $head = 'NO_HEAD' }
+        $headOutput = @(& git -C $rootFull rev-parse HEAD 2>$null)
+        $headExitCode = $LASTEXITCODE
+        if ($headExitCode -eq 0 -and $headOutput.Count -gt 0) {
+            $head = [string]$headOutput[0]
+        }
+        else {
+            $head = 'NO_HEAD'
+        }
         $lines.Add("HEAD`t$head")
         foreach ($relative in @(Get-GitNullDelimitedPaths $rootFull)) {
             $relative = Convert-RelativePathSeparators $relative
             if (Test-SignatureExcluded $relative $liteRelative) { continue }
-            $path = Join-Path $rootFull $relative
-            if (Test-Path -LiteralPath $path -PathType Leaf) {
+            $path = [IO.Path]::Combine($rootFull, $relative)
+            if ([IO.File]::Exists($path)) {
                 $pathHex = Convert-PathToHex $relative
                 $entries.Add("$pathHex`t$(Get-FileSha256 $path)")
             }
