@@ -9,6 +9,14 @@
 - Added source-backed PRD business capability maps with read-only Constitution context.
 - feat: make PRD outline discovery business-first
 
+## [0.10.35] - 2026-07-17
+
+### Changed
+
+- Added staged PRD Outline review and three-level Flow/UI confirmation priorities.
+- feat: add mind-map PRD outline discovery
+- chore: begin 0.10.35.dev0 development
+
 ## [0.10.34] - 2026-07-16
 
 ### Changed

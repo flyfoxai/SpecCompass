@@ -48,7 +48,7 @@ jobs:
 
           This release makes Level 1 PRD review concrete and business-focused:
 
-          - `/sp.prd` extracts source-backed business objects, actions, outcomes, and end-to-end chains before generating the Level 1 mind map.
+          - \`/sp.prd\` extracts source-backed business objects, actions, outcomes, and end-to-end chains before generating the Level 1 mind map.
           - Node candidates and recommendations must reference a validated business chain.
           - Constitution clauses appear as read-only governance context and cannot become PRD questions, recommendations, or writeback targets.
           - Unknown governance impact is shown explicitly instead of inventing affected business nodes.
