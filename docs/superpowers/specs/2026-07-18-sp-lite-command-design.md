@@ -69,7 +69,7 @@ Durable authority
     lite.md + 各 owner artifact/readiness/confirmation
 ```
 
-协调器不得在内存里假设上一命令已经成功。每次调度前先把当时的 64 位输入签名写入 `Stage Source Signatures`，调度后重新读取文件并验证 readiness、确认范围和 blocker。Flow、UI、Bundle、Plan、Tasks 的完成产物必须同时绑定当前 `Lite Round`、`Lite Stage`、`Included Outline Anchors` 和该次调度前签名；Flow/UI 还必须有当前轮人工确认，Plan 必须有当前轮人工批准。旧轮内容可以复用，但旧轮 artifact 不能直接充当当前轮完成证据。
+协调器不得在内存里假设上一命令已经成功。每次调度前先把当时的 64 位输入签名写入 `Stage Source Signatures`，调度后重新读取文件并验证 readiness、确认范围和 blocker。Flow、UI、Bundle、Plan、Tasks 的完成产物必须同时绑定当前 `Lite Round`、`Lite Stage`、`Included Outline Anchors` 和该次调度前签名；Flow/UI 还必须有当前轮人工确认，Plan 必须有当前轮人工批准。协调器还要验证内容哈希与证据索引一致、确认时间晚于当前轮创建时间。旧轮内容可以复用，但旧轮 artifact 不能直接充当当前轮完成证据，也不能通过只改 round 字段变成本轮证据。
 
 Gate 和 Analyze 的 PASS 由协调器保存为 `lite-evidence/<LITE-RNNN>/` 下每阶段、每轮唯一的不可变快照，快照签名必须与当前轮账本中的阶段签名完全一致。Implement 必须返回同样的轮次、阶段、anchors、签名以及非空 Completion Evidence。Flow/UI 若不适用，也必须记录具体理由和人工确认的 `NOT_REQUIRED_CONFIRMED`，不能静默跳过。
 
@@ -93,6 +93,11 @@ Gate 和 Analyze 的 PASS 由协调器保存为 `lite-evidence/<LITE-RNNN>/` 下
 
 在生成候选以及每次计算下一 owner command 前，控制器必须重新读取确认版 Outline、覆盖账本、历史轮次、项目和 feature memory、开放决定、共享接口/数据/权限合同、当前 workset/write set、代码基线和历史回归证据。检查器输出 `CLEAR`、`REUSE_REQUIRED`、`RECONCILE_REQUIRED`、`STALE_EVIDENCE` 或 `REGRESSION_BLOCKED`，自然语言协调器不能覆盖这个结果。
 
+这里描述的是当前 V1 路由合同。已批准的 V2 变化判断设计见
+[`2026-07-18-sp-lite-change-impact-governance-design.md`](2026-07-18-sp-lite-change-impact-governance-design.md)：
+它保留全局快照，但以路径级 delta 和治理范围把变化分为硬阻塞、人工影响确认、提示和忽略，并新增
+`IMPACT_REVIEW_REQUIRED`。V2 尚未实现时不得按该目标状态推断当前脚本行为。
+
 `REUSE_REQUIRED` 会暂停平行生成，要求候选或任务只保留尚未覆盖的 delta；`RECONCILE_REQUIRED` 返回拥有矛盾事实的 `/sp.*` owner；`STALE_EVIDENCE` 唯一路由是 `/sp.lite sync`；`REGRESSION_BLOCKED` 返回拥有修复工作的 plan/tasks/implement owner。只有 `CLEAR` 能继续自动调度。
 
 非 `CLEAR` 的 owner route 是人工确认后的受限修复入口，不是正常生命周期
@@ -100,6 +105,11 @@ Gate 和 Analyze 的 PASS 由协调器保存为 `lite-evidence/<LITE-RNNN>/` 下
 结束后返回 `/sp.lite sync`；它不能自行把全局状态改成 `CLEAR`。任何 owner 的
 正常 Lite 工作还必须验证 fresh route 中 `next` 正好等于自身，避免用户直接
 调用后越过唯一 owner 顺序。
+
+控制器在调度受限修复前写入 repair dispatch ID、owner、blocker refs 和
+Allowed Write Set 签名；调度后检查实际 delta 与受控状态字段。修复 owner 只能
+追加绑定该 dispatch 的证据，越界时保持原阻塞并转 `RECONCILE_REQUIRED`。
+`/sp.lite sync` 是唯一能重新计算并写回 `CLEAR` 的 owner。
 
 ### 4. 补齐基础阶段
 
@@ -261,6 +271,14 @@ global_control:
   regression_checks: []
   blocker_route: null
   reason: null
+
+repair_mode:
+  active: false
+  dispatch_id: null
+  owner: null
+  blocker_refs: []
+  allowed_write_set_signature: null
+  original_status: null
 
 human_gates:
   direction_selection: CONFIRMED
