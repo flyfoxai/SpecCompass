@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.3] - 2026-07-19
+
+### Changed
+
+- Added atom-first PRD Level 1 decomposition into independently verifiable candidate subprojects with deterministic one-to-one ownership validation.
+- feat(validator): add semantic quality checks for PRD Level 1 capability atoms
+- chore: begin 0.11.3.dev0 development
+
 ## [0.11.2] - 2026-07-19
 
 ### Changed
