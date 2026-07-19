@@ -69,6 +69,60 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert skill_file.exists()
         assert "sp-lite-state.sh --json" in skill_file.read_text(encoding="utf-8")
 
+    def test_codex_installs_prd_level_one_product_decomposition_contract(self, tmp_path):
+        from specify_cli.integrations import get_integration
+        from specify_cli.integrations.manifest import IntegrationManifest
+
+        integration = get_integration("codex")
+        manifest = IntegrationManifest("codex", tmp_path)
+        integration.setup(tmp_path, manifest, script_type="sh")
+
+        skill_file = tmp_path / ".agents" / "skills" / skill_directory_name("prd") / "SKILL.md"
+        assert skill_file.exists()
+        content = skill_file.read_text(encoding="utf-8")
+        assert "Stage C - run the semantic quality gate" in content
+        assert "candidate subprojects" in content
+        assert "Subproject Handoff" in content
+        assert "Product decomposition is independent from runtime topology" in content
+        assert "Transactional consistency or bidirectional business exchange requires classification" in content
+        assert "regulation, contract, or multi-party legal duty" in content
+        assert "published service commitment" not in content
+        assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in content
+        assert "make confirmation of that split the default recommendation" in content
+        assert "private compilation work" in content
+        assert "never serialize or narrate the table" in content
+        assert "Generic implementation components" in content
+        assert "final visible-copy sanitization pass" in content
+        assert "do not announce that sanitization occurred" in content
+        assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in content
+        assert "use `NEXT_COMMAND_EXEC: None` until the downloaded response exists" in content
+        assert "do not silently replace it and do not canonize it" in content
+        assert "show the original proposal beside one source-backed business alternative" in content
+        assert "must not use Constitution content as business evidence" in content
+        assert "Level 1 owns portfolio decomposition" in content
+        assert "Allocate every source-backed capability atom exactly once" in content
+        assert "one capability atom, one business chain, and one candidate project" in content
+        assert "must not merge atoms during initial Level 1 generation" in content
+        assert "Merging is a user decision option" in content
+        assert "normal fact capture and interruption recovery remain separate chains" in content.lower()
+        assert "parameter or rule change governance remains separate" in content.lower()
+        assert "primary_outcome_ref" in content
+        assert "trigger_kind" in content
+        assert "Level 2 owns child-project framing" in content
+        assert "for a retained one-product decision" in content
+        assert "confirmed parent PRD" in content
+        assert "target the confirmed retained-product scope" in content
+        assert "silently merge children in Level 2" in content
+        assert "exactly one confirmed `Subproject Handoff`" in content
+        assert "Level 3 is a source-preserving compilation" in content
+        assert "must not create, merge, split, or reinterpret business facts" in content
+        assert "cross-domain substitution test" in content
+        assert "Apply the cross-domain substitution test to every chain" in content
+        assert "warning signal, not a boundary decision" in content
+        assert "external business obligation" in content
+        assert "QMT" not in content
+        assert "up to three cohesive business capability branches" not in content
+
     def test_codex_setup_removes_obsolete_project_local_codex_surfaces(self, tmp_path):
         from specify_cli.integrations import get_integration
         from specify_cli.integrations.manifest import IntegrationManifest

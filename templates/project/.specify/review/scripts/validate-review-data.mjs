@@ -89,6 +89,13 @@ const allowedOutlineNodeKinds = new Set([
   "capability", "acceptance", "risk", "constraint", "map_link",
 ]);
 const allowedOutlineSourceStatuses = new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]);
+const allowedBusinessChainKinds = new Set(["primary", "recovery", "governance"]);
+const allowedBusinessTriggerKinds = new Set(["business_event", "exception_or_interruption", "governance_change"]);
+const triggerKindByChainKind = new Map([
+  ["primary", "business_event"],
+  ["recovery", "exception_or_interruption"],
+  ["governance", "governance_change"],
+]);
 const legacyConfirmationValues = new Set(["APPROVED", "REJECTED"]);
 const supportedSchemaVersions = new Set([1, 2]);
 const forbiddenReviewDataKeys = new Set([
@@ -1684,10 +1691,19 @@ function validateOutlineDiscoveryTopology(data) {
   const overviewMap = overviewMaps[0];
   const overviewRoot = overviewMap ? nodesById.get(overviewMap.root_node_id) : null;
   const businessChainIds = new Set(asArray(data.business_context?.business_chains).map((chain) => chain?.chain_id));
+  const capabilityAtomsById = new Map(asArray(data.business_context?.capability_atoms).map((atom) => [atom?.atom_id, atom]));
+  const capabilityAtomOwnerCounts = new Map([...capabilityAtomsById.keys()].map((atomId) => [atomId, 0]));
+  const businessChainProjectOwnerCounts = new Map([...businessChainIds].map((chainId) => [chainId, 0]));
   const constitutionClauseIds = new Set(asArray(data.constitution_snapshot?.clauses).map((clause) => clause?.clause_id));
   for (const node of nodes) {
     const map = mapsById.get(node.map_id);
+    const childMap = mapsById.get(node.child_map_id);
     const isBusinessNode = map?.map_kind === "branch" || (map?.map_kind === "overview" && node.node_kind !== "root" && node.child_map_id !== constraintMaps[0]?.map_id);
+    const isLevelOneProjectLink = data.outline_maturity === "explore" &&
+      map?.map_kind === "overview" &&
+      node.parent_node_id === overviewRoot?.node_id &&
+      node.node_kind === "map_link" &&
+      childMap?.map_kind === "branch";
     if (node.parent_node_id === overviewRoot?.node_id &&
         (node.node_kind !== "map_link" || !["branch", "global_constraints"].includes(mapsById.get(node.child_map_id)?.map_kind))) {
       fail("overview root direct children must be business or governance map links");
@@ -1700,6 +1716,35 @@ function validateOutlineDiscoveryTopology(data) {
       }
     } else if (node.business_chain_refs !== undefined) {
       fail(`outline node ${node.node_id} business_chain_refs are only allowed on business nodes`);
+    }
+    if (node.capability_atom_refs !== undefined) {
+      if (!isBusinessNode || !Array.isArray(node.capability_atom_refs) || !node.capability_atom_refs.length ||
+          new Set(node.capability_atom_refs).size !== node.capability_atom_refs.length ||
+          node.capability_atom_refs.some((id) => !capabilityAtomsById.has(id))) {
+        fail(`outline node ${node.node_id} capability_atom_refs must reference business_context`);
+      }
+    }
+    if (isLevelOneProjectLink) {
+      if (!Array.isArray(node.business_chain_refs) || node.business_chain_refs.length !== 1) {
+        fail(`outline Level 1 project ${node.node_id} must reference exactly one primary business chain`);
+      } else if (businessChainProjectOwnerCounts.has(node.business_chain_refs[0])) {
+        const chainId = node.business_chain_refs[0];
+        businessChainProjectOwnerCounts.set(chainId, businessChainProjectOwnerCounts.get(chainId) + 1);
+      }
+      if (!Array.isArray(node.capability_atom_refs) || node.capability_atom_refs.length !== 1) {
+        fail(`outline Level 1 project ${node.node_id} must reference exactly one Level 1 capability atom`);
+      } else {
+        const primaryChainId = node.business_chain_refs?.length === 1 ? node.business_chain_refs[0] : null;
+        for (const atomId of node.capability_atom_refs) {
+          const atom = capabilityAtomsById.get(atomId);
+          if (capabilityAtomOwnerCounts.has(atomId)) {
+            capabilityAtomOwnerCounts.set(atomId, capabilityAtomOwnerCounts.get(atomId) + 1);
+          }
+          if (atom && (atom.business_chain_refs?.length !== 1 || atom.business_chain_refs[0] !== primaryChainId)) {
+            fail(`outline Level 1 project ${node.node_id} capability atom ${atomId} must match its primary business chain`);
+          }
+        }
+      }
     }
     if (node.constitution_clause_refs !== undefined) {
       if (map?.map_kind !== "global_constraints" || node.node_kind !== "constraint") {
@@ -1740,6 +1785,18 @@ function validateOutlineDiscoveryTopology(data) {
   for (const map of maps) {
     if (map.map_kind !== "overview" && childMapLinkCounts.get(map.map_id) !== 1) {
       fail(`outline map ${map.map_id} must be linked exactly once from its parent map`);
+    }
+  }
+  if (data.outline_maturity === "explore") {
+    for (const [chainId, ownerCount] of businessChainProjectOwnerCounts.entries()) {
+      if (ownerCount !== 1) {
+        fail(`Level 1 business chain must have exactly one Level 1 project owner: ${chainId}`);
+      }
+    }
+    for (const [atomId, ownerCount] of capabilityAtomOwnerCounts.entries()) {
+      if (ownerCount !== 1) {
+        fail(`capability atom must have exactly one Level 1 project owner: ${atomId}`);
+      }
     }
   }
   return { mapsById, nodesById };
@@ -1795,9 +1852,15 @@ function validateOutlineDiscoveryBusinessContext(data) {
       fail(`business operation[${index}] object_refs must reference business_objects`);
     }
   }
-  const chains = collect("business_chains", "chain_id", ["label"]);
+  const chains = collect("business_chains", "chain_id", [
+    "label", "chain_kind", "trigger_kind", "trigger_or_input", "owned_state",
+    "primary_outcome_ref", "downstream_handoff",
+  ]);
+  const chainsById = new Map(chains.values.map((chain) => [chain.chain_id, chain]));
+  const primaryOutcomeOwnerCounts = new Map();
   for (const [index, chain] of chains.values.entries()) {
-    if (!String(chain?.trigger_or_input || "").trim()) fail(`business chain[${index}] trigger_or_input is required`);
+    if (!allowedBusinessChainKinds.has(chain?.chain_kind)) fail(`business chain[${index}] chain_kind is invalid`);
+    if (!allowedBusinessTriggerKinds.has(chain?.trigger_kind)) fail(`business chain[${index}] trigger_kind is invalid`);
     if (!Array.isArray(chain.object_refs) || !chain.object_refs.length) fail("business chain must reference at least one business object");
     else if (chain.object_refs.some((id) => !objects.ids.has(id))) fail(`business chain[${index}] object_refs must reference business_objects`);
     if (!Array.isArray(chain.operation_refs) || !chain.operation_refs.length || chain.operation_refs.some((id) => !operations.ids.has(id))) {
@@ -1805,6 +1868,70 @@ function validateOutlineDiscoveryBusinessContext(data) {
     }
     if (!Array.isArray(chain.outcome_refs) || !chain.outcome_refs.length || chain.outcome_refs.some((id) => !outcomes.ids.has(id))) {
       fail(`business chain[${index}] outcome_refs must reference outcomes`);
+    }
+    if (!outcomes.ids.has(chain?.primary_outcome_ref) || !asArray(chain?.outcome_refs).includes(chain?.primary_outcome_ref)) {
+      fail(`business chain[${index}] primary_outcome_ref must reference one of its outcomes`);
+    }
+    if (data.outline_maturity === "explore") {
+      if (asArray(chain?.outcome_refs).length !== 1) {
+        fail(`business chain[${index}] must have exactly one independently accepted outcome in Level 1`);
+      }
+      if (triggerKindByChainKind.get(chain?.chain_kind) !== chain?.trigger_kind) {
+        fail(`business chain[${index}] chain_kind and trigger_kind are inconsistent`);
+      }
+      if (String(chain?.primary_outcome_ref || "").trim()) {
+        primaryOutcomeOwnerCounts.set(
+          chain.primary_outcome_ref,
+          (primaryOutcomeOwnerCounts.get(chain.primary_outcome_ref) || 0) + 1,
+        );
+      }
+    }
+  }
+  if (data.outline_maturity === "explore") {
+    for (const [outcomeId, ownerCount] of primaryOutcomeOwnerCounts.entries()) {
+      if (ownerCount !== 1) fail(`primary outcome must be owned by exactly one Level 1 business chain: ${outcomeId}`);
+    }
+  }
+  const atoms = collect("capability_atoms", "atom_id", ["label"]);
+  const capabilityAtomCountsByChain = new Map(chains.values.map((chain) => [chain.chain_id, 0]));
+  for (const [index, atom] of atoms.values.entries()) {
+    if (!allowedBusinessTriggerKinds.has(atom?.trigger_kind)) fail(`capability atom[${index}] trigger_kind is invalid`);
+    if (!Array.isArray(atom.object_refs) || !atom.object_refs.length || atom.object_refs.some((id) => !objects.ids.has(id))) {
+      fail(`capability atom[${index}] object_refs must reference business_objects`);
+    }
+    if (!Array.isArray(atom.operation_refs) || !atom.operation_refs.length || atom.operation_refs.some((id) => !operations.ids.has(id))) {
+      fail(`capability atom[${index}] operation_refs must reference operations`);
+    }
+    if (!Array.isArray(atom.outcome_refs) || !atom.outcome_refs.length || atom.outcome_refs.some((id) => !outcomes.ids.has(id))) {
+      fail(`capability atom[${index}] outcome_refs must reference outcomes`);
+    }
+    if (!Array.isArray(atom.business_chain_refs) || !atom.business_chain_refs.length || atom.business_chain_refs.some((id) => !chains.ids.has(id))) {
+      fail(`capability atom[${index}] business_chain_refs must reference business_chains`);
+    } else if (data.outline_maturity === "explore" && atom.business_chain_refs.length !== 1) {
+      fail(`capability atom[${index}] must reference exactly one primary business chain`);
+    }
+    if (data.outline_maturity === "explore" && atom.business_chain_refs?.length === 1) {
+      const chain = chainsById.get(atom.business_chain_refs[0]);
+      if (chain) {
+        capabilityAtomCountsByChain.set(chain.chain_id, capabilityAtomCountsByChain.get(chain.chain_id) + 1);
+      }
+      if (chain && atom.trigger_kind !== chain.trigger_kind) {
+        fail(`capability atom[${index}] trigger_kind must match its business chain`);
+      }
+      if (chain && ["trigger_or_input", "owned_state", "primary_outcome_ref", "downstream_handoff"]
+        .some((field) => atom?.[field] !== chain?.[field])) {
+        fail(`capability atom[${index}] semantic fields must match its business chain`);
+      }
+      if (asArray(atom.outcome_refs).length !== 1 || (chain && atom.outcome_refs[0] !== chain.primary_outcome_ref)) {
+        fail(`capability atom[${index}] must contribute to its Level 1 business chain primary outcome`);
+      }
+    }
+  }
+  if (data.outline_maturity === "explore") {
+    for (const [chainId, atomCount] of capabilityAtomCountsByChain.entries()) {
+      if (atomCount !== 1) {
+        fail(`business chain ${chainId} must have exactly one Level 1 capability atom`);
+      }
     }
   }
   if (!Array.isArray(context.evidence_gaps)) fail("business_context.evidence_gaps must be an array");
@@ -1931,16 +2058,45 @@ function validateOutlineDiscovery(data) {
         fail(`${questionLabel}: discovery questions require 2-4 candidates`);
       }
       const candidateIds = new Set();
+      const businessChainIds = new Set(asArray(data.business_context?.business_chains).map((chain) => chain?.chain_id));
+      const capabilityAtomsById = new Map(asArray(data.business_context?.capability_atoms).map((atom) => [atom?.atom_id, atom]));
+      const currentLevelOneProject = data.outline_maturity === "explore"
+        ? (questionMap?.map_kind === "branch"
+          ? asArray(data.outline_nodes).find((node) => node?.child_map_id === questionMap.map_id)
+          : (questionMap?.map_kind === "overview" && questionNode?.node_kind === "map_link" ? questionNode : null))
+        : null;
+      const currentLevelOneAtomId = currentLevelOneProject?.capability_atom_refs?.length === 1
+        ? currentLevelOneProject.capability_atom_refs[0]
+        : null;
       for (const [candidateIndex, candidate] of candidates.entries()) {
         const candidateLabel = `${questionLabel}:candidate[${candidateIndex}]`;
         for (const key of ["id", "label", "value", "rationale"]) {
           if (!String(candidate?.[key] || "").trim()) fail(`${candidateLabel}: ${key} is required`);
         }
         if (candidateIds.has(candidate?.id)) fail(`${questionLabel}: duplicate candidate id ${candidate?.id}`);
-        const businessChainIds = new Set(asArray(data.business_context?.business_chains).map((chain) => chain?.chain_id));
         if (!Array.isArray(candidate?.business_chain_refs) || !candidate.business_chain_refs.length ||
             candidate.business_chain_refs.some((id) => !businessChainIds.has(id))) {
           fail(`${candidateLabel}: business_chain_refs must reference business_context`);
+        }
+        if (data.outline_maturity === "explore" && candidate?.business_chain_refs?.length !== 1) {
+          fail(`${candidateLabel}: Level 1 candidate must reference exactly one primary business chain`);
+        }
+        if (!Array.isArray(candidate?.capability_atom_refs) || !candidate.capability_atom_refs.length ||
+            new Set(candidate.capability_atom_refs).size !== candidate.capability_atom_refs.length ||
+            candidate.capability_atom_refs.some((id) => !capabilityAtomsById.has(id))) {
+          fail(`${candidateLabel}: capability_atom_refs must reference business_context`);
+        } else if (data.outline_maturity === "explore" && candidate?.business_chain_refs?.length === 1) {
+          if (candidate.capability_atom_refs.length !== 1 ||
+              !currentLevelOneAtomId || candidate.capability_atom_refs[0] !== currentLevelOneAtomId) {
+            fail(`${candidateLabel}: must reference the current Level 1 project capability atom`);
+          }
+          const primaryChainId = candidate.business_chain_refs[0];
+          for (const atomId of candidate.capability_atom_refs) {
+            const atom = capabilityAtomsById.get(atomId);
+            if (atom && (atom.business_chain_refs?.length !== 1 || atom.business_chain_refs[0] !== primaryChainId)) {
+              fail(`${candidateLabel}: capability atom ${atomId} must match the candidate primary business chain`);
+            }
+          }
         }
         candidateIds.add(candidate?.id);
       }

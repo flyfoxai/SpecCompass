@@ -34,27 +34,28 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## SP Lite: globally governed rapid validation" in release_workflow
-    assert "requires an explicit human selection" in release_workflow
-    assert "confirmed Outline as their final completion boundary" in release_workflow
-    assert "blocks duplicate work, conflicting scope, stale evidence" in release_workflow
-    assert "routes exactly one existing SP owner command" in release_workflow
+    assert "## PRD Level 1: atomic business project decomposition" in release_workflow
+    assert "source-backed business capability atoms" in release_workflow
+    assert "one trigger/input, one owned state, one independently accepted result, and one handoff" in release_workflow
+    assert "one business chain and one candidate subproject" in release_workflow
+    assert "Recovery and governance remain separate" in release_workflow
+    assert "CLI and browser validators enforce the same ownership rules" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- \`/sp.lite\` presents 2-3 validation directions" in release_workflow
+    assert r"- \`/sp.prd\` derives Level 1" in release_workflow
 
 
-def test_release_changelog_summary_matches_lite_focus():
-    """The generated changelog should lead with the SP Lite user capability."""
+def test_release_changelog_summary_matches_prd_level1_focus():
+    """The generated changelog should lead with the PRD Level 1 user capability."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Added human-selected SP Lite rounds" in trigger_workflow
-    assert "global roadmap governance" in trigger_workflow
-    assert "deterministic owner routing" in trigger_workflow
+    assert "Added atom-first PRD Level 1 decomposition" in trigger_workflow
+    assert "independently verifiable candidate subprojects" in trigger_workflow
+    assert "deterministic one-to-one ownership validation" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

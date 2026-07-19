@@ -7,7 +7,7 @@ SpecCompass extends [GitHub Spec Kit](https://github.com/github/spec-kit) with a
 
 ## Core capabilities
 
-- **PRD Outline review**: `/sp.prd` builds a source-backed business capability mind map with node choices and free-text input, while showing Constitution context read-only; a mature outline requires visual confirmation before `/sp.specify`.
+- **PRD Outline review**: `/sp.prd` turns source-backed business capabilities into a mind map of independently verifiable candidate subprojects, with node choices, free-text input, and read-only Constitution context; a mature outline requires visual confirmation before `/sp.specify`.
 - **SP Lite validation**: `/sp.lite` offers 2-3 human-selected directions, then delivers the smallest runnable prototype under one global Outline roadmap. Later rounds may extend earlier work or cover an independent Outline branch without duplicating or contradicting prior delivery.
 - **Flow and UI review**: `/sp.flow` and `/sp.ui` provide visual confirmation pages. Decisions are ranked `critical`, `important`, or `normal`; critical items are limited and always confirmed individually.
 - **Controlled delivery**: planning, analysis, gates, implementation, and verification stay linked to confirmed scope and evidence.
