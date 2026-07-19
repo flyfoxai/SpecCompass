@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added human-selected SP Lite rounds with global roadmap governance and deterministic owner routing." \
+              "- Added atom-first PRD Level 1 decomposition into independently verifiable candidate subprojects with deterministic one-to-one ownership validation." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

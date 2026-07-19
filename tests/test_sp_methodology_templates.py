@@ -1741,7 +1741,10 @@ def test_prd_outline_graphical_confirmation_is_a_fresh_authorization_gate():
     assert "Do not rewrite formal constitution content" in prd
     assert "new independent business goal, role, workflow, acceptance boundary, release scope, or scope fork" in prd
     assert "do not route directly to `/sp.specify`" in prd
-    assert "route to `/sp.clarify`" in prd
+    assert "encode product-boundary choices in graphical Discovery" in prd
+    assert "classify the blocker before choosing its route" in prd
+    assert "changes a Level 1/2 project boundary or capability ownership" in prd
+    assert "classify missing split or human-choice evidence before recommending a route" in prd
     assert "unresolved product boundary or scope fork questions were not turned into guessed features" in prd
     assert "Requirement growth in `sp.prd` should be top-down" in command_spec
     assert "strategic goal, product positioning, business goals" in command_spec
@@ -1901,9 +1904,11 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "temporary" in prd
     assert "fail closed" in prd.lower()
     assert "must not invent target users, product goals, business rules, or scope" in prd
-    assert "confirmed goal, at least one confirmed user or role, and a clear core problem" in prd
-    assert "regress from `frame` to `explore`" in prd
-    assert "regress from `specify_ready` to `frame`" in prd
+    assert "source-backed or explicitly unresolved product subject" in prd
+    assert "at least one named role with a domain action" in prd
+    assert "failing or changing business object, operation, or result" in prd
+    assert "return the whole product to `explore` only" in prd
+    assert "From `specify_ready`, return to `frame`" in prd
     assert "model-owned compilation step" in prd
     assert "not cross-consumption by the confirmation package parser" in prd
     assert "validator or helper is missing, crashes, or returns an invalid result" in prd
@@ -1940,10 +1945,10 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "installed discovery schemas, renderer modules, or launcher support are missing" in prd
     assert "specify init --force" in prd
 
-    assert "一级：方向探索" in methodology
-    assert "二级：框架收敛" in methodology
-    assert "三级：完整大纲" in methodology
-    assert "成熟度可以回退" in methodology
+    assert "一级：项目组合边界" in methodology
+    assert "二级：单项目业务框架" in methodology
+    assert "三级：正式 Outline 编译" in methodology
+    assert "成熟度只回退到受影响的最窄层级" in methodology
     assert "不能授权 `/sp.specify`" in methodology
     assert "从账本生成三级正式 review data 是 `/sp.prd` 的单向编译步骤" in methodology
     assert "不是 confirmation consumer 读取 discovery package" in methodology
@@ -1960,10 +1965,11 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
 
 
 def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only():
-    """Level 1 must be compiled from business evidence, not generic methodology copy."""
+    """Level 1 must compile evidence into candidate product boundaries, not generic copy."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     prd = _command("prd")
     command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+    command_spec_text = " ".join(command_spec.split())
     usage = (
         PROJECT_ROOT
         / "templates"
@@ -1984,19 +1990,140 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
         assert "read_only" in content
         assert "governance_only" in content
 
-    assert "Stage A - extract business semantics" in prd
-    assert "Stage B - compile the business maps" in prd
+    assert "Stage A - extract source-backed capability atoms" in prd
+    assert "Stage B - propose candidate subprojects and compile business maps" in prd
+    assert "Stage C - run the semantic quality gate" in prd
+    assert "capability_atoms" in prd
+    assert "normal fact capture and interruption recovery remain separate chains" in prd.lower()
+    assert "parameter or rule change governance remains separate" in prd.lower()
+    assert "primary_outcome_ref" in prd
+    assert "trigger_kind" in prd
+    assert "one capability atom, one business chain, and one candidate project" in prd
+    assert "Merging is a user decision option" in prd
+    assert "must not merge atoms during initial Level 1 generation" in prd
+    assert "independently verifiable business outcome" in prd
+    assert "frontend, backend, database" in prd
+    assert "Do not impose a fixed project count" in prd
+    assert "Project Decomposition" in prd
+    assert "Subproject Handoff" in prd
+    assert "must not continue to `/sp.specify` as one parent product" in prd
+    assert "Product decomposition is independent from runtime topology" in prd
+    assert "Transactional consistency or bidirectional business exchange requires classification" in prd
+    assert "regulation, contract, or multi-party legal duty" in prd
+    assert "published service commitment" not in prd
+    assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in prd
+    assert "make confirmation of that split the default recommendation" in prd
+    assert "private compilation work" in prd
+    assert "never serialize or narrate the table" in prd
+    assert "Generic implementation components" in prd
+    assert "is a warning signal, not a boundary decision" in prd
+    assert "center/中心" in prd
+    assert "Prefixing a domain word" in prd
+    assert "formal product root" in prd
+    assert "final visible-copy sanitization pass" in prd
+    assert "do not announce that sanitization occurred" in prd
+    assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in prd
+    assert "use `NEXT_COMMAND_EXEC: None` until the downloaded response exists" in prd
+    assert "do not silently replace it and do not canonize it" in prd
+    assert "show the original proposal beside one source-backed business alternative" in prd
     assert "complete business chain" in prd
     assert "must not use Constitution content as business evidence" in prd
     assert "must not create discovery questions from Constitution clauses" in prd
     assert "must not write Constitution clauses into the PRD" in prd
     assert "must not target Constitution clauses with discovery deltas" in prd
     assert "business capability branches" in command_spec
+    assert "candidate subprojects" in command_spec
+    assert "independently verifiable business outcome" in command_spec
+    assert "Subproject Handoff" in command_spec
+    assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in command_spec_text
+    assert "make confirmation of that split the default recommendation" in command_spec_text
+    assert "center/中心" in command_spec_text
+    assert "Prefixing a domain word" in command_spec_text
+    assert "final visible-copy sanitization pass" in command_spec_text
+    assert "do not announce that sanitization occurred" in command_spec_text
+    assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in command_spec_text
+    assert "use `NEXT_COMMAND_EXEC: None` until the downloaded response exists" in command_spec_text
     assert "Constitution is displayed only as a read-only governance snapshot" in command_spec
-    assert "两阶段" in methodology
+    assert "三阶段" in methodology
+    assert "能力原子" in methodology
+    assert "一个能力原子、一条业务链、一个候选子项目" in methodology
+    assert "合并只能作为用户选择" in methodology
+    assert "候选子项目" in methodology
+    assert "中心、枢纽、平台、系统、模块、工作台、网络" in methodology
+    assert "前面加上领域词" in methodology
+    assert "独立核验" in methodology
+    assert "子项目交接" in methodology
+    assert "事务一致性或双向业务交接必须先分类" in methodology
+    assert "法规、合同或多方法律义务" in methodology
+    assert "不能悄悄改写，也不能直接定案" in methodology
+    assert "只用于内部编译" in methodology
+    assert "不能仅因为拆分未确认" in methodology
+    assert "可见文本清洗" in methodology
     assert "完整业务链" in methodology
+
+
+def test_prd_outline_levels_have_non_overlapping_executable_contracts():
+    """Each maturity level must have one verifiable job and a narrow fallback."""
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    prd = _command("prd")
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+    usage = (
+        PROJECT_ROOT
+        / "templates"
+        / "project"
+        / "docs"
+        / "reference"
+        / "speckit-command-usage.md"
+    ).read_text(encoding="utf-8")
+
+    assert "Level 1 owns portfolio decomposition" in prd
+    assert "Allocate every source-backed capability atom exactly once" in prd
+    assert "owned business state" in prd
+    assert "all candidate boundaries are resolved" in prd
+    assert "Level 2 owns child-project framing" in prd
+    assert "for a retained one-product decision" in prd
+    assert "confirmed parent PRD" in prd
+    assert "target the confirmed retained-product scope" in prd
+    assert "silently merge children in Level 2" in prd
+    assert "exactly one confirmed `Subproject Handoff`" in prd
+    assert "must not reopen the full portfolio decomposition" in prd
+    assert "Use Level 1/2 graphical Discovery with `NEXT_COMMAND_EXEC: None`" in prd
+    assert "focused non-boundary decision that Discovery cannot express" in prd
+    assert "starting state" in prd
+    assert "resulting state or observable outcome" in prd
+    assert "Level 3 is a source-preserving compilation" in prd
+    assert "must not create, merge, split, or reinterpret business facts" in prd
+    assert "return the whole product to `explore` only" in prd
+    assert "route only those boundaries for Level 1 resolution" in prd
+
+    assert "cross-domain substitution test" in prd
+    assert "Apply the cross-domain substitution test to every chain" in prd
+    assert "source-backed domain object" in prd
+    assert "warning signal, not a boundary decision" in prd
+    assert "external business obligation" in prd
+
+    for content in (command_spec,):
+        assert "Level 1 owns portfolio decomposition" in content
+        assert "Level 2 owns child-project framing" in content
+        assert "Level 3 is a source-preserving compilation" in content
+        assert "cross-domain substitution test" in content
+
+    for content in (methodology, usage):
+        assert "一级只负责项目组合拆分" in content
+        assert "二级只负责单个已确认子项目的业务闭环" in content
+        assert "三级只负责保留来源身份的正式编译" in content
+        assert "跨领域替换测试" in content
+    assert "一级和二级均执行跨领域替换测试" in usage
     assert "只读治理快照" in methodology
-    assert "业务能力主干" in usage
+    assert "候选子项目" in usage
+    assert "中心、枢纽、平台、系统、模块、工作台、网络" in usage
+    assert "子项目交接" in usage
+    assert "不能仅因为拆分未确认" in usage
+    assert "可见文本清洗" in usage
+
+    for content in (prd, command_spec, usage):
+        assert "QMT" not in content
+        assert "up to three cohesive business capability branches" not in content
 
 
 def test_task_packet_defaults_protect_shared_truth_and_worker_artifact_boundaries():
@@ -3333,11 +3460,12 @@ def test_stage_next_prompts_require_human_confirmation_when_needed():
     plan = _command("plan")
     tasks = _command("tasks")
 
-    assert "end with an explicit review prompt" in prd
+    assert "classify the unresolved item before routing" in prd
     assert "[src:ai-proposed]" in prd
     assert "[uncertain:*]" in prd
     assert "unconfirmed candidate requirements" in prd
-    assert "whether the next safe route is `/sp.clarify`" in prd
+    assert "stays in graphical Discovery with `NEXT_COMMAND_EXEC: None`" in prd
+    assert "focused non-boundary decision that the node-bound Discovery contract cannot express" in prd
 
     assert "If `Stage Readiness` is `READY_FOR_FLOW`, suggest `/sp.flow`" in specify
     assert "do not suggest `/sp.flow`" in specify
@@ -4942,14 +5070,36 @@ def _outline_discovery_validator_sample() -> dict:
                     "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
                 }
             ],
+            "capability_atoms": [
+                {
+                    "atom_id": "atom-controlled-order",
+                    "label": "把行情与账户变化转化为受控订单",
+                    "trigger_kind": "business_event",
+                    "trigger_or_input": "新行情、持仓或资金变化到达",
+                    "owned_state": "经过风险约束、等待执行的交易订单",
+                    "object_refs": ["object-market-account-data", "object-order"],
+                    "operation_refs": ["operation-store-data", "operation-decide-order"],
+                    "outcome_refs": ["outcome-controlled-order"],
+                    "primary_outcome_ref": "outcome-controlled-order",
+                    "downstream_handoff": "向订单执行责任交付可执行订单或风险阻断事实",
+                    "business_chain_refs": ["chain-trading-loop"],
+                    "source_status": "user-confirmed",
+                    "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+                }
+            ],
             "business_chains": [
                 {
                     "chain_id": "chain-trading-loop",
                     "label": "从交易数据到受控订单",
+                    "chain_kind": "primary",
+                    "trigger_kind": "business_event",
                     "trigger_or_input": "新行情、持仓或资金变化到达",
+                    "owned_state": "经过风险约束、等待执行的交易订单",
                     "object_refs": ["object-market-account-data", "object-order"],
                     "operation_refs": ["operation-store-data", "operation-decide-order"],
                     "outcome_refs": ["outcome-controlled-order"],
+                    "primary_outcome_ref": "outcome-controlled-order",
+                    "downstream_handoff": "向订单执行责任交付可执行订单或风险阻断事实",
                     "source_status": "user-confirmed",
                     "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
                 }
@@ -5006,7 +5156,7 @@ def _outline_discovery_validator_sample() -> dict:
         ],
         "outline_nodes": [
             {"node_id": "node-project", "parent_node_id": None, "map_id": "map-overview", "node_kind": "root", "label": "量化交易工作台", "summary": "把行情和账户变化转化为经过风险约束的交易订单。", "source_status": "user", "business_chain_refs": ["chain-trading-loop"]},
-            {"node_id": "node-trading-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "交易闭环", "summary": "进入数据、策略和风险控制业务分图。", "source_status": "user-confirmed", "child_map_id": "map-trading-loop", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-trading-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "交易闭环", "summary": "进入数据、策略和风险控制业务分图。", "source_status": "user-confirmed", "child_map_id": "map-trading-loop", "business_chain_refs": ["chain-trading-loop"], "capability_atom_refs": ["atom-controlled-order"]},
             {"node_id": "node-governance-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "全局治理约束", "summary": "查看对交易业务生效的项目原则。", "source_status": "doc", "child_map_id": "map-governance"},
             {"node_id": "node-trading-root", "parent_node_id": None, "map_id": "map-trading-loop", "node_kind": "root", "label": "从交易数据到受控订单", "summary": "接收数据，产生交易意图，风险放行后形成订单。", "source_status": "user-confirmed", "business_chain_refs": ["chain-trading-loop"]},
             {"node_id": "node-data", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "capability", "label": "交易数据存储", "summary": "保存并更新行情、资金和持仓事实。", "source_status": "doc", "business_chain_refs": ["chain-trading-loop"]},
@@ -5036,6 +5186,7 @@ def _outline_discovery_validator_sample() -> dict:
                                 "value": "首期支持一个交易策略，并在仓位、资金和单笔损失检查通过后生成订单。",
                                 "rationale": "可以用最小闭环验证数据、策略、风险和订单之间的业务关系。",
                                 "business_chain_refs": ["chain-trading-loop"],
+                                "capability_atom_refs": ["atom-controlled-order"],
                             },
                             {
                                 "id": "risk-multi",
@@ -5043,6 +5194,7 @@ def _outline_discovery_validator_sample() -> dict:
                                 "value": "首期同时运行多个策略，并按组合敞口和回撤统一决定订单是否放行。",
                                 "rationale": "覆盖更完整，但需要更多策略冲突和组合风险事实。",
                                 "business_chain_refs": ["chain-trading-loop"],
+                                "capability_atom_refs": ["atom-controlled-order"],
                             },
                         ],
                         "recommended_candidate_ids": ["risk-basic"],
@@ -5148,11 +5300,32 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert discovery["properties"]["outline_maturity"]["enum"] == ["explore", "frame"]
     assert discovery["properties"]["authorization_effect"] == {"const": "none"}
     assert {"business_context", "constitution_snapshot", "density_budget", "maps", "outline_nodes"} <= set(discovery["required"])
+    assert "capability_atoms" in discovery["properties"]["business_context"]["required"]
+    assert "trigger_kind" in discovery["$defs"]["capability_atom"]["required"]
+    assert discovery["$defs"]["capability_atom"]["properties"]["trigger_kind"]["enum"] == [
+        "business_event",
+        "exception_or_interruption",
+        "governance_change",
+    ]
+    assert {
+        "trigger_or_input",
+        "owned_state",
+        "primary_outcome_ref",
+        "downstream_handoff",
+    } <= set(discovery["$defs"]["capability_atom"]["required"])
+    assert {
+        "chain_kind",
+        "trigger_kind",
+        "owned_state",
+        "primary_outcome_ref",
+        "downstream_handoff",
+    } <= set(discovery["$defs"]["business_chain"]["required"])
     assert discovery["properties"]["constitution_snapshot"]["properties"]["display_mode"] == {"const": "read_only"}
     assert discovery["properties"]["constitution_snapshot"]["properties"]["application_scope"] == {"const": "governance_only"}
     constitution_path = discovery["properties"]["constitution_snapshot"]["properties"]["source_path"]
     assert constitution_path["pattern"] == r"^(?!/)(?![A-Za-z]:/)(?!\.\.?(?:/|$))(?!.*\/\.\.?(?:/|$))(?!.*//)[^/]+(?:/[^/]+)*$"
     assert "business_chain_refs" in discovery["$defs"]["outline_node"]["properties"]
+    assert "capability_atom_refs" in discovery["$defs"]["outline_node"]["properties"]
     assert "constitution_clause_refs" in discovery["$defs"]["outline_node"]["properties"]
     assert discovery["properties"]["density_budget"]["properties"] == {
         "max_visible_nodes_per_map": {"const": 18},
@@ -5167,6 +5340,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert question["properties"]["candidates"]["minItems"] == 2
     assert question["properties"]["candidates"]["maxItems"] == 4
     assert "business_chain_refs" in discovery["$defs"]["candidate"]["required"]
+    assert "capability_atom_refs" in discovery["$defs"]["candidate"]["required"]
     assert question["properties"]["recommended_candidate_ids"]["minItems"] == 1
     assert question["properties"]["recommended_candidate_ids"]["maxItems"] == 1
     assert {
@@ -5209,6 +5383,318 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
 
     accepted = _run_review_validator(_outline_discovery_validator_sample(), tmp_path / "discovery-valid.json")
     assert accepted.returncode == 0, _review_validator_output(accepted)
+
+
+def test_outline_discovery_rejects_level_one_candidate_that_merges_independent_business_chains(tmp_path):
+    """A Level 1 candidate cannot hide multiple independently verifiable outcomes behind one label."""
+    sample = _outline_discovery_validator_sample()
+    sample["business_context"]["outcomes"].append(
+        {
+            "outcome_id": "outcome-risk-decision",
+            "label": "形成风险放行决定",
+            "summary": "交易意图被明确放行或阻断，并记录可追溯原因。",
+            "source_status": "doc",
+            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    sample["business_context"]["business_chains"].append(
+        {
+            "chain_id": "chain-risk-decision",
+            "label": "交易意图风险放行",
+            "chain_kind": "primary",
+            "trigger_kind": "business_event",
+            "trigger_or_input": "交易意图进入风险审核",
+            "owned_state": "已经过风险规则裁定的交易意图",
+            "object_refs": ["object-market-account-data", "object-order"],
+            "operation_refs": ["operation-decide-order"],
+            "outcome_refs": ["outcome-risk-decision"],
+            "primary_outcome_ref": "outcome-risk-decision",
+            "downstream_handoff": "向订单执行责任交付放行决定或阻断事实",
+            "source_status": "doc",
+            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    sample["question_groups"][0]["questions"][0]["candidates"][0]["business_chain_refs"] = [
+        "chain-trading-loop",
+        "chain-risk-decision",
+    ]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-mixed-business-boundary.json")
+
+    assert result.returncode != 0
+    assert "exactly one primary business chain" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_level_one_chain_with_multiple_independent_outcomes(tmp_path):
+    """A chain cannot make multiple acceptance results look like one project boundary."""
+    sample = _outline_discovery_validator_sample()
+    sample["business_context"]["outcomes"].append(
+        {
+            "outcome_id": "outcome-recovered-facts",
+            "label": "恢复后交易事实一致",
+            "summary": "中断后的订单、成交和持仓重新核对并形成可追溯一致状态。",
+            "source_status": "doc",
+            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    sample["business_context"]["business_chains"][0]["outcome_refs"].append("outcome-recovered-facts")
+
+    result = _run_review_validator(sample, tmp_path / "discovery-multiple-chain-outcomes.json")
+
+    assert result.returncode != 0
+    assert "exactly one independently accepted outcome" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_level_one_atom_whose_trigger_kind_differs_from_its_chain(tmp_path):
+    """Normal processing and interruption recovery cannot share a chain through a generic label."""
+    sample = _outline_discovery_validator_sample()
+    chain = sample["business_context"]["business_chains"][0]
+    chain.update(
+        {
+            "chain_kind": "primary",
+            "trigger_kind": "business_event",
+            "owned_state": "经过风险约束、等待执行的交易订单",
+            "primary_outcome_ref": "outcome-controlled-order",
+            "downstream_handoff": "向订单执行责任交付可执行订单或风险阻断事实",
+        }
+    )
+    sample["business_context"]["capability_atoms"][0]["trigger_kind"] = "exception_or_interruption"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-mixed-trigger-chain.json")
+
+    assert result.returncode != 0
+    assert "trigger_kind must match its business chain" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_level_one_chain_with_multiple_capability_atoms(tmp_path):
+    """Initial Level 1 generation cannot hide two responsibilities inside one chain."""
+    sample = _outline_discovery_validator_sample()
+    second_atom = {
+        **sample["business_context"]["capability_atoms"][0],
+        "atom_id": "atom-broker-fact-update",
+        "label": "接收券商回报并更新交易事实",
+        "owned_state": "已按券商回报更新的订单与成交事实",
+        "primary_outcome_ref": "outcome-controlled-order",
+        "downstream_handoff": "向运行核对责任交付已确认的订单与成交事实",
+    }
+    sample["business_context"]["capability_atoms"].append(second_atom)
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project["capability_atom_refs"].append(second_atom["atom_id"])
+
+    result = _run_review_validator(sample, tmp_path / "discovery-multiple-atoms-per-chain.json")
+
+    assert result.returncode != 0
+    assert "exactly one Level 1 capability atom" in _review_validator_output(result)
+
+
+@pytest.mark.parametrize(
+    ("field", "wrong_value"),
+    (
+        ("trigger_or_input", "人工修改参数"),
+        ("owned_state", "待人工批准的参数版本"),
+        ("primary_outcome_ref", "outcome-not-owned-by-chain"),
+        ("downstream_handoff", "向配置治理责任交付参数版本"),
+    ),
+)
+def test_outline_discovery_rejects_level_one_atom_semantics_that_differ_from_its_chain(
+    tmp_path,
+    field,
+    wrong_value,
+):
+    sample = _outline_discovery_validator_sample()
+    sample["business_context"]["capability_atoms"][0][field] = wrong_value
+
+    result = _run_review_validator(sample, tmp_path / f"discovery-atom-chain-mismatch-{field}.json")
+
+    assert result.returncode != 0
+    assert "semantic fields must match its business chain" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_level_one_business_chain_without_atom_or_project(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    sample["business_context"]["outcomes"].append(
+        {
+            "outcome_id": "outcome-risk-decision",
+            "label": "形成风险放行决定",
+            "summary": "交易意图被明确放行或阻断。",
+            "source_status": "doc",
+            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    sample["business_context"]["business_chains"].append(
+        {
+            "chain_id": "chain-risk-decision",
+            "label": "交易意图风险裁定",
+            "chain_kind": "primary",
+            "trigger_kind": "business_event",
+            "trigger_or_input": "策略交易意图到达",
+            "owned_state": "已完成风险裁定的交易意图",
+            "object_refs": ["object-order"],
+            "operation_refs": ["operation-decide-order"],
+            "outcome_refs": ["outcome-risk-decision"],
+            "primary_outcome_ref": "outcome-risk-decision",
+            "downstream_handoff": "向订单执行责任交付放行决定或阻断事实",
+            "source_status": "doc",
+            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+        }
+    )
+
+    result = _run_review_validator(sample, tmp_path / "discovery-orphan-level-one-chain.json")
+
+    assert result.returncode != 0
+    assert "exactly one Level 1 capability atom" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_candidate_bound_to_another_level_one_project(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    sample["business_context"]["outcomes"].append(
+        {
+            "outcome_id": "outcome-risk-decision",
+            "label": "形成风险放行决定",
+            "summary": "交易意图被明确放行或阻断。",
+            "source_status": "doc",
+            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    sample["business_context"]["capability_atoms"].append(
+        {
+            "atom_id": "atom-risk-decision",
+            "label": "裁定交易意图是否放行",
+            "trigger_kind": "business_event",
+            "trigger_or_input": "策略交易意图到达",
+            "owned_state": "已完成风险裁定的交易意图",
+            "object_refs": ["object-order"],
+            "operation_refs": ["operation-decide-order"],
+            "outcome_refs": ["outcome-risk-decision"],
+            "primary_outcome_ref": "outcome-risk-decision",
+            "downstream_handoff": "向订单执行责任交付放行决定或阻断事实",
+            "business_chain_refs": ["chain-risk-decision"],
+            "source_status": "doc",
+            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    sample["business_context"]["business_chains"].append(
+        {
+            "chain_id": "chain-risk-decision",
+            "label": "交易意图风险裁定",
+            "chain_kind": "primary",
+            "trigger_kind": "business_event",
+            "trigger_or_input": "策略交易意图到达",
+            "owned_state": "已完成风险裁定的交易意图",
+            "object_refs": ["object-order"],
+            "operation_refs": ["operation-decide-order"],
+            "outcome_refs": ["outcome-risk-decision"],
+            "primary_outcome_ref": "outcome-risk-decision",
+            "downstream_handoff": "向订单执行责任交付放行决定或阻断事实",
+            "source_status": "doc",
+            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    sample["maps"].append(
+        {
+            "map_id": "map-risk-decision",
+            "title": "风险决定",
+            "summary": "裁定交易意图并交付放行或阻断结果。",
+            "map_kind": "branch",
+            "root_node_id": "node-risk-root",
+            "parent_map_id": "map-overview",
+        }
+    )
+    sample["outline_nodes"][0]["business_chain_refs"].append("chain-risk-decision")
+    sample["outline_nodes"].extend(
+        [
+            {
+                "node_id": "node-risk-entry",
+                "parent_node_id": "node-project",
+                "map_id": "map-overview",
+                "node_kind": "map_link",
+                "label": "风险决定",
+                "summary": "进入交易意图风险裁定分图。",
+                "source_status": "doc",
+                "child_map_id": "map-risk-decision",
+                "business_chain_refs": ["chain-risk-decision"],
+                "capability_atom_refs": ["atom-risk-decision"],
+            },
+            {
+                "node_id": "node-risk-root",
+                "parent_node_id": None,
+                "map_id": "map-risk-decision",
+                "node_kind": "root",
+                "label": "交易意图风险裁定",
+                "summary": "根据风险规则形成放行决定或阻断事实。",
+                "source_status": "doc",
+                "business_chain_refs": ["chain-risk-decision"],
+            },
+        ]
+    )
+    candidate = sample["question_groups"][0]["questions"][0]["candidates"][0]
+    candidate["business_chain_refs"] = ["chain-risk-decision"]
+    candidate["capability_atom_refs"] = ["atom-risk-decision"]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-candidate-other-project.json")
+
+    assert result.returncode != 0
+    assert "current Level 1 project capability atom" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_level_one_chains_that_share_a_primary_outcome(tmp_path):
+    """Two independently verifiable projects must not claim the same acceptance result."""
+    sample = _outline_discovery_validator_sample()
+    sample["business_context"]["business_chains"].extend(
+        [
+            {
+                "chain_id": "chain-order-recovery",
+                "label": "中断后恢复交易事实",
+                "chain_kind": "recovery",
+                "trigger_kind": "exception_or_interruption",
+                "trigger_or_input": "交易进程中断或券商状态与本地记录不一致",
+                "owned_state": "恢复后可追溯的订单、成交与持仓事实",
+                "object_refs": ["object-order"],
+                "operation_refs": ["operation-decide-order"],
+                "outcome_refs": ["outcome-controlled-order"],
+                "primary_outcome_ref": "outcome-controlled-order",
+                "downstream_handoff": "向策略和风控责任交付恢复后确认的交易事实",
+                "source_status": "doc",
+                "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+            }
+        ]
+    )
+    sample["business_context"]["business_chains"][0].update(
+        {
+            "chain_kind": "primary",
+            "trigger_kind": "business_event",
+            "owned_state": "经过风险约束、等待执行的交易订单",
+            "primary_outcome_ref": "outcome-controlled-order",
+            "downstream_handoff": "向订单执行责任交付可执行订单或风险阻断事实",
+        }
+    )
+
+    result = _run_review_validator(sample, tmp_path / "discovery-duplicate-primary-outcome.json")
+
+    assert result.returncode != 0
+    assert "primary outcome must be owned by exactly one Level 1 business chain" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_level_one_atoms_without_project_ownership(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry").pop(
+        "capability_atom_refs"
+    )
+
+    result = _run_review_validator(sample, tmp_path / "discovery-unowned-capability-atom.json")
+
+    assert result.returncode != 0
+    assert "capability atom must have exactly one Level 1 project owner" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_candidate_without_capability_atom_evidence(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    sample["question_groups"][0]["questions"][0]["candidates"][0].pop("capability_atom_refs")
+
+    result = _run_review_validator(sample, tmp_path / "discovery-candidate-without-atom.json")
+
+    assert result.returncode != 0
+    assert "capability_atom_refs must reference business_context" in _review_validator_output(result)
 
     for label, mutate, expected in (
         (
@@ -5443,6 +5929,40 @@ for (const [label, mutate] of [
   ["multiple-selection", (data) => data.question_groups[0].questions[0].selection_mode = "multiple"],
   ["missing-operation", (data) => data.question_groups[0].questions[0].free_input.allowed_operations.pop()],
   ["missing-business-object", (data) => data.business_context.business_chains[0].object_refs = []],
+  ["multiple-chain-outcomes", (data) => {{
+    data.business_context.outcomes.push({{
+      outcome_id: "outcome-recovered-facts",
+      label: "恢复后交易事实一致",
+      summary: "中断后的订单、成交和持仓重新核对并形成可追溯一致状态。",
+      source_status: "doc",
+      source_refs: ["specs/001-outline/prd.md#Core Trading Loop"]
+    }});
+    data.business_context.business_chains[0].outcome_refs.push("outcome-recovered-facts");
+  }}],
+  ["mixed-trigger-chain", (data) => data.business_context.capability_atoms[0].trigger_kind = "exception_or_interruption"],
+  ["multiple-atoms-per-chain", (data) => {{
+    const atom = structuredClone(data.business_context.capability_atoms[0]);
+    atom.atom_id = "atom-broker-fact-update";
+    atom.label = "接收券商回报并更新交易事实";
+    data.business_context.capability_atoms.push(atom);
+    data.outline_nodes.find((item) => item.node_id === "node-trading-entry").capability_atom_refs.push(atom.atom_id);
+  }}],
+  ["atom-owned-state-mismatch", (data) => data.business_context.capability_atoms[0].owned_state = "待人工批准的参数版本"],
+  ["duplicate-primary-outcome", (data) => data.business_context.business_chains.push({{
+    chain_id: "chain-order-recovery",
+    label: "中断后恢复交易事实",
+    chain_kind: "recovery",
+    trigger_kind: "exception_or_interruption",
+    trigger_or_input: "交易进程中断或券商状态与本地记录不一致",
+    owned_state: "恢复后可追溯的订单、成交与持仓事实",
+    object_refs: ["object-order"],
+    operation_refs: ["operation-decide-order"],
+    outcome_refs: ["outcome-controlled-order"],
+    primary_outcome_ref: "outcome-controlled-order",
+    downstream_handoff: "向策略和风控责任交付恢复后确认的交易事实",
+    source_status: "doc",
+    source_refs: ["specs/001-outline/prd.md#Core Trading Loop"]
+  }})],
   ["unknown-business-source", (data) => data.business_context.business_chains[0].source_refs = ["specs/001-outline/unknown.md#Fact"]],
   ["evidence-gaps-not-array", (data) => data.business_context.evidence_gaps = {{}}],
   ["duplicate-evidence-gap", (data) => data.business_context.evidence_gaps = [

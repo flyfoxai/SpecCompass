@@ -39,7 +39,7 @@
       "additionalProperties": false,
       "required": [
         "product_subject", "business_objects", "operations", "outcomes",
-        "business_chains", "evidence_gaps"
+        "capability_atoms", "business_chains", "evidence_gaps"
       ],
       "properties": {
         "product_subject": {"$ref": "#/$defs/sourced_semantic"},
@@ -54,6 +54,10 @@
         "outcomes": {
           "type": "array", "minItems": 1,
           "items": {"$ref": "#/$defs/business_outcome"}
+        },
+        "capability_atoms": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/capability_atom"}
         },
         "business_chains": {
           "type": "array", "minItems": 1,
@@ -166,6 +170,10 @@
           "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         },
+        "capability_atom_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
         "constitution_clause_refs": {
           "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
@@ -231,20 +239,50 @@
         "source_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
       }
     },
+    "capability_atom": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "atom_id", "label", "trigger_kind", "trigger_or_input", "owned_state",
+        "object_refs", "operation_refs", "outcome_refs", "primary_outcome_ref",
+        "downstream_handoff", "business_chain_refs", "source_status", "source_refs"
+      ],
+      "properties": {
+        "atom_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "trigger_kind": {"enum": ["business_event", "exception_or_interruption", "governance_change"]},
+        "trigger_or_input": {"type": "string", "minLength": 1},
+        "owned_state": {"type": "string", "minLength": 1},
+        "object_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "operation_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "outcome_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "primary_outcome_ref": {"type": "string", "minLength": 1},
+        "downstream_handoff": {"type": "string", "minLength": 1},
+        "business_chain_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
     "business_chain": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "chain_id", "label", "trigger_or_input", "object_refs", "operation_refs",
-        "outcome_refs", "source_status", "source_refs"
+        "chain_id", "label", "chain_kind", "trigger_kind", "trigger_or_input", "owned_state",
+        "object_refs", "operation_refs", "outcome_refs", "primary_outcome_ref",
+        "downstream_handoff", "source_status", "source_refs"
       ],
       "properties": {
         "chain_id": {"type": "string", "minLength": 1},
         "label": {"type": "string", "minLength": 1},
+        "chain_kind": {"enum": ["primary", "recovery", "governance"]},
+        "trigger_kind": {"enum": ["business_event", "exception_or_interruption", "governance_change"]},
         "trigger_or_input": {"type": "string", "minLength": 1},
+        "owned_state": {"type": "string", "minLength": 1},
         "object_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "operation_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "outcome_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "primary_outcome_ref": {"type": "string", "minLength": 1},
+        "downstream_handoff": {"type": "string", "minLength": 1},
         "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
         "source_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
       }
@@ -336,13 +374,17 @@
     "candidate": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "label", "value", "rationale", "business_chain_refs"],
+      "required": ["id", "label", "value", "rationale", "business_chain_refs", "capability_atom_refs"],
       "properties": {
         "id": {"type": "string", "minLength": 1},
         "label": {"type": "string", "minLength": 1},
         "value": {"type": "string", "minLength": 1},
         "rationale": {"type": "string", "minLength": 1},
         "business_chain_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "capability_atom_refs": {
           "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         }
