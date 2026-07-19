@@ -306,6 +306,74 @@ const allowedOptionKeys = new Set([
 ]);
 const allowedEdgeKeys = new Set(["from", "to", "label"]);
 
+// 通用能力原子标签模式（不允许）
+const vagueCapabilityAtomPatterns = [
+  // 空洞动词 + 泛化名词
+  /^处理[^的]*$/,
+  /^管理[^的]*$/,
+  /^执行[^的]*$/,
+  /^维护[^的]*$/,
+  /^组织[^的]*$/,
+  /^协调[^的]*$/,
+  /^handle\s+[a-z\s]+$/i,
+  /^manage\s+[a-z\s]+$/i,
+  /^execute\s+[a-z\s]+$/i,
+  /^process\s+[a-z\s]+$/i,
+
+  // 元认知表达
+  /业务对象|业务处理|业务流程|业务逻辑/,
+  /系统功能|系统能力|系统模块/,
+  /数据处理|数据管理|数据维护/,
+
+  // 过于泛化的名词（没有具体领域含义）
+  /^[^具体领域词汇]{0,6}(中心|平台|系统|模块|服务|引擎)$/,
+];
+
+// 通用状态描述模式（不允许）
+const vagueStatePatterns = [
+  /^[^→>]{0,10}状态$/,           // 只说"状态"，没有具体内容
+  /^业务状态$/,
+  /^数据状态$/,
+  /^系统状态$/,
+  /^state$/i,
+  /^business\s+state$/i,
+  /^data\s+state$/i,
+];
+
+// 通用触发器描述模式（不允许）
+const vagueTriggerPatterns = [
+  /^用户操作$/,
+  /^业务事件$/,
+  /^系统事件$/,
+  /^外部触发$/,
+  /^user\s+action$/i,
+  /^business\s+event$/i,
+  /^system\s+event$/i,
+];
+
+// 通用交接描述模式（不允许）
+const vagueHandoffPatterns = [
+  /^传递给下游$/,
+  /^发送给.*系统$/,
+  /^推送给.*模块$/,
+  /^pass\s+to\s+downstream$/i,
+  /^send\s+to\s+[a-z\s]+system$/i,
+];
+
+// 通用业务对象描述模式（不允许）
+const vagueBusinessObjectPatterns = [
+  /^数据$/,
+  /^信息$/,
+  /^对象$/,
+  /^实体$/,
+  /^业务数据$/,
+  /^业务对象$/,
+  /^data$/i,
+  /^information$/i,
+  /^object$/i,
+  /^entity$/i,
+];
+
 function fail(message) {
   errors.push(message);
 }
@@ -449,6 +517,117 @@ function validateFlowEdgeSemantics(itemLabel, nodes, edges) {
   });
   if (unlabeledEdges && !edges.some((edge) => compactText(edge.label))) {
     warn(`${itemLabel}: flow edges have no business labels; add conditions or results so reviewers can follow why work moves between nodes`);
+  }
+}
+
+/**
+ * 检查文本是否为通用套话（跨领域替换测试的简化版）
+ * @param {string} text - 要检查的文本
+ * @param {Array<RegExp>} patterns - 通用模式列表
+ * @returns {boolean} - 如果匹配任何通用模式则返回 true
+ */
+function isGenericBoilerplate(text, patterns) {
+  const normalized = compactText(text);
+  return patterns.some((pattern) => pattern.test(normalized));
+}
+
+/**
+ * 验证 capability_atom 的语义具体性
+ * @param {string} atomLabel - 用于错误消息的标签
+ * @param {object} atom - capability_atom 对象
+ */
+function validateCapabilityAtomSemantics(atomLabel, atom) {
+  // 检查 label 具体性
+  if (isGenericBoilerplate(atom.label, vagueCapabilityAtomPatterns)) {
+    fail(`${atomLabel}: label is too generic; name the concrete business object, specific action, and observable result (e.g., "采集券商实时行情推送" not "处理市场数据")`);
+  }
+
+  // 检查 owned_state 具体性
+  const state = compactText(atom.owned_state);
+  if (state.length < 10) {
+    fail(`${atomLabel}: owned_state is too short; describe the concrete business state with key attributes (at least 10 chars)`);
+  }
+  if (isGenericBoilerplate(state, vagueStatePatterns)) {
+    fail(`${atomLabel}: owned_state is too generic; describe a concrete state transition or business fact (e.g., "待支付订单 → 已确认订单" not "订单状态")`);
+  }
+
+  // 检查 trigger_or_input 具体性
+  const trigger = compactText(atom.trigger_or_input);
+  if (trigger.length < 8) {
+    fail(`${atomLabel}: trigger_or_input is too short; name the concrete trigger source and event (at least 8 chars)`);
+  }
+  if (isGenericBoilerplate(trigger, vagueTriggerPatterns)) {
+    fail(`${atomLabel}: trigger_or_input is too generic; name the specific business event or external system (e.g., "券商推送新tick数据" not "业务事件")`);
+  }
+
+  // 检查 downstream_handoff 具体性
+  const handoff = compactText(atom.downstream_handoff);
+  if (handoff.length < 10) {
+    fail(`${atomLabel}: downstream_handoff is too short; describe what is handed off and to whom (at least 10 chars)`);
+  }
+  if (isGenericBoilerplate(handoff, vagueHandoffPatterns)) {
+    fail(`${atomLabel}: downstream_handoff is too generic; name the specific business fact/command/event and target responsibility (e.g., "推送行情事件给策略引擎，包含价格和成交量" not "传递给下游系统")`);
+  }
+}
+
+/**
+ * 验证 business_object 的语义具体性
+ * @param {string} objectLabel - 用于错误消息的标签
+ * @param {object} businessObject - business_object 对象
+ */
+function validateBusinessObjectSemantics(objectLabel, businessObject) {
+  const label = compactText(businessObject.label);
+
+  // 检查是否过于泛化
+  if (isGenericBoilerplate(label, vagueBusinessObjectPatterns)) {
+    fail(`${objectLabel}: label is too generic; name the concrete business entity with key attributes (e.g., "待支付订单（金额、收货地址、支付截止时间）" not "订单")`);
+  }
+
+  // 检查最小长度（避免单个词）
+  if (label.length < 4) {
+    fail(`${objectLabel}: label is too short; provide a descriptive business object name with context (at least 4 chars)`);
+  }
+}
+
+/**
+ * 验证 business_operation 的语义具体性
+ * @param {string} operationLabel - 用于错误消息的标签
+ * @param {object} operation - business_operation 对象
+ */
+function validateBusinessOperationSemantics(operationLabel, operation) {
+  const label = compactText(operation.label);
+
+  // 检查空洞动词
+  const emptyVerbs = ['处理', '管理', '维护', '执行', '组织', '协调', 'handle', 'manage', 'process', 'execute', 'maintain'];
+  const startsWithEmptyVerb = emptyVerbs.some(verb => label.startsWith(verb) || label.toLowerCase().startsWith(verb));
+
+  if (startsWithEmptyVerb && label.length < 15) {
+    fail(`${operationLabel}: label uses a generic verb without qualification; describe the specific input, action, and output (e.g., "解析券商推送的tick数据并更新价格缓存" not "处理市场数据")`);
+  }
+
+  // 检查最小长度
+  if (label.length < 8) {
+    fail(`${operationLabel}: label is too short; describe what happens, to what, and why (at least 8 chars)`);
+  }
+}
+
+/**
+ * 验证 business_outcome 的语义具体性
+ * @param {string} outcomeLabel - 用于错误消息的标签
+ * @param {object} outcome - business_outcome 对象
+ */
+function validateBusinessOutcomeSemantics(outcomeLabel, outcome) {
+  const label = compactText(outcome.label);
+
+  // 检查是否只是抽象成功/失败
+  const abstractOutcomes = ['成功', '失败', '完成', '错误', 'success', 'failure', 'complete', 'error', 'done'];
+  if (abstractOutcomes.includes(label.toLowerCase())) {
+    fail(`${outcomeLabel}: label is too abstract; describe the concrete observable result with measurable criteria (e.g., "行情数据已更新，延迟 < 100ms" not "成功")`);
+  }
+
+  // 检查最小长度 (降低到6字符以支持简洁但具体的中文描述，如"形成受控订单")
+  if (label.length < 6) {
+    fail(`${outcomeLabel}: label is too short; describe what changed, what can be verified, and by whom (at least 6 chars)`);
   }
 }
 
@@ -1847,6 +2026,22 @@ function validateOutlineDiscoveryBusinessContext(data) {
   const objects = collect("business_objects", "object_id");
   const operations = collect("operations", "operation_id");
   const outcomes = collect("outcomes", "outcome_id");
+
+  // Semantic quality checks for business_objects
+  for (const [index, obj] of objects.values.entries()) {
+    validateBusinessObjectSemantics(`business_context.business_objects[${index}]`, obj);
+  }
+
+  // Semantic quality checks for operations
+  for (const [index, op] of operations.values.entries()) {
+    validateBusinessOperationSemantics(`business_context.operations[${index}]`, op);
+  }
+
+  // Semantic quality checks for outcomes
+  for (const [index, outcome] of outcomes.values.entries()) {
+    validateBusinessOutcomeSemantics(`business_context.outcomes[${index}]`, outcome);
+  }
+
   for (const [index, operation] of operations.values.entries()) {
     if (!Array.isArray(operation.object_refs) || !operation.object_refs.length || operation.object_refs.some((id) => !objects.ids.has(id))) {
       fail(`business operation[${index}] object_refs must reference business_objects`);
@@ -1926,6 +2121,9 @@ function validateOutlineDiscoveryBusinessContext(data) {
         fail(`capability atom[${index}] must contribute to its Level 1 business chain primary outcome`);
       }
     }
+
+    // Semantic quality check for capability_atoms
+    validateCapabilityAtomSemantics(`business_context.capability_atoms[${index}]`, atom);
   }
   if (data.outline_maturity === "explore") {
     for (const [chainId, atomCount] of capabilityAtomCountsByChain.entries()) {

@@ -1,0 +1,169 @@
+{
+  "schema_version": 3,
+  "review_type": "outline_discovery",
+  "interaction_mode": "discovery",
+  "artifact_path": "specs/test/prd/review/outline-discovery-data.json",
+  "outline_maturity": "explore",
+  "batch_id": "TEST-002",
+  "project": {
+    "name": "Test Generic System",
+    "feature": "test-generic",
+    "current_understanding": "通用业务系统测试",
+    "discovery_goal": "验证语义具体性检查能拒绝通用套话"
+  },
+  "source_snapshot": [
+    {
+      "path": "prd.md",
+      "anchors": [],
+      "semantic_scope": ["capability"]
+    }
+  ],
+  "business_context": {
+    "product_subject": {
+      "label": "业务系统",
+      "summary": "支持业务处理的系统平台",
+      "source_status": "user",
+      "source_refs": ["prd.md"]
+    },
+    "business_objects": [
+      {
+        "object_id": "obj_001",
+        "label": "数据",
+        "summary": "系统处理的业务数据",
+        "source_status": "user",
+        "source_refs": ["prd.md"]
+      }
+    ],
+    "operations": [
+      {
+        "operation_id": "op_001",
+        "label": "处理",
+        "summary": "对业务数据进行处理",
+        "object_refs": ["obj_001"],
+        "source_status": "user",
+        "source_refs": ["prd.md"]
+      }
+    ],
+    "outcomes": [
+      {
+        "outcome_id": "out_001",
+        "label": "成功",
+        "summary": "业务处理成功完成",
+        "source_status": "user",
+        "source_refs": ["prd.md"]
+      }
+    ],
+    "business_chains": [
+      {
+        "chain_id": "chain_001",
+        "label": "业务处理链",
+        "chain_kind": "primary",
+        "trigger_kind": "business_event",
+        "trigger_or_input": "业务事件",
+        "owned_state": "业务状态",
+        "object_refs": ["obj_001"],
+        "operation_refs": ["op_001"],
+        "outcome_refs": ["out_001"],
+        "primary_outcome_ref": "out_001",
+        "downstream_handoff": "传递给下游",
+        "source_status": "user",
+        "source_refs": ["prd.md"]
+      }
+    ],
+    "capability_atoms": [
+      {
+        "atom_id": "atom_001",
+        "label": "处理业务对象",
+        "trigger_kind": "business_event",
+        "trigger_or_input": "业务事件",
+        "owned_state": "业务状态",
+        "object_refs": ["obj_001"],
+        "operation_refs": ["op_001"],
+        "outcome_refs": ["out_001"],
+        "primary_outcome_ref": "out_001",
+        "downstream_handoff": "传递给下游",
+        "business_chain_refs": ["chain_001"],
+        "source_status": "user",
+        "source_refs": ["prd.md"]
+      }
+    ],
+    "evidence_gaps": []
+  },
+  "constitution_snapshot": {
+    "source_path": "constitution.md",
+    "clauses": []
+  },
+  "density_budget": {
+    "max_visible_nodes_per_map": 18,
+    "max_depth": 3,
+    "max_children_per_node": 4,
+    "layer_balance_min_nodes": 8,
+    "max_layer_share": 0.6
+  },
+  "maps": [
+    {
+      "map_id": "map_overview",
+      "title": "Overview",
+      "summary": "Test overview map",
+      "map_kind": "overview",
+      "root_node_id": "node_root",
+      "parent_map_id": null
+    },
+    {
+      "map_id": "map_branch",
+      "title": "Branch",
+      "summary": "Test branch map",
+      "map_kind": "branch",
+      "root_node_id": "node_branch",
+      "parent_map_id": "map_overview"
+    },
+    {
+      "map_id": "map_constraints",
+      "title": "Constraints",
+      "summary": "Test constraints map",
+      "map_kind": "global_constraints",
+      "root_node_id": "node_constraints",
+      "parent_map_id": null
+    }
+  ],
+  "outline_nodes": [
+    {
+      "node_id": "node_root",
+      "parent_node_id": null,
+      "map_id": "map_overview",
+      "node_kind": "root",
+      "label": "Test Root",
+      "summary": "Test root node",
+      "source_status": "user"
+    },
+    {
+      "node_id": "node_branch",
+      "parent_node_id": "node_root",
+      "map_id": "map_branch",
+      "node_kind": "capability",
+      "label": "Test Capability",
+      "summary": "Test capability node",
+      "source_status": "user",
+      "capability_atom_refs": ["atom_001"]
+    },
+    {
+      "node_id": "node_constraints",
+      "parent_node_id": null,
+      "map_id": "map_constraints",
+      "node_kind": "constraint",
+      "label": "Test Constraint",
+      "summary": "Test constraint node",
+      "source_status": "user"
+    }
+  ],
+  "question_groups": [
+    {
+      "group_id": "qg_001",
+      "title": "Test Questions",
+      "summary": "Test question group",
+      "questions": []
+    }
+  ],
+  "authorization_effect": "none",
+  "next_route": "/sp.prd"
+}
