@@ -1,0 +1,1419 @@
+{
+  "schema_version": 1,
+  "review_type": "flow",
+  "artifact_path": "specs/001-phase-one-core-loop/flows/review/flow-review-data.json",
+  "confirm_strategy": "batch",
+  "batch_id": "FLOW-BATCH-20260630-P4",
+  "project": {
+    "name": "stockprofits",
+    "feature": "001-phase-one-core-loop",
+    "business_overview": "本次复核看 Stockprofits 一期 Phase0-2 的 A 股交易核心闭环：交易员和策略只提交标准命令或订单意图，风控、订单管理服务、交易网关、交易事实、审计和告警共同决定能否执行、如何恢复、如何追溯；真实 券商交易接口 与实盘自动交易仍保持 强门禁。",
+    "review_goal": "请确认六张业务流程图的边界、关键决策、异常恢复和实盘门禁是否可以作为后续 UI 设计前的草案基础。"
+  },
+  "source_snapshot": [
+    {
+      "path": "specs/001-phase-one-core-loop/spec.md",
+      "anchors": [
+        "REQ-001..REQ-020",
+        "SCN-001..SCN-006",
+        "ACC-001..ACC-009"
+      ],
+      "semantic_scope": [
+        "requirements",
+        "acceptance",
+        "flow"
+      ]
+    },
+    {
+      "path": "specs/001-phase-one-core-loop/open-item-registry",
+      "anchors": [
+        "OPEN-001",
+        "OPEN-002",
+        "OPEN-003",
+        "OPEN-004"
+      ],
+      "semantic_scope": [
+        "risk",
+        "decision",
+        "flow-gates"
+      ]
+    },
+    {
+      "path": "specs/001-phase-one-core-loop/trace-registry",
+      "anchors": [
+        "TRACE-001",
+        "TRACE-002",
+        "TRACE-003",
+        "TRACE-004",
+        "TRACE-005",
+        "TRACE-006"
+      ],
+      "semantic_scope": [
+        "trace",
+        "flow"
+      ]
+    }
+  ],
+  "modules": [
+    {
+      "id": "core-trading-loop",
+      "title": "交易命令进入统一闭环",
+      "summary": "交易员从 Web 下单或撤单，策略只产生订单意图；两条入口都必须先经过权限、风控 和 订单管理服务，不能绕过 交易网关 前的交易安全链路。",
+      "review_layer": "business",
+      "must_confirm_total": 4,
+      "diagrams": [
+        {
+          "id": "flow-a-manual-order-cancel",
+          "title": "Web 手动下单/撤单",
+          "summary": "这张图从交易员提交标准命令开始，到风控放行、订单管理服务 接单、交易网关 执行、回报展示或拒单/人工处理为止；重点看 Web 是否被限制在安全交易入口内。",
+          "source_path": "specs/001-phase-one-core-loop/flows/manual-order-cancel.mmd",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "flow-a-a1",
+              "label": "FLOW A1 Web提交标准命令",
+              "plain_summary": "Web 只能提交下单或撤单命令，不能直连 网关。",
+              "action_prompt": "请查看：Web 只能提交下单或撤单命令，不能直连 网关。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "产品负责人",
+              "node_kind": "ui",
+              "source_ref": "REQ-001,REQ-002,REQ-014"
+            },
+            {
+              "id": "flow-a-a2",
+              "label": "FLOW A2 检查权限和账户上下文",
+              "plain_summary": "系统先确认用户、账户、持仓和可用权限。",
+              "action_prompt": "请查看：系统先确认用户、账户、持仓和可用权限。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-003,REQ-009"
+            },
+            {
+              "id": "flow-a-a3",
+              "label": "DEC A3 风控是否放行",
+              "plain_summary": "风控 拒单必须挡在 网关 之前。",
+              "action_prompt": "请判断：风控 拒单必须挡在 网关 之前。 这一步必须确认，因为本轮要决定「风控放行」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "风控负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-009,REQ-010,ACC-001",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "风控放行维持当前安全口径",
+                  "when_to_choose": "当风控负责人确认「风控放行」已经符合「Web 手动下单/撤单」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由风控负责人和项目团队把「风控放行」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易命令进入统一闭环」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "风控放行交由风控负责人补充决策",
+                  "when_to_choose": "当「风控放行」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由风控负责人先补充决策依据和验收口径，项目团队暂不把「风控放行」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「Web 手动下单/撤单」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:risk-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "风控放行改走人工处置或缩小范围",
+                  "when_to_choose": "当风控负责人认为「风控放行」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由风控负责人和系统负责人把「风控放行」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「Web 手动下单/撤单」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-a-a4",
+              "label": "FLOW A4 订单管理冻结资源并创建订单",
+              "plain_summary": "订单管理 在放行后管理订单状态和资源冻结。",
+              "action_prompt": "请查看：订单管理 在放行后管理订单状态和资源冻结。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-003,REQ-012"
+            },
+            {
+              "id": "flow-a-a5",
+              "label": "FLOW A5 网关执行下单或撤单",
+              "plain_summary": "网关 只接收 订单管理 后的标准请求。",
+              "action_prompt": "请查看：网关 只接收 订单管理 后的标准请求。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "external",
+              "source_ref": "REQ-005,REQ-006"
+            },
+            {
+              "id": "flow-a-a8",
+              "label": "ERR A8 拒单原因展示并审计",
+              "plain_summary": "被拒命令要让交易员看懂原因，并留下审计证据。",
+              "action_prompt": "请快速确认：被拒命令要让交易员看懂原因，并留下审计证据。",
+              "review_layer": "business",
+              "review_level": "recommended",
+              "owner": "产品负责人",
+              "node_kind": "error",
+              "source_ref": "REQ-010,ACC-006",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "拒单原因展示并审计维持当前安全口径",
+                  "when_to_choose": "当产品负责人确认「拒单原因展示并审计」已经符合「Web 手动下单/撤单」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由产品负责人和项目团队把「拒单原因展示并审计」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易命令进入统一闭环」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "拒单原因展示并审计交由产品负责人补充决策",
+                  "when_to_choose": "当「拒单原因展示并审计」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由产品负责人先补充决策依据和验收口径，项目团队暂不把「拒单原因展示并审计」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「Web 手动下单/撤单」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:product-owner",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A",
+              "options_count_rationale": "该节点只有保留当前方向或补充决策两种有效选择，添加更多选项会制造伪业务分支。"
+            },
+            {
+              "id": "flow-a-a9",
+              "label": "ERR A9 网关不可用转人工处理",
+              "plain_summary": "网关不可用时不能静默失败，应进入恢复查询或人工处理。",
+              "action_prompt": "请判断：网关不可用时不能静默失败，应进入恢复查询或人工处理。 这一步必须确认，因为本轮要决定「网关不可用转人工处理」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "系统负责人",
+              "node_kind": "error",
+              "source_ref": "REQ-012,REQ-013,ACC-002",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "网关不可用转人工处理维持当前安全口径",
+                  "when_to_choose": "当系统负责人确认「网关不可用转人工处理」已经符合「Web 手动下单/撤单」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由系统负责人和项目团队把「网关不可用转人工处理」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易命令进入统一闭环」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "网关不可用转人工处理交由系统负责人补充决策",
+                  "when_to_choose": "当「网关不可用转人工处理」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由系统负责人先补充决策依据和验收口径，项目团队暂不把「网关不可用转人工处理」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「Web 手动下单/撤单」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:ops-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "网关不可用转人工处理改走人工处置或缩小范围",
+                  "when_to_choose": "当系统负责人认为「网关不可用转人工处理」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由系统负责人和系统负责人把「网关不可用转人工处理」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「Web 手动下单/撤单」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            }
+          ],
+          "edges": [
+            {
+              "from": "flow-a-a1",
+              "to": "flow-a-a2"
+            },
+            {
+              "from": "flow-a-a2",
+              "to": "flow-a-a3"
+            },
+            {
+              "from": "flow-a-a3",
+              "to": "flow-a-a4",
+              "label": "通过"
+            },
+            {
+              "from": "flow-a-a4",
+              "to": "flow-a-a5"
+            },
+            {
+              "from": "flow-a-a3",
+              "to": "flow-a-a8",
+              "label": "拒绝"
+            },
+            {
+              "from": "flow-a-a5",
+              "to": "flow-a-a9",
+              "label": "不可用"
+            }
+          ],
+          "trace_notes": [
+            "TRACE-001",
+            "SCN-001",
+            "ACC-001"
+          ]
+        },
+        {
+          "id": "flow-b-strategy-signal",
+          "title": "策略信号到订单意图",
+          "summary": "这张图从策略产出信号开始，到记录生成口径、判断能否转订单意图、进入统一 风控/订单管理服务 或被保留为不可下单信号为止；重点看策略不能直接下发 交易网关。",
+          "source_path": "specs/001-phase-one-core-loop/flows/strategy-signal-order-intent.mmd",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "flow-b-b1",
+              "label": "FLOW B1 策略产生信号",
+              "plain_summary": "策略输出只是交易信号，不是可执行订单。",
+              "action_prompt": "请查看：策略输出只是交易信号，不是可执行订单。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "策略负责人",
+              "node_kind": "flow",
+              "source_ref": "REQ-004,SCN-002"
+            },
+            {
+              "id": "flow-b-b2",
+              "label": "FLOW B2 记录策略和参数版本",
+              "plain_summary": "每个信号要能追溯到策略、参数和版本。",
+              "action_prompt": "请查看：每个信号要能追溯到策略、参数和版本。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-007,ACC-006"
+            },
+            {
+              "id": "flow-b-b3",
+              "label": "DEC B3 是否允许转订单意图",
+              "plain_summary": "策略信号转订单意图前必须经过权限和运行边界判断。",
+              "action_prompt": "请判断：策略信号转订单意图前必须经过权限和运行边界判断。 这一步必须确认，因为本轮要决定「允许转订单意图」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-004,REQ-009,OPEN-002",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "允许转订单意图维持当前安全口径",
+                  "when_to_choose": "当产品负责人确认「允许转订单意图」已经符合「策略信号到订单意图」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由产品负责人和项目团队把「允许转订单意图」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易命令进入统一闭环」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "允许转订单意图交由产品负责人补充决策",
+                  "when_to_choose": "当「允许转订单意图」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由产品负责人先补充决策依据和验收口径，项目团队暂不把「允许转订单意图」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「策略信号到订单意图」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:owner-review",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "允许转订单意图改走人工处置或缩小范围",
+                  "when_to_choose": "当产品负责人认为「允许转订单意图」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由产品负责人和系统负责人把「允许转订单意图」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「策略信号到订单意图」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:scoped-conservative-path",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-b-b4",
+              "label": "FLOW B4 创建订单意图",
+              "plain_summary": "被允许的信号只创建订单意图，仍不是 网关 请求。",
+              "action_prompt": "请查看：被允许的信号只创建订单意图，仍不是 网关 请求。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-004,REQ-005"
+            },
+            {
+              "id": "flow-b-b5",
+              "label": "FLOW B5 进入统一 风控和订单管理路径",
+              "plain_summary": "订单意图继续走与手动命令相同的安全链路。",
+              "action_prompt": "请查看：订单意图继续走与手动命令相同的安全链路。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-002,REQ-003,ACC-001"
+            },
+            {
+              "id": "flow-b-b7",
+              "label": "ERR B7 信号保留但不得下单",
+              "plain_summary": "不符合条件的信号只能留痕，不能继续下单。",
+              "action_prompt": "请快速确认：不符合条件的信号只能留痕，不能继续下单。",
+              "review_layer": "business",
+              "review_level": "recommended",
+              "owner": "策略负责人",
+              "node_kind": "error",
+              "source_ref": "REQ-004,REQ-007",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "信号保留但不得下单维持当前安全口径",
+                  "when_to_choose": "当策略负责人确认「信号保留但不得下单」已经符合「策略信号到订单意图」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由策略负责人和项目团队把「信号保留但不得下单」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易命令进入统一闭环」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "信号保留但不得下单交由策略负责人补充决策",
+                  "when_to_choose": "当「信号保留但不得下单」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由策略负责人先补充决策依据和验收口径，项目团队暂不把「信号保留但不得下单」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「策略信号到订单意图」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:strategy-owner",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A",
+              "options_count_rationale": "该节点只有保留当前方向或补充决策两种有效选择，添加更多选项会制造伪业务分支。"
+            },
+            {
+              "id": "flow-b-b8",
+              "label": "STATE B8 系统暂停时拒绝新订单",
+              "plain_summary": "系统暂停或 Kill Switch 生效后，策略新单必须被拒绝。",
+              "action_prompt": "请判断：系统暂停或 Kill Switch 生效后，策略新单必须被拒绝。 这一步必须确认，因为本轮要决定「系统暂停时拒绝新订单」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "风控负责人",
+              "node_kind": "state",
+              "source_ref": "REQ-011,SCN-004,ACC-003",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "系统暂停时拒绝新订单维持当前安全口径",
+                  "when_to_choose": "当风控负责人确认「系统暂停时拒绝新订单」已经符合「策略信号到订单意图」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由风控负责人和项目团队把「系统暂停时拒绝新订单」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易命令进入统一闭环」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "系统暂停时拒绝新订单交由风控负责人补充决策",
+                  "when_to_choose": "当「系统暂停时拒绝新订单」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由风控负责人先补充决策依据和验收口径，项目团队暂不把「系统暂停时拒绝新订单」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「策略信号到订单意图」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:risk-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "系统暂停时拒绝新订单改走人工处置或缩小范围",
+                  "when_to_choose": "当风控负责人认为「系统暂停时拒绝新订单」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由风控负责人和系统负责人把「系统暂停时拒绝新订单」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「策略信号到订单意图」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            }
+          ],
+          "edges": [
+            {
+              "from": "flow-b-b1",
+              "to": "flow-b-b2"
+            },
+            {
+              "from": "flow-b-b2",
+              "to": "flow-b-b3"
+            },
+            {
+              "from": "flow-b-b3",
+              "to": "flow-b-b4",
+              "label": "允许"
+            },
+            {
+              "from": "flow-b-b4",
+              "to": "flow-b-b5"
+            },
+            {
+              "from": "flow-b-b3",
+              "to": "flow-b-b7",
+              "label": "不允许"
+            },
+            {
+              "from": "flow-b-b5",
+              "to": "flow-b-b8",
+              "label": "暂停"
+            }
+          ],
+          "trace_notes": [
+            "TRACE-001",
+            "SCN-002",
+            "ACC-001"
+          ]
+        }
+      ],
+      "trace_notes": [
+        "REQ-001",
+        "REQ-002",
+        "REQ-003",
+        "REQ-004",
+        "REQ-014"
+      ]
+    },
+    {
+      "id": "gateway-emergency-config",
+      "title": "交易网关门禁、应急和高危配置",
+      "summary": "交易网关 可以走 模拟执行、纸面演练、影子验证 或 券商交易接口 适配语义，但真实 券商交易接口、试运行、Kill Switch 解除和高风险配置生效都必须保留明确门禁和审批。",
+      "review_layer": "mixed",
+      "must_confirm_total": 6,
+      "diagrams": [
+        {
+          "id": "flow-c-gateway-live-gate",
+          "title": "交易网关恢复与实盘门禁",
+          "summary": "这张图从选择 交易网关配置 开始，到 模拟执行/纸面演练 执行、真实 券商交易接口 证据检查、连接回报、恢复查询或只读拒单为止；重点看 实盘 强门禁 是否足够保守。",
+          "source_path": "specs/001-phase-one-core-loop/flows/gateway-recovery-live-gate.mmd",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "flow-c-c1",
+              "label": "FLOW C1 选择网关配置档案",
+              "plain_summary": "环境先选择 模拟、纸面演练、影子验证 或 券商交易接口 Profile。",
+              "action_prompt": "请查看：环境先选择 模拟、纸面演练、影子验证 或 券商交易接口 Profile。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-005,REQ-006"
+            },
+            {
+              "id": "flow-c-c2",
+              "label": "DEC C2 是否请求真实券商交易接口链路",
+              "plain_summary": "真实 券商交易接口 请求必须和 模拟/纸面演练 路径分开判断。",
+              "action_prompt": "请判断：真实 券商交易接口 请求必须和 模拟/纸面演练 路径分开判断。 这一步必须确认，因为本轮要决定「请求真实券商交易接口链路」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品/系统负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-019,OPEN-001,ACC-008",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "请求真实券商交易接口链路维持当前安全口径",
+                  "when_to_choose": "当产品/系统负责人确认「请求真实券商交易接口链路」已经符合「交易网关恢复与实盘门禁」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由产品/系统负责人和项目团队把「请求真实券商交易接口链路」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易网关门禁、应急和高危配置」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "请求真实券商交易接口链路交由产品/系统负责人补充决策",
+                  "when_to_choose": "当「请求真实券商交易接口链路」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由产品/系统负责人先补充决策依据和验收口径，项目团队暂不把「请求真实券商交易接口链路」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「交易网关恢复与实盘门禁」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:owner-review",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "请求真实券商交易接口链路改走人工处置或缩小范围",
+                  "when_to_choose": "当产品/系统负责人认为「请求真实券商交易接口链路」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由产品/系统负责人和系统负责人把「请求真实券商交易接口链路」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「交易网关恢复与实盘门禁」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:scoped-conservative-path",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-c-c3",
+              "label": "FLOW C3 模拟或纸面演练执行标准语义",
+              "plain_summary": "模拟 和 纸面演练 要保持与 券商交易接口 一致的业务语义。",
+              "action_prompt": "请查看：模拟 和 纸面演练 要保持与 券商交易接口 一致的业务语义。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-005,ACC-004"
+            },
+            {
+              "id": "flow-c-c4",
+              "label": "DEC C4 券商交易接口实测证据是否齐全",
+              "plain_summary": "没有真实字段、状态码、权限和回报证据时不得开实盘。",
+              "action_prompt": "请判断：没有真实字段、状态码、权限和回报证据时不得开实盘。 这一步必须确认，因为本轮要决定「券商交易接口实测证据齐全」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "券商交易接口集成负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-019,OPEN-001,ACC-008",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "券商交易接口实测证据齐全维持当前安全口径",
+                  "when_to_choose": "当券商交易接口集成负责人确认「券商交易接口实测证据齐全」已经符合「交易网关恢复与实盘门禁」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由券商交易接口集成负责人和项目团队把「券商交易接口实测证据齐全」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易网关门禁、应急和高危配置」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "券商交易接口实测证据齐全交由券商交易接口集成负责人补充决策",
+                  "when_to_choose": "当「券商交易接口实测证据齐全」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由券商交易接口集成负责人先补充决策依据和验收口径，项目团队暂不把「券商交易接口实测证据齐全」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「交易网关恢复与实盘门禁」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:qmt-integration-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "券商交易接口实测证据齐全改走人工处置或缩小范围",
+                  "when_to_choose": "当券商交易接口集成负责人认为「券商交易接口实测证据齐全」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由券商交易接口集成负责人和系统负责人把「券商交易接口实测证据齐全」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「交易网关恢复与实盘门禁」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-c-c6",
+              "label": "STATE C6 保持实盘硬门禁关闭",
+              "plain_summary": "证据不齐时真实交易能力保持关闭。",
+              "action_prompt": "请判断：证据不齐时真实交易能力保持关闭。 这一步必须确认，因为本轮要决定「保持实盘硬门禁关闭」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品/系统负责人",
+              "node_kind": "state",
+              "source_ref": "REQ-019,OPEN-001,ACC-008",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "保持实盘硬门禁关闭维持当前安全口径",
+                  "when_to_choose": "当产品/系统负责人确认「保持实盘硬门禁关闭」已经符合「交易网关恢复与实盘门禁」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由产品/系统负责人和项目团队把「保持实盘硬门禁关闭」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易网关门禁、应急和高危配置」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "保持实盘硬门禁关闭交由产品/系统负责人补充决策",
+                  "when_to_choose": "当「保持实盘硬门禁关闭」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由产品/系统负责人先补充决策依据和验收口径，项目团队暂不把「保持实盘硬门禁关闭」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「交易网关恢复与实盘门禁」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:owner-review",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "保持实盘硬门禁关闭改走人工处置或缩小范围",
+                  "when_to_choose": "当产品/系统负责人认为「保持实盘硬门禁关闭」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由产品/系统负责人和系统负责人把「保持实盘硬门禁关闭」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「交易网关恢复与实盘门禁」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-c-c7",
+              "label": "FLOW C7 心跳异常触发恢复查询",
+              "plain_summary": "网关 异常后要主动恢复查询，不依赖原生对象残留。",
+              "action_prompt": "请查看：网关 异常后要主动恢复查询，不依赖原生对象残留。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-006,REQ-013"
+            },
+            {
+              "id": "flow-c-c9",
+              "label": "ERR C9 恢复失败转只读或拒单",
+              "plain_summary": "恢复失败时系统进入可解释的只读、拒单或人工处理。",
+              "action_prompt": "请快速确认：恢复失败时系统进入可解释的只读、拒单或人工处理。",
+              "review_layer": "business",
+              "review_level": "recommended",
+              "owner": "系统负责人",
+              "node_kind": "error",
+              "source_ref": "REQ-013,ACC-002",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "恢复失败转只读或拒单维持当前安全口径",
+                  "when_to_choose": "当系统负责人确认「恢复失败转只读或拒单」已经符合「交易网关恢复与实盘门禁」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由系统负责人和项目团队把「恢复失败转只读或拒单」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易网关门禁、应急和高危配置」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "恢复失败转只读或拒单交由系统负责人补充决策",
+                  "when_to_choose": "当「恢复失败转只读或拒单」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由系统负责人先补充决策依据和验收口径，项目团队暂不把「恢复失败转只读或拒单」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「交易网关恢复与实盘门禁」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:ops-owner",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A",
+              "options_count_rationale": "该节点只有保留当前方向或补充决策两种有效选择，添加更多选项会制造伪业务分支。"
+            }
+          ],
+          "edges": [
+            {
+              "from": "flow-c-c1",
+              "to": "flow-c-c2"
+            },
+            {
+              "from": "flow-c-c2",
+              "to": "flow-c-c3",
+              "label": "否"
+            },
+            {
+              "from": "flow-c-c2",
+              "to": "flow-c-c4",
+              "label": "是"
+            },
+            {
+              "from": "flow-c-c4",
+              "to": "flow-c-c6",
+              "label": "不齐全"
+            },
+            {
+              "from": "flow-c-c3",
+              "to": "flow-c-c7"
+            },
+            {
+              "from": "flow-c-c7",
+              "to": "flow-c-c9",
+              "label": "恢复失败"
+            }
+          ],
+          "trace_notes": [
+            "TRACE-002",
+            "OPEN-001",
+            "ACC-002",
+            "ACC-004",
+            "ACC-008"
+          ]
+        },
+        {
+          "id": "flow-d-kill-switch-config",
+          "title": "Kill Switch和高风险配置审批",
+          "summary": "这张图从风控或运维触发保护开始，到拒绝新单、申请恢复或配置生效、记录理由、Owner/风控 确认、解除保护或保持保护为止；重点看高风险动作是否有审批和回滚。",
+          "source_path": "specs/001-phase-one-core-loop/flows/kill-switch-config-approval.mmd",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "flow-d-d1",
+              "label": "FLOW D1 触发保护动作",
+              "plain_summary": "风控、运维或观测异常可以触发保护。",
+              "action_prompt": "请查看：风控、运维或观测异常可以触发保护。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "风控负责人",
+              "node_kind": "flow",
+              "source_ref": "REQ-011,REQ-013,SCN-004"
+            },
+            {
+              "id": "flow-d-d2",
+              "label": "STATE D2 保护状态持久化",
+              "plain_summary": "Kill Switch 或系统暂停重启后仍然有效。",
+              "action_prompt": "请判断：Kill Switch 或系统暂停重启后仍然有效。 这一步必须确认，因为本轮要决定「保护状态持久化」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "风控负责人",
+              "node_kind": "state",
+              "source_ref": "REQ-011,ACC-003",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "保护状态持久化维持当前安全口径",
+                  "when_to_choose": "当风控负责人确认「保护状态持久化」已经符合「Kill Switch和高风险配置审批」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由风控负责人和项目团队把「保护状态持久化」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易网关门禁、应急和高危配置」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "保护状态持久化交由风控负责人补充决策",
+                  "when_to_choose": "当「保护状态持久化」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由风控负责人先补充决策依据和验收口径，项目团队暂不把「保护状态持久化」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「Kill Switch和高风险配置审批」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:risk-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "保护状态持久化改走人工处置或缩小范围",
+                  "when_to_choose": "当风控负责人认为「保护状态持久化」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由风控负责人和系统负责人把「保护状态持久化」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「Kill Switch和高风险配置审批」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-d-d3",
+              "label": "FLOW D3 新单全部拒绝",
+              "plain_summary": "保护生效后 Web 和策略新单都不能继续进入交易链路。",
+              "action_prompt": "请查看：保护生效后 Web 和策略新单都不能继续进入交易链路。",
+              "review_layer": "business",
+              "review_level": "verified",
+              "owner": "风控负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-011,ACC-003"
+            },
+            {
+              "id": "flow-d-d4",
+              "label": "DEC D4 是否申请恢复或配置生效",
+              "plain_summary": "解除保护或高危配置生效必须走申请。",
+              "action_prompt": "请判断：解除保护或高危配置生效必须走申请。 这一步必须确认，因为本轮要决定「申请恢复或配置生效」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品/系统负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-015,REQ-016,OPEN-003",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "申请恢复或配置生效维持当前安全口径",
+                  "when_to_choose": "当产品/系统负责人确认「申请恢复或配置生效」已经符合「Kill Switch和高风险配置审批」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由产品/系统负责人和项目团队把「申请恢复或配置生效」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易网关门禁、应急和高危配置」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "申请恢复或配置生效交由产品/系统负责人补充决策",
+                  "when_to_choose": "当「申请恢复或配置生效」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由产品/系统负责人先补充决策依据和验收口径，项目团队暂不把「申请恢复或配置生效」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「Kill Switch和高风险配置审批」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:owner-review",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "申请恢复或配置生效改走人工处置或缩小范围",
+                  "when_to_choose": "当产品/系统负责人认为「申请恢复或配置生效」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由产品/系统负责人和系统负责人把「申请恢复或配置生效」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「Kill Switch和高风险配置审批」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-d-d5",
+              "label": "FLOW D5 记录理由范围和回滚方案",
+              "plain_summary": "申请必须说明为什么、影响哪里、如何回滚。",
+              "action_prompt": "请快速确认：申请必须说明为什么、影响哪里、如何回滚。",
+              "review_layer": "business",
+              "review_level": "recommended",
+              "owner": "风控负责人",
+              "node_kind": "flow",
+              "source_ref": "REQ-016,ACC-007",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "记录理由范围和回滚方案维持当前安全口径",
+                  "when_to_choose": "当风控负责人确认「记录理由范围和回滚方案」已经符合「Kill Switch和高风险配置审批」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由风控负责人和项目团队把「记录理由范围和回滚方案」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易网关门禁、应急和高危配置」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "记录理由范围和回滚方案交由风控负责人补充决策",
+                  "when_to_choose": "当「记录理由范围和回滚方案」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由风控负责人先补充决策依据和验收口径，项目团队暂不把「记录理由范围和回滚方案」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「Kill Switch和高风险配置审批」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:risk-owner",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A",
+              "options_count_rationale": "该节点只有保留当前方向或补充决策两种有效选择，添加更多选项会制造伪业务分支。"
+            },
+            {
+              "id": "flow-d-d6",
+              "label": "DEC D6 Owner或风控是否确认",
+              "plain_summary": "没有负责人确认，不得解除保护或让高危配置生效。",
+              "action_prompt": "请判断：没有负责人确认，不得解除保护或让高危配置生效。 这一步必须确认，因为本轮要决定「Owner或风控确认」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "Owner/风控负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-016,OPEN-002,OPEN-003",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "Owner或风控确认维持当前安全口径",
+                  "when_to_choose": "当Owner/风控负责人确认「Owner或风控确认」已经符合「Kill Switch和高风险配置审批」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由Owner/风控负责人和项目团队把「Owner或风控确认」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易网关门禁、应急和高危配置」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "Owner或风控确认交由Owner/风控负责人补充决策",
+                  "when_to_choose": "当「Owner或风控确认」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由Owner/风控负责人先补充决策依据和验收口径，项目团队暂不把「Owner或风控确认」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「Kill Switch和高风险配置审批」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:owner-review",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "Owner或风控确认改走人工处置或缩小范围",
+                  "when_to_choose": "当Owner/风控负责人认为「Owner或风控确认」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由Owner/风控负责人和系统负责人把「Owner或风控确认」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「Kill Switch和高风险配置审批」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-d-d8",
+              "label": "STATE D8 未确认则保持保护",
+              "plain_summary": "未确认时系统继续保持保护状态。",
+              "action_prompt": "请查看：未确认时系统继续保持保护状态。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "风控负责人",
+              "node_kind": "state",
+              "source_ref": "REQ-011,ACC-003"
+            }
+          ],
+          "edges": [
+            {
+              "from": "flow-d-d1",
+              "to": "flow-d-d2"
+            },
+            {
+              "from": "flow-d-d2",
+              "to": "flow-d-d3"
+            },
+            {
+              "from": "flow-d-d3",
+              "to": "flow-d-d4"
+            },
+            {
+              "from": "flow-d-d4",
+              "to": "flow-d-d5",
+              "label": "是"
+            },
+            {
+              "from": "flow-d-d5",
+              "to": "flow-d-d6"
+            },
+            {
+              "from": "flow-d-d6",
+              "to": "flow-d-d8",
+              "label": "未确认"
+            },
+            {
+              "from": "flow-d-d4",
+              "to": "flow-d-d8",
+              "label": "否"
+            }
+          ],
+          "trace_notes": [
+            "TRACE-003",
+            "OPEN-002",
+            "OPEN-003",
+            "ACC-003",
+            "ACC-007"
+          ]
+        }
+      ],
+      "trace_notes": [
+        "REQ-005",
+        "REQ-006",
+        "REQ-011",
+        "REQ-015",
+        "REQ-016",
+        "REQ-019"
+      ]
+    },
+    {
+      "id": "facts-data-observability",
+      "title": "交易事实、行情质量和观测支撑",
+      "summary": "交易事实用于追溯和对账，行情与观测用于展示、策略和告警；展示链路可以降级或重建，但不能拖慢或污染交易命令、回报和事实链路。",
+      "review_layer": "mixed",
+      "must_confirm_total": 6,
+      "diagrams": [
+        {
+          "id": "flow-e-fact-reconciliation",
+          "title": "交易事实追溯与对账",
+          "summary": "这张图从接收命令、信号或 交易网关 回报开始，到生成不可变事实、判断重复、更新视图、对账一致或转人工处理为止；重点看事实链路是否能防重复和可追溯。",
+          "source_path": "specs/001-phase-one-core-loop/flows/交易事实追溯与对账.mmd",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "flow-e-e1",
+              "label": "FLOW E1 接收命令信号或回报",
+              "plain_summary": "交易事实链路接收命令、策略信号和 网关 回报。",
+              "action_prompt": "请查看：交易事实链路接收命令、策略信号和 网关 回报。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-007,REQ-012"
+            },
+            {
+              "id": "flow-e-e2",
+              "label": "FLOW E2 生成不可变交易事实",
+              "plain_summary": "订单、成交、持仓、资金和风险事件要作为事实留存。",
+              "action_prompt": "请系统负责人确认不可变事实写入方式，无需产品确认。",
+              "review_layer": "system_arch",
+              "review_level": "system_arch",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-007,REQ-008"
+            },
+            {
+              "id": "flow-e-e3",
+              "label": "DEC E3 是否重复或乱序",
+              "plain_summary": "重复、延迟或乱序事件不能造成重复下单或重复入账。",
+              "action_prompt": "请判断：重复、延迟或乱序事件不能造成重复下单或重复入账。 这一步必须确认，因为本轮要决定「重复或乱序」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "系统负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-012,ACC-005",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "重复或乱序维持当前安全口径",
+                  "when_to_choose": "当系统负责人确认「重复或乱序」已经符合「交易事实追溯与对账」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由系统负责人和项目团队把「重复或乱序」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易事实、行情质量和观测支撑」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "重复或乱序交由系统负责人补充决策",
+                  "when_to_choose": "当「重复或乱序」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由系统负责人先补充决策依据和验收口径，项目团队暂不把「重复或乱序」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「交易事实追溯与对账」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:system-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "重复或乱序改走人工处置或缩小范围",
+                  "when_to_choose": "当系统负责人认为「重复或乱序」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由系统负责人和系统负责人把「重复或乱序」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「交易事实追溯与对账」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-e-e4",
+              "label": "FLOW E4 更新订单成交持仓资金视图",
+              "plain_summary": "事实通过可信视图展示给 Web 和审计。",
+              "action_prompt": "请查看：事实通过可信视图展示给 Web 和审计。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-007,ACC-006"
+            },
+            {
+              "id": "flow-e-e6",
+              "label": "DEC E6 对账是否一致",
+              "plain_summary": "订单、成交、资金、持仓不一致时必须被发现。",
+              "action_prompt": "请判断：订单、成交、资金、持仓不一致时必须被发现。 这一步必须确认，因为本轮要决定「对账一致」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "系统负责人",
+              "node_kind": "decision",
+              "source_ref": "SCN-005,ACC-006",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "对账一致维持当前安全口径",
+                  "when_to_choose": "当系统负责人确认「对账一致」已经符合「交易事实追溯与对账」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由系统负责人和项目团队把「对账一致」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易事实、行情质量和观测支撑」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "对账一致交由系统负责人补充决策",
+                  "when_to_choose": "当「对账一致」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由系统负责人先补充决策依据和验收口径，项目团队暂不把「对账一致」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「交易事实追溯与对账」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:ops-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "对账一致改走人工处置或缩小范围",
+                  "when_to_choose": "当系统负责人认为「对账一致」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由系统负责人和系统负责人把「对账一致」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「交易事实追溯与对账」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-e-e8",
+              "label": "ERR E8 不一致转人工处理",
+              "plain_summary": "对账不一致时要标记待处理并支持补偿查询。",
+              "action_prompt": "请快速确认：对账不一致时要标记待处理并支持补偿查询。",
+              "review_layer": "business",
+              "review_level": "recommended",
+              "owner": "系统负责人",
+              "node_kind": "error",
+              "source_ref": "REQ-012,REQ-013,ACC-006",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "不一致转人工处理维持当前安全口径",
+                  "when_to_choose": "当系统负责人确认「不一致转人工处理」已经符合「交易事实追溯与对账」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由系统负责人和项目团队把「不一致转人工处理」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易事实、行情质量和观测支撑」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "不一致转人工处理交由系统负责人补充决策",
+                  "when_to_choose": "当「不一致转人工处理」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由系统负责人先补充决策依据和验收口径，项目团队暂不把「不一致转人工处理」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「交易事实追溯与对账」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:ops-owner",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A",
+              "options_count_rationale": "该节点只有保留当前方向或补充决策两种有效选择，添加更多选项会制造伪业务分支。"
+            }
+          ],
+          "edges": [
+            {
+              "from": "flow-e-e1",
+              "to": "flow-e-e2"
+            },
+            {
+              "from": "flow-e-e2",
+              "to": "flow-e-e3"
+            },
+            {
+              "from": "flow-e-e3",
+              "to": "flow-e-e4",
+              "label": "不重复"
+            },
+            {
+              "from": "flow-e-e4",
+              "to": "flow-e-e6"
+            },
+            {
+              "from": "flow-e-e6",
+              "to": "flow-e-e8",
+              "label": "不一致"
+            }
+          ],
+          "trace_notes": [
+            "TRACE-004",
+            "SCN-005",
+            "ACC-005",
+            "ACC-006"
+          ]
+        },
+        {
+          "id": "flow-f-data-observability",
+          "title": "行情数据与观测支持",
+          "summary": "这张图从行情或健康信号进入系统开始，到标记数据口径、判断可信度、生成可信视图、监控延迟错误、影响交易安全时触发保护为止；重点看展示和数据支撑不能污染交易事实。",
+          "source_path": "specs/001-phase-one-core-loop/flows/market-data-observability.mmd",
+          "item_type": "flowchart",
+          "nodes": [
+            {
+              "id": "flow-f-f1",
+              "label": "FLOW F1 接入行情或健康信号",
+              "plain_summary": "系统接收行情、延迟、积压、错误和健康信号。",
+              "action_prompt": "请查看：系统接收行情、延迟、积压、错误和健康信号。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "系统负责人",
+              "node_kind": "external",
+              "source_ref": "REQ-017,REQ-018"
+            },
+            {
+              "id": "flow-f-f2",
+              "label": "FLOW F2 标记原始层和标准化层口径",
+              "plain_summary": "数据要区分原始采集口径和标准化口径。",
+              "action_prompt": "请系统负责人确认数据分层口径，无需产品确认。",
+              "review_layer": "system_arch",
+              "review_level": "system_arch",
+              "owner": "系统负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-018"
+            },
+            {
+              "id": "flow-f-f3",
+              "label": "DEC F3 数据质量是否可信",
+              "plain_summary": "生产使用前必须判断数据是否可信。",
+              "action_prompt": "请判断：生产使用前必须判断数据是否可信。 这一步必须确认，因为本轮要决定「数据质量可信」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品/系统负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-018,ACC-009",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "数据质量可信维持当前安全口径",
+                  "when_to_choose": "当产品/系统负责人确认「数据质量可信」已经符合「行情数据与观测支持」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由产品/系统负责人和项目团队把「数据质量可信」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易事实、行情质量和观测支撑」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "数据质量可信交由产品/系统负责人补充决策",
+                  "when_to_choose": "当「数据质量可信」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由产品/系统负责人先补充决策依据和验收口径，项目团队暂不把「数据质量可信」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「行情数据与观测支持」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:data-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "数据质量可信改走人工处置或缩小范围",
+                  "when_to_choose": "当产品/系统负责人认为「数据质量可信」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由产品/系统负责人和系统负责人把「数据质量可信」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「行情数据与观测支持」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-f-f5",
+              "label": "STATE F5 降级展示并禁生产策略依赖",
+              "plain_summary": "不可信数据可以展示降级状态，但不能支撑生产策略。",
+              "action_prompt": "请判断：不可信数据可以展示降级状态，但不能支撑生产策略。 这一步必须确认，因为本轮要决定「降级展示并禁生产策略依赖」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品/系统负责人",
+              "node_kind": "state",
+              "source_ref": "REQ-017,REQ-018",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "降级展示并禁生产策略依赖维持当前安全口径",
+                  "when_to_choose": "当产品/系统负责人确认「降级展示并禁生产策略依赖」已经符合「行情数据与观测支持」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由产品/系统负责人和项目团队把「降级展示并禁生产策略依赖」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易事实、行情质量和观测支撑」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "降级展示并禁生产策略依赖交由产品/系统负责人补充决策",
+                  "when_to_choose": "当「降级展示并禁生产策略依赖」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由产品/系统负责人先补充决策依据和验收口径，项目团队暂不把「降级展示并禁生产策略依赖」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「行情数据与观测支持」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:owner-review",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "降级展示并禁生产策略依赖改走人工处置或缩小范围",
+                  "when_to_choose": "当产品/系统负责人认为「降级展示并禁生产策略依赖」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由产品/系统负责人和系统负责人把「降级展示并禁生产策略依赖」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「行情数据与观测支持」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-f-f6",
+              "label": "FLOW F6 监控延迟积压错误和告警",
+              "plain_summary": "观测链路持续监控异常并通知负责人。",
+              "action_prompt": "请查看：观测链路持续监控异常并通知负责人。",
+              "review_layer": "business",
+              "review_level": "key_step",
+              "owner": "运维负责人",
+              "node_kind": "system",
+              "source_ref": "REQ-013,REQ-017"
+            },
+            {
+              "id": "flow-f-f7",
+              "label": "DEC F7 是否影响交易安全",
+              "plain_summary": "如果健康信号影响交易安全，必须触发保护路径。",
+              "action_prompt": "请判断：如果健康信号影响交易安全，必须触发保护路径。 这一步必须确认，因为本轮要决定「影响交易安全」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "风控/运维负责人",
+              "node_kind": "decision",
+              "source_ref": "REQ-011,REQ-013,SCN-004",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "影响交易安全维持当前安全口径",
+                  "when_to_choose": "当风控/运维负责人确认「影响交易安全」已经符合「行情数据与观测支持」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由风控/运维负责人和项目团队把「影响交易安全」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易事实、行情质量和观测支撑」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "影响交易安全交由风控/运维负责人补充决策",
+                  "when_to_choose": "当「影响交易安全」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由风控/运维负责人先补充决策依据和验收口径，项目团队暂不把「影响交易安全」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「行情数据与观测支持」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:ops-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "影响交易安全改走人工处置或缩小范围",
+                  "when_to_choose": "当风控/运维负责人认为「影响交易安全」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由风控/运维负责人和系统负责人把「影响交易安全」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「行情数据与观测支持」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            },
+            {
+              "id": "flow-f-f9",
+              "label": "FLOW F9 候选增强不进入本期范围",
+              "plain_summary": "基金持仓、AI/MCP、跨市场和商业数据源采购不进当前核心闭环。",
+              "action_prompt": "请判断：基金持仓、AI/MCP、跨市场和商业数据源采购不进当前核心闭环。 这一步必须确认，因为本轮要决定「候选增强不进入本期范围」能否进入后续界面、计划和验收；否则会影响风险控制、数据状态和测试边界。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "owner": "产品负责人",
+              "node_kind": "flow",
+              "source_ref": "REQ-020,OPEN-004,ACC-009",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "候选增强不进入本期范围维持当前安全口径",
+                  "when_to_choose": "当产品负责人确认「候选增强不进入本期范围」已经符合「行情数据与观测支持」的业务边界，且只推进模拟执行、纸面演练、影子验证或受控试运行前置设计时选择。",
+                  "consequence": "选择后，由产品负责人和项目团队把「候选增强不进入本期范围」作为当前复核口径继续推进，下一轮模型据此细化界面提示、流程说明和验收记录。",
+                  "project_impact": "会影响「交易事实、行情质量和观测支撑」的界面文案、接口约束、风控说明和验收测试；范围保持在干运行/演练链路内，不授权真实自动交易。",
+                  "next_exit": "continue:flow-batch-review",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "候选增强不进入本期范围交由产品负责人补充决策",
+                  "when_to_choose": "当「候选增强不进入本期范围」还缺少业务口径、责任人、阈值、异常出口或验收证据时选择，避免后续设计把未定事项当成稳定规则。",
+                  "consequence": "选择后，由产品负责人先补充决策依据和验收口径，项目团队暂不把「候选增强不进入本期范围」写成进入界面、计划或实现的稳定授权。",
+                  "project_impact": "会阻断或延后「行情数据与观测支持」相关的界面定稿、计划拆分、测试用例和发布范围确认，直到负责人补齐决策材料。",
+                  "next_exit": "needs-decision:product-owner",
+                  "recommended": false
+                },
+                {
+                  "id": "OPTION_C",
+                  "label": "候选增强不进入本期范围改走人工处置或缩小范围",
+                  "when_to_choose": "当产品负责人认为「候选增强不进入本期范围」当前路径过宽、风险过高或需要人工复核兜底时选择，用来收窄一期范围。",
+                  "consequence": "选择后，由产品负责人和系统负责人把「候选增强不进入本期范围」改写为人工处理、只读、拒单、降级或拆分后的更小业务出口。",
+                  "project_impact": "会改变「行情数据与观测支持」的状态流转、异常分支、权限边界、数据记录和回归测试，需要同步更新流程复核和后续任务。",
+                  "next_exit": "continue:flow-batch-review-with-evidence-note",
+                  "recommended": false
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            }
+          ],
+          "edges": [
+            {
+              "from": "flow-f-f1",
+              "to": "flow-f-f2"
+            },
+            {
+              "from": "flow-f-f2",
+              "to": "flow-f-f3"
+            },
+            {
+              "from": "flow-f-f3",
+              "to": "flow-f-f5",
+              "label": "不可信"
+            },
+            {
+              "from": "flow-f-f3",
+              "to": "flow-f-f6",
+              "label": "可信"
+            },
+            {
+              "from": "flow-f-f6",
+              "to": "flow-f-f7"
+            },
+            {
+              "from": "flow-f-f7",
+              "to": "flow-f-f9",
+              "label": "不影响交易安全"
+            }
+          ],
+          "trace_notes": [
+            "TRACE-005",
+            "TRACE-006",
+            "OPEN-004",
+            "ACC-009"
+          ]
+        }
+      ],
+      "trace_notes": [
+        "REQ-007",
+        "REQ-008",
+        "REQ-012",
+        "REQ-017",
+        "REQ-018",
+        "REQ-020"
+      ]
+    }
+  ],
+  "schema_notes": [
+    "本文件只提供复核页面读取的结构化业务确认数据，不包含页面实现内容。",
+    "本批次为 WAITING_FOR_BATCH_REVIEW；浏览器本地选择不是正式授权，正式授权需要写回 flows/review/flow-confirmation.md。",
+    "真实 券商交易接口、试运行边界、Kill Switch 解除和高危配置仍受 OPEN-001..OPEN-003 约束；候选增强受 OPEN-004 约束。"
+  ]
+}

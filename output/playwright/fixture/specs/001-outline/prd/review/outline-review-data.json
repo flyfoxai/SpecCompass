@@ -1,0 +1,192 @@
+{
+  "schema_version": 2,
+  "review_type": "outline",
+  "artifact_path": "specs/001-outline/prd/review/outline-review-data.json",
+  "outline_source_path": "specs/001-outline/spec-outline.md",
+  "outline_digest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "source_authority_ids": ["prd-v3"],
+  "confirm_strategy": "batch",
+  "batch_id": "OUTLINE-001",
+  "project": {
+    "name": "Outline Example",
+    "feature": "001-outline",
+    "business_overview": "产品团队需要在详细规格前确认产品意图、范围、来源权威和首个交付切片。",
+    "review_goal": "只确认纲要级边界和就绪度，不提前设计流程、界面、接口、数据库或实现任务。"
+  },
+  "source_snapshot": [
+    {
+      "path": "specs/001-outline/prd.md",
+      "anchors": ["Product Intent", "Scope"],
+      "semantic_scope": ["intent", "scope", "acceptance-seeds"]
+    }
+  ],
+  "modules": [
+    {
+      "id": "feature-outline",
+      "title": "功能纲要",
+      "summary": "对进入详细规格前必须稳定的产品判断进行一次集中确认。",
+      "views": [
+        {
+          "id": "intent",
+          "title": "意图地图",
+          "summary": "连接产品目标、实际角色、问题切片与候选能力边界。",
+          "source_path": "specs/001-outline/spec-outline.md",
+          "view_type": "intent_map",
+          "intent": "让产品团队在进入规格前确认目标、真实用户与问题边界一致。",
+          "users": ["产品负责人", "需求分析人员"],
+          "problem_slices": ["材料分散导致规格范围容易偏离真实业务目标"],
+          "capability_slices": ["形成可追溯且可确认的规格输入边界"],
+          "nodes": [
+            {
+              "id": "OUTLINE-INTENT",
+              "label": "确认产品意图与首要问题边界",
+              "plain_summary": "产品负责人需要确认该纲要判断，避免范围或证据边界错误传入后续规格。",
+              "decision_background": "现有材料能够支持候选结论，但该结论会改变后续规格的范围和验收覆盖。",
+              "decision_summary": "确认当前纲要判断是否足以作为后续规格阶段的输入边界。",
+              "action_prompt": "请选择保留当前建议，或要求补充证据后再次刷新纲要。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "confirmation_priority": "important",
+              "owner": "product-owner",
+              "node_kind": "human_judgment",
+              "source_ref": "specs/001-outline/spec-outline.md#Outline Decision",
+              "options_count_rationale": "当前判断只有保留边界或补充材料两条互斥出口，不存在第三条可执行路径。",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "保留当前纲要判断",
+                  "benefit": "保持当前范围并让后续规格围绕已覆盖的用户问题继续收敛。",
+                  "cost": "产品负责人需要接受当前材料留下的低风险假设并持续跟踪。",
+                  "recommendation_reason": "当前依据权威且核心场景已有验收种子，继续推进的返工风险较低。",
+                  "consequence": "确认结果会写入纲要确认文档，并允许后续规格消费当前边界。",
+                  "next_exit": "record-outline-confirmation-and-return-to-prd",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "补充证据后重新确认",
+                  "benefit": "在进入规格前补齐材料缺口，减少范围判断依赖未验证假设。",
+                  "cost": "需要暂停规格并由材料负责人补充信息，当前交付会延后。",
+                  "consequence": "纲要保持等待确认状态，补充材料后重新生成图形确认数据。",
+                  "next_exit": "needs-decision:refresh-outline-evidence"
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            }
+          ]
+        },
+        {
+          "id": "scope",
+          "title": "范围与首切片",
+          "summary": "并列展示本期范围、非目标、场景覆盖和推荐首个切片。",
+          "source_path": "specs/001-outline/spec-outline.md",
+          "view_type": "scope_slice",
+          "in_scope": ["纲要意图、范围和验收覆盖确认"],
+          "non_goals": ["不在纲要阶段设计页面、接口或实现任务"],
+          "scenario_coverage": [
+            {
+              "scenario": "产品负责人检查首切片是否覆盖核心用户问题",
+              "acceptance_seeds": ["能够追溯到权威材料并明确一期边界"]
+            }
+          ],
+          "recommended_first_slice": "先确认核心角色、主要问题和一期验收边界，再进入详细规格。",
+          "nodes": [
+            {
+              "id": "OUTLINE-SCOPE",
+              "label": "确认一期范围与推荐首切片",
+              "plain_summary": "产品负责人需要确认一期边界和首切片能覆盖最核心问题，同时明确本期不做什么。",
+              "decision_background": "当前候选范围可以形成可验收的首切片，但会把次要场景留到后续迭代。",
+              "decision_summary": "确认当前一期边界和首切片是否适合进入详细规格。",
+              "action_prompt": "请选择保留当前范围，或要求补充证据后重新划分。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "confirmation_priority": "important",
+              "owner": "product-owner",
+              "node_kind": "human_judgment",
+              "source_ref": "specs/001-outline/spec-outline.md#Scope Slice",
+              "options_count_rationale": "当前只有接受首切片或补充材料后重划范围两条可执行出口。",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "保留一期范围与首切片",
+                  "benefit": "详细规格可以围绕一个完整且可验收的业务切片展开。",
+                  "cost": "次要场景需要保留为后续范围，不能在本期顺带加入。",
+                  "recommendation_reason": "当前切片覆盖核心问题，且范围足够小，便于保持验收闭环。",
+                  "consequence": "一期范围和非目标写入确认文档并进入详细规格。",
+                  "next_exit": "record-outline-confirmation-and-return-to-prd",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "补充证据后重划范围",
+                  "benefit": "可以在规格前验证被延后的场景是否实际属于一期刚需。",
+                  "cost": "范围确认和后续规格会暂停，直到补充材料完成。",
+                  "consequence": "保持等待确认并重新生成范围视图。",
+                  "next_exit": "needs-decision:refresh-outline-evidence"
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            }
+          ]
+        },
+        {
+          "id": "readiness",
+          "title": "就绪度与来源权威",
+          "summary": "展示来源权威、风险、开放项、阻断项和下一条工作路由。",
+          "source_path": "specs/001-outline/spec-outline.md",
+          "view_type": "readiness_authority",
+          "source_authorities": [
+            {
+              "id": "prd-v3",
+              "path": "specs/001-outline/prd.md",
+              "status": "authoritative",
+              "scope": "product intent and scope"
+            }
+          ],
+          "risks": ["低风险材料假设需要在详细规格中保持可追溯"],
+          "open_items": [],
+          "blockers": [],
+          "next_route": "/sp.prd consume outline confirmation package",
+          "nodes": [
+            {
+              "id": "OUTLINE-READY",
+              "label": "确认来源权威与下一路由",
+              "plain_summary": "产品负责人需要确认当前材料足以支撑纲要，并同意由 PRD 消费确认包后进入规格。",
+              "decision_background": "当前权威材料覆盖产品意图和范围，剩余低风险假设可以在详细规格中继续追踪。",
+              "decision_summary": "确认当前权威材料、剩余风险和下一工作路由是否足以授权进入详细规格。",
+              "action_prompt": "请选择授权当前路由，或要求补充证据后重新确认。",
+              "review_layer": "business",
+              "review_level": "must_confirm",
+              "confirmation_priority": "important",
+              "owner": "product-owner",
+              "node_kind": "human_judgment",
+              "source_ref": "specs/001-outline/spec-outline.md#Readiness",
+              "options_count_rationale": "当前只有授权下一路由或补充材料后重审两条互斥出口。",
+              "options": [
+                {
+                  "id": "OPTION_A",
+                  "label": "授权当前下一路由",
+                  "benefit": "确认文档写回后可以按已核验边界进入详细规格。",
+                  "cost": "详细规格仍需持续追踪已记录的低风险假设。",
+                  "recommendation_reason": "权威材料、范围和验收种子已经形成一致闭环。",
+                  "consequence": "由 PRD 核验确认身份并把纲要提升为 READY_FOR_SPECIFY。",
+                  "next_exit": "record-outline-confirmation-and-return-to-prd",
+                  "recommended": true
+                },
+                {
+                  "id": "OPTION_B",
+                  "label": "补充证据后再授权",
+                  "benefit": "避免带着未验证的权威边界进入详细规格。",
+                  "cost": "详细规格阶段会延后，材料负责人需要先完成补充。",
+                  "consequence": "纲要保持等待确认状态，并在材料更新后重新计算摘要。",
+                  "next_exit": "needs-decision:refresh-outline-evidence"
+                }
+              ],
+              "recommended_option": "OPTION_A"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

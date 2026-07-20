@@ -1,0 +1,108 @@
+{
+  "schema_version": 1,
+  "review_type": "outline_discovery",
+  "interaction_mode": "discovery",
+  "artifact_path": "specs/001-outline/prd/review/outline-discovery-data.json",
+  "outline_maturity": "explore",
+  "batch_id": "DISCOVERY-001",
+  "project": {
+    "name": "Outline Discovery Example",
+    "feature": "001-outline",
+    "current_understanding": "团队希望先从零散产品想法中确认真实目标用户、核心问题和产品方向。",
+    "discovery_goal": "通过少量高价值候选和用户直接输入，把模糊想法收敛为可继续完善的产品大纲。"
+  },
+  "source_snapshot": [
+    {
+      "path": "specs/001-outline/prd.md",
+      "source_type": "user_document",
+      "anchors": ["Product Intent"]
+    }
+  ],
+  "question_groups": [
+    {
+      "id": "direction",
+      "title": "方向探索",
+      "summary": "先确认产品目标和核心用户，不在本轮假定完整范围。",
+      "questions": [
+        {
+          "id": "goal",
+          "target_kind": "goal",
+          "prompt": "这项产品工作最需要优先解决什么目标？",
+          "context": "现有资料只表达了提高需求质量，尚未确认最重要的业务结果。",
+          "selection_mode": "single",
+          "candidates": [
+            {
+              "id": "goal-quality",
+              "label": "先提高需求输入质量",
+              "value": "让产品负责人在进入详细规格前补齐真实目标、用户和核心问题。",
+              "rationale": "当前返工主要来自产品事实不足，而不是实现能力不足。"
+            },
+            {
+              "id": "goal-speed",
+              "label": "先缩短需求整理时间",
+              "value": "减少从零散资料形成可讨论产品框架所需的轮次。",
+              "rationale": "适合已有稳定产品方向、主要受整理效率影响的团队。"
+            }
+          ],
+          "recommended_candidate_ids": ["goal-quality"],
+          "recommendation_reason": "当前输入不足以形成稳定框架，先确认产品事实能直接降低后续返工。",
+          "allow_none_of_the_above": true,
+          "free_input": {
+            "enabled": true,
+            "label": "补充或改写业务目标",
+            "allowed_operations": [
+              "confirm_candidate",
+              "add",
+              "replace",
+              "exclude",
+              "context_note"
+            ]
+          }
+        },
+        {
+          "id": "audience",
+          "target_kind": "target_user",
+          "prompt": "谁会最直接地使用这套能力？",
+          "context": "现有材料提到产品负责人，但还没有排除需求分析师或业务负责人。",
+          "selection_mode": "single",
+          "candidates": [
+            {
+              "id": "audience-pm",
+              "label": "产品负责人",
+              "value": "由产品负责人发起探索、选择方向并补充业务事实。",
+              "rationale": "他们最接近产品决策，也承担需求完整性责任。"
+            },
+            {
+              "id": "audience-analyst",
+              "label": "需求分析师",
+              "value": "由需求分析师整理资料并组织业务方完成探索。",
+              "rationale": "适合职责分工较细、分析岗位稳定的团队。"
+            },
+            {
+              "id": "audience-owner",
+              "label": "业务负责人",
+              "value": "由业务负责人直接提供目标、范围和约束。",
+              "rationale": "适合业务方深度参与产品定义的场景。"
+            }
+          ],
+          "recommended_candidate_ids": ["audience-pm"],
+          "recommendation_reason": "当前流程由产品负责人发起，他们应先成为主要交互对象。",
+          "allow_none_of_the_above": true,
+          "free_input": {
+            "enabled": true,
+            "label": "补充或改写目标用户",
+            "allowed_operations": [
+              "confirm_candidate",
+              "add",
+              "replace",
+              "exclude",
+              "context_note"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "authorization_effect": "none",
+  "next_route": "/sp.prd"
+}

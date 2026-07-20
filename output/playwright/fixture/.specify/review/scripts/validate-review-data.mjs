@@ -76,26 +76,6 @@ const allowedNodeKinds = new Set([
 ]);
 const allowedOptionIds = new Set(["OPTION_A", "OPTION_B", "OPTION_C", "OPTION_D"]);
 const allowedDiscoveryOperations = new Set(["confirm_candidate", "add", "replace", "exclude", "context_note"]);
-const outlineDiscoveryDensityBudget = Object.freeze({
-  max_visible_nodes_per_map: 18,
-  max_depth: 3,
-  max_children_per_node: 4,
-  layer_balance_min_nodes: 8,
-  max_layer_share: 0.6,
-});
-const allowedOutlineMapKinds = new Set(["overview", "branch", "global_constraints", "value_stream"]);
-const allowedOutlineNodeKinds = new Set([
-  "root", "goal", "role", "domain", "scope", "problem", "scenario",
-  "capability", "acceptance", "risk", "constraint", "map_link",
-]);
-const allowedOutlineSourceStatuses = new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]);
-const allowedBusinessChainKinds = new Set(["primary", "recovery", "governance"]);
-const allowedBusinessTriggerKinds = new Set(["business_event", "exception_or_interruption", "governance_change"]);
-const triggerKindByChainKind = new Map([
-  ["primary", "business_event"],
-  ["recovery", "exception_or_interruption"],
-  ["governance", "governance_change"],
-]);
 const legacyConfirmationValues = new Set(["APPROVED", "REJECTED"]);
 const supportedSchemaVersions = new Set([1, 2]);
 const forbiddenReviewDataKeys = new Set([
@@ -306,120 +286,6 @@ const allowedOptionKeys = new Set([
 ]);
 const allowedEdgeKeys = new Set(["from", "to", "label"]);
 
-// 通用能力原子标签模式（不允许）
-const vagueCapabilityAtomPatterns = [
-  // 空洞动词 + 泛化名词
-  /^处理[^的]*$/,
-  /^管理[^的]*$/,
-  /^执行[^的]*$/,
-  /^维护[^的]*$/,
-  /^组织[^的]*$/,
-  /^协调[^的]*$/,
-  /^handle\s+[a-z\s]+$/i,
-  /^manage\s+[a-z\s]+$/i,
-  /^execute\s+[a-z\s]+$/i,
-  /^process\s+[a-z\s]+$/i,
-
-  // 元认知表达
-  /业务对象|业务处理|业务流程|业务逻辑/,
-  /系统功能|系统能力|系统模块/,
-  /数据处理|数据管理|数据维护/,
-
-  // 过于泛化的名词（没有具体领域含义）
-  /^[^具体领域词汇]{0,6}(中心|平台|系统|模块|服务|引擎)$/,
-];
-
-// 通用状态描述模式（不允许）
-const vagueStatePatterns = [
-  /^[^→>]{0,10}状态$/,           // 只说"状态"，没有具体内容
-  /^业务状态$/,
-  /^数据状态$/,
-  /^系统状态$/,
-  /^state$/i,
-  /^business\s+state$/i,
-  /^data\s+state$/i,
-];
-
-// 通用触发器描述模式（不允许）
-const vagueTriggerPatterns = [
-  /^用户操作$/,
-  /^业务事件$/,
-  /^系统事件$/,
-  /^外部触发$/,
-  /^user\s+action$/i,
-  /^business\s+event$/i,
-  /^system\s+event$/i,
-];
-
-// 通用交接描述模式（不允许）
-const vagueHandoffPatterns = [
-  /^传递给下游$/,
-  /^发送给.*系统$/,
-  /^推送给.*模块$/,
-  /^pass\s+to\s+downstream$/i,
-  /^send\s+to\s+[a-z\s]+system$/i,
-];
-
-// 通用业务对象描述模式（不允许）
-const vagueBusinessObjectPatterns = [
-  /^数据$/,
-  /^信息$/,
-  /^对象$/,
-  /^实体$/,
-  /^业务数据$/,
-  /^业务对象$/,
-  /^data$/i,
-  /^information$/i,
-  /^object$/i,
-  /^entity$/i,
-];
-
-// 密度合并话术黑名单 - 初始 Level 1 禁止出现
-const densityMergeBoilerplateFragments = [
-  "为满足 level 1 图的可读密度",
-  "为满足level1图的可读密度",
-  "为保持图形可读",
-  "为满足密度预算",
-  "为满足可读密度",
-  "当前只提出三个候选",
-  "当前只提出两个候选",
-  "当前只提出四个候选",
-  "压缩为三个候选",
-  "合并为三个分支",
-  "压缩候选数量",
-  "reduce candidate count",
-  "for readability",
-  "for density budget",
-  "to keep the map readable",
-  "reduced for density",
-  "merged for density",
-  "limited to three candidates",
-];
-
-function hasDensityMergeBoilerplate(text) {
-  const normalized = (text || "").toLowerCase().replace(/\s+/g, " ");
-  return densityMergeBoilerplateFragments.some(fragment =>
-    normalized.includes(fragment.toLowerCase())
-  );
-}
-
-const aggregateAtomLabelWarnings = [
-  "闭环", "治理", "观测", "平台", "能力体系", "核心链路", "主链路", "全链路", "整合", "集成",
-  "core loop", "governance", "observability platform"
-];
-
-function warnIfAtomTooCoarse(atomLabel, atom, data) {
-  if (data.outline_maturity !== "explore") return;
-  const hasMultipleOps = (atom.operation_refs?.length ?? 0) > 1;
-  const hasMultipleObjs = (atom.object_refs?.length ?? 0) > 1;
-  const labelHasAggregateWord = aggregateAtomLabelWarnings.some(w =>
-    (atom.label ?? "").toLowerCase().includes(w.toLowerCase())
-  );
-  if (hasMultipleOps && hasMultipleObjs && labelHasAggregateWord) {
-    warn(`${atomLabel}: label "${atom.label}" with multiple operations and objects looks like a pre-merged capability group; consider splitting into separate atoms for each independently verifiable responsibility`);
-  }
-}
-
 function fail(message) {
   errors.push(message);
 }
@@ -563,117 +429,6 @@ function validateFlowEdgeSemantics(itemLabel, nodes, edges) {
   });
   if (unlabeledEdges && !edges.some((edge) => compactText(edge.label))) {
     warn(`${itemLabel}: flow edges have no business labels; add conditions or results so reviewers can follow why work moves between nodes`);
-  }
-}
-
-/**
- * 检查文本是否为通用套话（跨领域替换测试的简化版）
- * @param {string} text - 要检查的文本
- * @param {Array<RegExp>} patterns - 通用模式列表
- * @returns {boolean} - 如果匹配任何通用模式则返回 true
- */
-function isGenericBoilerplate(text, patterns) {
-  const normalized = compactText(text);
-  return patterns.some((pattern) => pattern.test(normalized));
-}
-
-/**
- * 验证 capability_atom 的语义具体性
- * @param {string} atomLabel - 用于错误消息的标签
- * @param {object} atom - capability_atom 对象
- */
-function validateCapabilityAtomSemantics(atomLabel, atom) {
-  // 检查 label 具体性
-  if (isGenericBoilerplate(atom.label, vagueCapabilityAtomPatterns)) {
-    fail(`${atomLabel}: label is too generic; name the concrete business object, specific action, and observable result (e.g., "采集券商实时行情推送" not "处理市场数据")`);
-  }
-
-  // 检查 owned_state 具体性
-  const state = compactText(atom.owned_state);
-  if (state.length < 10) {
-    fail(`${atomLabel}: owned_state is too short; describe the concrete business state with key attributes (at least 10 chars)`);
-  }
-  if (isGenericBoilerplate(state, vagueStatePatterns)) {
-    fail(`${atomLabel}: owned_state is too generic; describe a concrete state transition or business fact (e.g., "待支付订单 → 已确认订单" not "订单状态")`);
-  }
-
-  // 检查 trigger_or_input 具体性
-  const trigger = compactText(atom.trigger_or_input);
-  if (trigger.length < 8) {
-    fail(`${atomLabel}: trigger_or_input is too short; name the concrete trigger source and event (at least 8 chars)`);
-  }
-  if (isGenericBoilerplate(trigger, vagueTriggerPatterns)) {
-    fail(`${atomLabel}: trigger_or_input is too generic; name the specific business event or external system (e.g., "券商推送新tick数据" not "业务事件")`);
-  }
-
-  // 检查 downstream_handoff 具体性
-  const handoff = compactText(atom.downstream_handoff);
-  if (handoff.length < 10) {
-    fail(`${atomLabel}: downstream_handoff is too short; describe what is handed off and to whom (at least 10 chars)`);
-  }
-  if (isGenericBoilerplate(handoff, vagueHandoffPatterns)) {
-    fail(`${atomLabel}: downstream_handoff is too generic; name the specific business fact/command/event and target responsibility (e.g., "推送行情事件给策略引擎，包含价格和成交量" not "传递给下游系统")`);
-  }
-}
-
-/**
- * 验证 business_object 的语义具体性
- * @param {string} objectLabel - 用于错误消息的标签
- * @param {object} businessObject - business_object 对象
- */
-function validateBusinessObjectSemantics(objectLabel, businessObject) {
-  const label = compactText(businessObject.label);
-
-  // 检查是否过于泛化
-  if (isGenericBoilerplate(label, vagueBusinessObjectPatterns)) {
-    fail(`${objectLabel}: label is too generic; name the concrete business entity with key attributes (e.g., "待支付订单（金额、收货地址、支付截止时间）" not "订单")`);
-  }
-
-  // 检查最小长度（避免单个词）
-  if (label.length < 4) {
-    fail(`${objectLabel}: label is too short; provide a descriptive business object name with context (at least 4 chars)`);
-  }
-}
-
-/**
- * 验证 business_operation 的语义具体性
- * @param {string} operationLabel - 用于错误消息的标签
- * @param {object} operation - business_operation 对象
- */
-function validateBusinessOperationSemantics(operationLabel, operation) {
-  const label = compactText(operation.label);
-
-  // 检查空洞动词
-  const emptyVerbs = ['处理', '管理', '维护', '执行', '组织', '协调', 'handle', 'manage', 'process', 'execute', 'maintain'];
-  const startsWithEmptyVerb = emptyVerbs.some(verb => label.startsWith(verb) || label.toLowerCase().startsWith(verb));
-
-  if (startsWithEmptyVerb && label.length < 15) {
-    fail(`${operationLabel}: label uses a generic verb without qualification; describe the specific input, action, and output (e.g., "解析券商推送的tick数据并更新价格缓存" not "处理市场数据")`);
-  }
-
-  // 检查最小长度
-  if (label.length < 8) {
-    fail(`${operationLabel}: label is too short; describe what happens, to what, and why (at least 8 chars)`);
-  }
-}
-
-/**
- * 验证 business_outcome 的语义具体性
- * @param {string} outcomeLabel - 用于错误消息的标签
- * @param {object} outcome - business_outcome 对象
- */
-function validateBusinessOutcomeSemantics(outcomeLabel, outcome) {
-  const label = compactText(outcome.label);
-
-  // 检查是否只是抽象成功/失败
-  const abstractOutcomes = ['成功', '失败', '完成', '错误', 'success', 'failure', 'complete', 'error', 'done'];
-  if (abstractOutcomes.includes(label.toLowerCase())) {
-    fail(`${outcomeLabel}: label is too abstract; describe the concrete observable result with measurable criteria (e.g., "行情数据已更新，延迟 < 100ms" not "成功")`);
-  }
-
-  // 检查最小长度 (降低到6字符以支持简洁但具体的中文描述，如"形成受控订单")
-  if (label.length < 6) {
-    fail(`${outcomeLabel}: label is too short; describe what changed, what can be verified, and by whom (at least 6 chars)`);
   }
 }
 
@@ -1778,624 +1533,14 @@ function validateItem(reviewType, schemaVersion, module, item, itemIndex, global
   }
 }
 
-function validateOutlineDiscoveryTopology(data) {
-  const budget = data.density_budget;
-  if (!budget || typeof budget !== "object" || Array.isArray(budget)) {
-    fail("outline discovery density_budget must be an object");
-  } else {
-    for (const [key, expected] of Object.entries(outlineDiscoveryDensityBudget)) {
-      if (budget[key] !== expected) fail(`outline discovery density_budget.${key} must be ${expected}`);
-    }
-  }
-
-  const maps = asArray(data.maps);
-  if (maps.length < 3) fail("outline discovery maps must contain overview, branch, and global_constraints maps");
-  const mapsById = new Map();
-  for (const [index, map] of maps.entries()) {
-    const label = `outline map[${index}]`;
-    for (const key of ["map_id", "title", "summary", "map_kind", "root_node_id"]) {
-      if (!String(map?.[key] || "").trim()) fail(`${label}: ${key} is required`);
-    }
-    if (mapsById.has(map?.map_id)) fail(`duplicate outline map_id ${map?.map_id}`);
-    if (!allowedOutlineMapKinds.has(map?.map_kind)) fail(`${label}: unsupported map_kind ${map?.map_kind}`);
-    if (!(typeof map?.parent_map_id === "string" || map?.parent_map_id === null)) {
-      fail(`${label}: parent_map_id must be string or null`);
-    }
-    mapsById.set(map?.map_id, map);
-  }
-  const overviewMaps = maps.filter((map) => map?.map_kind === "overview");
-  const constraintMaps = maps.filter((map) => map?.map_kind === "global_constraints");
-  if (overviewMaps.length !== 1) fail("outline discovery must contain exactly one overview map");
-  if (constraintMaps.length !== 1) fail("outline discovery must contain exactly one global_constraints map");
-  for (const map of maps) {
-    if (map.map_kind === "overview") {
-      if (map.parent_map_id !== null) fail(`overview map ${map.map_id} parent_map_id must be null`);
-    } else if (!mapsById.has(map.parent_map_id)) {
-      fail(`outline map ${map.map_id} parent_map_id must reference an existing map`);
-    }
-  }
-  for (const map of maps) {
-    const visited = new Set([map.map_id]);
-    let cursor = map;
-    while (cursor.parent_map_id !== null) {
-      cursor = mapsById.get(cursor.parent_map_id);
-      if (!cursor) break;
-      if (visited.has(cursor.map_id)) {
-        fail("outline maps must not contain parent cycles");
-        break;
-      }
-      visited.add(cursor.map_id);
-    }
-  }
-
-  const nodes = asArray(data.outline_nodes);
-  if (!nodes.length) fail("outline discovery outline_nodes must not be empty");
-  const nodesById = new Map();
-  const nodesByMap = new Map(maps.map((map) => [map.map_id, []]));
-  for (const [index, node] of nodes.entries()) {
-    const label = `outline node[${index}]`;
-    for (const key of ["node_id", "map_id", "node_kind", "label", "summary", "source_status"]) {
-      if (!String(node?.[key] || "").trim()) fail(`${label}: ${key} is required`);
-    }
-    if (!(typeof node?.parent_node_id === "string" || node?.parent_node_id === null)) {
-      fail(`${label}: parent_node_id must be string or null`);
-    }
-    if (nodesById.has(node?.node_id)) fail(`duplicate outline node_id ${node?.node_id}`);
-    if (!mapsById.has(node?.map_id)) fail(`${label}: map_id must reference an existing map`);
-    if (!allowedOutlineNodeKinds.has(node?.node_kind)) fail(`${label}: unsupported node_kind ${node?.node_kind}`);
-    if (!allowedOutlineSourceStatuses.has(node?.source_status)) fail(`${label}: unsupported source_status ${node?.source_status}`);
-    nodesById.set(node?.node_id, node);
-    if (nodesByMap.has(node?.map_id)) nodesByMap.get(node.map_id).push(node);
-  }
-
-  for (const map of maps) {
-    const mapNodes = nodesByMap.get(map.map_id) || [];
-    if (mapNodes.length > outlineDiscoveryDensityBudget.max_visible_nodes_per_map) {
-      fail(`outline map ${map.map_id} may contain at most 18 visible nodes`);
-    }
-    const root = nodesById.get(map.root_node_id);
-    if (!root || root.map_id !== map.map_id || root.node_kind !== "root" || root.parent_node_id !== null) {
-      fail(`outline map ${map.map_id} root_node_id must reference its root node`);
-    }
-    if (mapNodes.filter((node) => node.parent_node_id === null).length !== 1) {
-      fail(`outline map ${map.map_id} must contain exactly one root node`);
-    }
-  }
-
-  const childrenByParent = new Map();
-  for (const node of nodes) {
-    if (node.parent_node_id !== null) {
-      const parent = nodesById.get(node.parent_node_id);
-      if (!parent || parent.map_id !== node.map_id) {
-        fail(`outline node ${node.node_id} parent_node_id must reference a node in the same map`);
-      } else {
-        const children = childrenByParent.get(parent.node_id) || [];
-        children.push(node);
-        childrenByParent.set(parent.node_id, children);
-      }
-    }
-  }
-  const overviewRootId = overviewMaps[0] ? nodesById.get(overviewMaps[0]?.root_node_id)?.node_id : null;
-  for (const [parentId, children] of childrenByParent.entries()) {
-    if (parentId === overviewRootId) continue; // overview root is exempt: must show all Level 1 candidates
-    if (children.length > outlineDiscoveryDensityBudget.max_children_per_node) {
-      fail(`outline node ${parentId} may have at most 4 direct children`);
-    }
-  }
-
-  for (const map of maps) {
-    const mapNodes = nodesByMap.get(map.map_id) || [];
-    const layerCounts = new Map();
-    for (const node of mapNodes) {
-      let depth = 1;
-      let cursor = node;
-      const visited = new Set([node.node_id]);
-      while (cursor.parent_node_id !== null) {
-        const parent = nodesById.get(cursor.parent_node_id);
-        if (!parent || parent.map_id !== map.map_id) break;
-        if (visited.has(parent.node_id)) {
-          fail(`outline map ${map.map_id} must not contain parent cycles`);
-          break;
-        }
-        visited.add(parent.node_id);
-        depth += 1;
-        cursor = parent;
-      }
-      if (depth > outlineDiscoveryDensityBudget.max_depth) {
-        fail(`outline map ${map.map_id} exceeds maximum depth 3`);
-      }
-      layerCounts.set(depth, (layerCounts.get(depth) || 0) + 1);
-    }
-    if (mapNodes.length >= outlineDiscoveryDensityBudget.layer_balance_min_nodes) {
-      const largestLayer = Math.max(...layerCounts.values());
-      if (largestLayer / mapNodes.length > outlineDiscoveryDensityBudget.max_layer_share) {
-        fail(`outline map ${map.map_id} layer may contain at most 60% of visible nodes`);
-      }
-    }
-  }
-
-  const childMapLinkCounts = new Map();
-  const overviewMap = overviewMaps[0];
-  const overviewRoot = overviewMap ? nodesById.get(overviewMap.root_node_id) : null;
-  const businessChainIds = new Set(asArray(data.business_context?.business_chains).map((chain) => chain?.chain_id));
-  const capabilityAtomsById = new Map(asArray(data.business_context?.capability_atoms).map((atom) => [atom?.atom_id, atom]));
-  const capabilityAtomOwnerCounts = new Map([...capabilityAtomsById.keys()].map((atomId) => [atomId, 0]));
-  const businessChainProjectOwnerCounts = new Map([...businessChainIds].map((chainId) => [chainId, 0]));
-  const constitutionClauseIds = new Set(asArray(data.constitution_snapshot?.clauses).map((clause) => clause?.clause_id));
-  for (const node of nodes) {
-    const map = mapsById.get(node.map_id);
-    const childMap = mapsById.get(node.child_map_id);
-    const isBusinessNode = map?.map_kind === "branch" || (map?.map_kind === "overview" && node.node_kind !== "root" && node.child_map_id !== constraintMaps[0]?.map_id);
-    const isLevelOneProjectLink = data.outline_maturity === "explore" &&
-      map?.map_kind === "overview" &&
-      node.parent_node_id === overviewRoot?.node_id &&
-      node.node_kind === "map_link" &&
-      childMap?.map_kind === "branch";
-    if (node.parent_node_id === overviewRoot?.node_id &&
-        (node.node_kind !== "map_link" || !["branch", "global_constraints"].includes(mapsById.get(node.child_map_id)?.map_kind))) {
-      fail("overview root direct children must be business or governance map links");
-    }
-    if (isBusinessNode || (map?.map_kind === "overview" && node.node_kind === "root")) {
-      if (!Array.isArray(node.business_chain_refs) || !node.business_chain_refs.length) {
-        fail(`outline business branch must reference at least one business chain: ${node.node_id}`);
-      } else if (node.business_chain_refs.some((id) => !businessChainIds.has(id))) {
-        fail(`outline node ${node.node_id} business_chain_refs must reference business_context`);
-      }
-    } else if (node.business_chain_refs !== undefined) {
-      fail(`outline node ${node.node_id} business_chain_refs are only allowed on business nodes`);
-    }
-    if (node.capability_atom_refs !== undefined) {
-      if (!isBusinessNode || !Array.isArray(node.capability_atom_refs) || !node.capability_atom_refs.length ||
-          new Set(node.capability_atom_refs).size !== node.capability_atom_refs.length ||
-          node.capability_atom_refs.some((id) => !capabilityAtomsById.has(id))) {
-        fail(`outline node ${node.node_id} capability_atom_refs must reference business_context`);
-      }
-    }
-    if (isLevelOneProjectLink) {
-      if (!Array.isArray(node.business_chain_refs) || node.business_chain_refs.length !== 1) {
-        fail(`outline Level 1 project ${node.node_id} must reference exactly one primary business chain`);
-      } else if (businessChainProjectOwnerCounts.has(node.business_chain_refs[0])) {
-        const chainId = node.business_chain_refs[0];
-        businessChainProjectOwnerCounts.set(chainId, businessChainProjectOwnerCounts.get(chainId) + 1);
-      }
-      if (!Array.isArray(node.capability_atom_refs) || node.capability_atom_refs.length !== 1) {
-        fail(`outline Level 1 project ${node.node_id} must reference exactly one Level 1 capability atom`);
-      } else {
-        const primaryChainId = node.business_chain_refs?.length === 1 ? node.business_chain_refs[0] : null;
-        for (const atomId of node.capability_atom_refs) {
-          const atom = capabilityAtomsById.get(atomId);
-          if (capabilityAtomOwnerCounts.has(atomId)) {
-            capabilityAtomOwnerCounts.set(atomId, capabilityAtomOwnerCounts.get(atomId) + 1);
-          }
-          if (atom && (atom.business_chain_refs?.length !== 1 || atom.business_chain_refs[0] !== primaryChainId)) {
-            fail(`outline Level 1 project ${node.node_id} capability atom ${atomId} must match its primary business chain`);
-          }
-        }
-      }
-    }
-    if (node.constitution_clause_refs !== undefined) {
-      if (map?.map_kind !== "global_constraints" || node.node_kind !== "constraint") {
-        fail(`outline node ${node.node_id} constitution_clause_refs are only allowed on global constraint nodes`);
-      }
-      if (!Array.isArray(node.constitution_clause_refs) || !node.constitution_clause_refs.length ||
-          node.constitution_clause_refs.some((id) => !constitutionClauseIds.has(id))) {
-        fail(`outline node ${node.node_id} constitution_clause_refs must reference constitution_snapshot`);
-      }
-    }
-    if (node.child_map_id !== undefined) {
-      const childMap = mapsById.get(node.child_map_id);
-      if (node.node_kind !== "map_link" || !childMap || childMap.parent_map_id !== node.map_id) {
-        fail(`outline node ${node.node_id} child_map_id must link to a direct child map`);
-      } else {
-        childMapLinkCounts.set(node.child_map_id, (childMapLinkCounts.get(node.child_map_id) || 0) + 1);
-      }
-    } else if (node.node_kind === "map_link") {
-      fail(`outline map_link node ${node.node_id} requires child_map_id`);
-    }
-    if (node.affected_node_ids !== undefined) {
-      if (map?.map_kind !== "global_constraints" || node.node_kind !== "constraint" ||
-          !Array.isArray(node.affected_node_ids)) {
-        fail(`outline node ${node.node_id} affected_node_ids are only allowed on global constraint nodes`);
-      } else {
-        if (new Set(node.affected_node_ids).size !== node.affected_node_ids.length) {
-          fail(`outline node ${node.node_id} affected_node_ids must be unique`);
-        }
-        for (const affectedId of node.affected_node_ids) {
-          const affected = nodesById.get(affectedId);
-          if (!affected || mapsById.get(affected.map_id)?.map_kind !== "branch") {
-            fail(`outline node ${node.node_id} affected_node_ids must reference business branch nodes`);
-          }
-        }
-      }
-    }
-  }
-  for (const map of maps) {
-    if (map.map_kind !== "overview" && childMapLinkCounts.get(map.map_id) !== 1) {
-      fail(`outline map ${map.map_id} must be linked exactly once from its parent map`);
-    }
-  }
-  if (data.outline_maturity === "explore") {
-    for (const [chainId, ownerCount] of businessChainProjectOwnerCounts.entries()) {
-      if (ownerCount !== 1) {
-        fail(`Level 1 business chain must have exactly one Level 1 project owner: ${chainId}`);
-      }
-    }
-    for (const [atomId, ownerCount] of capabilityAtomOwnerCounts.entries()) {
-      if (ownerCount !== 1) {
-        fail(`capability atom must have exactly one Level 1 project owner: ${atomId}`);
-      }
-    }
-  }
-  return { mapsById, nodesById };
-}
-
-function validateOutlineDiscoveryNoDensityMerge(data) {
-  const fieldsToCheck = [
-    data?.project?.current_understanding,
-    data?.project?.discovery_goal,
-    ...(data?.maps ?? []).map(m => m?.summary),
-    ...(data?.outline_nodes ?? []).map(n => n?.summary),
-    ...(data?.question_groups ?? []).flatMap(qg =>
-      (qg?.questions ?? []).flatMap(q => [
-        q?.prompt,
-        q?.context,
-        ...(q?.candidates ?? []).map(c => c?.value),
-        ...(q?.candidates ?? []).map(c => c?.rationale),
-        q?.recommendation_reason
-      ])
-    )
-  ].filter(Boolean);
-
-  for (const field of fieldsToCheck) {
-    if (hasDensityMergeBoilerplate(field)) {
-      fail(`visible copy contains density-merge boilerplate; density constraints may only add maps, never reduce or merge capability atoms. Offending text: "${String(field).substring(0, 120)}"`);
-    }
-  }
-}
-
-function validateOverviewMapLinkSummaryCompleteness(data) {
-  const maps = asArray(data.maps);
-  const nodes = asArray(data.outline_nodes);
-  const nodesById = new Map(nodes.map((node) => [node.node_id, node]));
-  const mapsById = new Map(maps.map((map) => [map.map_id, map]));
-
-  const overviewMaps = maps.filter((map) => map?.map_kind === "overview");
-  for (const overviewMap of overviewMaps) {
-    const mapLinks = nodes.filter((node) =>
-      node.map_id === overviewMap.map_id &&
-      node.node_kind === "map_link" &&
-      node.child_map_id
-    );
-
-    for (const mapLink of mapLinks) {
-      const childMap = mapsById.get(mapLink.child_map_id);
-      if (childMap?.map_kind === "branch") {
-        const branchRoot = nodesById.get(childMap.root_node_id);
-        if (branchRoot) {
-          const mapLinkSummary = String(mapLink.summary || "").trim();
-          const branchRootSummary = String(branchRoot.summary || "").trim();
-
-          // Check length ratio (60% minimum)
-          if (mapLinkSummary.length < branchRootSummary.length * 0.6) {
-            warn(`outline map_link ${mapLink.node_id} summary is less than 60% of its branch root summary length; expand to include actor/trigger, operation, and outcome`);
-          }
-
-          // Check for three components using simple heuristics
-          // This is a sanity check; the primary requirement is the three-component test
-          const hasMultipleClauses = (mapLinkSummary.match(/[，。、；]/g) || []).length >= 2 ||
-                                     (mapLinkSummary.match(/\s+(through|via|by|to|and|得到|形成|接入|发起|查看)\s+/gi) || []).length >= 2;
-
-          if (mapLinkSummary.length < 30 && !hasMultipleClauses) {
-            warn(`outline map_link ${mapLink.node_id} summary appears incomplete; ensure it contains actor/trigger, operation, and outcome (not just outcome fragment)`);
-          }
-        }
-      }
-    }
-  }
-}
-
-function validateDiscoveryCandidateDetailField(data) {
-  const questionGroups = asArray(data.question_groups);
-
-  for (const [groupIndex, group] of questionGroups.entries()) {
-    const questions = asArray(group?.questions);
-
-    for (const [questionIndex, question] of questions.entries()) {
-      const questionLabel = `question_group[${groupIndex}]:question[${questionIndex}]`;
-      const candidates = asArray(question?.candidates);
-
-      for (const [candidateIndex, candidate] of candidates.entries()) {
-        const candidateLabel = `${questionLabel}:candidate[${candidateIndex}]`;
-
-        // Check detail field exists and has minimum length
-        if (!candidate?.detail || typeof candidate.detail !== "string") {
-          fail(`${candidateLabel}: detail field is required for all discovery candidates`);
-        } else if (candidate.detail.trim().length < 20) {
-          fail(`${candidateLabel}: detail field must be at least 20 characters; describe the concrete responsibility, owned capabilities, outcomes, or revised joint responsibility after merge`);
-        }
-      }
-    }
-  }
-}
-
-function validateSourceCapabilityCoverage(data) {
-  const context = data.business_context;
-  const coverage = context?.source_capability_coverage;
-
-  if (!Array.isArray(coverage) || coverage.length === 0) {
-    fail("business_context.source_capability_coverage must be a non-empty array");
-    return;
-  }
-
-  const atomsById = new Map(
-    (context?.capability_atoms ?? []).map(a => [a?.atom_id, a])
-  );
-  const evidenceGapIds = new Set(
-    asArray(context?.evidence_gaps).map(g => g?.gap_id)
-  );
-
-  const atomRefCounts = new Map();
-  const coverageIds = new Set();
-
-  for (const [index, entry] of coverage.entries()) {
-    const entryLabel = `source_capability_coverage[${index}]`;
-
-    if (!String(entry?.source_capability_id || "").trim()) {
-      fail(`${entryLabel}: source_capability_id is required`);
-    } else {
-      if (coverageIds.has(entry.source_capability_id)) {
-        fail(`${entryLabel}: duplicate source_capability_id ${entry.source_capability_id}`);
-      }
-      coverageIds.add(entry.source_capability_id);
-    }
-
-    const allowedDispositions = new Set(["atom", "evidence_gap", "excluded_by_source"]);
-    if (!allowedDispositions.has(entry?.disposition)) {
-      fail(`${entryLabel}: disposition must be one of atom, evidence_gap, excluded_by_source`);
-    }
-
-    // Note: disposition "user_confirmed_merge" is excluded from the schema enum
-    // so this case is handled by JSON Schema validation before reaching this code.
-    // Listed here only to document intent for future schema extensions.
-
-    if (entry?.disposition === "atom") {
-      if (!entry?.capability_atom_ref) {
-        fail(`${entryLabel}: disposition=atom requires capability_atom_ref`);
-      } else if (!atomsById.has(entry.capability_atom_ref)) {
-        fail(`${entryLabel}: capability_atom_ref ${entry.capability_atom_ref} does not reference a known capability atom`);
-      } else {
-        atomRefCounts.set(
-          entry.capability_atom_ref,
-          (atomRefCounts.get(entry.capability_atom_ref) ?? 0) + 1
-        );
-      }
-    }
-
-    if (entry?.disposition === "evidence_gap") {
-      if (!entry?.evidence_gap_ref) {
-        fail(`${entryLabel}: disposition=evidence_gap requires evidence_gap_ref`);
-      } else if (!evidenceGapIds.has(entry.evidence_gap_ref)) {
-        fail(`${entryLabel}: evidence_gap_ref ${entry.evidence_gap_ref} does not reference a known evidence gap`);
-      }
-    }
-  }
-
-  if (data.outline_maturity === "explore") {
-    for (const [atomId, count] of atomRefCounts.entries()) {
-      if (count > 1) {
-        fail(`capability atom ${atomId} is referenced by ${count} source capabilities; initial Level 1 requires one-to-one coverage — each source capability must map to its own atom`);
-      }
-    }
-
-    for (const [atomId] of atomsById.entries()) {
-      if (!atomRefCounts.has(atomId)) {
-        fail(`capability atom ${atomId} has no matching source_capability_coverage entry; every atom must trace back to a source capability`);
-      }
-    }
-  }
-}
-
-function validateOutlineDiscoveryBusinessContext(data) {
-  const context = data.business_context;
-  if (!context || typeof context !== "object" || Array.isArray(context)) {
-    fail("outline discovery business_context must be an object");
-    return;
-  }
-  const sourcesByPath = new Map(asArray(data.source_snapshot).map((source) => [String(source?.path || "").replace(/\\/g, "/"), source]));
-  const validateSourceRefs = (entry, label) => {
-    if (!allowedOutlineSourceStatuses.has(entry?.source_status)) fail(`${label}: unsupported source_status`);
-    const refs = asArray(entry?.source_refs);
-    if (!refs.length) fail(`${label}: source_refs must not be empty`);
-    for (const ref of refs) {
-      const normalized = String(ref || "").replace(/\\/g, "/");
-      const hash = normalized.indexOf("#");
-      const sourcePath = hash === -1 ? normalized : normalized.slice(0, hash);
-      const anchor = hash === -1 ? "" : normalized.slice(hash + 1);
-      if (sourcePath === data.constitution_snapshot?.source_path || /(?:^|\/)constitution\.md$/i.test(sourcePath)) {
-        fail(`${label}: Constitution cannot be business evidence`);
-      }
-      const source = sourcesByPath.get(sourcePath);
-      if (!source || (anchor && (!Array.isArray(source.anchors) || !source.anchors.includes(anchor)))) {
-        fail(`${label}: source_refs must reference source_snapshot and its declared anchors`);
-      }
-    }
-  };
-  const subject = context.product_subject;
-  for (const key of ["label", "summary"]) if (!String(subject?.[key] || "").trim()) fail(`business product_subject.${key} is required`);
-  validateSourceRefs(subject, "business product_subject");
-
-  const collect = (key, idKey, requiredTextFields = ["label", "summary"]) => {
-    const values = asArray(context[key]);
-    if (!values.length) fail(`business_context.${key} must not be empty`);
-    const ids = new Set();
-    for (const [index, entry] of values.entries()) {
-      const label = `business_context.${key}[${index}]`;
-      for (const field of [idKey, ...requiredTextFields]) if (!String(entry?.[field] || "").trim()) fail(`${label}: ${field} is required`);
-      if (ids.has(entry?.[idKey])) fail(`${label}: duplicate ${idKey}`);
-      ids.add(entry?.[idKey]);
-      validateSourceRefs(entry, label);
-    }
-    return { values, ids };
-  };
-  const objects = collect("business_objects", "object_id");
-  const operations = collect("operations", "operation_id");
-  const outcomes = collect("outcomes", "outcome_id");
-
-  // Semantic quality checks for business_objects
-  for (const [index, obj] of objects.values.entries()) {
-    validateBusinessObjectSemantics(`business_context.business_objects[${index}]`, obj);
-  }
-
-  // Semantic quality checks for operations
-  for (const [index, op] of operations.values.entries()) {
-    validateBusinessOperationSemantics(`business_context.operations[${index}]`, op);
-  }
-
-  // Semantic quality checks for outcomes
-  for (const [index, outcome] of outcomes.values.entries()) {
-    validateBusinessOutcomeSemantics(`business_context.outcomes[${index}]`, outcome);
-  }
-
-  for (const [index, operation] of operations.values.entries()) {
-    if (!Array.isArray(operation.object_refs) || !operation.object_refs.length || operation.object_refs.some((id) => !objects.ids.has(id))) {
-      fail(`business operation[${index}] object_refs must reference business_objects`);
-    }
-  }
-  const chains = collect("business_chains", "chain_id", [
-    "label", "chain_kind", "trigger_kind", "trigger_or_input", "owned_state",
-    "primary_outcome_ref", "downstream_handoff",
-  ]);
-  const chainsById = new Map(chains.values.map((chain) => [chain.chain_id, chain]));
-  const primaryOutcomeOwnerCounts = new Map();
-  for (const [index, chain] of chains.values.entries()) {
-    if (!allowedBusinessChainKinds.has(chain?.chain_kind)) fail(`business chain[${index}] chain_kind is invalid`);
-    if (!allowedBusinessTriggerKinds.has(chain?.trigger_kind)) fail(`business chain[${index}] trigger_kind is invalid`);
-    if (!Array.isArray(chain.object_refs) || !chain.object_refs.length) fail("business chain must reference at least one business object");
-    else if (chain.object_refs.some((id) => !objects.ids.has(id))) fail(`business chain[${index}] object_refs must reference business_objects`);
-    if (!Array.isArray(chain.operation_refs) || !chain.operation_refs.length || chain.operation_refs.some((id) => !operations.ids.has(id))) {
-      fail(`business chain[${index}] operation_refs must reference operations`);
-    }
-    if (!Array.isArray(chain.outcome_refs) || !chain.outcome_refs.length || chain.outcome_refs.some((id) => !outcomes.ids.has(id))) {
-      fail(`business chain[${index}] outcome_refs must reference outcomes`);
-    }
-    if (!outcomes.ids.has(chain?.primary_outcome_ref) || !asArray(chain?.outcome_refs).includes(chain?.primary_outcome_ref)) {
-      fail(`business chain[${index}] primary_outcome_ref must reference one of its outcomes`);
-    }
-    if (data.outline_maturity === "explore") {
-      if (asArray(chain?.outcome_refs).length !== 1) {
-        fail(`business chain[${index}] must have exactly one independently accepted outcome in Level 1`);
-      }
-      if (triggerKindByChainKind.get(chain?.chain_kind) !== chain?.trigger_kind) {
-        fail(`business chain[${index}] chain_kind and trigger_kind are inconsistent`);
-      }
-      if (String(chain?.primary_outcome_ref || "").trim()) {
-        primaryOutcomeOwnerCounts.set(
-          chain.primary_outcome_ref,
-          (primaryOutcomeOwnerCounts.get(chain.primary_outcome_ref) || 0) + 1,
-        );
-      }
-    }
-  }
-  if (data.outline_maturity === "explore") {
-    for (const [outcomeId, ownerCount] of primaryOutcomeOwnerCounts.entries()) {
-      if (ownerCount !== 1) fail(`primary outcome must be owned by exactly one Level 1 business chain: ${outcomeId}`);
-    }
-  }
-  const atoms = collect("capability_atoms", "atom_id", ["label"]);
-  const capabilityAtomCountsByChain = new Map(chains.values.map((chain) => [chain.chain_id, 0]));
-  for (const [index, atom] of atoms.values.entries()) {
-    if (!allowedBusinessTriggerKinds.has(atom?.trigger_kind)) fail(`capability atom[${index}] trigger_kind is invalid`);
-    if (!Array.isArray(atom.object_refs) || !atom.object_refs.length || atom.object_refs.some((id) => !objects.ids.has(id))) {
-      fail(`capability atom[${index}] object_refs must reference business_objects`);
-    }
-    if (!Array.isArray(atom.operation_refs) || !atom.operation_refs.length || atom.operation_refs.some((id) => !operations.ids.has(id))) {
-      fail(`capability atom[${index}] operation_refs must reference operations`);
-    }
-    if (!Array.isArray(atom.outcome_refs) || !atom.outcome_refs.length || atom.outcome_refs.some((id) => !outcomes.ids.has(id))) {
-      fail(`capability atom[${index}] outcome_refs must reference outcomes`);
-    }
-    if (!Array.isArray(atom.business_chain_refs) || !atom.business_chain_refs.length || atom.business_chain_refs.some((id) => !chains.ids.has(id))) {
-      fail(`capability atom[${index}] business_chain_refs must reference business_chains`);
-    } else if (data.outline_maturity === "explore" && atom.business_chain_refs.length !== 1) {
-      fail(`capability atom[${index}] must reference exactly one primary business chain`);
-    }
-    if (data.outline_maturity === "explore" && atom.business_chain_refs?.length === 1) {
-      const chain = chainsById.get(atom.business_chain_refs[0]);
-      if (chain) {
-        capabilityAtomCountsByChain.set(chain.chain_id, capabilityAtomCountsByChain.get(chain.chain_id) + 1);
-      }
-      if (chain && atom.trigger_kind !== chain.trigger_kind) {
-        fail(`capability atom[${index}] trigger_kind must match its business chain`);
-      }
-      if (chain && ["trigger_or_input", "owned_state", "primary_outcome_ref", "downstream_handoff"]
-        .some((field) => atom?.[field] !== chain?.[field])) {
-        fail(`capability atom[${index}] semantic fields must match its business chain`);
-      }
-      if (asArray(atom.outcome_refs).length !== 1 || (chain && atom.outcome_refs[0] !== chain.primary_outcome_ref)) {
-        fail(`capability atom[${index}] must contribute to its Level 1 business chain primary outcome`);
-      }
-    }
-
-    // Semantic quality check for capability_atoms
-    validateCapabilityAtomSemantics(`business_context.capability_atoms[${index}]`, atom);
-    warnIfAtomTooCoarse(`business_context.capability_atoms[${index}]`, atom, data);
-  }
-  if (data.outline_maturity === "explore") {
-    for (const [chainId, atomCount] of capabilityAtomCountsByChain.entries()) {
-      if (atomCount !== 1) {
-        fail(`business chain ${chainId} must have exactly one Level 1 capability atom`);
-      }
-    }
-  }
-  if (!Array.isArray(context.evidence_gaps)) fail("business_context.evidence_gaps must be an array");
-  const evidenceGaps = Array.isArray(context.evidence_gaps) ? context.evidence_gaps : [];
-  const evidenceGapIds = new Set();
-  for (const [index, gap] of evidenceGaps.entries()) {
-    if (!String(gap?.gap_id || "").trim() || !String(gap?.summary || "").trim()) fail(`business evidence_gap[${index}] fields are required`);
-    if (evidenceGapIds.has(gap.gap_id)) fail(`duplicate evidence gap_id ${gap.gap_id}`);
-    evidenceGapIds.add(gap.gap_id);
-    if (!Array.isArray(gap?.business_chain_refs) || !gap.business_chain_refs.length || gap.business_chain_refs.some((id) => !chains.ids.has(id))) {
-      fail(`business evidence_gap[${index}] business_chain_refs must reference business_chains`);
-    }
-  }
-  validateSourceCapabilityCoverage(data);
-  if (data.outline_maturity === "frame" && !chains.values.some((chain) => ["user", "user-confirmed", "doc"].includes(chain.source_status))) {
-    fail("frame maturity requires at least one source-backed complete business chain");
-  }
-}
-
-function validateOutlineDiscoveryConstitution(data) {
-  const snapshot = data.constitution_snapshot;
-  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) fail("constitution_snapshot must be an object");
-  if (!isSafeRepositoryRelativePath(snapshot?.source_path)) fail("constitution_snapshot.source_path must be a safe repository-relative path");
-  if (!new Set(["available", "missing"]).has(snapshot?.availability)) fail("constitution_snapshot.availability is invalid");
-  if (snapshot?.display_mode !== "read_only") fail("constitution_snapshot.display_mode must be read_only");
-  if (snapshot?.application_scope !== "governance_only") fail("constitution_snapshot.application_scope must be governance_only");
-  if (!Array.isArray(snapshot?.clauses)) fail("constitution_snapshot.clauses must be an array");
-  const clauses = Array.isArray(snapshot?.clauses) ? snapshot.clauses : [];
-  if (snapshot?.availability === "missing" && clauses.length) fail("missing constitution_snapshot cannot contain clauses");
-  const ids = new Set();
-  for (const [index, clause] of clauses.entries()) {
-    for (const key of ["clause_id", "title", "summary", "source_anchor", "applicability_status"]) {
-      if (!String(clause?.[key] || "").trim()) fail(`constitution clause[${index}].${key} is required`);
-    }
-    if (ids.has(clause.clause_id)) fail(`duplicate constitution clause_id ${clause.clause_id}`);
-    ids.add(clause.clause_id);
-    if (!new Set(["applicable", "possibly_applicable", "not_applicable"]).has(clause.applicability_status)) {
-      fail(`constitution clause[${index}].applicability_status is invalid`);
-    }
-  }
-}
-
 function validateOutlineDiscovery(data) {
   for (const key of [
     "schema_version", "review_type", "interaction_mode", "artifact_path", "outline_maturity",
-    "batch_id", "project", "source_snapshot", "business_context", "constitution_snapshot", "density_budget", "maps", "outline_nodes",
-    "question_groups", "authorization_effect", "next_route"
+    "batch_id", "project", "source_snapshot", "question_groups", "authorization_effect", "next_route"
   ]) {
     if (data[key] === undefined || data[key] === null || data[key] === "") fail(`missing ${key}`);
   }
-  if (data.schema_version !== 3) fail("outline discovery requires schema_version 3");
+  if (data.schema_version !== 1) fail("outline discovery requires schema_version 1");
   if (data.interaction_mode !== "discovery") fail("outline discovery interaction_mode must be discovery");
   if (!new Set(["explore", "frame"]).has(data.outline_maturity)) {
     fail("outline discovery outline_maturity must be explore or frame");
@@ -2430,10 +1575,6 @@ function validateOutlineDiscovery(data) {
     }
   }
 
-  validateOutlineDiscoveryConstitution(data);
-  validateOutlineDiscoveryBusinessContext(data);
-  const { mapsById, nodesById } = validateOutlineDiscoveryTopology(data);
-
   const groups = asArray(data.question_groups);
   if (!groups.length) fail("outline discovery question_groups must contain at least one group");
   const groupIds = new Set();
@@ -2446,7 +1587,6 @@ function validateOutlineDiscovery(data) {
     for (const key of ["title", "summary"]) {
       if (!String(group?.[key] || "").trim()) fail(`${groupLabel}: ${key} is required`);
     }
-    if (!mapsById.has(group?.map_id)) fail(`${groupLabel}: map_id must reference an existing map`);
     const questions = asArray(group?.questions);
     if (!questions.length) fail(`${groupLabel}: questions must contain at least one question`);
     for (const [questionIndex, question] of questions.entries()) {
@@ -2454,15 +1594,8 @@ function validateOutlineDiscovery(data) {
       if (!String(question?.id || "").trim()) fail(`${questionLabel}: id is required`);
       else if (questionIds.has(question.id)) fail(`duplicate discovery question id ${question.id}`);
       questionIds.add(question?.id);
-      for (const key of ["outline_node_id", "target_kind", "prompt", "context", "selection_mode", "recommendation_reason"]) {
+      for (const key of ["target_kind", "prompt", "context", "selection_mode", "recommendation_reason"]) {
         if (!String(question?.[key] || "").trim()) fail(`${questionLabel}: ${key} is required`);
-      }
-      const questionNode = nodesById.get(question?.outline_node_id);
-      if (!questionNode) fail(`${questionLabel}: outline_node_id must reference an existing node`);
-      else if (questionNode.map_id !== group?.map_id) fail(`${questionLabel}: outline_node_id must belong to the question group map`);
-      const questionMap = questionNode ? mapsById.get(questionNode.map_id) : null;
-      if (questionMap?.map_kind === "global_constraints" || Array.isArray(questionNode?.constitution_clause_refs)) {
-        fail(`${questionLabel}: cannot bind a Constitution governance node`);
       }
       if (question?.selection_mode !== "single") {
         fail(`${questionLabel}: selection_mode must be single`);
@@ -2472,46 +1605,12 @@ function validateOutlineDiscovery(data) {
         fail(`${questionLabel}: discovery questions require 2-4 candidates`);
       }
       const candidateIds = new Set();
-      const businessChainIds = new Set(asArray(data.business_context?.business_chains).map((chain) => chain?.chain_id));
-      const capabilityAtomsById = new Map(asArray(data.business_context?.capability_atoms).map((atom) => [atom?.atom_id, atom]));
-      const currentLevelOneProject = data.outline_maturity === "explore"
-        ? (questionMap?.map_kind === "branch"
-          ? asArray(data.outline_nodes).find((node) => node?.child_map_id === questionMap.map_id)
-          : (questionMap?.map_kind === "overview" && questionNode?.node_kind === "map_link" ? questionNode : null))
-        : null;
-      const currentLevelOneAtomId = currentLevelOneProject?.capability_atom_refs?.length === 1
-        ? currentLevelOneProject.capability_atom_refs[0]
-        : null;
       for (const [candidateIndex, candidate] of candidates.entries()) {
         const candidateLabel = `${questionLabel}:candidate[${candidateIndex}]`;
         for (const key of ["id", "label", "value", "rationale"]) {
           if (!String(candidate?.[key] || "").trim()) fail(`${candidateLabel}: ${key} is required`);
         }
         if (candidateIds.has(candidate?.id)) fail(`${questionLabel}: duplicate candidate id ${candidate?.id}`);
-        if (!Array.isArray(candidate?.business_chain_refs) || !candidate.business_chain_refs.length ||
-            candidate.business_chain_refs.some((id) => !businessChainIds.has(id))) {
-          fail(`${candidateLabel}: business_chain_refs must reference business_context`);
-        }
-        if (data.outline_maturity === "explore" && candidate?.business_chain_refs?.length !== 1) {
-          fail(`${candidateLabel}: Level 1 candidate must reference exactly one primary business chain`);
-        }
-        if (!Array.isArray(candidate?.capability_atom_refs) || !candidate.capability_atom_refs.length ||
-            new Set(candidate.capability_atom_refs).size !== candidate.capability_atom_refs.length ||
-            candidate.capability_atom_refs.some((id) => !capabilityAtomsById.has(id))) {
-          fail(`${candidateLabel}: capability_atom_refs must reference business_context`);
-        } else if (data.outline_maturity === "explore" && candidate?.business_chain_refs?.length === 1) {
-          if (candidate.capability_atom_refs.length !== 1 ||
-              !currentLevelOneAtomId || candidate.capability_atom_refs[0] !== currentLevelOneAtomId) {
-            fail(`${candidateLabel}: must reference the current Level 1 project capability atom`);
-          }
-          const primaryChainId = candidate.business_chain_refs[0];
-          for (const atomId of candidate.capability_atom_refs) {
-            const atom = capabilityAtomsById.get(atomId);
-            if (atom && (atom.business_chain_refs?.length !== 1 || atom.business_chain_refs[0] !== primaryChainId)) {
-              fail(`${candidateLabel}: capability atom ${atomId} must match the candidate primary business chain`);
-            }
-          }
-        }
         candidateIds.add(candidate?.id);
       }
       const recommendations = asArray(question?.recommended_candidate_ids);
@@ -2530,23 +1629,10 @@ function validateOutlineDiscovery(data) {
       }
     }
   }
-  const questionedNodeIds = new Set(groups.flatMap((group) => asArray(group?.questions).map((question) => question?.outline_node_id)));
-  for (const node of asArray(data.outline_nodes)) {
-    const map = mapsById.get(node.map_id);
-    const childKind = mapsById.get(node.child_map_id)?.map_kind;
-    const isBusinessNode = map?.map_kind === "branch" ||
-      (map?.map_kind === "overview" && node.node_kind !== "root" && childKind !== "global_constraints");
-    if (node?.source_status === "ai-proposed" && isBusinessNode && !questionedNodeIds.has(node.node_id)) {
-      fail(`ai-proposed business node must bind a question: ${node.node_id}`);
-    }
-  }
-  validateOverviewMapLinkSummaryCompleteness(data);
-  validateDiscoveryCandidateDetailField(data);
-  validateOutlineDiscoveryNoDensityMerge(data);
 }
 
 function validateOutlineDiscoveryResponse(data) {
-  if (data.schema_version !== 3) fail("outline discovery response requires schema_version 3");
+  if (data.schema_version !== 1) fail("outline discovery response requires schema_version 1");
   if (data.review_type !== "outline_discovery") fail("outline discovery response review_type must be outline_discovery");
   if (data.authorization_effect !== "none") fail("outline discovery response authorization_effect must be none");
   if (data.next_route !== "/sp.prd") fail("outline discovery response next_route must be /sp.prd");
@@ -2561,30 +1647,6 @@ function validateOutlineDiscoveryResponse(data) {
       sourcePath !== `specs/${data.feature}/prd/review/outline-discovery-data.json`) {
     fail("outline discovery response source_review_data must match its feature");
   }
-  let source = null;
-  const resolvedSourcePath = new URL(sourcePath, `file://${process.cwd().replace(/\\/g, "/")}/`);
-  try {
-    source = JSON.parse(fs.readFileSync(resolvedSourcePath, "utf8"));
-  } catch (error) {
-    fail(`outline discovery response source data is unavailable or invalid: ${error.message}`);
-  }
-  if (source) {
-    validateOutlineDiscovery(source);
-    if (source.batch_id !== data.batch_id || source.project?.feature !== data.feature ||
-        source.outline_maturity !== data.outline_maturity) {
-      fail("outline discovery response identity must match its source data");
-    }
-  }
-  const sourceMaps = new Map(asArray(source?.maps).map((map) => [map?.map_id, map]));
-  const sourceNodes = new Map(asArray(source?.outline_nodes).map((node) => [node?.node_id, node]));
-  const sourceQuestions = new Map(
-    asArray(source?.question_groups).flatMap((group) =>
-      asArray(group?.questions).map((question) => [question?.id, question]),
-    ),
-  );
-  const constitutionClauseIds = new Set(
-    asArray(source?.constitution_snapshot?.clauses).map((clause) => clause?.clause_id),
-  );
   const deltas = asArray(data.deltas);
   if (!deltas.length) fail("outline discovery response deltas must contain at least one delta");
   const deltaIds = new Set();
@@ -2594,19 +1656,8 @@ function validateOutlineDiscoveryResponse(data) {
     if (!String(delta?.delta_id || "").trim()) fail(`${label}: delta_id is required`);
     else if (deltaIds.has(delta.delta_id)) fail(`duplicate delta_id ${delta.delta_id}`);
     deltaIds.add(delta?.delta_id);
-    for (const key of ["question_id", "outline_node_id", "target_kind"]) {
+    for (const key of ["question_id", "target_kind"]) {
       if (!String(delta?.[key] || "").trim()) fail(`${label}: ${key} is required`);
-    }
-    const sourceQuestion = sourceQuestions.get(delta?.question_id);
-    const sourceNode = sourceNodes.get(delta?.outline_node_id);
-    if (!sourceQuestion || sourceQuestion.outline_node_id !== delta?.outline_node_id ||
-        sourceQuestion.target_kind !== delta?.target_kind) {
-      fail(`${label}: question and node must match source discovery data`);
-    }
-    if (sourceMaps.get(sourceNode?.map_id)?.map_kind === "global_constraints" ||
-        Array.isArray(sourceNode?.constitution_clause_refs) ||
-        constitutionClauseIds.has(delta?.target_id) || /^constitution(?:-|$)/i.test(String(delta?.target_id || ""))) {
-      fail(`${label}: Constitution content is read-only and cannot be a discovery target`);
     }
     if (questionIds.has(delta?.question_id)) fail(`${label}: question_id occurs more than once`);
     questionIds.add(delta?.question_id);
@@ -2642,7 +1693,7 @@ function validateOutlineDiscoveryResponse(data) {
 }
 
 function validateOutlineIntentLedger(data) {
-  if (data.schema_version !== 3) fail("outline intent ledger requires schema_version 3");
+  if (data.schema_version !== 1) fail("outline intent ledger requires schema_version 1");
   if (!String(data.feature || "").trim()) fail("outline intent ledger feature is required");
   if (!Array.isArray(data.events)) fail("outline intent ledger events must be an array");
   const earlierIds = new Set();
@@ -2655,9 +1706,6 @@ function validateOutlineIntentLedger(data) {
     }
     for (const key of ["response_id", "target_kind", "operation", "source_tag", "recorded_at"]) {
       if (!String(event?.[key] ?? "").trim()) fail(`${label}: ${key} is required`);
-    }
-    if (!(typeof event?.outline_node_id === "string" || event?.outline_node_id === null)) {
-      fail(`${label}: outline_node_id must be string or null`);
     }
     if (!new Set(["explore", "frame"]).has(event?.maturity)) fail(`${label}: maturity must be explore or frame`);
     if (!allowedDiscoveryOperations.has(event?.operation)) fail(`${label}: unsupported operation ${event?.operation}`);

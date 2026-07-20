@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.local/schemas/outline-discovery-data.schema.json",
+  "title": "SpecCompass Outline Discovery Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "review_type", "interaction_mode", "artifact_path",
+    "outline_maturity", "batch_id", "project", "source_snapshot",
+    "question_groups", "authorization_effect", "next_route"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "review_type": {"const": "outline_discovery"},
+    "interaction_mode": {"const": "discovery"},
+    "artifact_path": {"type": "string", "pattern": "^specs/[^/]+/prd/review/outline-discovery-data\\.json$"},
+    "outline_maturity": {"enum": ["explore", "frame"]},
+    "batch_id": {"type": "string", "minLength": 1},
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "feature", "current_understanding", "discovery_goal"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "feature": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "current_understanding": {"type": "string", "minLength": 1},
+        "discovery_goal": {"type": "string", "minLength": 1}
+      }
+    },
+    "source_snapshot": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/source"}
+    },
+    "question_groups": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/question_group"}
+    },
+    "authorization_effect": {"const": "none"},
+    "next_route": {"const": "/sp.prd"}
+  },
+  "$defs": {
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "source_type"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "source_type": {"type": "string", "minLength": 1},
+        "anchors": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "question_group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "summary", "questions"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "summary": {"type": "string", "minLength": 1},
+        "questions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/question"}}
+      }
+    },
+    "question": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "target_kind", "prompt", "context", "selection_mode",
+        "candidates", "recommended_candidate_ids", "recommendation_reason",
+        "allow_none_of_the_above", "free_input"
+      ],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "target_kind": {"type": "string", "minLength": 1},
+        "prompt": {"type": "string", "minLength": 1},
+        "context": {"type": "string", "minLength": 1},
+        "selection_mode": {"const": "single"},
+        "candidates": {
+          "type": "array", "minItems": 2, "maxItems": 4,
+          "items": {"$ref": "#/$defs/candidate"}
+        },
+        "recommended_candidate_ids": {
+          "type": "array", "minItems": 1, "maxItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "recommendation_reason": {"type": "string", "minLength": 1},
+        "allow_none_of_the_above": {"const": true},
+        "free_input": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["enabled", "label", "allowed_operations"],
+          "properties": {
+            "enabled": {"const": true},
+            "label": {"type": "string", "minLength": 1},
+            "allowed_operations": {
+              "type": "array", "minItems": 5, "maxItems": 5, "uniqueItems": true,
+              "items": {"enum": ["confirm_candidate", "add", "replace", "exclude", "context_note"]}
+            }
+          }
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "value", "rationale"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "value": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

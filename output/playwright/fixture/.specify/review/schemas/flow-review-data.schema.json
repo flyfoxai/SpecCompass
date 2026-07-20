@@ -1,0 +1,292 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.local/schemas/flow-review-data.schema.json",
+  "title": "SpecCompass Flow Review Data",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "review_type",
+    "artifact_path",
+    "confirm_strategy",
+    "batch_id",
+    "project",
+    "source_snapshot",
+    "modules"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "enum": [1, 2]
+    },
+    "review_type": {
+      "const": "flow"
+    },
+    "artifact_path": {
+      "type": "string",
+      "pattern": "flow-review-data\\.json$"
+    },
+    "confirm_strategy": {
+      "type": "string",
+      "enum": ["batch", "hybrid", "rolling"]
+    },
+    "batch_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "feature", "business_overview", "review_goal"],
+      "properties": {
+        "name": {"type": "string"},
+        "feature": {"type": "string"},
+        "business_overview": {"type": "string", "minLength": 18},
+        "review_goal": {"type": "string", "minLength": 18}
+      }
+    },
+    "source_snapshot": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path"],
+        "properties": {
+          "path": {"type": "string"},
+          "anchors": {"type": "array", "items": {"type": "string"}},
+          "semantic_scope": {"type": "array", "items": {"type": "string"}}
+        }
+      }
+    },
+    "modules": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/module"
+      }
+    },
+    "schema_notes": {
+      "type": "array",
+      "items": {"type": "string"}
+    }
+  },
+  "$defs": {
+    "module": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "summary", "diagrams"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "summary": {"type": "string", "minLength": 18},
+        "review_layer": {
+          "type": "string",
+          "enum": ["business", "system_arch", "mixed"]
+        },
+        "must_confirm_total": {"type": "integer", "minimum": 0},
+        "diagrams": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/review_item"}
+        },
+        "trace_notes": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "review_item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "summary", "source_path", "item_type", "nodes"],
+      "properties": {
+        "id": {"type": "string"},
+        "title": {"type": "string"},
+        "summary": {"type": "string", "minLength": 18},
+        "source_path": {"type": "string"},
+        "item_type": {
+          "type": "string",
+          "enum": ["flowchart", "sequence", "state", "table", "index"]
+        },
+        "complex_flow_exception": {"type": "string"},
+        "low_risk_linear_exception": {"type": "string"},
+        "nodes": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/node"}
+        },
+        "edges": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/edge"}
+        },
+        "trace_notes": {
+          "type": "array",
+          "items": {"type": "string"}
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "review_level": {"const": "must_confirm"}
+            },
+            "required": ["review_level"]
+          },
+          "then": {
+            "properties": {
+              "options": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 4
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "options": {
+                "type": "array",
+                "minItems": 2,
+                "maxItems": 2
+              }
+            },
+            "required": ["options"]
+          },
+          "then": {
+            "required": ["options_count_rationale"],
+            "properties": {
+              "options_count_rationale": {
+                "type": "string",
+                "minLength": 18
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["options"]
+          },
+          "then": {
+            "required": ["decision_background", "decision_summary"]
+          }
+        }
+      ],
+      "required": [
+        "id",
+        "label",
+        "plain_summary",
+        "review_layer",
+        "review_level",
+        "owner",
+        "node_kind",
+        "source_ref"
+      ],
+      "properties": {
+        "id": {"type": "string"},
+        "label": {"type": "string"},
+        "plain_summary": {"type": "string"},
+        "decision_background": {"type": "string"},
+        "decision_summary": {"type": "string"},
+        "action_prompt": {"type": "string"},
+        "review_layer": {
+          "type": "string",
+          "enum": ["business", "system_arch"]
+        },
+        "review_level": {
+          "type": "string",
+          "enum": [
+            "must_confirm",
+            "recommended",
+            "uncertain",
+            "key_step",
+            "verified",
+            "system_arch"
+          ]
+        },
+        "confirmation_priority": {
+          "type": "string",
+          "enum": ["critical", "important", "normal"]
+        },
+        "priority_reason": {"type": "string", "minLength": 18},
+        "critical_basis": {"type": "string", "minLength": 18},
+        "owner": {"type": "string"},
+        "node_kind": {
+          "type": "string",
+          "enum": [
+            "human_judgment",
+            "flow",
+            "decision",
+            "error",
+            "state",
+            "ui",
+            "system",
+            "external",
+            "role",
+            "sequence"
+          ]
+        },
+        "source_ref": {"type": "string"},
+        "options_count_rationale": {"type": "string", "minLength": 18},
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 4,
+          "items": {"$ref": "#/$defs/option"}
+        },
+        "recommended_option": {"type": "string"}
+      }
+    },
+    "option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "benefit", "cost", "consequence", "next_exit"],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "id": {"const": "OPTION_B"}
+            },
+            "required": ["id"]
+          },
+          "then": {
+            "properties": {
+              "next_exit": {"pattern": "^needs-decision"}
+            }
+          }
+        }
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": ["OPTION_A", "OPTION_B", "OPTION_C", "OPTION_D"]
+        },
+        "label": {"type": "string"},
+        "benefit": {"type": "string"},
+        "cost": {"type": "string"},
+        "recommendation_reason": {"type": "string"},
+        "when_to_choose": {"type": "string"},
+        "consequence": {"type": "string"},
+        "project_impact": {"type": "string"},
+        "next_exit": {
+          "type": "string",
+          "description": "OPTION_B.next_exit must start with 'needs-decision'. Other options should provide a concrete continuation route."
+        },
+        "recommended": {"type": "boolean"}
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": {"type": "string"},
+        "to": {"type": "string"},
+        "label": {"type": "string"}
+      }
+    }
+  }
+}
