@@ -90,7 +90,7 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in content
         assert "make confirmation of that split the default recommendation" in content
         assert "private compilation work" in content
-        assert "never serialize or narrate the table" in content
+        assert "source_capability_coverage serialized in this Stage is NOT private" in content
         assert "Generic implementation components" in content
         assert "final visible-copy sanitization pass" in content
         assert "do not announce that sanitization occurred" in content

@@ -7812,6 +7812,7 @@ class TestSourceCapabilityCoverage:
             ["node", self._VALIDATOR, str(fixture_path)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
 
     def test_valid_full_coverage_passes(self):
@@ -7827,7 +7828,7 @@ class TestSourceCapabilityCoverage:
         assert result.returncode != 0, (
             "Density merge boilerplate should cause validation failure"
         )
-        combined = (result.stdout + result.stderr).lower()
+        combined = ((result.stdout or "") + (result.stderr or "")).lower()
         assert "density" in combined or "boilerplate" in combined, (
             f"Error message should mention density/boilerplate:\n{result.stderr}"
         )
