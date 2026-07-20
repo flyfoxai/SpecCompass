@@ -1,0 +1,1036 @@
+{
+  "schema_version": 3,
+  "review_type": "outline_discovery",
+  "interaction_mode": "discovery",
+  "artifact_path": "specs/valid-test/prd/review/outline-discovery-data.json",
+  "outline_maturity": "frame",
+  "batch_id": "TEST-VALID-COVERAGE-001",
+  "project": {
+    "name": "交易执行与信任合规系统",
+    "feature": "valid-test",
+    "current_understanding": "系统覆盖手工下单、策略信号意图、网关恢复与急停四条执行能力，以及交易事实对账与行情质量两条信任合规能力。",
+    "discovery_goal": "确认六个源能力各自的原子边界、状态所有权与可观测结果，形成一一对应的能力覆盖。"
+  },
+  "source_snapshot": [
+    {
+      "path": "specs/trading-system/prd.md",
+      "source_type": "user_document",
+      "anchors": [
+        "系统概述",
+        "交易执行",
+        "信任与合规"
+      ]
+    }
+  ],
+  "business_context": {
+    "product_subject": {
+      "label": "交易执行与信任合规系统",
+      "summary": "把手工与策略交易意图转化为受控执行，并持续保障交易事实与行情质量。",
+      "source_status": "user",
+      "source_refs": [
+        "specs/trading-system/prd.md#系统概述"
+      ]
+    },
+    "source_capability_coverage": [
+      {
+        "source_capability_id": "SRC-CAP-001",
+        "label": "源能力：手工下单",
+        "trigger_or_input": "交易员在终端提交手工委托单",
+        "owned_state": "已通过参数校验并等待路由的手工委托单",
+        "observable_outcome": "手工委托已被交易台接收，可被外部观测并留痕",
+        "disposition": "atom",
+        "capability_atom_ref": "ATOM-MANUAL",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "source_capability_id": "SRC-CAP-002",
+        "label": "源能力：策略信号意图",
+        "trigger_or_input": "策略引擎产生新的交易信号",
+        "owned_state": "已绑定策略标识并等待执行的信号意图",
+        "observable_outcome": "策略信号意图已生成并记录，可被外部观测并留痕",
+        "disposition": "atom",
+        "capability_atom_ref": "ATOM-STRATEGY",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "source_capability_id": "SRC-CAP-003",
+        "label": "源能力：Gateway恢复",
+        "trigger_or_input": "网关连接中断或回报缺口被检测",
+        "owned_state": "已重连并完成回报回补的网关会话",
+        "observable_outcome": "网关会话已恢复并对齐回报，可被外部观测并留痕",
+        "disposition": "atom",
+        "capability_atom_ref": "ATOM-GATEWAY",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "source_capability_id": "SRC-CAP-004",
+        "label": "源能力：KillSwitch急停",
+        "trigger_or_input": "风控责任人触发急停开关",
+        "owned_state": "已冻结全部在途委托的急停生效状态",
+        "observable_outcome": "急停已生效并冻结在途委托，可被外部观测并留痕",
+        "disposition": "atom",
+        "capability_atom_ref": "ATOM-KILL",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "source_capability_id": "SRC-CAP-005",
+        "label": "源能力：交易事实对账",
+        "trigger_or_input": "日终或回报到达触发事实对账",
+        "owned_state": "已完成对账并标注差异的成交事实记录",
+        "observable_outcome": "交易事实已对账并标记差异，可被外部观测并留痕",
+        "disposition": "atom",
+        "capability_atom_ref": "ATOM-FACTS",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "source_capability_id": "SRC-CAP-006",
+        "label": "源能力：行情质量",
+        "trigger_or_input": "行情源推送新的报价批次",
+        "owned_state": "已完成延迟与缺口评估的行情质量快照",
+        "observable_outcome": "行情质量评分已更新，可被外部观测并留痕",
+        "disposition": "atom",
+        "capability_atom_ref": "ATOM-MARKET",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      }
+    ],
+    "business_objects": [
+      {
+        "object_id": "OBJ-MANUAL-ORDER",
+        "label": "手工委托单",
+        "summary": "交易员在终端手工录入的买卖委托记录。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "object_id": "OBJ-SIGNAL",
+        "label": "策略交易信号",
+        "summary": "策略引擎产生的买卖意图信号。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "object_id": "OBJ-GATEWAY-SESSION",
+        "label": "网关会话状态",
+        "summary": "交易网关连接与回报序列的会话状态。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "object_id": "OBJ-KILL-POLICY",
+        "label": "风控急停策略",
+        "summary": "定义急停触发条件与冻结范围的风控策略。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "object_id": "OBJ-TRADE-FACT",
+        "label": "成交事实记录",
+        "summary": "本地记录与券商回报构成的成交事实。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "object_id": "OBJ-MARKET-QUOTE",
+        "label": "行情质量快照",
+        "summary": "按批次评估的行情延迟与缺口快照。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      }
+    ],
+    "operations": [
+      {
+        "operation_id": "OP-SUBMIT-MANUAL",
+        "label": "提交并校验手工委托单参数",
+        "summary": "接收手工委托并校验价格、数量与账户合法性。",
+        "object_refs": [
+          "OBJ-MANUAL-ORDER"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "operation_id": "OP-DERIVE-SIGNAL",
+        "label": "根据策略模型推导交易信号意图",
+        "summary": "依据模型输出生成结构化交易信号意图。",
+        "object_refs": [
+          "OBJ-SIGNAL"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "operation_id": "OP-RECOVER-GATEWAY",
+        "label": "重建网关会话并回补丢失回报",
+        "summary": "检测中断后重连网关并回补缺失的成交回报。",
+        "object_refs": [
+          "OBJ-GATEWAY-SESSION"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "operation_id": "OP-TRIGGER-KILL",
+        "label": "触发急停并冻结全部在途委托",
+        "summary": "执行急停开关并冻结所有在途委托与新单。",
+        "object_refs": [
+          "OBJ-KILL-POLICY"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "operation_id": "OP-RECONCILE-FACTS",
+        "label": "比对券商回报与本地成交事实",
+        "summary": "逐笔比对回报与本地记录并标注差异。",
+        "object_refs": [
+          "OBJ-TRADE-FACT"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "operation_id": "OP-ASSESS-QUALITY",
+        "label": "评估行情延迟与缺口并打分",
+        "summary": "计算行情批次的延迟、缺口并给出质量评分。",
+        "object_refs": [
+          "OBJ-MARKET-QUOTE"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      }
+    ],
+    "outcomes": [
+      {
+        "outcome_id": "OUT-MANUAL-ACCEPTED",
+        "label": "手工委托已被交易台接收",
+        "summary": "手工委托通过校验并进入待路由状态。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "outcome_id": "OUT-SIGNAL-INTENT",
+        "label": "策略信号意图已生成并记录",
+        "summary": "策略信号意图已落库并等待执行。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "outcome_id": "OUT-GATEWAY-RECOVERED",
+        "label": "网关会话已恢复并对齐回报",
+        "summary": "网关会话恢复且回报序列重新对齐。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "outcome_id": "OUT-KILL-ENGAGED",
+        "label": "急停已生效并冻结在途委托",
+        "summary": "急停状态生效，所有在途委托被冻结。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "outcome_id": "OUT-FACTS-RECONCILED",
+        "label": "交易事实已对账并标记差异",
+        "summary": "成交事实完成对账，差异被标注留痕。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "outcome_id": "OUT-QUALITY-SCORED",
+        "label": "行情质量评分已更新",
+        "summary": "行情质量评分完成更新并对外可见。",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      }
+    ],
+    "capability_atoms": [
+      {
+        "atom_id": "ATOM-MANUAL",
+        "label": "手工下单",
+        "trigger_kind": "business_event",
+        "trigger_or_input": "交易员在终端提交手工委托单",
+        "owned_state": "已通过参数校验并等待路由的手工委托单",
+        "object_refs": [
+          "OBJ-MANUAL-ORDER"
+        ],
+        "operation_refs": [
+          "OP-SUBMIT-MANUAL"
+        ],
+        "outcome_refs": [
+          "OUT-MANUAL-ACCEPTED"
+        ],
+        "primary_outcome_ref": "OUT-MANUAL-ACCEPTED",
+        "downstream_handoff": "将已接收的手工委托单交付给订单路由责任",
+        "business_chain_refs": [
+          "CHAIN-MANUAL"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "atom_id": "ATOM-STRATEGY",
+        "label": "策略信号意图",
+        "trigger_kind": "business_event",
+        "trigger_or_input": "策略引擎产生新的交易信号",
+        "owned_state": "已绑定策略标识并等待执行的信号意图",
+        "object_refs": [
+          "OBJ-SIGNAL"
+        ],
+        "operation_refs": [
+          "OP-DERIVE-SIGNAL"
+        ],
+        "outcome_refs": [
+          "OUT-SIGNAL-INTENT"
+        ],
+        "primary_outcome_ref": "OUT-SIGNAL-INTENT",
+        "downstream_handoff": "将策略信号意图交付给订单执行责任",
+        "business_chain_refs": [
+          "CHAIN-STRATEGY"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "atom_id": "ATOM-GATEWAY",
+        "label": "Gateway恢复",
+        "trigger_kind": "exception_or_interruption",
+        "trigger_or_input": "网关连接中断或回报缺口被检测",
+        "owned_state": "已重连并完成回报回补的网关会话",
+        "object_refs": [
+          "OBJ-GATEWAY-SESSION"
+        ],
+        "operation_refs": [
+          "OP-RECOVER-GATEWAY"
+        ],
+        "outcome_refs": [
+          "OUT-GATEWAY-RECOVERED"
+        ],
+        "primary_outcome_ref": "OUT-GATEWAY-RECOVERED",
+        "downstream_handoff": "将恢复后的网关回报交付给交易事实责任",
+        "business_chain_refs": [
+          "CHAIN-GATEWAY"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "atom_id": "ATOM-KILL",
+        "label": "KillSwitch急停",
+        "trigger_kind": "governance_change",
+        "trigger_or_input": "风控责任人触发急停开关",
+        "owned_state": "已冻结全部在途委托的急停生效状态",
+        "object_refs": [
+          "OBJ-KILL-POLICY"
+        ],
+        "operation_refs": [
+          "OP-TRIGGER-KILL"
+        ],
+        "outcome_refs": [
+          "OUT-KILL-ENGAGED"
+        ],
+        "primary_outcome_ref": "OUT-KILL-ENGAGED",
+        "downstream_handoff": "将急停生效事实交付给交易监控责任",
+        "business_chain_refs": [
+          "CHAIN-KILL"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "atom_id": "ATOM-FACTS",
+        "label": "交易事实对账",
+        "trigger_kind": "governance_change",
+        "trigger_or_input": "日终或回报到达触发事实对账",
+        "owned_state": "已完成对账并标注差异的成交事实记录",
+        "object_refs": [
+          "OBJ-TRADE-FACT"
+        ],
+        "operation_refs": [
+          "OP-RECONCILE-FACTS"
+        ],
+        "outcome_refs": [
+          "OUT-FACTS-RECONCILED"
+        ],
+        "primary_outcome_ref": "OUT-FACTS-RECONCILED",
+        "downstream_handoff": "将对账后的成交事实交付给清算与合规责任",
+        "business_chain_refs": [
+          "CHAIN-FACTS"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "atom_id": "ATOM-MARKET",
+        "label": "行情质量",
+        "trigger_kind": "business_event",
+        "trigger_or_input": "行情源推送新的报价批次",
+        "owned_state": "已完成延迟与缺口评估的行情质量快照",
+        "object_refs": [
+          "OBJ-MARKET-QUOTE"
+        ],
+        "operation_refs": [
+          "OP-ASSESS-QUALITY"
+        ],
+        "outcome_refs": [
+          "OUT-QUALITY-SCORED"
+        ],
+        "primary_outcome_ref": "OUT-QUALITY-SCORED",
+        "downstream_handoff": "将行情质量评分交付给策略与风控责任",
+        "business_chain_refs": [
+          "CHAIN-MARKET"
+        ],
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      }
+    ],
+    "business_chains": [
+      {
+        "chain_id": "CHAIN-MANUAL",
+        "label": "手工下单",
+        "chain_kind": "primary",
+        "trigger_kind": "business_event",
+        "trigger_or_input": "交易员在终端提交手工委托单",
+        "owned_state": "已通过参数校验并等待路由的手工委托单",
+        "object_refs": [
+          "OBJ-MANUAL-ORDER"
+        ],
+        "operation_refs": [
+          "OP-SUBMIT-MANUAL"
+        ],
+        "outcome_refs": [
+          "OUT-MANUAL-ACCEPTED"
+        ],
+        "primary_outcome_ref": "OUT-MANUAL-ACCEPTED",
+        "downstream_handoff": "将已接收的手工委托单交付给订单路由责任",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "chain_id": "CHAIN-STRATEGY",
+        "label": "策略信号意图",
+        "chain_kind": "primary",
+        "trigger_kind": "business_event",
+        "trigger_or_input": "策略引擎产生新的交易信号",
+        "owned_state": "已绑定策略标识并等待执行的信号意图",
+        "object_refs": [
+          "OBJ-SIGNAL"
+        ],
+        "operation_refs": [
+          "OP-DERIVE-SIGNAL"
+        ],
+        "outcome_refs": [
+          "OUT-SIGNAL-INTENT"
+        ],
+        "primary_outcome_ref": "OUT-SIGNAL-INTENT",
+        "downstream_handoff": "将策略信号意图交付给订单执行责任",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "chain_id": "CHAIN-GATEWAY",
+        "label": "Gateway恢复",
+        "chain_kind": "recovery",
+        "trigger_kind": "exception_or_interruption",
+        "trigger_or_input": "网关连接中断或回报缺口被检测",
+        "owned_state": "已重连并完成回报回补的网关会话",
+        "object_refs": [
+          "OBJ-GATEWAY-SESSION"
+        ],
+        "operation_refs": [
+          "OP-RECOVER-GATEWAY"
+        ],
+        "outcome_refs": [
+          "OUT-GATEWAY-RECOVERED"
+        ],
+        "primary_outcome_ref": "OUT-GATEWAY-RECOVERED",
+        "downstream_handoff": "将恢复后的网关回报交付给交易事实责任",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      },
+      {
+        "chain_id": "CHAIN-KILL",
+        "label": "KillSwitch急停",
+        "chain_kind": "governance",
+        "trigger_kind": "governance_change",
+        "trigger_or_input": "风控责任人触发急停开关",
+        "owned_state": "已冻结全部在途委托的急停生效状态",
+        "object_refs": [
+          "OBJ-KILL-POLICY"
+        ],
+        "operation_refs": [
+          "OP-TRIGGER-KILL"
+        ],
+        "outcome_refs": [
+          "OUT-KILL-ENGAGED"
+        ],
+        "primary_outcome_ref": "OUT-KILL-ENGAGED",
+        "downstream_handoff": "将急停生效事实交付给交易监控责任",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "chain_id": "CHAIN-FACTS",
+        "label": "交易事实对账",
+        "chain_kind": "governance",
+        "trigger_kind": "governance_change",
+        "trigger_or_input": "日终或回报到达触发事实对账",
+        "owned_state": "已完成对账并标注差异的成交事实记录",
+        "object_refs": [
+          "OBJ-TRADE-FACT"
+        ],
+        "operation_refs": [
+          "OP-RECONCILE-FACTS"
+        ],
+        "outcome_refs": [
+          "OUT-FACTS-RECONCILED"
+        ],
+        "primary_outcome_ref": "OUT-FACTS-RECONCILED",
+        "downstream_handoff": "将对账后的成交事实交付给清算与合规责任",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#信任与合规"
+        ]
+      },
+      {
+        "chain_id": "CHAIN-MARKET",
+        "label": "行情质量",
+        "chain_kind": "primary",
+        "trigger_kind": "business_event",
+        "trigger_or_input": "行情源推送新的报价批次",
+        "owned_state": "已完成延迟与缺口评估的行情质量快照",
+        "object_refs": [
+          "OBJ-MARKET-QUOTE"
+        ],
+        "operation_refs": [
+          "OP-ASSESS-QUALITY"
+        ],
+        "outcome_refs": [
+          "OUT-QUALITY-SCORED"
+        ],
+        "primary_outcome_ref": "OUT-QUALITY-SCORED",
+        "downstream_handoff": "将行情质量评分交付给策略与风控责任",
+        "source_status": "user",
+        "source_refs": [
+          "specs/trading-system/prd.md#交易执行"
+        ]
+      }
+    ],
+    "evidence_gaps": [
+      {
+        "gap_id": "GAP-001",
+        "summary": "缺少手工下单被撤销后的补偿链路证据，需补充操作日志。",
+        "business_chain_refs": [
+          "CHAIN-MANUAL"
+        ]
+      }
+    ]
+  },
+  "constitution_snapshot": {
+    "source_path": ".specify/memory/constitution.md",
+    "availability": "missing",
+    "display_mode": "read_only",
+    "application_scope": "governance_only",
+    "clauses": []
+  },
+  "density_budget": {
+    "max_visible_nodes_per_map": 18,
+    "max_depth": 3,
+    "max_children_per_node": 4,
+    "layer_balance_min_nodes": 8,
+    "max_layer_share": 0.6
+  },
+  "maps": [
+    {
+      "map_id": "MAP-OVERVIEW",
+      "title": "交易系统总览",
+      "summary": "交易执行与信任合规两大能力域全景。",
+      "map_kind": "overview",
+      "root_node_id": "NODE-OVERVIEW-ROOT",
+      "parent_map_id": null
+    },
+    {
+      "map_id": "MAP-EXEC",
+      "title": "交易执行域",
+      "summary": "手工下单、策略信号、网关恢复与急停能力。",
+      "map_kind": "branch",
+      "root_node_id": "NODE-EXEC-ROOT",
+      "parent_map_id": "MAP-OVERVIEW"
+    },
+    {
+      "map_id": "MAP-TRUST",
+      "title": "信任与合规域",
+      "summary": "交易事实对账与行情质量能力。",
+      "map_kind": "branch",
+      "root_node_id": "NODE-TRUST-ROOT",
+      "parent_map_id": "MAP-OVERVIEW"
+    },
+    {
+      "map_id": "MAP-CONSTRAINTS",
+      "title": "全局约束",
+      "summary": "横切监管与运营约束。",
+      "map_kind": "global_constraints",
+      "root_node_id": "NODE-CONSTRAINT-ROOT",
+      "parent_map_id": "MAP-OVERVIEW"
+    },
+    {
+      "map_id": "MAP-MANUAL",
+      "title": "手工下单分支",
+      "summary": "手工下单能力的业务链细节。",
+      "map_kind": "branch",
+      "root_node_id": "NODE-MANUAL-ROOT",
+      "parent_map_id": "MAP-EXEC"
+    },
+    {
+      "map_id": "MAP-STRATEGY",
+      "title": "策略信号意图分支",
+      "summary": "策略信号意图能力的业务链细节。",
+      "map_kind": "branch",
+      "root_node_id": "NODE-STRATEGY-ROOT",
+      "parent_map_id": "MAP-EXEC"
+    },
+    {
+      "map_id": "MAP-GATEWAY",
+      "title": "Gateway恢复分支",
+      "summary": "Gateway恢复能力的业务链细节。",
+      "map_kind": "branch",
+      "root_node_id": "NODE-GATEWAY-ROOT",
+      "parent_map_id": "MAP-EXEC"
+    },
+    {
+      "map_id": "MAP-KILL",
+      "title": "KillSwitch急停分支",
+      "summary": "KillSwitch急停能力的业务链细节。",
+      "map_kind": "branch",
+      "root_node_id": "NODE-KILL-ROOT",
+      "parent_map_id": "MAP-EXEC"
+    },
+    {
+      "map_id": "MAP-FACTS",
+      "title": "交易事实对账分支",
+      "summary": "交易事实对账能力的业务链细节。",
+      "map_kind": "branch",
+      "root_node_id": "NODE-FACTS-ROOT",
+      "parent_map_id": "MAP-TRUST"
+    },
+    {
+      "map_id": "MAP-MARKET",
+      "title": "行情质量分支",
+      "summary": "行情质量能力的业务链细节。",
+      "map_kind": "branch",
+      "root_node_id": "NODE-MARKET-ROOT",
+      "parent_map_id": "MAP-TRUST"
+    }
+  ],
+  "outline_nodes": [
+    {
+      "node_id": "NODE-OVERVIEW-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-OVERVIEW",
+      "node_kind": "root",
+      "label": "交易系统",
+      "summary": "交易执行与信任合规两大能力域。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-MANUAL",
+        "CHAIN-STRATEGY",
+        "CHAIN-GATEWAY",
+        "CHAIN-KILL",
+        "CHAIN-FACTS",
+        "CHAIN-MARKET"
+      ]
+    },
+    {
+      "node_id": "NODE-LINK-EXEC",
+      "parent_node_id": "NODE-OVERVIEW-ROOT",
+      "map_id": "MAP-OVERVIEW",
+      "node_kind": "map_link",
+      "label": "交易执行域",
+      "summary": "进入交易执行能力域。",
+      "source_status": "user",
+      "child_map_id": "MAP-EXEC",
+      "business_chain_refs": [
+        "CHAIN-MANUAL",
+        "CHAIN-STRATEGY",
+        "CHAIN-GATEWAY",
+        "CHAIN-KILL"
+      ]
+    },
+    {
+      "node_id": "NODE-LINK-TRUST",
+      "parent_node_id": "NODE-OVERVIEW-ROOT",
+      "map_id": "MAP-OVERVIEW",
+      "node_kind": "map_link",
+      "label": "信任与合规域",
+      "summary": "进入信任与合规能力域。",
+      "source_status": "user",
+      "child_map_id": "MAP-TRUST",
+      "business_chain_refs": [
+        "CHAIN-FACTS",
+        "CHAIN-MARKET"
+      ]
+    },
+    {
+      "node_id": "NODE-LINK-CONSTRAINTS",
+      "parent_node_id": "NODE-OVERVIEW-ROOT",
+      "map_id": "MAP-OVERVIEW",
+      "node_kind": "map_link",
+      "label": "全局约束",
+      "summary": "查看横切约束。",
+      "source_status": "user",
+      "child_map_id": "MAP-CONSTRAINTS"
+    },
+    {
+      "node_id": "NODE-EXEC-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-EXEC",
+      "node_kind": "root",
+      "label": "交易执行域",
+      "summary": "交易执行域能力汇总。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-MANUAL",
+        "CHAIN-STRATEGY",
+        "CHAIN-GATEWAY",
+        "CHAIN-KILL"
+      ]
+    },
+    {
+      "node_id": "NODE-TRUST-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-TRUST",
+      "node_kind": "root",
+      "label": "信任与合规域",
+      "summary": "信任与合规域能力汇总。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-FACTS",
+        "CHAIN-MARKET"
+      ]
+    },
+    {
+      "node_id": "NODE-CONSTRAINT-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-CONSTRAINTS",
+      "node_kind": "root",
+      "label": "全局约束",
+      "summary": "横切监管与运营约束汇总。",
+      "source_status": "user"
+    },
+    {
+      "node_id": "NODE-LINK-MANUAL",
+      "parent_node_id": "NODE-EXEC-ROOT",
+      "map_id": "MAP-EXEC",
+      "node_kind": "map_link",
+      "label": "手工下单",
+      "summary": "进入手工下单分支。",
+      "source_status": "user",
+      "child_map_id": "MAP-MANUAL",
+      "business_chain_refs": [
+        "CHAIN-MANUAL"
+      ],
+      "capability_atom_refs": [
+        "ATOM-MANUAL"
+      ]
+    },
+    {
+      "node_id": "NODE-LINK-STRATEGY",
+      "parent_node_id": "NODE-EXEC-ROOT",
+      "map_id": "MAP-EXEC",
+      "node_kind": "map_link",
+      "label": "策略信号意图",
+      "summary": "进入策略信号意图分支。",
+      "source_status": "user",
+      "child_map_id": "MAP-STRATEGY",
+      "business_chain_refs": [
+        "CHAIN-STRATEGY"
+      ],
+      "capability_atom_refs": [
+        "ATOM-STRATEGY"
+      ]
+    },
+    {
+      "node_id": "NODE-LINK-GATEWAY",
+      "parent_node_id": "NODE-EXEC-ROOT",
+      "map_id": "MAP-EXEC",
+      "node_kind": "map_link",
+      "label": "Gateway恢复",
+      "summary": "进入Gateway恢复分支。",
+      "source_status": "user",
+      "child_map_id": "MAP-GATEWAY",
+      "business_chain_refs": [
+        "CHAIN-GATEWAY"
+      ],
+      "capability_atom_refs": [
+        "ATOM-GATEWAY"
+      ]
+    },
+    {
+      "node_id": "NODE-LINK-KILL",
+      "parent_node_id": "NODE-EXEC-ROOT",
+      "map_id": "MAP-EXEC",
+      "node_kind": "map_link",
+      "label": "KillSwitch急停",
+      "summary": "进入KillSwitch急停分支。",
+      "source_status": "user",
+      "child_map_id": "MAP-KILL",
+      "business_chain_refs": [
+        "CHAIN-KILL"
+      ],
+      "capability_atom_refs": [
+        "ATOM-KILL"
+      ]
+    },
+    {
+      "node_id": "NODE-LINK-FACTS",
+      "parent_node_id": "NODE-TRUST-ROOT",
+      "map_id": "MAP-TRUST",
+      "node_kind": "map_link",
+      "label": "交易事实对账",
+      "summary": "进入交易事实对账分支。",
+      "source_status": "user",
+      "child_map_id": "MAP-FACTS",
+      "business_chain_refs": [
+        "CHAIN-FACTS"
+      ],
+      "capability_atom_refs": [
+        "ATOM-FACTS"
+      ]
+    },
+    {
+      "node_id": "NODE-LINK-MARKET",
+      "parent_node_id": "NODE-TRUST-ROOT",
+      "map_id": "MAP-TRUST",
+      "node_kind": "map_link",
+      "label": "行情质量",
+      "summary": "进入行情质量分支。",
+      "source_status": "user",
+      "child_map_id": "MAP-MARKET",
+      "business_chain_refs": [
+        "CHAIN-MARKET"
+      ],
+      "capability_atom_refs": [
+        "ATOM-MARKET"
+      ]
+    },
+    {
+      "node_id": "NODE-MANUAL-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-MANUAL",
+      "node_kind": "root",
+      "label": "手工下单",
+      "summary": "手工下单能力的完整业务链。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-MANUAL"
+      ],
+      "capability_atom_refs": [
+        "ATOM-MANUAL"
+      ]
+    },
+    {
+      "node_id": "NODE-STRATEGY-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-STRATEGY",
+      "node_kind": "root",
+      "label": "策略信号意图",
+      "summary": "策略信号意图能力的完整业务链。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-STRATEGY"
+      ],
+      "capability_atom_refs": [
+        "ATOM-STRATEGY"
+      ]
+    },
+    {
+      "node_id": "NODE-GATEWAY-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-GATEWAY",
+      "node_kind": "root",
+      "label": "Gateway恢复",
+      "summary": "Gateway恢复能力的完整业务链。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-GATEWAY"
+      ],
+      "capability_atom_refs": [
+        "ATOM-GATEWAY"
+      ]
+    },
+    {
+      "node_id": "NODE-KILL-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-KILL",
+      "node_kind": "root",
+      "label": "KillSwitch急停",
+      "summary": "KillSwitch急停能力的完整业务链。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-KILL"
+      ],
+      "capability_atom_refs": [
+        "ATOM-KILL"
+      ]
+    },
+    {
+      "node_id": "NODE-FACTS-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-FACTS",
+      "node_kind": "root",
+      "label": "交易事实对账",
+      "summary": "交易事实对账能力的完整业务链。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-FACTS"
+      ],
+      "capability_atom_refs": [
+        "ATOM-FACTS"
+      ]
+    },
+    {
+      "node_id": "NODE-MARKET-ROOT",
+      "parent_node_id": null,
+      "map_id": "MAP-MARKET",
+      "node_kind": "root",
+      "label": "行情质量",
+      "summary": "行情质量能力的完整业务链。",
+      "source_status": "user",
+      "business_chain_refs": [
+        "CHAIN-MARKET"
+      ],
+      "capability_atom_refs": [
+        "ATOM-MARKET"
+      ]
+    }
+  ],
+  "question_groups": [
+    {
+      "id": "QG-MANUAL",
+      "title": "手工下单边界确认",
+      "summary": "确认手工下单能力的业务边界。",
+      "map_id": "MAP-MANUAL",
+      "questions": [
+        {
+          "id": "Q-MANUAL-SCOPE",
+          "outline_node_id": "NODE-MANUAL-ROOT",
+          "target_kind": "capability",
+          "prompt": "手工下单能力应覆盖到哪个边界？",
+          "context": "当前文档描述了录入与校验，但撤单与改单归属未定。",
+          "selection_mode": "single",
+          "candidates": [
+            {
+              "id": "CAND-A",
+              "label": "仅接收与校验",
+              "value": "手工下单仅负责录入、校验与状态更新，路由由独立能力承担。",
+              "rationale": "边界清晰，便于独立验收。",
+              "business_chain_refs": [
+                "CHAIN-MANUAL"
+              ],
+              "capability_atom_refs": [
+                "ATOM-MANUAL"
+              ]
+            },
+            {
+              "id": "CAND-B",
+              "label": "含撤改单",
+              "value": "手工下单同时负责撤单与改单，覆盖委托生命周期前段。",
+              "rationale": "减少交互，但边界更宽。",
+              "business_chain_refs": [
+                "CHAIN-MANUAL"
+              ],
+              "capability_atom_refs": [
+                "ATOM-MANUAL"
+              ]
+            }
+          ],
+          "recommended_candidate_ids": [
+            "CAND-A"
+          ],
+          "recommendation_reason": "最小闭环即可验收，撤改单可后续独立分解。",
+          "allow_none_of_the_above": true,
+          "free_input": {
+            "enabled": true,
+            "label": "补充或改写能力边界",
+            "allowed_operations": [
+              "confirm_candidate",
+              "add",
+              "replace",
+              "exclude",
+              "context_note"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "authorization_effect": "none",
+  "next_route": "/sp.prd"
+}

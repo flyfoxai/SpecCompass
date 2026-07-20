@@ -374,6 +374,52 @@ const vagueBusinessObjectPatterns = [
   /^entity$/i,
 ];
 
+// 密度合并话术黑名单 - 初始 Level 1 禁止出现
+const densityMergeBoilerplateFragments = [
+  "为满足 level 1 图的可读密度",
+  "为满足level1图的可读密度",
+  "为保持图形可读",
+  "为满足密度预算",
+  "为满足可读密度",
+  "当前只提出三个候选",
+  "当前只提出两个候选",
+  "当前只提出四个候选",
+  "压缩为三个候选",
+  "合并为三个分支",
+  "压缩候选数量",
+  "reduce candidate count",
+  "for readability",
+  "for density budget",
+  "to keep the map readable",
+  "reduced for density",
+  "merged for density",
+  "limited to three candidates",
+];
+
+function hasDensityMergeBoilerplate(text) {
+  const normalized = (text || "").toLowerCase().replace(/\s+/g, " ");
+  return densityMergeBoilerplateFragments.some(fragment =>
+    normalized.includes(fragment.toLowerCase())
+  );
+}
+
+const aggregateAtomLabelWarnings = [
+  "闭环", "治理", "观测", "平台", "能力体系", "核心链路", "主链路", "全链路", "整合", "集成",
+  "core loop", "governance", "observability platform"
+];
+
+function warnIfAtomTooCoarse(atomLabel, atom, data) {
+  if (data.outline_maturity !== "explore") return;
+  const hasMultipleOps = (atom.operation_refs?.length ?? 0) > 1;
+  const hasMultipleObjs = (atom.object_refs?.length ?? 0) > 1;
+  const labelHasAggregateWord = aggregateAtomLabelWarnings.some(w =>
+    (atom.label ?? "").toLowerCase().includes(w.toLowerCase())
+  );
+  if (hasMultipleOps && hasMultipleObjs && labelHasAggregateWord) {
+    warn(`${atomLabel}: label "${atom.label}" with multiple operations and objects looks like a pre-merged capability group; consider splitting into separate atoms for each independently verifiable responsibility`);
+  }
+}
+
 function fail(message) {
   errors.push(message);
 }
@@ -1981,6 +2027,107 @@ function validateOutlineDiscoveryTopology(data) {
   return { mapsById, nodesById };
 }
 
+function validateOutlineDiscoveryNoDensityMerge(data) {
+  const fieldsToCheck = [
+    data?.project?.current_understanding,
+    data?.project?.discovery_goal,
+    ...(data?.maps ?? []).map(m => m?.summary),
+    ...(data?.outline_nodes ?? []).map(n => n?.summary),
+    ...(data?.question_groups ?? []).flatMap(qg =>
+      (qg?.questions ?? []).flatMap(q => [
+        q?.prompt,
+        q?.context,
+        ...(q?.candidates ?? []).map(c => c?.value),
+        ...(q?.candidates ?? []).map(c => c?.rationale),
+        q?.recommendation_reason
+      ])
+    )
+  ].filter(Boolean);
+
+  for (const field of fieldsToCheck) {
+    if (hasDensityMergeBoilerplate(field)) {
+      fail(`visible copy contains density-merge boilerplate; density constraints may only add maps, never reduce or merge capability atoms. Offending text: "${String(field).substring(0, 120)}"`);
+    }
+  }
+}
+
+function validateSourceCapabilityCoverage(data) {
+  const context = data.business_context;
+  const coverage = context?.source_capability_coverage;
+
+  if (!Array.isArray(coverage) || coverage.length === 0) {
+    fail("business_context.source_capability_coverage must be a non-empty array");
+    return;
+  }
+
+  const atomsById = new Map(
+    (context?.capability_atoms ?? []).map(a => [a?.atom_id, a])
+  );
+  const evidenceGapIds = new Set(
+    asArray(context?.evidence_gaps).map(g => g?.gap_id)
+  );
+
+  const atomRefCounts = new Map();
+  const coverageIds = new Set();
+
+  for (const [index, entry] of coverage.entries()) {
+    const entryLabel = `source_capability_coverage[${index}]`;
+
+    if (!String(entry?.source_capability_id || "").trim()) {
+      fail(`${entryLabel}: source_capability_id is required`);
+    } else {
+      if (coverageIds.has(entry.source_capability_id)) {
+        fail(`${entryLabel}: duplicate source_capability_id ${entry.source_capability_id}`);
+      }
+      coverageIds.add(entry.source_capability_id);
+    }
+
+    const allowedDispositions = new Set(["atom", "evidence_gap", "excluded_by_source"]);
+    if (!allowedDispositions.has(entry?.disposition)) {
+      fail(`${entryLabel}: disposition must be one of atom, evidence_gap, excluded_by_source`);
+    }
+
+    // Note: disposition "user_confirmed_merge" is excluded from the schema enum
+    // so this case is handled by JSON Schema validation before reaching this code.
+    // Listed here only to document intent for future schema extensions.
+
+    if (entry?.disposition === "atom") {
+      if (!entry?.capability_atom_ref) {
+        fail(`${entryLabel}: disposition=atom requires capability_atom_ref`);
+      } else if (!atomsById.has(entry.capability_atom_ref)) {
+        fail(`${entryLabel}: capability_atom_ref ${entry.capability_atom_ref} does not reference a known capability atom`);
+      } else {
+        atomRefCounts.set(
+          entry.capability_atom_ref,
+          (atomRefCounts.get(entry.capability_atom_ref) ?? 0) + 1
+        );
+      }
+    }
+
+    if (entry?.disposition === "evidence_gap") {
+      if (!entry?.evidence_gap_ref) {
+        fail(`${entryLabel}: disposition=evidence_gap requires evidence_gap_ref`);
+      } else if (!evidenceGapIds.has(entry.evidence_gap_ref)) {
+        fail(`${entryLabel}: evidence_gap_ref ${entry.evidence_gap_ref} does not reference a known evidence gap`);
+      }
+    }
+  }
+
+  if (data.outline_maturity === "explore") {
+    for (const [atomId, count] of atomRefCounts.entries()) {
+      if (count > 1) {
+        fail(`capability atom ${atomId} is referenced by ${count} source capabilities; initial Level 1 requires one-to-one coverage — each source capability must map to its own atom`);
+      }
+    }
+
+    for (const [atomId] of atomsById.entries()) {
+      if (!atomRefCounts.has(atomId)) {
+        fail(`capability atom ${atomId} has no matching source_capability_coverage entry; every atom must trace back to a source capability`);
+      }
+    }
+  }
+}
+
 function validateOutlineDiscoveryBusinessContext(data) {
   const context = data.business_context;
   if (!context || typeof context !== "object" || Array.isArray(context)) {
@@ -2124,6 +2271,7 @@ function validateOutlineDiscoveryBusinessContext(data) {
 
     // Semantic quality check for capability_atoms
     validateCapabilityAtomSemantics(`business_context.capability_atoms[${index}]`, atom);
+    warnIfAtomTooCoarse(`business_context.capability_atoms[${index}]`, atom, data);
   }
   if (data.outline_maturity === "explore") {
     for (const [chainId, atomCount] of capabilityAtomCountsByChain.entries()) {
@@ -2143,6 +2291,7 @@ function validateOutlineDiscoveryBusinessContext(data) {
       fail(`business evidence_gap[${index}] business_chain_refs must reference business_chains`);
     }
   }
+  validateSourceCapabilityCoverage(data);
   if (data.outline_maturity === "frame" && !chains.values.some((chain) => ["user", "user-confirmed", "doc"].includes(chain.source_status))) {
     fail("frame maturity requires at least one source-backed complete business chain");
   }
@@ -2324,6 +2473,7 @@ function validateOutlineDiscovery(data) {
       fail(`ai-proposed business node must bind a question: ${node.node_id}`);
     }
   }
+  validateOutlineDiscoveryNoDensityMerge(data);
 }
 
 function validateOutlineDiscoveryResponse(data) {

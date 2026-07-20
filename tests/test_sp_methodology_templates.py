@@ -2014,7 +2014,8 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
     assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in prd
     assert "make confirmation of that split the default recommendation" in prd
     assert "private compilation work" in prd
-    assert "never serialize or narrate the table" in prd
+    assert "Stage C check results and quality checklist remain private compilation work" in prd
+    assert "source_capability_coverage serialized in this Stage is NOT private" in prd
     assert "Generic implementation components" in prd
     assert "is a warning signal, not a boundary decision" in prd
     assert "center/中心" in prd
@@ -5087,6 +5088,19 @@ def _outline_discovery_validator_sample() -> dict:
                     "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
                 }
             ],
+            "source_capability_coverage": [
+                {
+                    "source_capability_id": "source-controlled-order",
+                    "label": "把行情与账户变化转化为受控订单",
+                    "trigger_or_input": "新行情、持仓或资金变化到达",
+                    "owned_state": "经过风险约束、等待执行的交易订单",
+                    "observable_outcome": "合规交易意图被转换为可执行订单，超限意图被阻断并留下原因。",
+                    "independent_acceptance_reason": "该能力有独立触发、独立状态所有权和可核验的受控订单结果。",
+                    "disposition": "atom",
+                    "capability_atom_ref": "atom-controlled-order",
+                    "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+                }
+            ],
             "business_chains": [
                 {
                     "chain_id": "chain-trading-loop",
@@ -7779,3 +7793,55 @@ console.log(JSON.stringify({{ partCount: parts.length, sizes: parts.map((part) =
         check=False,
     )
     assert result.returncode == 0, result.stderr or result.stdout
+
+
+# ============================================================
+# Source Capability Coverage Tests (Phase 4 - Level 1 serial compilation fix)
+# ============================================================
+
+
+class TestSourceCapabilityCoverage:
+    """Tests for source_capability_coverage validation in outline discovery."""
+
+    _VALIDATOR = "templates/project/.specify/review/scripts/validate-review-data.mjs"
+    _FIXTURE_DIR = Path("tests/fixtures/source-capability-coverage")
+
+    def _run(self, fixture_name: str):
+        fixture_path = self._FIXTURE_DIR / fixture_name
+        return subprocess.run(
+            ["node", self._VALIDATOR, str(fixture_path)],
+            capture_output=True,
+            text=True,
+        )
+
+    def test_valid_full_coverage_passes(self):
+        """6 source capabilities → 6 atoms should pass validation."""
+        result = self._run("valid-full-coverage.json")
+        assert result.returncode == 0, (
+            f"Valid full coverage should pass validation:\n{result.stderr}"
+        )
+
+    def test_density_merge_boilerplate_rejected(self):
+        """Density-merge boilerplate in visible copy should be rejected."""
+        result = self._run("invalid-density-merge.json")
+        assert result.returncode != 0, (
+            "Density merge boilerplate should cause validation failure"
+        )
+        combined = (result.stdout + result.stderr).lower()
+        assert "density" in combined or "boilerplate" in combined, (
+            f"Error message should mention density/boilerplate:\n{result.stderr}"
+        )
+
+    def test_multi_source_same_atom_rejected(self):
+        """Two source capabilities pointing to same atom should be rejected."""
+        result = self._run("invalid-multi-ref.json")
+        assert result.returncode != 0, (
+            "Multiple source capabilities referencing one atom should fail"
+        )
+
+    def test_atom_without_coverage_rejected(self):
+        """A capability atom with no matching coverage entry should be rejected."""
+        result = self._run("invalid-missing-coverage.json")
+        assert result.returncode != 0, (
+            "Capability atom with no coverage entry should fail validation"
+        )
