@@ -83,7 +83,7 @@ const outlineDiscoveryDensityBudget = Object.freeze({
   layer_balance_min_nodes: 8,
   max_layer_share: 0.6,
 });
-const allowedOutlineMapKinds = new Set(["overview", "branch", "global_constraints"]);
+const allowedOutlineMapKinds = new Set(["overview", "branch", "global_constraints", "value_stream"]);
 const allowedOutlineNodeKinds = new Set([
   "root", "goal", "role", "domain", "scope", "problem", "scenario",
   "capability", "acceptance", "risk", "constraint", "map_link",
@@ -1875,7 +1875,9 @@ function validateOutlineDiscoveryTopology(data) {
       }
     }
   }
+  const overviewRootId = overviewMaps[0] ? nodesById.get(overviewMaps[0]?.root_node_id)?.node_id : null;
   for (const [parentId, children] of childrenByParent.entries()) {
+    if (parentId === overviewRootId) continue; // overview root is exempt: must show all Level 1 candidates
     if (children.length > outlineDiscoveryDensityBudget.max_children_per_node) {
       fail(`outline node ${parentId} may have at most 4 direct children`);
     }
