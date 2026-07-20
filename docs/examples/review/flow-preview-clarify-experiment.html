@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SpecCompass Flow Review Clarify Experiment</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../../templates/project/.specify/review/renderer/styles/tokens.css?v=20260626-ui-layout">
+  <link rel="stylesheet" href="../../../templates/project/.specify/review/renderer/styles/layout.css?v=20260626-ui-layout">
+  <link rel="stylesheet" href="../../../templates/project/.specify/review/renderer/styles/review-ui.css?v=20260630-option-cards">
+  <script src="flow-review-data.js?v=20260626-ui-layout"></script>
+  <script src="flow-review-data-clarify-experiment.js?v=20260701-clarify-experiment"></script>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1 id="page-title">SpecCompass Review</h1>
+          <p id="page-note">实验页：用 /sp.clarify 风格重写少数必审选项；旧规则和正式示例未被覆盖。</p>
+        </div>
+      </div>
+      <div class="tools">
+        <button id="load-flow">加载 flow-review-data.json</button>
+        <button id="load-ui">加载 ui-review-data.json</button>
+        <input id="file-input" class="hidden" type="file" accept="application/json,.json">
+        <button id="download-package" class="primary">下载确认包</button>
+        <button id="copy-summary">复制确认摘要兜底</button>
+      </div>
+    </header>
+
+    <div class="shell">
+      <aside class="left-nav" aria-label="集中审核台">
+        <div class="panel">
+          <h2>集中审核台</h2>
+          <p id="project-overview">请加载 review data。</p>
+          <div id="data-warnings" class="status error hidden"></div>
+        </div>
+        <div id="module-list"></div>
+      </aside>
+
+      <div class="review-workspace">
+        <main>
+          <section class="panel">
+            <div class="module-stepper" aria-label="跨模块跳转">
+              <button id="prev-module" type="button">上一模块</button>
+              <span id="module-position">模块 0/0</span>
+              <button id="next-module" type="button">下一模块</button>
+            </div>
+            <h2 id="module-title">模块</h2>
+            <p id="module-summary">加载数据后显示模块简介。</p>
+          </section>
+          <section class="panel">
+            <h3 id="item-title">流程或界面</h3>
+            <p id="item-summary">加载数据后显示当前图或页面说明。</p>
+            <div class="diagram-tabs" id="item-tabs"></div>
+          </section>
+          <section class="diagram-view" id="diagram-view" aria-label="主流程图或界面预览"></section>
+        </main>
+
+        <aside class="right-rail" aria-label="右侧确认栏">
+          <section class="panel">
+            <h2>当前确认</h2>
+            <p id="rail-summary">选择模块、流程或节点后在这里确认。</p>
+            <ol id="authorization-steps" class="authorization-steps">
+              <li><strong>本地选择</strong>：点击推荐项会保存到浏览器草稿；建议确认不计入红色待处理必审。</li>
+              <li><strong>下载确认包</strong>：点击顶部按钮生成可交给模型写回的 JSON 包。</li>
+              <li><strong>写回确认文档</strong>：确认包写入 flow-confirmation.md 或 ui-confirmation.md 后才是正式授权。</li>
+            </ol>
+            <div class="rail-actions">
+              <button id="show-all" class="hidden">显示全部确认点</button>
+              <button id="bulk-recommended">当前可见项按推荐保存</button>
+              <button id="reset-visible" class="danger">重置可见项</button>
+            </div>
+            <div id="live-status" class="status" aria-live="polite"></div>
+            <div id="download-package-links" class="package-download-links hidden" aria-live="polite"></div>
+          </section>
+          <section id="node-list"></section>
+        </aside>
+      </div>
+    </div>
+  </div>
+
+  <script defer src="../../../templates/project/.specify/review/renderer/scripts/simple-overlays.js?v=20260626-ui-layout"></script>
+  <script defer src="../../../templates/project/.specify/review/renderer/scripts/state-store.js?v=20260626-ui-layout"></script>
+  <script defer src="../../../templates/project/.specify/review/renderer/scripts/data-validator.js?v=20260626-ui-layout"></script>
+  <script defer src="../../../templates/project/.specify/review/renderer/scripts/confirmation-package.js?v=20260629-confirmation-package"></script>
+  <script defer src="../../../templates/project/.specify/review/renderer/scripts/ui-preview-renderer.js?v=20260626-ui-layout"></script>
+  <script defer src="../../../templates/project/.specify/review/renderer/scripts/review-rail.js?v=20260626-ui-layout"></script>
+  <script defer src="../../../templates/project/.specify/review/renderer/scripts/data-loader.js?v=20260626-ui-layout"></script>
+</body>
+</html>
