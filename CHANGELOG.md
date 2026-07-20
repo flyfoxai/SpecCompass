@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.6] - 2026-07-20
+
+### Changed
+
+- Added atom-first PRD Level 1 decomposition into independently verifiable candidate subprojects with deterministic one-to-one ownership validation.
+- feat(prd): improve Level 1 prompt quality in three areas (#24)
+
 ## [0.11.2] - 2026-07-19
 
 ### Changed
