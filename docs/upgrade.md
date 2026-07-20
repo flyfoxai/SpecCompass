@@ -60,6 +60,18 @@ Before continuing an active `/sp.prd` session after upgrading:
 
 Do not change only the `schema_version` number in an old file. That would label incomplete v1/v2 data as v3 without adding the required business evidence.
 
+### source_capability_coverage field (v0.11.4+)
+
+Starting from v0.11.4, `outline-discovery-data.json` requires a
+`source_capability_coverage` array in `business_context`. Previously generated
+files will fail the updated validator.
+
+To update: archive the existing `specs/<feature>/prd/review/outline-discovery-*.json`
+files and re-run `/sp.prd` to regenerate with the new field.
+
+This is a breaking schema change — the validator rejects files that are missing
+`source_capability_coverage` or that have density-merge boilerplate in visible copy.
+
 ### What gets updated?
 
 Running `specify init --here --force` will update:

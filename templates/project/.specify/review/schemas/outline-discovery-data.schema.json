@@ -39,7 +39,7 @@
       "additionalProperties": false,
       "required": [
         "product_subject", "business_objects", "operations", "outcomes",
-        "capability_atoms", "business_chains", "evidence_gaps"
+        "source_capability_coverage", "capability_atoms", "business_chains", "evidence_gaps"
       ],
       "properties": {
         "product_subject": {"$ref": "#/$defs/sourced_semantic"},
@@ -54,6 +54,11 @@
         "outcomes": {
           "type": "array", "minItems": 1,
           "items": {"$ref": "#/$defs/business_outcome"}
+        },
+        "source_capability_coverage": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/source_capability_entry"}
         },
         "capability_atoms": {
           "type": "array", "minItems": 1,
@@ -136,7 +141,7 @@
         "map_id": {"type": "string", "minLength": 1},
         "title": {"type": "string", "minLength": 1},
         "summary": {"type": "string", "minLength": 1},
-        "map_kind": {"enum": ["overview", "branch", "global_constraints"]},
+        "map_kind": {"enum": ["overview", "branch", "global_constraints", "value_stream"]},
         "root_node_id": {"type": "string", "minLength": 1},
         "parent_map_id": {"type": ["string", "null"]}
       }
@@ -389,6 +394,43 @@
           "items": {"type": "string", "minLength": 1}
         }
       }
+    },
+    "source_capability_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_capability_id", "label", "trigger_or_input",
+        "owned_state", "observable_outcome",
+        "disposition", "source_refs"
+      ],
+      "properties": {
+        "source_capability_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 4},
+        "trigger_or_input": {"type": "string", "minLength": 8},
+        "owned_state": {"type": "string", "minLength": 10},
+        "observable_outcome": {"type": "string", "minLength": 10},
+        "independent_acceptance_reason": {"type": "string"},
+        "disposition": {
+          "type": "string",
+          "enum": ["atom", "evidence_gap", "excluded_by_source"]
+        },
+        "capability_atom_ref": {"type": "string", "minLength": 1},
+        "evidence_gap_ref": {"type": "string", "minLength": 1},
+        "source_refs": {
+          "type": "array", "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"disposition": {"const": "atom"}}},
+          "then": {"required": ["capability_atom_ref"]}
+        },
+        {
+          "if": {"properties": {"disposition": {"const": "evidence_gap"}}},
+          "then": {"required": ["evidence_gap_ref"]}
+        }
+      ]
     }
   }
 }
