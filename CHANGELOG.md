@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.7] - 2026-07-20
+
+### Changed
+
+- Added atom-first PRD Level 1 decomposition into independently verifiable candidate subprojects with deterministic one-to-one ownership validation.
+- feat(prd): enforce Stage A isolation to prevent premature capability merging (#27)
+- docs: add planning documents and review examples from 2026-07-20 (#26)
+
 ## [0.11.2] - 2026-07-19
 
 ### Changed
