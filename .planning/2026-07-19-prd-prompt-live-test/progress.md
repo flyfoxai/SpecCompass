@@ -1,0 +1,41 @@
+# Progress
+
+## 2026-07-19
+
+- Read the current prompt and focused regression-test surfaces.
+- Confirmed existing worktree changes belong to prior approved work and are preserved.
+- First Claude/Gemini transport attempt failed before model invocation because Markdown backticks were evaluated by zsh.
+- Retrying with encoded prompt transport.
+- Safely transported prompt completed for both models. Claude returned six focused projects; Gemini returned four and exposed a mixed normal-fact/recovery chain.
+- Resumed implementation with a test-first chain-purity phase.
+- Added three regressions for multiple independent outcomes in one chain, atom/chain trigger mismatch, and duplicate primary-outcome ownership.
+- RED evidence: all three fixtures were accepted by the current validator, so pytest failed exactly on the new return-code assertions.
+- Resumed after context compaction; restored the active plan and confirmed the chain-purity implementation is present in the working tree.
+- Logged and corrected one active-plan path resolution error; no repository source file was affected.
+- Re-ran the full modified `/sp.prd` contract against the QMT fixture through Claude Opus 4.8 and Gemini 3.1 Pro Preview.
+- Gemini returned six focused candidate projects and separated normal processing, recovery, and governance.
+- Claude returned three candidates and exposed a remaining primary-chain aggregation bypass: five ownership checkpoints were folded into one terminal-outcome chain.
+- Resumed with the user-approved atom-first option. Rechecked the schema and confirmed there is no current duplicate `downstream_handoff` key.
+- Split implementation into two TDD cycles: structured atom fields first, then deterministic one-to-one ownership and consistency gates.
+- Verified the second TDD RED phase: all eight new assertions failed for the intended reason because the existing validator accepted invalid one-chain/multi-atom, atom/chain semantic mismatch, orphan-chain, and cross-project-candidate fixtures, while the prompt lacked the approved atom-first contract text.
+- Resumed after context compaction, restored the active plan, and reproduced the focused test state: the Codex installation contract passed; the methodology contract failed only because one sentence lacked the exact "must be classified first" wording.
+- Updated that methodology sentence without changing the atom-first generation or validation behavior.
+- Logged one failed patch attempt caused by matching the sentence without its surrounding paragraph; retried with the exact current paragraph.
+- Resumed from the saved plan and confirmed the sole full-methodology failure is a stable terminology mismatch: the maintained methodology says `候选子项目分图` but the cross-template contract requires `业务分图`.
+- The first documentation patch did not match because the target sentence is embedded in a longer paragraph; re-read the exact paragraph and applied the minimal terminology correction.
+- Renamed the diagram type to `候选子项目业务分图`; generation and validation rules are unchanged.
+- The first focused-test command failed before collection because `pytest` is not installed globally; confirmed the repository has `uv` and `.venv`, so subsequent runs use `uv run pytest`.
+- Full methodology verification passed: 195 tests collected and 195 passed.
+- First parallel Claude/Gemini rerun exited in CLI argument parsing because the prompt value began with the template's YAML `---`; neither model was invoked. The retry prefixes a neutral transport sentence and keeps the tested contract and QMT fixture unchanged.
+- The prefixed final rerun completed: Claude and Gemini each generated six atom/chain/project triples, with recovery and governance separated and no broad live-trading-core merge.
+- Corrected the evaluation fixture from `one or more atom labels` to exactly one atom per candidate so future live tests do not carry a weaker contract than production.
+- The first focused review attempt was inconclusive: Claude consumed the files but emitted an empty JSON result, while Gemini repeatedly called an unavailable `run_shell_command` tool. Retried with the working-tree diff embedded in the prompt and tool use prohibited.
+- Claude's embedded-diff review returned `NO_CRITICAL_OR_IMPORTANT_FINDINGS` and a PASS verdict for the one-to-one contract and CLI/browser parity.
+- Gemini's two claimed Critical failures were checked against repository evidence and rejected as false positives: the named tests pass and the supposedly missing documentation changes exist outside the compact review bundle.
+- Completed fresh repository verification after the final fixture correction: `uv run pytest tests/test_sp_methodology_templates.py -q` passed all 195 tests, and `uv run pytest tests/integrations/test_integration_codex.py -q` passed all 44 tests.
+- Both JavaScript validators passed `node --check`; the outline-discovery schema passed `jq empty`; `git diff --check` completed with exit code 0.
+- Closed Phase 8. This live-test task makes no commit, version bump, push, or release.
+- The planning helper reported `0/0` because it does not parse table-style phase rows. Direct status-column verification confirms all eight phases are `complete` with no remaining `in_progress` or `pending` row.
+- User authorized the conventional next patch release without another decision gate. Added release phases for v0.11.2; no release action has run yet.
+- Updated release-policy expectations first and observed two intended failures against the stale SP Lite workflow text; after updating both workflows, all six release-policy tests pass.
+- Kept both READMEs short by revising only the existing PRD capability line to mention independently verifiable candidate subprojects.
