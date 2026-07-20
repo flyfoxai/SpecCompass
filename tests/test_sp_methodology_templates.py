@@ -7812,6 +7812,7 @@ class TestSourceCapabilityCoverage:
             ["node", self._VALIDATOR, str(fixture_path)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
         )
 
     def test_valid_full_coverage_passes(self):
