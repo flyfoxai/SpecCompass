@@ -7827,7 +7827,7 @@ class TestSourceCapabilityCoverage:
         assert result.returncode != 0, (
             "Density merge boilerplate should cause validation failure"
         )
-        combined = (result.stdout + result.stderr).lower()
+        combined = ((result.stdout or "") + (result.stderr or "")).lower()
         assert "density" in combined or "boilerplate" in combined, (
             f"Error message should mention density/boilerplate:\n{result.stderr}"
         )
