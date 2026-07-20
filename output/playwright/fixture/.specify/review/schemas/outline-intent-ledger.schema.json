@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.local/schemas/outline-intent-ledger.schema.json",
+  "title": "SpecCompass Outline Intent Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "format", "feature", "events"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "format": {"const": "speccompass-outline-intent-ledger"},
+    "feature": {"type": "string", "minLength": 1},
+    "events": {"type": "array", "items": {"$ref": "#/$defs/event"}}
+  },
+  "$defs": {
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "delta_id", "response_id", "maturity", "target_kind", "operation",
+        "candidate_id", "target_id", "value", "source_tag", "recorded_at",
+        "supersedes_delta_id"
+      ],
+      "properties": {
+        "delta_id": {"type": "string", "minLength": 1},
+        "response_id": {"type": "string", "minLength": 1},
+        "maturity": {"enum": ["explore", "frame"]},
+        "target_kind": {"type": "string", "minLength": 1},
+        "operation": {"enum": ["confirm_candidate", "add", "replace", "exclude", "context_note"]},
+        "candidate_id": {"type": ["string", "null"]},
+        "target_id": {"type": ["string", "null"]},
+        "value": {"type": "string"},
+        "source_tag": {"enum": ["user", "user-confirmed"]},
+        "recorded_at": {"type": "string", "format": "date-time"},
+        "supersedes_delta_id": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"operation": {"const": "confirm_candidate"}}},
+          "then": {"properties": {
+            "candidate_id": {"type": "string", "minLength": 1},
+            "target_id": {"const": null},
+            "value": {"type": "string", "minLength": 1},
+            "source_tag": {"const": "user-confirmed"}
+          }}
+        },
+        {
+          "if": {"properties": {"operation": {"const": "add"}}},
+          "then": {"properties": {
+            "candidate_id": {"const": null},
+            "target_id": {"const": null},
+            "value": {"type": "string", "minLength": 1},
+            "source_tag": {"const": "user"}
+          }}
+        },
+        {
+          "if": {"properties": {"operation": {"const": "replace"}}},
+          "then": {"properties": {
+            "candidate_id": {"const": null},
+            "target_id": {"type": "string", "minLength": 1},
+            "value": {"type": "string", "minLength": 1},
+            "source_tag": {"const": "user"}
+          }}
+        },
+        {
+          "if": {"properties": {"operation": {"const": "exclude"}}},
+          "then": {
+            "properties": {
+              "value": {"type": "string"},
+              "source_tag": {"const": "user"}
+            },
+            "oneOf": [
+              {"properties": {"candidate_id": {"type": "string", "minLength": 1}, "target_id": {"const": null}}},
+              {"properties": {"candidate_id": {"const": null}, "target_id": {"type": "string", "minLength": 1}}}
+            ]
+          }
+        },
+        {
+          "if": {"properties": {"operation": {"const": "context_note"}}},
+          "then": {"properties": {
+            "candidate_id": {"const": null},
+            "target_id": {"const": null},
+            "value": {"type": "string", "minLength": 1},
+            "source_tag": {"const": "user"}
+          }}
+        }
+      ]
+    }
+  }
+}

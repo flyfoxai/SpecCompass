@@ -1,0 +1,1046 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>PRD Outline 思维导图原型</title>
+  <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+  <style>
+    :root {
+      --primary: #0abab5;
+      --primary-dark: #087d79;
+      --primary-soft: #e9f8f7;
+      --ink: #172121;
+      --muted: #657474;
+      --line: #dce8e8;
+      --line-strong: #bfd0d0;
+      --panel: #ffffff;
+      --canvas: #f6f9f9;
+      --nav: #fbfdfd;
+      --ai: #3b6fd8;
+      --ai-soft: #edf3ff;
+      --warning: #a15c00;
+      --warning-soft: #fff4dd;
+      --policy: #b83b4b;
+      --policy-soft: #fff0f2;
+      --success: #18794e;
+      --success-soft: #eaf7ef;
+      --radius: 8px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background: var(--canvas);
+      letter-spacing: 0;
+    }
+
+    * { box-sizing: border-box; }
+    body { margin: 0; min-width: 320px; background: var(--canvas); }
+    button, textarea { font: inherit; letter-spacing: 0; }
+    button { color: inherit; }
+    .icon { width: 16px; height: 16px; stroke-width: 1.9; flex: 0 0 auto; }
+
+    .app {
+      display: grid;
+      grid-template-rows: auto auto minmax(0, 1fr);
+      min-height: 100vh;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      min-height: 58px;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,.97);
+    }
+
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      color: white;
+      background: var(--primary);
+    }
+    .brand-mark .icon { width: 19px; height: 19px; }
+    .brand-copy { min-width: 0; }
+    .brand h1 { margin: 0; font-size: 15px; line-height: 1.25; font-weight: 700; }
+    .brand p { margin: 2px 0 0; color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .icon-button, .secondary-button, .primary-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 34px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      background: #fff;
+      cursor: pointer;
+    }
+    .icon-button { width: 34px; padding: 0; }
+    .secondary-button, .primary-button { padding: 7px 11px; font-size: 12px; font-weight: 650; }
+    .primary-button { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .icon-button:hover, .secondary-button:hover { border-color: var(--primary); background: var(--primary-soft); }
+    .primary-button:hover { border-color: var(--primary-dark); background: var(--primary-dark); }
+    button:focus-visible, textarea:focus-visible { outline: 3px solid rgba(10,186,181,.26); outline-offset: 2px; }
+
+    .stagebar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--line);
+      background: #fff;
+    }
+    .stages { display: flex; align-items: center; min-width: 0; }
+    .stage {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-width: 0;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    .stage:not(:last-child)::after {
+      content: "";
+      width: clamp(20px, 4vw, 58px);
+      height: 1px;
+      margin: 0 9px;
+      background: var(--line-strong);
+    }
+    .stage-index {
+      display: grid;
+      place-items: center;
+      width: 23px;
+      height: 23px;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      background: #fff;
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .stage.done { color: var(--success); }
+    .stage.done .stage-index { border-color: var(--success); background: var(--success-soft); }
+    .stage.active { color: var(--primary-dark); font-weight: 700; }
+    .stage.active .stage-index { border-color: var(--primary); background: var(--primary); color: #fff; }
+    .stage-note { color: var(--muted); font-size: 11px; white-space: nowrap; }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: 214px minmax(480px, 1fr) 354px;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .left-nav {
+      min-width: 0;
+      overflow-y: auto;
+      padding: 14px 12px;
+      border-right: 1px solid var(--line);
+      background: var(--nav);
+    }
+    .nav-label {
+      margin: 0 8px 8px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .map-nav { display: grid; gap: 5px; }
+    .map-nav-button {
+      display: grid;
+      grid-template-columns: 28px minmax(0,1fr) auto;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 46px;
+      padding: 7px 8px;
+      border: 1px solid transparent;
+      border-radius: 7px;
+      background: transparent;
+      text-align: left;
+      cursor: pointer;
+    }
+    .map-nav-button:hover { background: #f1f7f7; }
+    .map-nav-button.active { border-color: #9dd5d3; background: var(--primary-soft); }
+    .nav-icon {
+      display: grid;
+      place-items: center;
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      color: var(--primary-dark);
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+    .nav-icon.policy { color: var(--policy); }
+    .map-nav-button strong { display: block; font-size: 12px; line-height: 1.3; }
+    .map-nav-button small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; line-height: 1.2; }
+    .count {
+      display: inline-flex;
+      align-items: center;
+      min-height: 18px;
+      padding: 1px 6px;
+      border-radius: 9px;
+      color: var(--warning);
+      background: var(--warning-soft);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .count.policy { color: var(--policy); background: var(--policy-soft); }
+
+    .legend {
+      margin-top: 20px;
+      padding: 14px 8px 0;
+      border-top: 1px solid var(--line);
+    }
+    .legend-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: var(--muted); font-size: 11px; }
+    .legend-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+    .legend-dot.user { background: var(--success); }
+    .legend-dot.ai { background: var(--ai); }
+    .legend-dot.pending { background: var(--warning); }
+    .legend-dot.policy { background: var(--policy); }
+    .overview-progress { margin: 18px 8px 0; }
+    .progress-copy { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; }
+    .progress-track { height: 5px; margin-top: 7px; overflow: hidden; border-radius: 3px; background: #e5eeee; }
+    .progress-fill { width: 56%; height: 100%; background: var(--primary); }
+
+    .canvas-pane {
+      position: relative;
+      display: grid;
+      grid-template-rows: auto minmax(0,1fr);
+      min-width: 0;
+      overflow: hidden;
+      background-color: var(--canvas);
+      background-image: radial-gradient(#cddada 0.75px, transparent 0.75px);
+      background-size: 18px 18px;
+    }
+    .canvas-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      min-height: 50px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(247,250,250,.95);
+    }
+    .crumbs { display: flex; align-items: center; min-width: 0; color: var(--muted); font-size: 11px; }
+    .crumbs button { padding: 4px; border: 0; background: transparent; color: var(--primary-dark); font-weight: 650; cursor: pointer; }
+    .crumbs .icon { width: 13px; }
+    #current-map-label { color: var(--ink); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .zoom-tools { display: flex; align-items: center; gap: 5px; }
+    .zoom-value { width: 42px; text-align: center; color: var(--muted); font-size: 10px; }
+
+    .canvas-scroll {
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      padding: 28px 34px 70px;
+      scrollbar-gutter: stable;
+    }
+    .map-stage {
+      display: flex;
+      align-items: center;
+      min-width: 900px;
+      min-height: 620px;
+      transform-origin: 0 50%;
+      transition: transform .15s ease;
+    }
+    .map-tree { display: flex; align-items: center; width: 100%; }
+    .root-column { position: relative; display: flex; align-items: center; padding-right: 70px; }
+    .root-column::after { content: ""; position: absolute; right: 0; width: 70px; height: 2px; background: var(--primary); }
+    .root-node {
+      width: 160px;
+      min-height: 72px;
+      padding: 13px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--primary-dark);
+      color: #fff;
+      text-align: left;
+      box-shadow: 0 7px 20px rgba(8,125,121,.18);
+    }
+    .root-node strong { display: block; font-size: 14px; line-height: 1.35; }
+    .root-node small { display: block; margin-top: 5px; color: rgba(255,255,255,.78); font-size: 10px; }
+
+    .branches {
+      position: relative;
+      display: grid;
+      gap: 21px;
+      flex: 1;
+      padding: 4px 0;
+    }
+    .branches::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: calc(12.5% - 2px);
+      bottom: calc(12.5% - 2px);
+      width: 2px;
+      background: var(--primary);
+    }
+    .branch-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 62px;
+      min-height: 96px;
+      padding-left: 52px;
+    }
+    .branch-row::before { content: ""; position: absolute; left: 0; width: 52px; height: 2px; background: var(--primary); }
+    .branch-main-wrap { position: relative; flex: 0 0 155px; }
+    .branch-main-wrap::after { content: ""; position: absolute; top: 50%; left: 100%; width: 62px; height: 1px; background: var(--line-strong); }
+    .leaves {
+      position: relative;
+      display: grid;
+      gap: 9px;
+      flex: 1;
+      min-width: 360px;
+    }
+    .leaves::before { content: ""; position: absolute; left: -20px; top: 15px; bottom: 15px; width: 1px; background: var(--line-strong); }
+    .leaf-wrap { position: relative; }
+    .leaf-wrap::before { content: ""; position: absolute; top: 50%; left: -20px; width: 20px; height: 1px; background: var(--line-strong); }
+
+    .mind-node {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+      min-height: 38px;
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-left: 3px solid var(--primary);
+      border-radius: 7px;
+      background: #fff;
+      color: var(--ink);
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 0 2px 8px rgba(23,33,33,.035);
+    }
+    .branch-node { min-height: 48px; font-size: 12px; font-weight: 700; }
+    .leaf-node { font-size: 11px; }
+    .mind-node:hover { border-color: var(--primary); box-shadow: 0 4px 12px rgba(23,33,33,.08); }
+    .mind-node.selected { border-color: var(--primary); background: var(--primary-soft); box-shadow: 0 0 0 2px rgba(10,186,181,.12); }
+    .mind-node[data-source="ai"] { border-left-color: var(--ai); }
+    .mind-node[data-source="user"] { border-left-color: var(--success); }
+    .mind-node[data-status="pending"] { border-left-color: var(--warning); }
+    .mind-node[data-kind="policy"] { border-left-color: var(--policy); background: #fffafb; }
+    .node-label { min-width: 0; }
+    .node-label strong { display: block; font-size: inherit; line-height: 1.35; }
+    .node-label small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; font-weight: 500; }
+    .node-meta { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+    .status-dot.ai { background: var(--ai); }
+    .status-dot.user { background: var(--success); }
+    .status-dot.pending { background: var(--warning); }
+    .status-dot.policy { background: var(--policy); }
+    .drill-icon { width: 14px; height: 14px; color: var(--primary-dark); }
+    .impact-mini {
+      display: inline-flex;
+      align-items: center;
+      min-height: 18px;
+      padding: 1px 5px;
+      border-radius: 9px;
+      color: var(--policy);
+      background: var(--policy-soft);
+      font-size: 9px;
+      font-weight: 700;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      left: 14px;
+      bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 9px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      color: var(--muted);
+      background: rgba(255,255,255,.92);
+      font-size: 10px;
+      pointer-events: none;
+    }
+
+    .decision-rail {
+      min-width: 0;
+      overflow-y: auto;
+      border-left: 1px solid var(--line);
+      background: var(--panel);
+    }
+    .rail-header { padding: 14px 15px 12px; border-bottom: 1px solid var(--line); }
+    .rail-eyebrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: var(--muted); font-size: 10px; }
+    .node-id { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .rail-header h2 { margin: 7px 0 5px; font-size: 15px; line-height: 1.35; }
+    .rail-header p { margin: 0; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .source-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 20px;
+      padding: 2px 6px;
+      border-radius: 10px;
+      color: var(--ai);
+      background: var(--ai-soft);
+      font-size: 9px;
+      font-weight: 700;
+    }
+    .source-badge.user { color: var(--success); background: var(--success-soft); }
+    .source-badge.policy { color: var(--policy); background: var(--policy-soft); }
+    .rail-section { padding: 14px 15px; border-bottom: 1px solid var(--line); }
+    .section-title { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 9px; }
+    .section-title h3 { margin: 0; font-size: 11px; }
+    .required { color: var(--warning); font-size: 9px; font-weight: 700; }
+    .candidate-list { display: grid; gap: 8px; }
+    .candidate {
+      position: relative;
+      display: grid;
+      grid-template-columns: 18px minmax(0,1fr);
+      gap: 8px;
+      width: 100%;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      text-align: left;
+      cursor: pointer;
+    }
+    .candidate:hover { border-color: #9dd5d3; }
+    .candidate.selected { border-color: var(--primary); background: #f7fdfc; }
+    .radio {
+      display: grid;
+      place-items: center;
+      width: 16px;
+      height: 16px;
+      margin-top: 1px;
+      border: 1px solid var(--line-strong);
+      border-radius: 50%;
+      background: #fff;
+    }
+    .candidate.selected .radio { border: 5px solid var(--primary); }
+    .candidate-copy strong { display: block; padding-right: 48px; font-size: 11px; line-height: 1.35; }
+    .candidate-copy p { margin: 4px 0 0; color: var(--muted); font-size: 10px; line-height: 1.45; }
+    .recommended {
+      position: absolute;
+      top: 9px;
+      right: 9px;
+      padding: 2px 5px;
+      border-radius: 8px;
+      color: var(--primary-dark);
+      background: var(--primary-soft);
+      font-size: 8px;
+      font-weight: 700;
+    }
+    .recommend-reason { margin-top: 9px; padding-left: 9px; border-left: 2px solid var(--primary); color: var(--muted); font-size: 10px; line-height: 1.5; }
+    .recommend-reason strong { color: var(--ink); }
+    .feedback-label { display: block; margin-bottom: 6px; color: var(--muted); font-size: 10px; }
+    textarea {
+      display: block;
+      width: 100%;
+      min-height: 76px;
+      resize: vertical;
+      padding: 9px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 7px;
+      color: var(--ink);
+      background: #fff;
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    textarea::placeholder { color: #8d9a9a; }
+    .input-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; }
+    .input-actions button { min-height: 31px; }
+    .affected-list { display: flex; flex-wrap: wrap; gap: 6px; }
+    .affected-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      min-height: 24px;
+      padding: 3px 7px;
+      border: 1px solid #f0c8ce;
+      border-radius: 12px;
+      color: #82303c;
+      background: var(--policy-soft);
+      font-size: 9px;
+    }
+    .rail-footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 15px 18px; }
+    .saved-state { display: flex; align-items: center; gap: 5px; color: var(--success); font-size: 9px; opacity: 0; transition: opacity .15s ease; }
+    .saved-state.visible { opacity: 1; }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 22px;
+      z-index: 10;
+      transform: translateX(-50%) translateY(12px);
+      padding: 9px 12px;
+      border: 1px solid #9dd5d3;
+      border-radius: 7px;
+      color: var(--primary-dark);
+      background: #f4fcfb;
+      box-shadow: 0 8px 24px rgba(23,33,33,.12);
+      font-size: 11px;
+      opacity: 0;
+      pointer-events: none;
+      transition: .18s ease;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+    @media (max-width: 1120px) {
+      .workspace { grid-template-columns: 190px minmax(440px, 1fr) 326px; }
+      .map-stage { min-width: 830px; }
+      .canvas-scroll { padding-left: 24px; padding-right: 24px; }
+    }
+
+    @media (max-width: 820px) {
+      .app { height: auto; min-height: 100vh; overflow: visible; }
+      .topbar { position: sticky; top: 0; z-index: 5; width: 100%; max-width: 100%; min-width: 0; min-height: 52px; padding: 8px 10px; }
+      .brand p { max-width: 190px; }
+      .brand { flex: 1; min-width: 0; }
+      .header-actions { flex: 0 0 auto; }
+      .header-actions .secondary-button span { display: none; }
+      .header-actions .secondary-button { width: 34px; padding: 0; }
+      .stagebar { align-items: flex-start; width: 100%; max-width: 100%; min-width: 0; padding: 8px 10px; overflow-x: auto; }
+      .stage-note { display: none; }
+      .stage:not(:last-child)::after { width: 22px; margin: 0 6px; }
+      .stage-copy { display: none; }
+      .stage.active .stage-copy { display: inline; }
+      .workspace { display: flex; flex-direction: column; width: 100%; max-width: 100%; min-width: 0; overflow: visible; }
+      .left-nav { order: 0; width: 100%; max-width: 100%; min-width: 0; overflow-x: auto; overflow-y: hidden; padding: 8px 10px; border-right: 0; border-bottom: 1px solid var(--line); }
+      .nav-label, .legend, .overview-progress { display: none; }
+      .map-nav { display: flex; width: max-content; gap: 6px; }
+      .map-nav-button { grid-template-columns: 25px auto auto; width: auto; min-height: 40px; padding: 5px 7px; }
+      .nav-icon { width: 25px; height: 25px; }
+      .map-nav-button small { display: none; }
+      .canvas-pane { order: 1; width: 100%; max-width: 100%; min-width: 0; height: 485px; border-bottom: 1px solid var(--line); }
+      .canvas-toolbar { min-height: 45px; padding: 6px 9px; }
+      .zoom-tools .icon-button:nth-child(-n+2), .zoom-value { display: none; }
+      .canvas-scroll { padding: 20px 18px 55px; }
+      .map-stage { min-width: 800px; min-height: 390px; transform-origin: 0 0; }
+      .root-column { padding-right: 54px; }
+      .root-column::after { width: 54px; }
+      .root-node { width: 145px; min-height: 64px; }
+      .branches { gap: 13px; }
+      .branch-row { gap: 46px; min-height: 76px; padding-left: 40px; }
+      .branch-row::before { width: 40px; }
+      .branch-main-wrap { flex-basis: 140px; }
+      .branch-main-wrap::after { width: 46px; }
+      .leaves { min-width: 330px; gap: 6px; }
+      .mind-node { min-height: 34px; padding: 6px 8px; }
+      .decision-rail { order: 2; width: 100%; max-width: 100%; min-width: 0; overflow: visible; border-left: 0; }
+      .rail-header, .rail-section, .rail-footer { padding-left: 12px; padding-right: 12px; }
+      .candidate-list { grid-template-columns: 1fr; }
+      .rail-footer { padding-bottom: 28px; }
+      .canvas-hint { display: none; }
+    }
+
+    @media (max-width: 430px) {
+      .brand h1 { font-size: 13px; }
+      .brand p { max-width: 150px; }
+      .header-actions .primary-button span { display: none; }
+      .header-actions .primary-button { width: 34px; padding: 0; }
+      .stagebar { gap: 8px; }
+      .canvas-pane { height: 440px; }
+      .map-stage { transform: scale(.78); min-height: 470px; }
+      .map-nav-button strong { font-size: 11px; }
+      .candidate-copy strong { font-size: 12px; }
+      .candidate-copy p, .rail-header p, textarea { font-size: 11px; }
+      .toast { width: calc(100% - 24px); text-align: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><i data-lucide="compass" class="icon"></i></div>
+        <div class="brand-copy">
+          <h1>PRD Outline · 企业采购协同平台</h1>
+          <p>先看全局，再进入分支确认业务方向</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="secondary-button" id="history-button" title="查看决策记录"><i data-lucide="history" class="icon"></i><span>决策记录</span></button>
+        <button class="primary-button" id="save-button"><i data-lucide="download" class="icon"></i><span>保存本轮选择</span></button>
+      </div>
+    </header>
+
+    <section class="stagebar" aria-label="Outline 成熟度">
+      <div class="stages">
+        <div class="stage done"><span class="stage-index"><i data-lucide="check" class="icon"></i></span><span class="stage-copy">一级 · 方向探索</span></div>
+        <div class="stage active"><span class="stage-index">2</span><span class="stage-copy">二级 · 框架收敛</span></div>
+        <div class="stage"><span class="stage-index">3</span><span class="stage-copy">三级 · 正式确认</span></div>
+      </div>
+      <div class="stage-note">当前：6 个分支待确认 · 完成后由 Constitution 补齐三级细节</div>
+    </section>
+
+    <div class="workspace">
+      <nav class="left-nav" aria-label="导图视图">
+        <p class="nav-label">项目导图</p>
+        <div class="map-nav">
+          <button class="map-nav-button active" data-map="overview">
+            <span class="nav-icon"><i data-lucide="network" class="icon"></i></span>
+            <span><strong>全局总图</strong><small>目标、角色、业务域与边界</small></span>
+            <span class="count">3</span>
+          </button>
+          <button class="map-nav-button" data-map="procurement">
+            <span class="nav-icon"><i data-lucide="git-branch" class="icon"></i></span>
+            <span><strong>采购业务分图</strong><small>申请、审批、订单与履约</small></span>
+            <span class="count">2</span>
+          </button>
+          <button class="map-nav-button" data-map="constraints">
+            <span class="nav-icon policy"><i data-lucide="shield-check" class="icon"></i></span>
+            <span><strong>全局约束与治理</strong><small>政策、合规与平台原则</small></span>
+            <span class="count policy">1</span>
+          </button>
+        </div>
+
+        <div class="legend">
+          <p class="nav-label" style="margin-left:0">节点状态</p>
+          <div class="legend-row"><span class="legend-dot user"></span>用户已确认</div>
+          <div class="legend-row"><span class="legend-dot ai"></span>模型建议，待判断</div>
+          <div class="legend-row"><span class="legend-dot pending"></span>当前必须选择</div>
+          <div class="legend-row"><span class="legend-dot policy"></span>影响全局的约束</div>
+        </div>
+
+        <div class="overview-progress">
+          <div class="progress-copy"><span>二级框架完成度</span><strong>56%</strong></div>
+          <div class="progress-track"><div class="progress-fill"></div></div>
+        </div>
+      </nav>
+
+      <main class="canvas-pane">
+        <div class="canvas-toolbar">
+          <div class="crumbs" id="crumbs">
+            <button data-go-map="overview">项目总览</button>
+            <i data-lucide="chevron-right" class="icon"></i>
+            <span id="current-map-label">全局总图</span>
+          </div>
+          <div class="zoom-tools">
+            <button class="icon-button" id="zoom-out" title="缩小"><i data-lucide="zoom-out" class="icon"></i></button>
+            <span class="zoom-value" id="zoom-value">100%</span>
+            <button class="icon-button" id="zoom-in" title="放大"><i data-lucide="zoom-in" class="icon"></i></button>
+            <button class="icon-button" id="fit-map" title="适合画布"><i data-lucide="maximize" class="icon"></i></button>
+          </div>
+        </div>
+        <div class="canvas-scroll" id="canvas-scroll">
+          <div class="map-stage" id="map-stage"></div>
+        </div>
+        <div class="canvas-hint"><i data-lucide="mouse-pointer-2" class="icon"></i>点击节点查看选项；带箭头的分支可进入分图</div>
+      </main>
+
+      <aside class="decision-rail" aria-label="分支决策面板">
+        <div class="rail-header">
+          <div class="rail-eyebrow">
+            <span class="node-id" id="node-id">CAP-APPROVAL</span>
+            <span class="source-badge" id="source-badge"><i data-lucide="sparkles" class="icon"></i><span>模型建议</span></span>
+          </div>
+          <h2 id="rail-title">审批模式</h2>
+          <p id="rail-description">确定采购申请进入审批时，平台采用哪一种主要的规则组织方式。</p>
+        </div>
+
+        <section class="rail-section" id="affected-section" hidden>
+          <div class="section-title"><h3>影响范围</h3><span class="required">全局规则</span></div>
+          <div class="affected-list" id="affected-list"></div>
+        </section>
+
+        <section class="rail-section" id="candidate-section">
+          <div class="section-title"><h3>选择一个方向</h3><span class="required">需要你确认</span></div>
+          <div class="candidate-list" id="candidate-list"></div>
+          <div class="recommend-reason" id="recommend-reason"><strong>推荐理由：</strong><span></span></div>
+        </section>
+
+        <section class="rail-section">
+          <label class="feedback-label" for="custom-input">补充或改写业务需求</label>
+          <textarea id="custom-input" placeholder="例如：超过 50 万元的设备采购，还需要技术负责人会签……"></textarea>
+          <div class="input-actions">
+            <button class="secondary-button" id="not-applicable">以上都不适用</button>
+            <button class="primary-button" id="add-input"><i data-lucide="plus" class="icon"></i>加入当前分支</button>
+          </div>
+        </section>
+
+        <section class="rail-section">
+          <div class="section-title"><h3>确认后如何处理</h3></div>
+          <p id="writeback-copy" style="margin:0;color:var(--muted);font-size:10px;line-height:1.55">本次选择会绑定到当前导图节点，作为用户确认的 Outline 事实；不会单独授权进入 /sp.specify。</p>
+        </section>
+
+        <div class="rail-footer">
+          <span class="saved-state" id="saved-state"><i data-lucide="check-circle-2" class="icon"></i>已记录到本轮草稿</span>
+          <button class="primary-button" id="next-pending">下一个待确认 <i data-lucide="arrow-right" class="icon"></i></button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    const maps = {
+      overview: {
+        title: '全局总图',
+        root: { id: 'PRD-ROOT', label: '企业采购协同平台', meta: '二级框架 · v0.3' },
+        branches: [
+          { id: 'GOAL', label: '产品目标与边界', source: 'user', meta: '已确认', leaves: [
+            { id: 'GOAL-01', label: '缩短跨部门采购周期', source: 'user', meta: '用户输入' },
+            { id: 'SCOPE-01', label: '首期：间接采购', status: 'pending', meta: '待确认' },
+            { id: 'METRIC-01', label: '审批周期降低 30%', source: 'ai', meta: '模型建议' }
+          ]},
+          { id: 'PERSONA', label: '用户与关键场景', source: 'user', meta: '2 类核心角色', leaves: [
+            { id: 'ROLE-01', label: '采购经理：规则与供应商', source: 'user', meta: '已确认' },
+            { id: 'ROLE-02', label: '业务申请人：提需与跟踪', status: 'pending', meta: '待确认' },
+            { id: 'SCENE-01', label: '紧急采购绿色通道', source: 'ai', meta: '模型建议' }
+          ]},
+          { id: 'CAP', label: '核心业务能力', source: 'ai', meta: '可进入分图', drill: 'procurement', leaves: [
+            { id: 'CAP-REQUEST', label: '采购申请与预算校验', source: 'user', meta: '已确认' },
+            { id: 'CAP-APPROVAL', label: '分级审批与会签', status: 'pending', meta: '当前选择' },
+            { id: 'CAP-ORDER', label: '订单与履约协同', source: 'ai', meta: '模型建议' }
+          ]},
+          { id: 'GOV', label: '全局约束与治理', kind: 'policy', meta: '影响 5 个节点', drill: 'constraints', leaves: [
+            { id: 'GOV-AUDIT', label: '操作留痕与审计', kind: 'policy', meta: '影响 3 个节点', impact: 3 },
+            { id: 'GOV-DATA', label: '数据驻留与保留', kind: 'policy', status: 'pending', meta: '影响 4 个节点', impact: 4 },
+            { id: 'GOV-ACCESS', label: '最小权限原则', kind: 'policy', meta: '影响全局', impact: 6 }
+          ]}
+        ]
+      },
+      procurement: {
+        title: '采购业务分图',
+        root: { id: 'CAP', label: '采购业务域', meta: '来自全局总图' },
+        branches: [
+          { id: 'CAP-REQUEST', label: '申请与预算', source: 'user', meta: '已确认', leaves: [
+            { id: 'REQ-FORM', label: '结构化采购申请', source: 'user', meta: '已确认' },
+            { id: 'REQ-BUDGET', label: '预算占用校验', source: 'ai', meta: '模型建议' },
+            { id: 'REQ-URGENT', label: '紧急采购标记', status: 'pending', meta: '待确认' }
+          ]},
+          { id: 'CAP-APPROVAL', label: '审批与会签', status: 'pending', meta: '当前选择', leaves: [
+            { id: 'APP-RULE', label: '额度 + 品类 + 风险分级', status: 'pending', meta: '推荐方案' },
+            { id: 'APP-SIGN', label: '财务 / 法务 / 技术会签', source: 'ai', meta: '模型建议' },
+            { id: 'APP-DELEGATE', label: '委托审批与超时升级', source: 'ai', meta: '模型建议' }
+          ]},
+          { id: 'CAP-ORDER', label: '订单与履约', source: 'ai', meta: '框架待补齐', leaves: [
+            { id: 'ORD-CREATE', label: '中标结果生成订单', source: 'ai', meta: '模型建议' },
+            { id: 'ORD-DELIVERY', label: '到货与验收协同', source: 'ai', meta: '模型建议' },
+            { id: 'ORD-CHANGE', label: '变更与终止', status: 'pending', meta: '待确认' }
+          ]},
+          { id: 'CAP-CLOSE', label: '对账与复盘', source: 'ai', meta: '三级补齐', leaves: [
+            { id: 'CLOSE-MATCH', label: '合同 / 订单 / 发票匹配', source: 'ai', meta: '三级生成' },
+            { id: 'CLOSE-SCORE', label: '供应商履约评分', source: 'ai', meta: '三级生成' },
+            { id: 'GOV-AUDIT', label: '受审计规则约束', kind: 'policy', meta: '全局规则', impact: 3 }
+          ]}
+        ]
+      },
+      constraints: {
+        title: '全局约束与治理',
+        root: { id: 'GOV', label: '全局约束与治理', meta: '横向影响业务分支' },
+        branches: [
+          { id: 'GOV-DATA', label: '数据合规', kind: 'policy', status: 'pending', meta: '影响 4 个节点', leaves: [
+            { id: 'DATA-REGION', label: '业务数据境内驻留', kind: 'policy', status: 'pending', meta: '待确认', impact: 4 },
+            { id: 'DATA-RETENTION', label: '采购记录保留 7 年', kind: 'policy', meta: '模型建议', impact: 3 },
+            { id: 'DATA-EXPORT', label: '导出前脱敏', kind: 'policy', meta: '模型建议', impact: 2 }
+          ]},
+          { id: 'GOV-AUDIT', label: '审计与追溯', kind: 'policy', meta: '影响 3 个节点', leaves: [
+            { id: 'AUDIT-LOG', label: '关键动作不可变日志', kind: 'policy', meta: '已确认', impact: 3 },
+            { id: 'AUDIT-VIEW', label: '审计专用只读视图', kind: 'policy', meta: '模型建议', impact: 2 },
+            { id: 'AUDIT-TRACE', label: '决策来源可追溯', kind: 'policy', meta: '已确认', impact: 6 }
+          ]},
+          { id: 'GOV-ACCESS', label: '权限与职责分离', kind: 'policy', meta: '影响全局', leaves: [
+            { id: 'ACCESS-MIN', label: '默认最小权限', kind: 'policy', meta: 'Constitution', impact: 6 },
+            { id: 'ACCESS-SOD', label: '申请与终审职责分离', kind: 'policy', meta: '待确认', impact: 3 },
+            { id: 'ACCESS-DELEGATE', label: '委托权限限时失效', kind: 'policy', meta: '模型建议', impact: 2 }
+          ]},
+          { id: 'GOV-PLATFORM', label: '平台原则', kind: 'policy', meta: '三级自动补齐', leaves: [
+            { id: 'PLAT-API', label: '外部系统通过 API 接入', kind: 'policy', meta: 'Constitution', impact: 4 },
+            { id: 'PLAT-ID', label: '统一企业身份源', kind: 'policy', meta: 'Constitution', impact: 5 },
+            { id: 'PLAT-AVAIL', label: '核心审批高可用', kind: 'policy', meta: '三级生成', impact: 2 }
+          ]}
+        ]
+      }
+    };
+
+    const decisions = {
+      'CAP-APPROVAL': {
+        title: '审批模式', source: 'ai',
+        description: '确定采购申请进入审批时，平台采用哪一种主要的规则组织方式。',
+        candidates: [
+          ['分级规则驱动', '按金额、品类和风险动态匹配审批人与会签人。'],
+          ['固定流程模板', '不同采购类型各维护一条固定审批链。'],
+          ['业务部门自由配置', '由部门管理员自行搭建节点与条件。']
+        ],
+        recommended: 0,
+        reason: '既能覆盖大额与高风险采购，又避免首期直接建设复杂的流程设计器。'
+      },
+      'APP-RULE': {
+        title: '审批分级维度', source: 'ai',
+        description: '选择首期真正参与审批路由的业务维度。',
+        candidates: [
+          ['金额 + 品类 + 风险', '金额控制授权，品类决定专业会签，风险触发合规复核。'],
+          ['仅按采购金额', '规则最简单，但不能覆盖敏感品类和供应商风险。'],
+          ['金额 + 所属部门', '管理直观，但跨部门标准可能不一致。']
+        ],
+        recommended: 0,
+        reason: '三类维度与现有采购治理职责直接对应，且可以按阶段逐步启用。'
+      },
+      'SCOPE-01': {
+        title: '首期业务范围', source: 'user',
+        description: '首期交付需要明确覆盖的采购类型，防止 Outline 继续无边界扩张。',
+        candidates: [
+          ['间接采购', '办公、服务、设备等非生产性采购。'],
+          ['直接与间接采购同时覆盖', '范围完整，但供应链复杂度显著提高。'],
+          ['只做办公用品采购', '落地快，但验证价值偏低。']
+        ],
+        recommended: 0,
+        reason: '覆盖足够多的真实审批差异，同时避开生产物料计划与库存联动。'
+      },
+      'ROLE-02': {
+        title: '业务申请人的参与深度', source: 'ai',
+        description: '确定业务申请人在采购流程中可以操作和看到的边界。',
+        candidates: [
+          ['提需并跟踪全过程', '可补资料、查看进度、响应退回，但不能改审批规则。'],
+          ['只负责提交需求', '界面最简单，后续沟通仍在线下发生。'],
+          ['参与供应商选择', '业务参与更深，但职责边界容易模糊。']
+        ],
+        recommended: 0,
+        reason: '把高频协同带回平台，同时保留采购经理的治理职责。'
+      },
+      'DATA-REGION': {
+        title: '数据驻留策略', source: 'policy',
+        description: '这是跨业务域的全局约束，确认一次后由多个相关节点共同引用。',
+        affected: ['供应商档案', '采购申请', '合同与订单', '审计导出'],
+        candidates: [
+          ['全部业务数据境内驻留', '核心数据与备份均保存在境内区域。'],
+          ['敏感字段境内驻留', '一般数据可跨区域，敏感字段单独隔离。'],
+          ['按客户租户配置', '灵活度最高，但部署和运维复杂。']
+        ],
+        recommended: 0,
+        reason: '对首期企业采购场景最清晰，能减少跨境识别和混合部署的复杂度。'
+      },
+      'GOV-DATA': {
+        title: '数据合规策略', source: 'policy',
+        description: '统一决定采购数据的驻留、保留和导出原则。',
+        affected: ['供应商档案', '采购申请', '合同与订单', '审计导出'],
+        candidates: [
+          ['统一平台级策略', '所有业务分支遵循同一组数据合规规则。'],
+          ['按业务域分别制定', '更灵活，但容易形成互相矛盾的规则。'],
+          ['延后到三级再决定', '当前不阻断框架，但会影响范围评估。']
+        ],
+        recommended: 0,
+        reason: '政策类规则应保持单一权威来源，由业务节点引用而不是复制。'
+      },
+      'REQ-URGENT': {
+        title: '紧急采购处理', source: 'ai',
+        description: '确定紧急采购是否需要一条单独通道，以及它的基本约束。',
+        candidates: [
+          ['加速但不跳过审批', '缩短响应时限，并自动升级超时节点。'],
+          ['允许事后补审批', '响应最快，但需要更强审计与追责机制。'],
+          ['首期不支持紧急通道', '范围最小，线下例外仍然存在。']
+        ],
+        recommended: 0,
+        reason: '保留治理完整性，同时通过时限和升级机制解决紧急性。'
+      },
+      'ORD-CHANGE': {
+        title: '订单变更边界', source: 'ai',
+        description: '明确订单生成后，哪些变化需要重新进入审批。',
+        candidates: [
+          ['关键字段变更重新审批', '金额、供应商、品类变化触发重新审批。'],
+          ['所有变更都重新审批', '规则简单，但小改动成本高。'],
+          ['仅金额增加重新审批', '操作顺畅，但治理覆盖不足。']
+        ],
+        recommended: 0,
+        reason: '将审批成本集中在真正改变采购风险的字段上。'
+      }
+    };
+
+    let currentMap = 'overview';
+    let currentNode = 'CAP-APPROVAL';
+    let zoom = 1;
+    const selections = {};
+    const customNotes = {};
+
+    const mapStage = document.getElementById('map-stage');
+    const currentMapLabel = document.getElementById('current-map-label');
+    const canvasScroll = document.getElementById('canvas-scroll');
+
+    function nodeButton(node, kind) {
+      const source = node.source || '';
+      const status = node.status || '';
+      const policy = node.kind === 'policy';
+      const dotClass = policy ? 'policy' : status === 'pending' ? 'pending' : source === 'user' ? 'user' : source === 'ai' ? 'ai' : '';
+      const selected = node.id === currentNode ? ' selected' : '';
+      const drill = node.drill ? `<i data-lucide="arrow-up-right" class="drill-icon"></i>` : '';
+      const impact = node.impact ? `<span class="impact-mini">影响 ${node.impact}</span>` : '';
+      return `<button class="mind-node ${kind}-node${selected}" data-node="${node.id}" data-source="${source}" data-status="${status}" data-kind="${policy ? 'policy' : ''}" ${node.drill ? `data-drill="${node.drill}"` : ''}>
+        <span class="node-label"><strong>${node.label}</strong><small>${node.meta || ''}</small></span>
+        <span class="node-meta"><span class="status-dot ${dotClass}"></span>${impact}${drill}</span>
+      </button>`;
+    }
+
+    function renderMap(mapId, preserveNode = false) {
+      currentMap = mapId;
+      const map = maps[mapId];
+      currentMapLabel.textContent = map.title;
+      document.querySelectorAll('.map-nav-button').forEach(button => button.classList.toggle('active', button.dataset.map === mapId));
+      if (!preserveNode) {
+        const pending = map.branches.flatMap(branch => [branch, ...branch.leaves]).find(node => decisions[node.id]);
+        if (pending) currentNode = pending.id;
+      }
+      const rows = map.branches.map(branch => `<div class="branch-row">
+        <div class="branch-main-wrap">${nodeButton(branch, 'branch')}</div>
+        <div class="leaves">${branch.leaves.map(leaf => `<div class="leaf-wrap">${nodeButton(leaf, 'leaf')}</div>`).join('')}</div>
+      </div>`).join('');
+      mapStage.innerHTML = `<div class="map-tree">
+        <div class="root-column"><button class="root-node" data-node="${map.root.id}"><strong>${map.root.label}</strong><small>${map.root.meta}</small></button></div>
+        <div class="branches">${rows}</div>
+      </div>`;
+      bindMapEvents();
+      applyZoom();
+      renderDecision(currentNode);
+      requestAnimationFrame(() => { canvasScroll.scrollLeft = 0; canvasScroll.scrollTop = 0; });
+      lucide.createIcons();
+    }
+
+    function bindMapEvents() {
+      mapStage.querySelectorAll('[data-node]').forEach(button => {
+        button.addEventListener('click', () => {
+          const nodeId = button.dataset.node;
+          if (button.dataset.drill) {
+            renderMap(button.dataset.drill);
+            return;
+          }
+          currentNode = nodeId;
+          mapStage.querySelectorAll('.mind-node').forEach(node => node.classList.toggle('selected', node.dataset.node === nodeId));
+          renderDecision(nodeId);
+        });
+      });
+    }
+
+    function findNode(nodeId) {
+      for (const map of Object.values(maps)) {
+        if (map.root.id === nodeId) return map.root;
+        for (const branch of map.branches) {
+          if (branch.id === nodeId) return branch;
+          const leaf = branch.leaves.find(item => item.id === nodeId);
+          if (leaf) return leaf;
+        }
+      }
+      return null;
+    }
+
+    function renderDecision(nodeId) {
+      const node = findNode(nodeId) || { id: nodeId, label: nodeId };
+      const decision = decisions[nodeId] || {
+        title: node.label,
+        source: node.kind === 'policy' ? 'policy' : node.source || 'user',
+        description: '这个节点当前没有必须回答的问题。你仍可补充信息，模型会把内容绑定到该分支。',
+        candidates: [
+          ['保持当前框架', '暂不改变这个分支的范围和表达。'],
+          ['标记为需要后续研究', '保留节点，但在进入三级前补充证据。']
+        ],
+        recommended: 0,
+        reason: '当前信息不足以扩大范围，保留稳定结构更利于后续收敛。'
+      };
+      document.getElementById('node-id').textContent = nodeId;
+      document.getElementById('rail-title').textContent = decision.title;
+      document.getElementById('rail-description').textContent = decision.description;
+      const badge = document.getElementById('source-badge');
+      badge.className = 'source-badge' + (decision.source === 'policy' ? ' policy' : decision.source === 'user' ? ' user' : '');
+      badge.innerHTML = decision.source === 'policy'
+        ? '<i data-lucide="shield-check" class="icon"></i><span>全局约束</span>'
+        : decision.source === 'user'
+          ? '<i data-lucide="user-check" class="icon"></i><span>用户提供</span>'
+          : '<i data-lucide="sparkles" class="icon"></i><span>模型建议</span>';
+
+      const affectedSection = document.getElementById('affected-section');
+      if (decision.affected) {
+        affectedSection.hidden = false;
+        document.getElementById('affected-list').innerHTML = decision.affected.map(item => `<span class="affected-tag"><i data-lucide="link-2" class="icon"></i>${item}</span>`).join('');
+      } else {
+        affectedSection.hidden = true;
+      }
+
+      const list = document.getElementById('candidate-list');
+      list.innerHTML = decision.candidates.map((candidate, index) => `<button class="candidate ${selections[nodeId] === index ? 'selected' : ''}" data-index="${index}">
+        <span class="radio"></span>
+        <span class="candidate-copy"><strong>${candidate[0]}</strong><p>${candidate[1]}</p></span>
+        ${index === decision.recommended ? '<span class="recommended">推荐</span>' : ''}
+      </button>`).join('');
+      document.querySelector('#recommend-reason span').textContent = decision.reason;
+      document.getElementById('custom-input').value = customNotes[nodeId] || '';
+      document.getElementById('writeback-copy').textContent = decision.source === 'policy'
+        ? '该决策只记录一次，并通过 affected_node_ids 关联受影响业务节点；不会复制成多份可能漂移的事实。'
+        : '本次选择会绑定到当前导图节点，作为用户确认的 Outline 事实；不会单独授权进入 /sp.specify。';
+      list.querySelectorAll('.candidate').forEach(button => button.addEventListener('click', () => {
+        selections[nodeId] = Number(button.dataset.index);
+        list.querySelectorAll('.candidate').forEach(item => item.classList.toggle('selected', item === button));
+        showSaved();
+      }));
+      document.getElementById('saved-state').classList.toggle('visible', selections[nodeId] !== undefined || !!customNotes[nodeId]);
+      lucide.createIcons();
+    }
+
+    function showSaved(message = '已记录到本轮草稿') {
+      const saved = document.getElementById('saved-state');
+      saved.lastChild.textContent = message;
+      saved.classList.add('visible');
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      clearTimeout(showToast.timer);
+      showToast.timer = setTimeout(() => toast.classList.remove('show'), 2100);
+    }
+
+    function applyZoom() {
+      mapStage.style.transform = `scale(${zoom})`;
+      document.getElementById('zoom-value').textContent = `${Math.round(zoom * 100)}%`;
+    }
+
+    document.querySelectorAll('.map-nav-button').forEach(button => button.addEventListener('click', () => renderMap(button.dataset.map)));
+    document.querySelectorAll('[data-go-map]').forEach(button => button.addEventListener('click', () => renderMap(button.dataset.goMap)));
+    document.getElementById('zoom-in').addEventListener('click', () => { zoom = Math.min(1.3, zoom + .1); applyZoom(); });
+    document.getElementById('zoom-out').addEventListener('click', () => { zoom = Math.max(.7, zoom - .1); applyZoom(); });
+    document.getElementById('fit-map').addEventListener('click', () => { zoom = window.innerWidth <= 430 ? .78 : window.innerWidth <= 1120 ? .88 : 1; applyZoom(); canvasScroll.scrollTo({ left: 0, top: 0, behavior: 'smooth' }); });
+    document.getElementById('add-input').addEventListener('click', () => {
+      const value = document.getElementById('custom-input').value.trim();
+      if (!value) { showToast('请先输入需要补充的业务信息'); return; }
+      customNotes[currentNode] = value;
+      showSaved('已加入当前分支');
+      showToast(`补充内容已绑定到 ${currentNode}`);
+    });
+    document.getElementById('not-applicable').addEventListener('click', () => {
+      selections[currentNode] = -1;
+      renderDecision(currentNode);
+      showToast('已记录：现有选项均不适用，可继续补充说明');
+    });
+    document.getElementById('next-pending').addEventListener('click', () => {
+      const pendingIds = Object.keys(decisions);
+      const currentIndex = pendingIds.indexOf(currentNode);
+      const nextId = pendingIds[(currentIndex + 1) % pendingIds.length];
+      const targetMap = Object.entries(maps).find(([, map]) => map.branches.some(branch => branch.id === nextId || branch.leaves.some(leaf => leaf.id === nextId)))?.[0] || currentMap;
+      currentNode = nextId;
+      renderMap(targetMap, true);
+      showToast('已定位到下一个待确认分支');
+    });
+    document.getElementById('save-button').addEventListener('click', () => showToast('原型演示：本轮响应包已准备下载'));
+    document.getElementById('history-button').addEventListener('click', () => showToast(`本轮已记录 ${Object.keys(selections).length + Object.keys(customNotes).length} 项决策`));
+    window.addEventListener('resize', () => { if (window.innerWidth <= 430 && zoom > .8) { zoom = .78; applyZoom(); } });
+
+    zoom = window.innerWidth <= 430 ? .78 : 1;
+    renderMap('overview', true);
+  </script>
+</body>
+</html>

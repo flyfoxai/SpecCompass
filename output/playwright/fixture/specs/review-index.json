@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "features": [
+    {
+      "order": 1,
+      "feature": "001-outline",
+      "title": "Outline Discovery Example",
+      "has_flow_review": false,
+      "has_ui_review": false,
+      "has_outline_review": true,
+      "has_outline_discovery": true
+    }
+  ]
+}

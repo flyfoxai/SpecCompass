@@ -1,0 +1,68 @@
+/* SpecCompass Huashu tokens. Primary project color: #0ABAB5. */
+:root {
+  --sc-primary: #0ABAB5;
+  --sc-primary-dark: #078985;
+  --sc-red: #C73D3D;
+  --sc-bg: #F7FAFA;
+  --sc-panel: #FFFFFF;
+  --sc-border: #DCE8E8;
+  --sc-text: #172121;
+  --sc-muted: #657474;
+  --sc-soft: #E9F8F7;
+  --sc-radius: 8px;
+  color-scheme: light;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--sc-bg);
+  color: var(--sc-text);
+  letter-spacing: 0;
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+button {
+  border: 1px solid var(--sc-border);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--sc-text);
+  cursor: pointer;
+  min-height: 32px;
+}
+
+button.primary {
+  border-color: var(--sc-primary);
+  background: var(--sc-primary);
+  color: #fff;
+}
+
+button.primary:hover {
+  border-color: var(--sc-primary-dark);
+  background: var(--sc-primary-dark);
+}
+
+button.primary:active {
+  border-color: #06736F;
+  background: #06736F;
+}
+
+button.danger {
+  border-color: var(--sc-red);
+  color: var(--sc-red);
+}
+
+button:focus-visible,
+.node-card:focus-visible {
+  outline: 3px solid rgba(10, 186, 181, 0.28);
+  outline-offset: 2px;
+}

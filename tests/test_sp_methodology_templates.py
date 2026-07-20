@@ -5197,6 +5197,7 @@ def _outline_discovery_validator_sample() -> dict:
                             {
                                 "id": "risk-basic",
                                 "label": "单策略加基础风控",
+                                "detail": "该项目独立拥有策略执行与风险检查能力，交付经过仓位与资金限制验证的受控订单结果。",
                                 "value": "首期支持一个交易策略，并在仓位、资金和单笔损失检查通过后生成订单。",
                                 "rationale": "可以用最小闭环验证数据、策略、风险和订单之间的业务关系。",
                                 "business_chain_refs": ["chain-trading-loop"],
@@ -5205,6 +5206,7 @@ def _outline_discovery_validator_sample() -> dict:
                             {
                                 "id": "risk-multi",
                                 "label": "多策略加组合风控",
+                                "detail": "该项目独立拥有多策略协调与组合风险评估能力，交付按组合敞口统一控制的订单结果。",
                                 "value": "首期同时运行多个策略，并按组合敞口和回撤统一决定订单是否放行。",
                                 "rationale": "覆盖更完整，但需要更多策略冲突和组合风险事实。",
                                 "business_chain_refs": ["chain-trading-loop"],
