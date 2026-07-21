@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.14] - 2026-07-21
+
+### Changed
+
+- Added atom-first PRD Level 1 decomposition into independently verifiable candidate subprojects with deterministic one-to-one ownership validation.
+- fix(prd+renderer): remove node count limit and fix tree connection lines (#41)
+
 ## [0.11.2] - 2026-07-19
 
 ### Changed
