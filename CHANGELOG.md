@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.15] - 2026-07-21
+
+### Changed
+
+- Made each PRD branch map derive its Level 3 node count from source-backed business facts instead of a fixed two-node skeleton.
+- Removed the direct-child count limit from the Outline Discovery schema, CLI validator, browser validator, and writeback validation.
+- Preserved presentation-density safeguards without allowing them to omit or collapse business capabilities, outcomes, exceptions, controls, risks, or handoffs.
+- fix(prd): derive branch node count from business evidence
+
 ## [0.11.2] - 2026-07-19
 
 ### Changed
