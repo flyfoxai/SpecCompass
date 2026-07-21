@@ -1923,7 +1923,9 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "one concrete `outline_node_id`" in prd
     assert "max_visible_nodes_per_map: 18" in prd
     assert "max_depth: 3" in prd
-    assert "max_children_per_node: 4" in prd
+    assert "Direct child count is deliberately not part of the density budget" in prd
+    assert "There is no fixed minimum, default, or maximum number of direct child nodes" in prd
+    assert "core capability + observable outcome" in prd
     assert "max_layer_share: 0.6" in prd
     assert "affected business `node_id` values" in prd
 
@@ -5138,7 +5140,6 @@ def _outline_discovery_validator_sample() -> dict:
         "density_budget": {
             "max_visible_nodes_per_map": 18,
             "max_depth": 3,
-            "max_children_per_node": 4,
             "layer_balance_min_nodes": 8,
             "max_layer_share": 0.6,
         },
@@ -5346,7 +5347,6 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert discovery["properties"]["density_budget"]["properties"] == {
         "max_visible_nodes_per_map": {"const": 18},
         "max_depth": {"const": 3},
-        "max_children_per_node": {"const": 4},
         "layer_balance_min_nodes": {"const": 8},
         "max_layer_share": {"const": 0.6},
     }

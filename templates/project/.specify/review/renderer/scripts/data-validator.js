@@ -2,7 +2,6 @@
 const OUTLINE_DISCOVERY_DENSITY_BUDGET = Object.freeze({
   max_visible_nodes_per_map: 18,
   max_depth: 3,
-  max_children_per_node: 4,
   layer_balance_min_nodes: 8,
   max_layer_share: 0.6,
 });
@@ -77,9 +76,6 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
       children.push(node);
       childrenByParent.set(parent.node_id, children);
     }
-  }
-  if ([...childrenByParent.values()].some((children) => children.length > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_children_per_node)) {
-    return "Outline 节点最多有 4 个直接子节点。";
   }
   for (const map of data.maps) {
     const mapNodes = nodesByMap.get(map.map_id);

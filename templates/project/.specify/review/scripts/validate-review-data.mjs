@@ -79,7 +79,6 @@ const allowedDiscoveryOperations = new Set(["confirm_candidate", "add", "replace
 const outlineDiscoveryDensityBudget = Object.freeze({
   max_visible_nodes_per_map: 18,
   max_depth: 3,
-  max_children_per_node: 4,
   layer_balance_min_nodes: 8,
   max_layer_share: 0.6,
 });
@@ -1875,14 +1874,6 @@ function validateOutlineDiscoveryTopology(data) {
       }
     }
   }
-  const overviewRootId = overviewMaps[0] ? nodesById.get(overviewMaps[0]?.root_node_id)?.node_id : null;
-  for (const [parentId, children] of childrenByParent.entries()) {
-    if (parentId === overviewRootId) continue; // overview root is exempt: must show all Level 1 candidates
-    if (children.length > outlineDiscoveryDensityBudget.max_children_per_node) {
-      fail(`outline node ${parentId} may have at most 4 direct children`);
-    }
-  }
-
   for (const map of maps) {
     const mapNodes = nodesByMap.get(map.map_id) || [];
     const layerCounts = new Map();
