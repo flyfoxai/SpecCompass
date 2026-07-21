@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.16] - 2026-07-21
+
+### Fixed
+
+- Made PRD branch expansion derive every third-level node from source-backed business facts instead of reusing a two-child skeleton.
+- Rejected historical discovery artifacts that still contain the deprecated `density_budget.max_children_per_node` field.
+
 ## [0.11.2] - 2026-07-19
 
 ### Changed

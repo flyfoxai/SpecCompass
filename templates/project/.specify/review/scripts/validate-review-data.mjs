@@ -1782,6 +1782,9 @@ function validateOutlineDiscoveryTopology(data) {
   if (!budget || typeof budget !== "object" || Array.isArray(budget)) {
     fail("outline discovery density_budget must be an object");
   } else {
+    if (Object.prototype.hasOwnProperty.call(budget, "max_children_per_node")) {
+      fail("outline discovery density_budget must not contain deprecated max_children_per_node");
+    }
     for (const [key, expected] of Object.entries(outlineDiscoveryDensityBudget)) {
       if (budget[key] !== expected) fail(`outline discovery density_budget.${key} must be ${expected}`);
     }

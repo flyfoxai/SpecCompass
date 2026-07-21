@@ -1926,6 +1926,10 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "Direct child count is deliberately not part of the density budget" in prd
     assert "There is no fixed minimum, default, or maximum number of direct child nodes" in prd
     assert "core capability + observable outcome" in prd
+    assert "Any user-supplied second-level or third-level list is a seed" in prd
+    assert "Build a private fact ledger for that branch" in prd
+    assert "Never start from a two-child skeleton" in prd
+    assert "Do not emit the deprecated `density_budget.max_children_per_node` field" in prd
     assert "max_layer_share: 0.6" in prd
     assert "affected business `node_id` values" in prd
 
@@ -7848,3 +7852,18 @@ class TestSourceCapabilityCoverage:
         assert result.returncode != 0, (
             "Capability atom with no coverage entry should fail validation"
         )
+
+    def test_deprecated_child_count_budget_rejected(self, tmp_path):
+        """Historical artifacts must not remain valid after child-count removal."""
+        payload = json.loads((self._FIXTURE_DIR / "valid-full-coverage.json").read_text(encoding="utf-8"))
+        payload["density_budget"]["max_children_per_node"] = 4
+        artifact = tmp_path / "deprecated-density-budget.json"
+        artifact.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        result = subprocess.run(
+            ["node", self._VALIDATOR, str(artifact)],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+        assert result.returncode != 0
+        assert "deprecated max_children_per_node" in (result.stdout + result.stderr)

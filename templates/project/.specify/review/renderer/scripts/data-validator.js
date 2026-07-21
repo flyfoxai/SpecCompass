@@ -9,6 +9,9 @@ const OUTLINE_DISCOVERY_DENSITY_BUDGET = Object.freeze({
 function validateOutlineDiscoveryTopologyRuntime(data) {
   const budget = data.density_budget;
   if (!budget || typeof budget !== "object" || Array.isArray(budget)) return "Outline 探索缺少密度预算。";
+  if (Object.prototype.hasOwnProperty.call(budget, "max_children_per_node")) {
+    return "Outline 探索密度预算不能包含已废弃的 max_children_per_node。";
+  }
   for (const [key, expected] of Object.entries(OUTLINE_DISCOVERY_DENSITY_BUDGET)) {
     if (budget[key] !== expected) return `Outline 探索密度预算 ${key} 必须是 ${expected}。`;
   }
