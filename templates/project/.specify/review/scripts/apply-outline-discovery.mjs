@@ -17,7 +17,6 @@ const OUTLINE_SOURCE_STATUSES = new Set(["user", "user-confirmed", "doc", "ai-pr
 const DENSITY_BUDGET = Object.freeze({
   max_visible_nodes_per_map: 18,
   max_depth: 3,
-  max_children_per_node: 4,
   layer_balance_min_nodes: 8,
   max_layer_share: 0.6,
 });
@@ -277,9 +276,6 @@ function validateSourceTopology(source) {
       children.push(node);
       childrenByParent.set(parent.node_id, children);
     }
-  }
-  for (const [parentId, children] of childrenByParent.entries()) {
-    if (children.length > DENSITY_BUDGET.max_children_per_node) fail(`source node ${parentId} exceeds child density budget`);
   }
   for (const map of source.maps) {
     const mapNodes = nodesByMap.get(map.map_id);

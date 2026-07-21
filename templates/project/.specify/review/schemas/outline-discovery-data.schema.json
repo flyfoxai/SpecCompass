@@ -103,13 +103,12 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "max_visible_nodes_per_map", "max_depth", "max_children_per_node",
+        "max_visible_nodes_per_map", "max_depth",
         "layer_balance_min_nodes", "max_layer_share"
       ],
       "properties": {
         "max_visible_nodes_per_map": {"const": 18},
         "max_depth": {"const": 3},
-        "max_children_per_node": {"const": 4},
         "layer_balance_min_nodes": {"const": 8},
         "max_layer_share": {"const": 0.6}
       }
