@@ -266,7 +266,6 @@ function renderOutlineDiscoveryCurrentMap() {
   appendText(businessContext, "p", outlineDiscoveryBusinessSummary(reviewData, map));
   view.appendChild(businessContext);
   view.appendChild(renderOutlineDiscoveryMindmap(map));
-  view.appendChild(renderOutlineDiscoveryConstitution());
 }
 
 function renderOutlineDiscoveryConstitution(data = reviewData) {
@@ -369,6 +368,8 @@ function renderOutlineDiscoveryRail() {
   updateOutlineDiscoveryProgress();
   const nodeList = $("node-list");
   nodeList.replaceChildren();
+  // Constitution is always visible at the top of the rail, independent of node selection
+  nodeList.appendChild(renderOutlineDiscoveryConstitution());
   const node = outlineDiscoveryNode(outlineDiscoveryActiveNodeId);
   const panel = create("section", "panel discovery-node-panel");
   if (!node) {
