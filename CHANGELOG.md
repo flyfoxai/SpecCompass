@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.12] - 2026-07-21
+
+### Changed
+
+- Added atom-first PRD Level 1 decomposition into independently verifiable candidate subprojects with deterministic one-to-one ownership validation.
+- fix(prd): prevent Stage A pre-merging and require business-specific branch node names (#37)
+
 ## [0.11.2] - 2026-07-19
 
 ### Changed
