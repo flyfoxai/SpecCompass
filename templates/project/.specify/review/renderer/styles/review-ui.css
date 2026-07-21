@@ -1765,11 +1765,23 @@ details {
   position: relative;
 }
 
+/* Vertical trunk line along the left side of child columns */
 .discovery-mindmap-level + .discovery-mindmap-level::before {
+  position: absolute;
+  top: 0;
+  left: -11px;
+  width: 1px;
+  height: 100%;
+  background: #76B9B2;
+  content: "";
+}
+
+/* Individual horizontal branch from trunk to each child node */
+.discovery-mindmap-level + .discovery-mindmap-level .discovery-mindmap-node::before {
   position: absolute;
   top: 50%;
   left: -20px;
-  width: 20px;
+  width: 10px;
   height: 1px;
   background: #76B9B2;
   content: "";
