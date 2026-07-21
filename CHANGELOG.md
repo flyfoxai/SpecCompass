@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.11] - 2026-07-21
+
+### Changed
+
+- Added atom-first PRD Level 1 decomposition into independently verifiable candidate subprojects with deterministic one-to-one ownership validation.
+- fix(discovery): mirror questions, merge tradeoffs, recommendation reasons, constitution placement (#35)
+
 ## [0.11.2] - 2026-07-19
 
 ### Changed
