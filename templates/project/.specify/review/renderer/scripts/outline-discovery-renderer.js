@@ -11,6 +11,7 @@ let outlineDiscoveryActiveMapId = null;
 let outlineDiscoveryActiveNodeId = null;
 let outlineDiscoveryConstitutionOpen = false;
 let outlineDiscoveryConnectorObserver = null;
+let outlineDiscoveryConnectorFrame = null;
 let outlineDiscoveryState = { responses: {}, meta: {} };
 
 function outlineDiscoveryStorageKey(data = reviewData) {
@@ -453,40 +454,18 @@ function outlineDiscoveryVisualParent(node, visualDepth, nodesById, visualDepthB
   return null;
 }
 
-function alignOutlineDiscoveryParentNodes(connections, nodeElements) {
-  for (const element of nodeElements.values()) element.style.transform = "";
-  const visualDepths = [...new Set(connections.map((connection) => connection.visualDepth))].sort((a, b) => b - a);
-  for (const visualDepth of visualDepths) {
-    const groups = new Map();
-    for (const connection of connections.filter((entry) => entry.visualDepth === visualDepth)) {
-      if (!groups.has(connection.parentId)) groups.set(connection.parentId, []);
-      groups.get(connection.parentId).push(connection.childId);
-    }
-    for (const [parentId, childIds] of groups) {
-      const parentElement = nodeElements.get(parentId);
-      const childElements = childIds.map((childId) => nodeElements.get(childId)).filter(Boolean);
-      if (!parentElement || !childElements.length) continue;
-      const parentRect = parentElement.getBoundingClientRect();
-      const childCenters = childElements.map((element) => {
-        const rect = element.getBoundingClientRect();
-        return rect.top + (rect.height / 2);
-      });
-      const targetCenter = (Math.min(...childCenters) + Math.max(...childCenters)) / 2;
-      const parentCenter = parentRect.top + (parentRect.height / 2);
-      parentElement.style.transform = `translateY(${targetCenter - parentCenter}px)`;
-    }
-  }
-}
-
 function drawOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
   if (!canvas.isConnected) return;
   const layer = canvas.querySelector(".discovery-mindmap-connectors");
   if (!layer) return;
-  alignOutlineDiscoveryParentNodes(connections, nodeElements);
   const canvasRect = canvas.getBoundingClientRect();
-  layer.setAttribute("viewBox", `0 0 ${canvasRect.width} ${canvasRect.height}`);
-  layer.setAttribute("width", String(canvasRect.width));
-  layer.setAttribute("height", String(canvasRect.height));
+  const originX = canvasRect.left + canvas.clientLeft;
+  const originY = canvasRect.top + canvas.clientTop;
+  const canvasWidth = canvas.clientWidth;
+  const canvasHeight = canvas.clientHeight;
+  layer.setAttribute("viewBox", `0 0 ${canvasWidth} ${canvasHeight}`);
+  layer.setAttribute("width", String(canvasWidth));
+  layer.setAttribute("height", String(canvasHeight));
   layer.replaceChildren();
   const groups = new Map();
   for (const connection of connections) {
@@ -494,7 +473,11 @@ function drawOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(connection);
   }
-  const connectionGroups = [...groups.values()];
+  const connectionGroups = [...groups.values()].sort((left, right) => {
+    const leftRect = nodeElements.get(left[0]?.parentId)?.getBoundingClientRect();
+    const rightRect = nodeElements.get(right[0]?.parentId)?.getBoundingClientRect();
+    return (leftRect?.top || 0) - (rightRect?.top || 0);
+  });
   for (const groupedConnections of connectionGroups) {
     const firstConnection = groupedConnections[0];
     const parentElement = nodeElements.get(firstConnection.parentId);
@@ -505,23 +488,21 @@ function drawOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
       element: nodeElements.get(connection.childId)
     })).filter((entry) => entry.element);
     if (!children.length) continue;
-    const startX = parentRect.right - canvasRect.left;
-    const startY = parentRect.top + (parentRect.height / 2) - canvasRect.top;
+    const startX = parentRect.right - originX;
+    const startY = parentRect.top + (parentRect.height / 2) - originY;
     const childGeometry = children.map(({ connection, element }) => {
       const childRect = element.getBoundingClientRect();
       return {
         connection,
-        endX: childRect.left - canvasRect.left,
-        endY: childRect.top + (childRect.height / 2) - canvasRect.top
+        endX: childRect.left - originX,
+        endY: childRect.top + (childRect.height / 2) - originY
       };
-    });
+    }).sort((left, right) => left.endY - right.endY);
     const nearestEndX = Math.min(...childGeometry.map((entry) => entry.endX));
     const availableGap = Math.max(0, nearestEndX - startX);
     const peerGroups = connectionGroups.filter((group) => group[0]?.visualDepth === firstConnection.visualDepth);
     const laneIndex = peerGroups.indexOf(groupedConnections);
-    const lanePadding = Math.min(10, availableGap * 0.22);
-    const laneSpan = Math.max(0, availableGap - (lanePadding * 2));
-    const trunkX = startX + lanePadding + (laneSpan * ((laneIndex + 1) / (peerGroups.length + 1)));
+    const trunkX = startX + (availableGap * 0.5);
     const branchYs = childGeometry.map((entry) => entry.endY);
     const minY = Math.min(startY, ...branchYs);
     const maxY = Math.max(startY, ...branchYs);
@@ -545,11 +526,19 @@ function drawOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
 
 function scheduleOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
   outlineDiscoveryConnectorObserver?.disconnect();
-  const redraw = () => window.requestAnimationFrame(() => drawOutlineDiscoveryConnectors(canvas, connections, nodeElements));
+  if (outlineDiscoveryConnectorFrame !== null) window.cancelAnimationFrame(outlineDiscoveryConnectorFrame);
+  const redraw = () => {
+    if (outlineDiscoveryConnectorFrame !== null) window.cancelAnimationFrame(outlineDiscoveryConnectorFrame);
+    outlineDiscoveryConnectorFrame = window.requestAnimationFrame(() => {
+      outlineDiscoveryConnectorFrame = null;
+      drawOutlineDiscoveryConnectors(canvas, connections, nodeElements);
+    });
+  };
   redraw();
   if (typeof ResizeObserver === "function") {
     outlineDiscoveryConnectorObserver = new ResizeObserver(redraw);
     outlineDiscoveryConnectorObserver.observe(canvas);
+    for (const element of nodeElements.values()) outlineDiscoveryConnectorObserver.observe(element);
   }
   document.fonts?.ready?.then(redraw);
 }
@@ -571,6 +560,16 @@ function renderOutlineDiscoveryMindmap(map) {
     if (!levels.has(visualDepth)) levels.set(visualDepth, []);
     levels.get(visualDepth).push(node);
   }
+  const levelOneOrder = new Map((levels.get(1) || []).map((node, index) => [node.node_id, index]));
+  if (levels.has(2)) {
+    levels.get(2).sort((left, right) => {
+      const leftParent = outlineDiscoveryVisualParent(left, 2, nodesById, visualDepthById);
+      const rightParent = outlineDiscoveryVisualParent(right, 2, nodesById, visualDepthById);
+      const parentDelta = (levelOneOrder.get(leftParent?.node_id) ?? Number.MAX_SAFE_INTEGER)
+        - (levelOneOrder.get(rightParent?.node_id) ?? Number.MAX_SAFE_INTEGER);
+      return parentDelta || (nodeOrder.get(left.node_id) - nodeOrder.get(right.node_id));
+    });
+  }
   const levelTwoOrder = new Map((levels.get(2) || []).map((node, index) => [node.node_id, index]));
   if (levels.has(3)) {
     levels.get(3).sort((left, right) => {
@@ -588,22 +587,64 @@ function renderOutlineDiscoveryMindmap(map) {
   canvas.appendChild(connectorLayer);
   const connections = [];
   const nodeElements = new Map();
-  for (const depth of [...levels.keys()].sort((a, b) => a - b)) {
-    const level = create("div", `discovery-mindmap-level level-${depth}`);
-    level.dataset.nodeCount = String(levels.get(depth).length);
-    for (const node of levels.get(depth)) {
-      const visualParent = depth > 1
-        ? outlineDiscoveryVisualParent(node, depth, nodesById, visualDepthById)
-        : null;
-      const nodeElement = renderOutlineDiscoveryNode(node);
-      if (visualParent) {
-        nodeElement.dataset.parentNodeId = visualParent.node_id;
-        connections.push({ parentId: visualParent.node_id, childId: node.node_id, visualDepth: depth });
-      }
-      nodeElements.set(node.node_id, nodeElement);
-      level.appendChild(nodeElement);
+  const appendNode = (node, depth, level) => {
+    const visualParent = depth > 1
+      ? outlineDiscoveryVisualParent(node, depth, nodesById, visualDepthById)
+      : null;
+    const nodeElement = renderOutlineDiscoveryNode(node);
+    if (node.parent_node_id) nodeElement.dataset.directParentNodeId = node.parent_node_id;
+    if (visualParent) {
+      nodeElement.dataset.parentNodeId = visualParent.node_id;
+      connections.push({ parentId: visualParent.node_id, childId: node.node_id, visualDepth: depth });
     }
-    canvas.appendChild(level);
+    nodeElements.set(node.node_id, nodeElement);
+    level.appendChild(nodeElement);
+  };
+  const levelOne = create("div", "discovery-mindmap-level level-1");
+  levelOne.dataset.nodeCount = String((levels.get(1) || []).length);
+  for (const node of levels.get(1) || []) appendNode(node, 1, levelOne);
+  canvas.appendChild(levelOne);
+  const levelTwoNodes = levels.get(2) || [];
+  const levelThreeNodes = levels.get(3) || [];
+  if (levelTwoNodes.length || levelThreeNodes.length) {
+    const branchStage = create("div", `discovery-mindmap-branch-stage${levelThreeNodes.length ? "" : " has-no-detail"}`);
+    const levelTwoIds = new Set(levelTwoNodes.map((node) => node.node_id));
+    const childrenByParent = new Map(levelTwoNodes.map((node) => [node.node_id, []]));
+    const orphanNodes = [];
+    for (const node of levelThreeNodes) {
+      const visualParent = outlineDiscoveryVisualParent(node, 3, nodesById, visualDepthById);
+      if (visualParent && levelTwoIds.has(visualParent.node_id)) childrenByParent.get(visualParent.node_id).push(node);
+      else orphanNodes.push(node);
+    }
+    for (const parentNode of levelTwoNodes) {
+      const childNodes = childrenByParent.get(parentNode.node_id) || [];
+      const group = create("section", "discovery-mindmap-branch-group");
+      group.dataset.parentNodeId = parentNode.node_id;
+      group.dataset.childCount = String(childNodes.length);
+      const parentLevel = create("div", "discovery-mindmap-level level-2 discovery-mindmap-parent-slot");
+      parentLevel.dataset.nodeCount = "1";
+      appendNode(parentNode, 2, parentLevel);
+      group.appendChild(parentLevel);
+      if (levelThreeNodes.length) {
+        const childLevel = create("div", "discovery-mindmap-level level-3 discovery-mindmap-child-list");
+        childLevel.dataset.nodeCount = String(childNodes.length);
+        for (const childNode of childNodes) appendNode(childNode, 3, childLevel);
+        group.appendChild(childLevel);
+      }
+      branchStage.appendChild(group);
+    }
+    if (orphanNodes.length) {
+      const group = create("section", "discovery-mindmap-branch-group is-orphan");
+      group.dataset.parentNodeId = "";
+      group.dataset.childCount = String(orphanNodes.length);
+      appendText(group, "div", "未找到对应二级父节点", "discovery-mindmap-orphan-label");
+      const childLevel = create("div", "discovery-mindmap-level level-3 discovery-mindmap-child-list");
+      childLevel.dataset.nodeCount = String(orphanNodes.length);
+      for (const childNode of orphanNodes) appendNode(childNode, 3, childLevel);
+      group.appendChild(childLevel);
+      branchStage.appendChild(group);
+    }
+    canvas.appendChild(branchStage);
   }
   canvas.dataset.connectionCount = String(connections.length);
   const hint = create("p", "discovery-mindmap-hint");

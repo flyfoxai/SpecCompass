@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added atom-first PRD Level 1 decomposition into independently verifiable candidate subprojects with deterministic one-to-one ownership validation." \
+              "- Stabilized Outline parent-child grouping and connector rendering so second-level nodes do not overlap and every third-level branch remains visible." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

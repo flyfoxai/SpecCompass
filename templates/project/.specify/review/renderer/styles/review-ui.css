@@ -1797,6 +1797,47 @@ details {
   gap: 10px;
 }
 
+.discovery-mindmap-branch-stage {
+  display: flex;
+  grid-column: 2 / -1;
+  min-width: 0;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.discovery-mindmap-branch-group {
+  display: grid;
+  grid-template-columns: minmax(176px, 0.84fr) minmax(300px, 1.54fr);
+  column-gap: 44px;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.discovery-mindmap-branch-stage.has-no-detail .discovery-mindmap-branch-group {
+  grid-template-columns: minmax(220px, 1fr);
+}
+
+.discovery-mindmap-parent-slot {
+  justify-content: center;
+}
+
+.discovery-mindmap-child-list {
+  justify-content: flex-start;
+}
+
+.discovery-mindmap-orphan-label {
+  display: flex;
+  min-height: 64px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  border: 1px dashed #C0394B;
+  border-radius: var(--sc-radius);
+  color: #8B2635;
+  font-size: 12px;
+  text-align: center;
+}
+
 .discovery-mindmap-connectors {
   position: absolute;
   z-index: 0;
@@ -1844,7 +1885,6 @@ details {
   color: var(--sc-text);
   text-align: left;
   cursor: pointer;
-  will-change: transform;
 }
 
 .discovery-mindmap-node:hover,
@@ -2209,6 +2249,11 @@ details {
     min-height: 360px;
   }
 
+  .discovery-mindmap-branch-group {
+    grid-template-columns: minmax(160px, 0.84fr) minmax(260px, 1.54fr);
+    column-gap: 38px;
+  }
+
   .discovery-constitution-clauses {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -2221,6 +2266,10 @@ details {
 @media (max-width: 600px) {
   .discovery-mindmap {
     min-width: 760px;
+    column-gap: 34px;
+  }
+
+  .discovery-mindmap-branch-group {
     column-gap: 34px;
   }
 

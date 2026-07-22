@@ -34,28 +34,28 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## PRD Level 1: atomic business project decomposition" in release_workflow
-    assert "source-backed business capability atoms" in release_workflow
-    assert "one trigger/input, one owned state, one independently accepted result, and one handoff" in release_workflow
-    assert "one business chain and one candidate subproject" in release_workflow
-    assert "Recovery and governance remain separate" in release_workflow
-    assert "CLI and browser validators enforce the same ownership rules" in release_workflow
+    assert "## Outline review: stable parent-child branches" in release_workflow
+    assert "grouped with only its own third-level children" in release_workflow
+    assert "no longer cross into unrelated parent groups" in release_workflow
+    assert "normal document flow instead of visual transforms" in release_workflow
+    assert "retain their direct-parent metadata" in release_workflow
+    assert "uneven child counts, deeper nodes, narrow viewports, and overlap detection" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- \`/sp.prd\` derives Level 1" in release_workflow
+    assert r"- Each second-level node is grouped" in release_workflow
 
 
-def test_release_changelog_summary_matches_prd_level1_focus():
-    """The generated changelog should lead with the PRD Level 1 user capability."""
+def test_release_changelog_summary_matches_outline_branch_focus():
+    """The generated changelog should lead with the Outline branch fix."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Added atom-first PRD Level 1 decomposition" in trigger_workflow
-    assert "independently verifiable candidate subprojects" in trigger_workflow
-    assert "deterministic one-to-one ownership validation" in trigger_workflow
+    assert "Stabilized Outline parent-child grouping" in trigger_workflow
+    assert "second-level nodes do not overlap" in trigger_workflow
+    assert "every third-level branch remains visible" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

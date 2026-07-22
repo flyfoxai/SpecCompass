@@ -44,15 +44,15 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## PRD Level 1: atomic business project decomposition
+          ## Outline review: stable parent-child branches
 
-          This release makes the first PRD outline concrete enough to divide a large product into focused candidate subprojects:
+          This release makes the three-column Outline review accurately display every second-to-third-level relationship:
 
-          - \`/sp.prd\` derives Level 1 from source-backed business capability atoms instead of generic project labels.
-          - Each atom owns one trigger/input, one owned state, one independently accepted result, and one handoff.
-          - Initial generation maps each atom to exactly one business chain and one candidate subproject; merging remains a user-visible choice.
-          - Recovery and governance remain separate from normal business delivery.
-          - CLI and browser validators enforce the same ownership rules.
+          - Each second-level node is grouped with only its own third-level children, making the one-to-many hierarchy explicit.
+          - Connector trunks and branches are measured from the rendered canvas and no longer cross into unrelated parent groups.
+          - Parent alignment uses normal document flow instead of visual transforms, preventing second-level node overlap.
+          - Third-level and deeper nodes remain visible and retain their direct-parent metadata while using the nearest displayed second-level group.
+          - Browser layout checks cover uneven child counts, deeper nodes, narrow viewports, and overlap detection.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

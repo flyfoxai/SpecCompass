@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.20] - 2026-07-22
+
+### Fixed
+
+- Grouped every second-level Outline node with its own third-level children so the middle and right columns show an explicit one-to-many hierarchy.
+- Removed transform-based parent alignment that could move second-level nodes outside normal document flow and cause visual overlap.
+- Recalculated connector coordinates from the rendered canvas border box and preserved deeper nodes in their nearest displayed second-level group without losing direct-parent metadata.
+
 ## [0.11.19] - 2026-07-22
 
 ### Fixed

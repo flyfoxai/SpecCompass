@@ -6218,24 +6218,45 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         "尚未映射到具体 Outline 节点",
         "outlineDiscoveryNodeDepth",
         "outlineDiscoveryVisualParent",
-        "alignOutlineDiscoveryParentNodes",
         "visualDepthById.set(node.node_id, Math.min(outlineDiscoveryNodeDepth(node, nodesById), 3))",
+        "levelOneOrder",
         "levelTwoOrder",
         "document.createElementNS",
         "discovery-mindmap-connectors",
+        "discovery-mindmap-branch-stage",
+        "discovery-mindmap-branch-group",
+        "discovery-mindmap-parent-slot",
+        "discovery-mindmap-child-list",
+        "childrenByParent",
+        "directParentNodeId",
         "discovery-mindmap-trunk",
         "discovery-mindmap-branch",
         "trunk.dataset.childCount",
         "trunk.dataset.laneIndex",
-        "targetCenter - parentCenter",
+        "canvas.clientLeft",
+        "canvas.clientTop",
         "ResizeObserver",
         "parentNodeId",
         "childNodeId",
         "连线按 parent_node_id 展示真实父子关系",
-        "level.dataset.nodeCount",
+        "levelOne.dataset.nodeCount",
+        "parentLevel.dataset.nodeCount",
+        "childLevel.dataset.nodeCount",
         "canvas.dataset.connectionCount",
     ):
         assert token in renderer, token
+
+    assert "alignOutlineDiscoveryParentNodes" not in renderer
+    assert "translateY(" not in renderer
+    assert "will-change: transform" not in styles
+    for token in (
+        ".discovery-mindmap-branch-stage",
+        ".discovery-mindmap-branch-group",
+        "grid-column: 2 / -1",
+        "align-items: stretch",
+        "justify-content: center",
+    ):
+        assert token in styles, token
 
     assert '$("item-title").textContent = "项目全局思维导图"' not in renderer
     assert "根节点保持稳定，分支节点承载业务语义" not in renderer
