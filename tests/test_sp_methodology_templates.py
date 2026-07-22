@@ -6171,7 +6171,8 @@ def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_sele
         '.discovery-mindmap[data-level-count="2"]',
         ".discovery-question-panel .discovery-candidates",
         ".discovery-question-panel .discovery-input-grid",
-        "overflow-x: auto",
+        ".diagram-view",
+        "overflow: visible",
     ):
         assert token in styles, token
 
@@ -6200,6 +6201,13 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         "只读",
         "项目治理",
         "未找到 Constitution",
+        "openOutlineDiscoveryConstitution",
+        "outlineDiscoveryConstitutionOpen",
+        "renderOutlineDiscoveryConstitutionView",
+        "按需查看项目治理条款",
+        "具体内容已在中间栏展示",
+        "const visualDepth = Math.min(depth, 3)",
+        "level.dataset.nodeCount",
     ):
         assert token in renderer, token
 
@@ -6225,8 +6233,22 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         ".discovery-constitution-header",
         ".discovery-constitution-clause",
         ".discovery-constitution-source",
+        ".discovery-constitution-button",
+        ".discovery-constitution-panel.is-main-view",
     ):
         assert token in styles, token
+
+    for token in (
+        "grid-template-columns: minmax(126px, 0.62fr) minmax(176px, 0.84fr) minmax(300px, 1.54fr)",
+        "overflow: visible",
+        "flex: 0 0 auto",
+        ".discovery-mindmap-level.level-3",
+    ):
+        assert token in styles, token
+
+    rail_renderer = renderer.split("function renderOutlineDiscoveryRail()", 1)[1].split("\n}", 1)[0]
+    assert "nodeList.appendChild(renderOutlineDiscoveryConstitution())" not in rail_renderer
+    assert "if (outlineDiscoveryConstitutionOpen)" in rail_renderer
 
 
 def test_outline_discovery_renderer_does_not_use_question_groups_as_primary_navigation():

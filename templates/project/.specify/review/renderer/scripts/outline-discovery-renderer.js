@@ -9,6 +9,7 @@ const OUTLINE_DISCOVERY_OPERATION_LABELS = {
 };
 let outlineDiscoveryActiveMapId = null;
 let outlineDiscoveryActiveNodeId = null;
+let outlineDiscoveryConstitutionOpen = false;
 let outlineDiscoveryState = { responses: {}, meta: {} };
 
 function outlineDiscoveryStorageKey(data = reviewData) {
@@ -170,6 +171,7 @@ function leaveOutlineDiscoveryMode() {
 function renderOutlineDiscovery(data = reviewData) {
   document.body.classList.add("outline-discovery-mode");
   loadOutlineDiscoveryState();
+  outlineDiscoveryConstitutionOpen = false;
   const maps = outlineDiscoveryMaps(data);
   outlineDiscoveryActiveMapId = outlineDiscoveryState.meta?.active_map_id || maps[0]?.map_id || null;
   if (!outlineDiscoveryMap(outlineDiscoveryActiveMapId, data)) outlineDiscoveryActiveMapId = maps[0]?.map_id || null;
@@ -209,7 +211,7 @@ function renderOutlineDiscoveryMaps() {
     const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
     const button = create("button", "module-button discovery-map-button");
     button.type = "button";
-    button.setAttribute("aria-pressed", String(map.map_id === outlineDiscoveryActiveMapId));
+    button.setAttribute("aria-pressed", String(!outlineDiscoveryConstitutionOpen && map.map_id === outlineDiscoveryActiveMapId));
     appendText(button, "strong", map.title || map.map_id);
     appendText(button, "span", map.summary || "");
     appendText(button, "span", `${completed}/${questions.length} 个问题已回应`, "discovery-progress-badge");
@@ -217,11 +219,20 @@ function renderOutlineDiscoveryMaps() {
     button.addEventListener("click", () => openOutlineDiscoveryMap(map.map_id));
     list.appendChild(button);
   }
+  const constitutionButton = create("button", "module-button discovery-constitution-button");
+  constitutionButton.type = "button";
+  constitutionButton.setAttribute("aria-pressed", String(outlineDiscoveryConstitutionOpen));
+  appendText(constitutionButton, "strong", "Constitution");
+  appendText(constitutionButton, "span", "按需查看项目治理条款，不参与业务确认。", "discovery-constitution-button-copy");
+  appendText(constitutionButton, "span", "只读治理参考", "discovery-read-only-badge");
+  constitutionButton.addEventListener("click", openOutlineDiscoveryConstitution);
+  list.appendChild(constitutionButton);
 }
 
 function openOutlineDiscoveryMap(mapId) {
   const map = outlineDiscoveryMap(mapId);
   if (!map) return;
+  outlineDiscoveryConstitutionOpen = false;
   outlineDiscoveryActiveMapId = mapId;
   outlineDiscoveryActiveNodeId = map.root_node_id;
   saveOutlineDiscoveryState("已切换导图。");
@@ -233,6 +244,7 @@ function openOutlineDiscoveryMap(mapId) {
 function selectOutlineDiscoveryNode(nodeId) {
   const node = outlineDiscoveryNode(nodeId);
   if (!node || node.map_id !== outlineDiscoveryActiveMapId) return;
+  outlineDiscoveryConstitutionOpen = false;
   outlineDiscoveryActiveNodeId = nodeId;
   saveOutlineDiscoveryState("已选中导图节点。");
   renderOutlineDiscoveryMaps();
@@ -240,7 +252,19 @@ function selectOutlineDiscoveryNode(nodeId) {
   renderOutlineDiscoveryRail();
 }
 
+function openOutlineDiscoveryConstitution() {
+  outlineDiscoveryConstitutionOpen = true;
+  renderOutlineDiscoveryMaps();
+  renderOutlineDiscoveryCurrentMap();
+  renderOutlineDiscoveryRail();
+  $("live-status").textContent = "正在查看只读 Constitution；返回任一导图可继续探索。";
+}
+
 function renderOutlineDiscoveryCurrentMap() {
+  if (outlineDiscoveryConstitutionOpen) {
+    renderOutlineDiscoveryConstitutionView();
+    return;
+  }
   const maps = outlineDiscoveryMaps();
   const map = outlineDiscoveryMap(outlineDiscoveryActiveMapId);
   const mapIndex = Math.max(0, maps.findIndex((entry) => entry.map_id === outlineDiscoveryActiveMapId));
@@ -266,6 +290,27 @@ function renderOutlineDiscoveryCurrentMap() {
   appendText(businessContext, "p", outlineDiscoveryBusinessSummary(reviewData, map));
   view.appendChild(businessContext);
   view.appendChild(renderOutlineDiscoveryMindmap(map));
+}
+
+function renderOutlineDiscoveryConstitutionView() {
+  const constitution = reviewData?.constitution_snapshot || {};
+  $("module-position").textContent = "治理参考";
+  $("prev-module").disabled = true;
+  $("next-module").disabled = true;
+  $("prev-module").onclick = null;
+  $("next-module").onclick = null;
+  $("module-title").textContent = "Constitution";
+  $("module-summary").textContent = "项目级治理条款只在需要时查看，不占用日常节点确认空间。";
+  $("item-title").textContent = "项目治理章程";
+  $("item-summary").textContent = constitution.availability === "available"
+    ? "以下内容来自只读 Constitution 快照，不会生成确认问题或修改业务 Outline。"
+    : "当前未找到 Constitution；此状态不影响业务能力图的生成。";
+  $("item-tabs").replaceChildren();
+  const view = $("diagram-view");
+  view.replaceChildren();
+  const panel = renderOutlineDiscoveryConstitution();
+  panel.classList.add("is-main-view");
+  view.appendChild(panel);
 }
 
 function renderOutlineDiscoveryConstitution(data = reviewData) {
@@ -311,16 +356,20 @@ function renderOutlineDiscoveryMindmap(map) {
   for (const node of nodes) {
     let depth = 1;
     let parent = node.parent_node_id ? outlineDiscoveryNode(node.parent_node_id) : null;
-    while (parent && depth < 4) {
+    const visited = new Set([node.node_id]);
+    while (parent && !visited.has(parent.node_id)) {
       depth += 1;
+      visited.add(parent.node_id);
       parent = parent.parent_node_id ? outlineDiscoveryNode(parent.parent_node_id) : null;
     }
-    if (!levels.has(depth)) levels.set(depth, []);
-    levels.get(depth).push(node);
+    const visualDepth = Math.min(depth, 3);
+    if (!levels.has(visualDepth)) levels.set(visualDepth, []);
+    levels.get(visualDepth).push(node);
   }
   canvas.dataset.levelCount = String(levels.size || 1);
   for (const depth of [...levels.keys()].sort((a, b) => a - b)) {
     const level = create("div", `discovery-mindmap-level level-${depth}`);
+    level.dataset.nodeCount = String(levels.get(depth).length);
     for (const node of levels.get(depth)) level.appendChild(renderOutlineDiscoveryNode(node));
     canvas.appendChild(level);
   }
@@ -368,8 +417,10 @@ function renderOutlineDiscoveryRail() {
   updateOutlineDiscoveryProgress();
   const nodeList = $("node-list");
   nodeList.replaceChildren();
-  // Constitution is always visible at the top of the rail, independent of node selection
-  nodeList.appendChild(renderOutlineDiscoveryConstitution());
+  if (outlineDiscoveryConstitutionOpen) {
+    $("rail-summary").textContent = "Constitution 为只读治理参考；具体内容已在中间栏展示，无需在右侧确认。";
+    return;
+  }
   const node = outlineDiscoveryNode(outlineDiscoveryActiveNodeId);
   const panel = create("section", "panel discovery-node-panel");
   if (!node) {
