@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.18] - 2026-07-22
+
+### Fixed
+
+- Moved Constitution content into an on-demand centralized review option so it no longer occupies the right review sidebar continuously.
+- Preserved all third-level and deeper Outline nodes in the third column instead of allowing deeper nodes to overflow into a hidden grid row.
+- Rebalanced the three Outline columns to give high-level nodes more height and detailed nodes more width with clearer typography.
+
 ## [0.11.17] - 2026-07-22
 
 ### Fixed
