@@ -1763,10 +1763,10 @@ details {
   display: grid;
   position: relative;
   isolation: isolate;
-  grid-template-columns: minmax(126px, 0.62fr) minmax(176px, 0.84fr) minmax(300px, 1.54fr);
-  column-gap: 44px;
+  grid-template-columns: minmax(108px, 0.48fr) minmax(150px, 0.66fr) minmax(380px, 1.96fr);
+  column-gap: 34px;
   row-gap: 18px;
-  min-width: 810px;
+  min-width: 820px;
   min-height: 440px;
   padding: 18px 12px 14px;
   border: 1px solid #C9DEDD;
@@ -1807,8 +1807,8 @@ details {
 
 .discovery-mindmap-branch-group {
   display: grid;
-  grid-template-columns: minmax(176px, 0.84fr) minmax(300px, 1.54fr);
-  column-gap: 44px;
+  grid-template-columns: minmax(150px, 0.66fr) minmax(380px, 1.96fr);
+  column-gap: 34px;
   min-width: 0;
   align-items: stretch;
 }
@@ -1958,20 +1958,104 @@ details {
 }
 
 .discovery-mindmap-level.level-3 {
-  gap: 8px;
+  gap: 4px;
 }
 
 .discovery-mindmap-level.level-3 .discovery-mindmap-node {
-  min-height: 64px;
-  padding: 9px 12px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  min-height: 40px;
+  padding: 4px 9px;
+  gap: 2px 8px;
 }
 
 .discovery-mindmap-level.level-3 .discovery-mindmap-node strong {
-  font-size: 12px;
+  grid-column: 1;
+  min-width: 0;
+  max-width: 210px;
+  overflow: hidden;
+  font-size: 11.5px;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.discovery-mindmap-level.level-3 .discovery-mindmap-node > span:not(.discovery-node-footer) {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden;
+  font-size: 11px;
+  line-height: 1.25;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .discovery-mindmap-level.level-3 .discovery-node-meta {
   font-size: 10px;
+  line-height: 1.2;
+}
+
+.discovery-node-footer {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px 8px;
+  flex-wrap: wrap;
+}
+
+.discovery-node-footer .discovery-node-meta {
+  flex: 1 1 140px;
+}
+
+.discovery-mindmap-level.level-3 .discovery-node-footer {
+  grid-column: 1 / -1;
+  gap: 2px 6px;
+  overflow: hidden;
+  flex-wrap: nowrap;
+}
+
+.discovery-mindmap-level.level-3 .discovery-node-footer > *,
+.discovery-mindmap-level.level-3 .discovery-node-meta > * {
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.discovery-mindmap-level.level-3 .discovery-node-footer > :not(.discovery-node-meta) {
+  margin-left: auto;
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.discovery-mindmap[data-density="dense"] {
+  grid-template-columns: minmax(104px, 0.44fr) minmax(142px, 0.60fr) minmax(410px, 2.12fr);
+  column-gap: 30px;
+  min-width: 850px;
+  padding: 14px 10px 12px;
+}
+
+.discovery-mindmap[data-density="dense"] .discovery-mindmap-branch-stage {
+  gap: 14px;
+}
+
+.discovery-mindmap[data-density="dense"] .discovery-mindmap-branch-group {
+  grid-template-columns: minmax(142px, 0.60fr) minmax(410px, 2.12fr);
+  column-gap: 30px;
+}
+
+.discovery-mindmap[data-density="dense"] .discovery-mindmap-level.level-3 {
+  gap: 3px;
+}
+
+.discovery-mindmap[data-density="dense"] .discovery-mindmap-level.level-3 .discovery-mindmap-node {
+  min-height: 36px;
+  padding: 3px 8px;
+  gap: 1px 7px;
+}
+
+.discovery-mindmap[data-density="dense"] .discovery-mindmap-level.level-3 .discovery-mindmap-node > span:not(.discovery-node-footer) {
+  line-height: 1.18;
 }
 
 .discovery-node-meta {
@@ -2254,14 +2338,25 @@ details {
   }
 
   .discovery-mindmap {
-    grid-template-columns: minmax(116px, 0.62fr) minmax(160px, 0.84fr) minmax(260px, 1.54fr);
-    column-gap: 38px;
+    grid-template-columns: minmax(104px, 0.48fr) minmax(144px, 0.66fr) minmax(330px, 1.96fr);
+    column-gap: 32px;
     min-height: 360px;
   }
 
   .discovery-mindmap-branch-group {
-    grid-template-columns: minmax(160px, 0.84fr) minmax(260px, 1.54fr);
-    column-gap: 38px;
+    grid-template-columns: minmax(144px, 0.66fr) minmax(330px, 1.96fr);
+    column-gap: 32px;
+  }
+
+  .discovery-mindmap[data-density="dense"] {
+    grid-template-columns: minmax(100px, 0.44fr) minmax(138px, 0.60fr) minmax(360px, 2.12fr);
+    column-gap: 28px;
+    min-width: 800px;
+  }
+
+  .discovery-mindmap[data-density="dense"] .discovery-mindmap-branch-group {
+    grid-template-columns: minmax(138px, 0.60fr) minmax(360px, 2.12fr);
+    column-gap: 28px;
   }
 
   .discovery-constitution-clauses {
@@ -2295,9 +2390,18 @@ details {
     gap: 9px;
   }
 
+  .discovery-mindmap-level.level-3 {
+    gap: 4px;
+  }
+
   .discovery-mindmap-node {
     min-height: 70px;
     padding: 9px 10px;
+  }
+
+  .discovery-mindmap-level.level-3 .discovery-mindmap-node {
+    min-height: 40px;
+    padding: 4px 8px;
   }
 
   .discovery-constitution-overview {

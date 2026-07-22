@@ -44,16 +44,16 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Outline review: consistent cross-map branches
+          ## Outline review: compact dense third-level maps
 
-          This release keeps the Outline overview and branch detail maps aligned to the same hierarchy:
+          This release makes large Outline overview maps easier to scan without changing their hierarchy:
 
-          - The overview third column projects each linked child map's root-level nodes from the same source used by its detail map.
-          - Every projected node connects to its owning second-level map link instead of reusing the detail map's internal parent identifier.
-          - Collision-safe preview keys preserve all projected nodes when identifiers repeat across maps.
-          - Empty child maps remain explicit, while clicking a preview opens the detail map and selects the corresponding real node.
-          - Validation rejects map links that mix local children with child-map content, preventing competing hierarchy sources.
-          - Automated and browser checks cover projected counts, connector ownership, empty maps, and detail-map selection.
+          - The third column receives more horizontal space while the first and second columns remain compact.
+          - Third-level cards use a stable two-row layout with tighter spacing, padding, and minimum heights.
+          - Dense overview maps activate adaptive sizing when six or more third-level nodes are visible.
+          - Long titles and summaries use ellipsis handling instead of increasing card height unpredictably.
+          - Existing cross-map projection and connector ownership remain aligned with each linked child map.
+          - Automated and browser checks cover dense layouts, two-row cards, and third-level node visibility.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

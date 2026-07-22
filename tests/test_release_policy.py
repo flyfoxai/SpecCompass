@@ -34,29 +34,29 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Outline review: consistent cross-map branches" in release_workflow
-    assert "projects each linked child map's root-level nodes" in release_workflow
-    assert "connects to its owning second-level map link" in release_workflow
-    assert "Collision-safe preview keys" in release_workflow
-    assert "clicking a preview opens the detail map" in release_workflow
-    assert "rejects map links that mix local children with child-map content" in release_workflow
-    assert "projected counts, connector ownership, empty maps, and detail-map selection" in release_workflow
+    assert "## Outline review: compact dense third-level maps" in release_workflow
+    assert "third column receives more horizontal space" in release_workflow
+    assert "stable two-row layout" in release_workflow
+    assert "six or more third-level nodes" in release_workflow
+    assert "ellipsis handling" in release_workflow
+    assert "connector ownership remain aligned" in release_workflow
+    assert "dense layouts, two-row cards, and third-level node visibility" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- The overview third column projects" in release_workflow
+    assert r"- The third column receives" in release_workflow
 
 
-def test_release_changelog_summary_matches_cross_map_outline_focus():
-    """The generated changelog should lead with the cross-map Outline fix."""
+def test_release_changelog_summary_matches_dense_outline_focus():
+    """The generated changelog should lead with the dense Outline layout fix."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Aligned Outline overview previews and connectors" in trigger_workflow
-    assert "linked child map" in trigger_workflow
-    assert "overview counts and detail-map root children remain consistent" in trigger_workflow
+    assert "Compacted dense Outline overview maps" in trigger_workflow
+    assert "wider third column" in trigger_workflow
+    assert "stable two-row third-level cards" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

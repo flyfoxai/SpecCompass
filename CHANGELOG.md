@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.22] - 2026-07-22
+
+### Fixed
+
+- Widened the Outline third column for dense overview maps while reducing the first and second column widths.
+- Compressed third-level cards into a stable two-row layout with tighter spacing, padding, and minimum heights.
+- Added adaptive dense styling for overview maps with six or more third-level nodes and ellipsis handling for long summaries.
+
 ## [0.11.21] - 2026-07-22
 
 ### Fixed

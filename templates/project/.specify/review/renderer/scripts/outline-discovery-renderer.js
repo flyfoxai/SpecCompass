@@ -257,7 +257,34 @@ function renderOutlineDiscoveryMaps() {
   list.appendChild(constitutionButton);
 }
 
-function openOutlineDiscoveryMap(mapId, nodeId = null) {
+function captureOutlineDiscoveryViewport(anchorElement = null) {
+  const container = document.querySelector(".review-workspace");
+  if (!container) return null;
+  return {
+    container,
+    scrollLeft: container.scrollLeft,
+    scrollTop: container.scrollTop,
+    anchorTop: anchorElement instanceof HTMLElement ? anchorElement.getBoundingClientRect().top : null
+  };
+}
+
+function restoreOutlineDiscoveryViewport(viewport, nodeId = null) {
+  if (!viewport?.container?.isConnected) return;
+  const restore = () => {
+    viewport.container.scrollLeft = viewport.scrollLeft;
+    viewport.container.scrollTop = viewport.scrollTop;
+    if (!nodeId || viewport.anchorTop === null) return;
+    const target = Array.from(document.querySelectorAll(".discovery-mindmap-node[data-node-id]"))
+      .find((element) => element.dataset.nodeId === nodeId && !element.classList.contains("is-map-preview"));
+    if (!target) return;
+    viewport.container.scrollTop += target.getBoundingClientRect().top - viewport.anchorTop;
+    target.focus({ preventScroll: true });
+  };
+  restore();
+  requestAnimationFrame(restore);
+}
+
+function openOutlineDiscoveryMap(mapId, nodeId = null, viewport = null) {
   const map = outlineDiscoveryMap(mapId);
   if (!map) return;
   outlineDiscoveryConstitutionOpen = false;
@@ -268,9 +295,10 @@ function openOutlineDiscoveryMap(mapId, nodeId = null) {
   renderOutlineDiscoveryMaps();
   renderOutlineDiscoveryCurrentMap();
   renderOutlineDiscoveryRail();
+  restoreOutlineDiscoveryViewport(viewport, outlineDiscoveryActiveNodeId);
 }
 
-function selectOutlineDiscoveryNode(nodeId) {
+function selectOutlineDiscoveryNode(nodeId, viewport = null) {
   const node = outlineDiscoveryNode(nodeId);
   if (!node || node.map_id !== outlineDiscoveryActiveMapId) return;
   outlineDiscoveryConstitutionOpen = false;
@@ -279,6 +307,7 @@ function selectOutlineDiscoveryNode(nodeId) {
   renderOutlineDiscoveryMaps();
   renderOutlineDiscoveryCurrentMap();
   renderOutlineDiscoveryRail();
+  restoreOutlineDiscoveryViewport(viewport, nodeId);
 }
 
 function openOutlineDiscoveryConstitution() {
@@ -618,8 +647,13 @@ function renderOutlineDiscoveryMindmap(map) {
   }
   const actualLevelThreeNodes = levels.get(3) || [];
   const hasDetail = actualLevelThreeNodes.length > 0 || previewEntries.length > 0;
+  const thirdLevelNodeCount = actualLevelThreeNodes.length + previewEntries.length;
   canvas.dataset.levelCount = String(Math.max(levels.size || 1, hasDetail ? 3 : 1));
-  if (map.map_kind === "overview") canvas.dataset.previewNodeCount = String(previewEntries.length);
+  canvas.dataset.thirdLevelNodeCount = String(thirdLevelNodeCount);
+  if (map.map_kind === "overview") {
+    canvas.dataset.previewNodeCount = String(previewEntries.length);
+    if (thirdLevelNodeCount >= 6) canvas.dataset.density = "dense";
+  }
   const connectorLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   connectorLayer.setAttribute("class", "discovery-mindmap-connectors");
   connectorLayer.setAttribute("aria-hidden", "true");
@@ -732,23 +766,26 @@ function renderOutlineDiscoveryNode(node, options = {}) {
   }
   appendText(button, "strong", node.label || node.node_id);
   appendText(button, "span", node.summary || "");
+  const footer = create("span", "discovery-node-footer");
   const meta = create("small", "discovery-node-meta");
   appendText(meta, "span", node.source_status || "unresolved", "discovery-source-status");
   appendText(meta, "span", questions.length ? `${completed}/${questions.length} 个问题` : "无待回应问题");
-  button.appendChild(meta);
-  if (isPreview) appendText(button, "span", `来自分图：${options.previewMapTitle || "进入查看"}`, "discovery-map-preview-badge");
-  if (node.child_map_id) appendText(button, "span", "进入分图 ↗", "discovery-map-link");
+  footer.appendChild(meta);
+  if (isPreview) appendText(footer, "span", `来自分图：${options.previewMapTitle || "进入查看"}`, "discovery-map-preview-badge");
+  if (node.child_map_id) appendText(footer, "span", "进入分图 ↗", "discovery-map-link");
   if (Array.isArray(node.affected_node_ids) && node.affected_node_ids.length) {
     const affected = create("span", "discovery-affected-count");
     affected.textContent = `影响 ${node.affected_node_ids.length} 个节点`;
-    button.appendChild(affected);
+    footer.appendChild(affected);
   } else if (hasUnmappedConstitutionImpact(node)) {
-    appendText(button, "span", "影响范围尚未映射", "discovery-affected-count");
+    appendText(footer, "span", "影响范围尚未映射", "discovery-affected-count");
   }
-  button.addEventListener("click", () => {
-    if (isPreview) openOutlineDiscoveryMap(options.previewMapId, node.node_id);
-    else if (node.child_map_id) openOutlineDiscoveryMap(node.child_map_id);
-    else selectOutlineDiscoveryNode(node.node_id);
+  button.appendChild(footer);
+  button.addEventListener("click", (event) => {
+    const viewport = captureOutlineDiscoveryViewport(event.currentTarget);
+    if (isPreview) openOutlineDiscoveryMap(options.previewMapId, node.node_id, viewport);
+    else if (node.child_map_id) openOutlineDiscoveryMap(node.child_map_id, null, viewport);
+    else selectOutlineDiscoveryNode(node.node_id, viewport);
   });
   return button;
 }

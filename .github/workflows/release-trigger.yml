@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Aligned Outline overview previews and connectors with each linked child map so overview counts and detail-map root children remain consistent." \
+              "- Compacted dense Outline overview maps with a wider third column and stable two-row third-level cards." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp
