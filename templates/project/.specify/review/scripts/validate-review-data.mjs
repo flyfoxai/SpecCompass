@@ -2023,6 +2023,57 @@ function validateOutlineDiscoveryTopology(data) {
   return { mapsById, nodesById };
 }
 
+function validateOutlineDiscoveryBranchFactExpansion(data, { mapsById, nodesById }) {
+  const sourcesByPath = new Map(asArray(data.source_snapshot).map((source) => [
+    String(source?.path || "").replace(/\\/g, "/"),
+    source,
+  ]));
+  const validateNodeSourceRefs = (node) => {
+    if (node.source_refs === undefined) return;
+    const refs = asArray(node.source_refs);
+    if (!refs.length) {
+      fail(`outline branch node ${node.node_id} source_refs must not be empty when provided`);
+      return;
+    }
+    for (const ref of refs) {
+      const normalized = String(ref || "").replace(/\\/g, "/");
+      const hash = normalized.indexOf("#");
+      const sourcePath = hash === -1 ? normalized : normalized.slice(0, hash);
+      const anchor = hash === -1 ? "" : normalized.slice(hash + 1);
+      if (sourcePath === data.constitution_snapshot?.source_path || /(?:^|\/)constitution\.md$/i.test(sourcePath)) {
+        fail(`outline branch node ${node.node_id}: Constitution cannot be business evidence`);
+        continue;
+      }
+      const source = sourcesByPath.get(sourcePath);
+      if (!source || (anchor && (!Array.isArray(source.anchors) || !source.anchors.includes(anchor)))) {
+        fail(`outline branch node ${node.node_id} source_refs must reference source_snapshot and its declared anchors`);
+      }
+    }
+  };
+
+  for (const map of mapsById.values()) {
+    if (map?.map_kind !== "branch") continue;
+    const directChildren = [...nodesById.values()].filter(
+      (node) => node.map_id === map.map_id && node.parent_node_id === map.root_node_id,
+    );
+    directChildren.forEach(validateNodeSourceRefs);
+
+    const childKinds = new Set(directChildren.map((node) => node.node_kind));
+    const usesGenericTwoNodeLabels = directChildren.length === 2 &&
+      childKinds.size === 2 &&
+      childKinds.has("scenario") &&
+      childKinds.has("acceptance") &&
+      directChildren.some((node) => node.label === "独立业务触发与状态") &&
+      directChildren.some((node) => node.label === "可观察交付结果");
+    if (usesGenericTwoNodeLabels) {
+      fail(
+        `outline branch ${map.map_id} is compressed into a generic two-node skeleton; ` +
+        "expand direct children from independently verifiable source facts. This is a semantic completeness rule, not a child-count limit",
+      );
+    }
+  }
+}
+
 function validateOutlineDiscoveryNoDensityMerge(data) {
   const fieldsToCheck = [
     data?.project?.current_understanding,
@@ -2426,7 +2477,9 @@ function validateOutlineDiscovery(data) {
 
   validateOutlineDiscoveryConstitution(data);
   validateOutlineDiscoveryBusinessContext(data);
-  const { mapsById, nodesById } = validateOutlineDiscoveryTopology(data);
+  const topology = validateOutlineDiscoveryTopology(data);
+  const { mapsById, nodesById } = topology;
+  validateOutlineDiscoveryBranchFactExpansion(data, topology);
 
   const groups = asArray(data.question_groups);
   if (!groups.length) fail("outline discovery question_groups must contain at least one group");

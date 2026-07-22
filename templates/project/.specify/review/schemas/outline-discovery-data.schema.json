@@ -164,6 +164,10 @@
         "label": {"type": "string", "minLength": 1},
         "summary": {"type": "string", "minLength": 1},
         "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
         "child_map_id": {"type": "string", "minLength": 1},
         "affected_node_ids": {
           "type": "array",

@@ -2,6 +2,13 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.17] - 2026-07-22
+
+### Fixed
+
+- Added semantic validation that rejects generic two-node branch skeletons and supports source references on branch nodes.
+- Clarified that branch child expansion is determined by source-backed business facts, not a fixed child-count limit.
+
 ## [0.11.16] - 2026-07-21
 
 ### Fixed

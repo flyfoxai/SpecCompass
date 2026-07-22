@@ -5405,6 +5405,42 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert accepted.returncode == 0, _review_validator_output(accepted)
 
 
+def test_outline_discovery_rejects_generic_two_node_branch_skeleton(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    sample["outline_nodes"] = [
+        node for node in sample["outline_nodes"] if node["node_id"] != "node-data"
+    ]
+    scenario = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-strategy-risk")
+    scenario.update(
+        {
+            "node_kind": "scenario",
+            "label": "独立业务触发与状态",
+            "summary": "触发：人工命令到达；候选拥有对应状态并保留异常处置。",
+        }
+    )
+    acceptance = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-order")
+    acceptance.update(
+        {
+            "label": "可观察交付结果",
+            "summary": "可拒绝、可恢复、可审计的交易结果。",
+        }
+    )
+
+    result = _run_review_validator(sample, tmp_path / "discovery-generic-two-node-branch.json")
+
+    assert result.returncode != 0
+    output = _review_validator_output(result)
+    assert "generic two-node skeleton" in output
+    assert "not a child-count limit" in output
+
+
+def test_outline_discovery_schema_allows_branch_node_source_refs():
+    schema = json.loads(OUTLINE_DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
+    source_refs = schema["$defs"]["outline_node"]["properties"]["source_refs"]
+    assert source_refs["minItems"] == 1
+    assert source_refs["uniqueItems"] is True
+
+
 def test_outline_discovery_rejects_level_one_candidate_that_merges_independent_business_chains(tmp_path):
     """A Level 1 candidate cannot hide multiple independently verifiable outcomes behind one label."""
     sample = _outline_discovery_validator_sample()
