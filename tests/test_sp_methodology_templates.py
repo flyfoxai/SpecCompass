@@ -6206,8 +6206,34 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         "renderOutlineDiscoveryConstitutionView",
         "按需查看项目治理条款",
         "具体内容已在中间栏展示",
-        "const visualDepth = Math.min(depth, 3)",
+        "outlineDiscoveryConstitutionApplicabilityLabel",
+        "outlineDiscoveryConstitutionApplicabilityExplanation",
+        "outlineDiscoveryConstitutionAffectedNodes",
+        "outlineDiscoveryConstitutionNodeDescription",
+        "appendOutlineDiscoveryConstitutionDetail",
+        "条款总数",
+        "直接适用",
+        "可能适用",
+        "关联节点",
+        "尚未映射到具体 Outline 节点",
+        "outlineDiscoveryNodeDepth",
+        "outlineDiscoveryVisualParent",
+        "alignOutlineDiscoveryParentNodes",
+        "visualDepthById.set(node.node_id, Math.min(outlineDiscoveryNodeDepth(node, nodesById), 3))",
+        "levelTwoOrder",
+        "document.createElementNS",
+        "discovery-mindmap-connectors",
+        "discovery-mindmap-trunk",
+        "discovery-mindmap-branch",
+        "trunk.dataset.childCount",
+        "trunk.dataset.laneIndex",
+        "targetCenter - parentCenter",
+        "ResizeObserver",
+        "parentNodeId",
+        "childNodeId",
+        "连线按 parent_node_id 展示真实父子关系",
         "level.dataset.nodeCount",
+        "canvas.dataset.connectionCount",
     ):
         assert token in renderer, token
 
@@ -6235,6 +6261,14 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         ".discovery-constitution-source",
         ".discovery-constitution-button",
         ".discovery-constitution-panel.is-main-view",
+        ".discovery-constitution-overview",
+        ".discovery-constitution-metadata",
+        ".discovery-constitution-details",
+        ".discovery-constitution-status.status-applicable",
+        ".discovery-mindmap-connectors",
+        ".discovery-mindmap-connector.connector-level-3",
+        ".discovery-mindmap-trunk",
+        ".discovery-mindmap-branch",
     ):
         assert token in styles, token
 
@@ -6245,6 +6279,9 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         ".discovery-mindmap-level.level-3",
     ):
         assert token in styles, token
+
+    assert ".discovery-mindmap-level + .discovery-mindmap-level::before" not in styles
+    assert ".discovery-mindmap-level + .discovery-mindmap-level .discovery-mindmap-node::before" not in styles
 
     rail_renderer = renderer.split("function renderOutlineDiscoveryRail()", 1)[1].split("\n}", 1)[0]
     assert "nodeList.appendChild(renderOutlineDiscoveryConstitution())" not in rail_renderer

@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.19] - 2026-07-22
+
+### Fixed
+
+- Drew explicit one-to-many parent branches between second- and third-level Outline nodes using their actual `parent_node_id` relationships.
+- Aligned parent nodes with their child groups and widened the third-column connection area to keep branches readable.
+- Expanded the on-demand Constitution review detail with applicability, source anchors, related nodes, and unmapped-clause guidance.
+
 ## [0.11.18] - 2026-07-22
 
 ### Fixed

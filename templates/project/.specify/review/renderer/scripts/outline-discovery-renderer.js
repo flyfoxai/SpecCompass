@@ -10,6 +10,7 @@ const OUTLINE_DISCOVERY_OPERATION_LABELS = {
 let outlineDiscoveryActiveMapId = null;
 let outlineDiscoveryActiveNodeId = null;
 let outlineDiscoveryConstitutionOpen = false;
+let outlineDiscoveryConnectorObserver = null;
 let outlineDiscoveryState = { responses: {}, meta: {} };
 
 function outlineDiscoveryStorageKey(data = reviewData) {
@@ -315,6 +316,7 @@ function renderOutlineDiscoveryConstitutionView() {
 
 function renderOutlineDiscoveryConstitution(data = reviewData) {
   const constitution = data?.constitution_snapshot || {};
+  const constitutionClauses = Array.isArray(constitution.clauses) ? constitution.clauses : [];
   const panel = create("section", "discovery-constitution-panel");
   const header = create("div", "discovery-constitution-header");
   const heading = create("div");
@@ -326,13 +328,62 @@ function renderOutlineDiscoveryConstitution(data = reviewData) {
   appendText(panel, "p", constitution.source_path || ".specify/memory/constitution.md", "discovery-constitution-source");
 
   if (constitution.availability === "available") {
+    const overview = create("div", "discovery-constitution-overview");
+    const applicableCount = constitutionClauses.filter((clause) => clause.applicability_status === "applicable").length;
+    const possibleCount = constitutionClauses.filter((clause) => clause.applicability_status === "possibly_applicable").length;
+    for (const [label, value] of [
+      ["条款总数", constitutionClauses.length],
+      ["直接适用", applicableCount],
+      ["可能适用", possibleCount]
+    ]) {
+      const metric = create("div", "discovery-constitution-metric");
+      appendText(metric, "span", label);
+      appendText(metric, "strong", String(value));
+      overview.appendChild(metric);
+    }
+    panel.appendChild(overview);
+    const metadata = create("dl", "discovery-constitution-metadata");
+    appendOutlineDiscoveryConstitutionDetail(metadata, "快照状态", "已加载项目 Constitution");
+    appendOutlineDiscoveryConstitutionDetail(metadata, "展示方式", "按需打开 · 只读");
+    appendOutlineDiscoveryConstitutionDetail(metadata, "作用范围", "项目治理与风险边界，不替代业务需求证据");
+    panel.appendChild(metadata);
+    appendText(
+      panel,
+      "p",
+      "治理条款仅用于解释项目级约束和风险边界，不作为业务需求证据，也不会自动生成、合并或否决 Outline 节点。",
+      "discovery-constitution-boundary"
+    );
     const clauses = create("div", "discovery-constitution-clauses");
-    if (Array.isArray(constitution.clauses) && constitution.clauses.length) {
-      for (const clause of constitution.clauses) {
+    if (constitutionClauses.length) {
+      for (const clause of constitutionClauses) {
         const item = create("article", "discovery-constitution-clause");
-        appendText(item, "strong", clause.title);
+        const clauseHeader = create("div", "discovery-constitution-clause-header");
+        appendText(clauseHeader, "strong", clause.title);
+        appendText(
+          clauseHeader,
+          "span",
+          outlineDiscoveryConstitutionApplicabilityLabel(clause.applicability_status),
+          `discovery-constitution-status status-${clause.applicability_status || "unknown"}`
+        );
+        item.appendChild(clauseHeader);
         appendText(item, "p", clause.summary);
-        appendText(item, "small", `${clause.source_anchor} · ${clause.applicability_status}`);
+        const details = create("dl", "discovery-constitution-details");
+        appendOutlineDiscoveryConstitutionDetail(
+          details,
+          "适用说明",
+          outlineDiscoveryConstitutionApplicabilityExplanation(clause.applicability_status)
+        );
+        appendOutlineDiscoveryConstitutionDetail(details, "条款标识", clause.clause_id || "未提供");
+        appendOutlineDiscoveryConstitutionDetail(details, "来源锚点", clause.source_anchor || "未提供");
+        const affectedNodes = outlineDiscoveryConstitutionAffectedNodes(clause.clause_id, data);
+        appendOutlineDiscoveryConstitutionDetail(
+          details,
+          "关联节点",
+          affectedNodes.length
+            ? affectedNodes.map((node) => outlineDiscoveryConstitutionNodeDescription(node, data)).join("；")
+            : "尚未映射到具体 Outline 节点；后续若确认该条款直接影响某项能力，应在全局约束节点中建立显式引用。"
+        );
+        item.appendChild(details);
         clauses.appendChild(item);
       }
     } else {
@@ -345,6 +396,164 @@ function renderOutlineDiscoveryConstitution(data = reviewData) {
   return panel;
 }
 
+function outlineDiscoveryConstitutionApplicabilityLabel(status) {
+  return {
+    applicable: "直接适用",
+    possibly_applicable: "可能适用",
+    not_applicable: "当前不适用"
+  }[status] || "适用性未知";
+}
+
+function outlineDiscoveryConstitutionApplicabilityExplanation(status) {
+  return status === "applicable"
+    ? "已识别为当前产品范围内的直接治理约束；相关设计与实现需要保留可核验的遵循方式。"
+    : status === "possibly_applicable"
+      ? "当前业务事实尚不足以确认是否直接生效；当相关范围、数据或风险边界被确认后需要再次核对。"
+      : "当前未识别出直接影响，仅作为项目级治理背景保留。";
+}
+
+function outlineDiscoveryConstitutionAffectedNodes(clauseId, data = reviewData) {
+  if (!clauseId) return [];
+  return outlineDiscoveryNodes(data).filter((node) => (
+    Array.isArray(node.constitution_clause_refs) && node.constitution_clause_refs.includes(clauseId)
+  ));
+}
+
+function appendOutlineDiscoveryConstitutionDetail(details, label, value) {
+  appendText(details, "dt", label);
+  appendText(details, "dd", value);
+}
+
+function outlineDiscoveryConstitutionNodeDescription(node, data = reviewData) {
+  const map = (data?.maps || []).find((entry) => entry.map_id === node.map_id);
+  const location = map?.title || node.map_id || "未标明导图";
+  return `${node.label || node.node_id}（${location}）：${node.summary || "未提供节点摘要"}`;
+}
+
+function outlineDiscoveryNodeDepth(node, nodesById) {
+  let depth = 1;
+  let parent = node.parent_node_id ? nodesById.get(node.parent_node_id) : null;
+  const visited = new Set([node.node_id]);
+  while (parent && !visited.has(parent.node_id)) {
+    depth += 1;
+    visited.add(parent.node_id);
+    parent = parent.parent_node_id ? nodesById.get(parent.parent_node_id) : null;
+  }
+  return depth;
+}
+
+function outlineDiscoveryVisualParent(node, visualDepth, nodesById, visualDepthById) {
+  let parent = node.parent_node_id ? nodesById.get(node.parent_node_id) : null;
+  const visited = new Set([node.node_id]);
+  while (parent && !visited.has(parent.node_id)) {
+    if ((visualDepthById.get(parent.node_id) || 1) < visualDepth) return parent;
+    visited.add(parent.node_id);
+    parent = parent.parent_node_id ? nodesById.get(parent.parent_node_id) : null;
+  }
+  return null;
+}
+
+function alignOutlineDiscoveryParentNodes(connections, nodeElements) {
+  for (const element of nodeElements.values()) element.style.transform = "";
+  const visualDepths = [...new Set(connections.map((connection) => connection.visualDepth))].sort((a, b) => b - a);
+  for (const visualDepth of visualDepths) {
+    const groups = new Map();
+    for (const connection of connections.filter((entry) => entry.visualDepth === visualDepth)) {
+      if (!groups.has(connection.parentId)) groups.set(connection.parentId, []);
+      groups.get(connection.parentId).push(connection.childId);
+    }
+    for (const [parentId, childIds] of groups) {
+      const parentElement = nodeElements.get(parentId);
+      const childElements = childIds.map((childId) => nodeElements.get(childId)).filter(Boolean);
+      if (!parentElement || !childElements.length) continue;
+      const parentRect = parentElement.getBoundingClientRect();
+      const childCenters = childElements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.top + (rect.height / 2);
+      });
+      const targetCenter = (Math.min(...childCenters) + Math.max(...childCenters)) / 2;
+      const parentCenter = parentRect.top + (parentRect.height / 2);
+      parentElement.style.transform = `translateY(${targetCenter - parentCenter}px)`;
+    }
+  }
+}
+
+function drawOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
+  if (!canvas.isConnected) return;
+  const layer = canvas.querySelector(".discovery-mindmap-connectors");
+  if (!layer) return;
+  alignOutlineDiscoveryParentNodes(connections, nodeElements);
+  const canvasRect = canvas.getBoundingClientRect();
+  layer.setAttribute("viewBox", `0 0 ${canvasRect.width} ${canvasRect.height}`);
+  layer.setAttribute("width", String(canvasRect.width));
+  layer.setAttribute("height", String(canvasRect.height));
+  layer.replaceChildren();
+  const groups = new Map();
+  for (const connection of connections) {
+    const key = `${connection.visualDepth}:${connection.parentId}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(connection);
+  }
+  const connectionGroups = [...groups.values()];
+  for (const groupedConnections of connectionGroups) {
+    const firstConnection = groupedConnections[0];
+    const parentElement = nodeElements.get(firstConnection.parentId);
+    if (!parentElement) continue;
+    const parentRect = parentElement.getBoundingClientRect();
+    const children = groupedConnections.map((connection) => ({
+      connection,
+      element: nodeElements.get(connection.childId)
+    })).filter((entry) => entry.element);
+    if (!children.length) continue;
+    const startX = parentRect.right - canvasRect.left;
+    const startY = parentRect.top + (parentRect.height / 2) - canvasRect.top;
+    const childGeometry = children.map(({ connection, element }) => {
+      const childRect = element.getBoundingClientRect();
+      return {
+        connection,
+        endX: childRect.left - canvasRect.left,
+        endY: childRect.top + (childRect.height / 2) - canvasRect.top
+      };
+    });
+    const nearestEndX = Math.min(...childGeometry.map((entry) => entry.endX));
+    const availableGap = Math.max(0, nearestEndX - startX);
+    const peerGroups = connectionGroups.filter((group) => group[0]?.visualDepth === firstConnection.visualDepth);
+    const laneIndex = peerGroups.indexOf(groupedConnections);
+    const lanePadding = Math.min(10, availableGap * 0.22);
+    const laneSpan = Math.max(0, availableGap - (lanePadding * 2));
+    const trunkX = startX + lanePadding + (laneSpan * ((laneIndex + 1) / (peerGroups.length + 1)));
+    const branchYs = childGeometry.map((entry) => entry.endY);
+    const minY = Math.min(startY, ...branchYs);
+    const maxY = Math.max(startY, ...branchYs);
+    const trunk = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    trunk.setAttribute("d", `M ${startX} ${startY} H ${trunkX} M ${trunkX} ${minY} V ${maxY}`);
+    trunk.setAttribute("class", `discovery-mindmap-connector discovery-mindmap-trunk connector-level-${firstConnection.visualDepth}`);
+    trunk.dataset.parentNodeId = firstConnection.parentId;
+    trunk.dataset.childCount = String(childGeometry.length);
+    trunk.dataset.laneIndex = String(laneIndex);
+    layer.appendChild(trunk);
+    for (const { connection, endX, endY } of childGeometry) {
+      const branch = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      branch.setAttribute("d", `M ${trunkX} ${endY} H ${endX}`);
+      branch.setAttribute("class", `discovery-mindmap-connector discovery-mindmap-branch connector-level-${connection.visualDepth}`);
+      branch.dataset.parentNodeId = connection.parentId;
+      branch.dataset.childNodeId = connection.childId;
+      layer.appendChild(branch);
+    }
+  }
+}
+
+function scheduleOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
+  outlineDiscoveryConnectorObserver?.disconnect();
+  const redraw = () => window.requestAnimationFrame(() => drawOutlineDiscoveryConnectors(canvas, connections, nodeElements));
+  redraw();
+  if (typeof ResizeObserver === "function") {
+    outlineDiscoveryConnectorObserver = new ResizeObserver(redraw);
+    outlineDiscoveryConnectorObserver.observe(canvas);
+  }
+  document.fonts?.ready?.then(redraw);
+}
+
 function renderOutlineDiscoveryMindmap(map) {
   const canvas = create("div", "discovery-mindmap");
   if (!map) {
@@ -352,30 +561,55 @@ function renderOutlineDiscoveryMindmap(map) {
     return canvas;
   }
   const nodes = outlineDiscoveryNodesForMap(map.map_id);
+  const nodesById = new Map(nodes.map((node) => [node.node_id, node]));
+  const nodeOrder = new Map(nodes.map((node, index) => [node.node_id, index]));
+  const visualDepthById = new Map();
+  for (const node of nodes) visualDepthById.set(node.node_id, Math.min(outlineDiscoveryNodeDepth(node, nodesById), 3));
   const levels = new Map();
   for (const node of nodes) {
-    let depth = 1;
-    let parent = node.parent_node_id ? outlineDiscoveryNode(node.parent_node_id) : null;
-    const visited = new Set([node.node_id]);
-    while (parent && !visited.has(parent.node_id)) {
-      depth += 1;
-      visited.add(parent.node_id);
-      parent = parent.parent_node_id ? outlineDiscoveryNode(parent.parent_node_id) : null;
-    }
-    const visualDepth = Math.min(depth, 3);
+    const visualDepth = visualDepthById.get(node.node_id);
     if (!levels.has(visualDepth)) levels.set(visualDepth, []);
     levels.get(visualDepth).push(node);
   }
+  const levelTwoOrder = new Map((levels.get(2) || []).map((node, index) => [node.node_id, index]));
+  if (levels.has(3)) {
+    levels.get(3).sort((left, right) => {
+      const leftParent = outlineDiscoveryVisualParent(left, 3, nodesById, visualDepthById);
+      const rightParent = outlineDiscoveryVisualParent(right, 3, nodesById, visualDepthById);
+      const parentDelta = (levelTwoOrder.get(leftParent?.node_id) ?? Number.MAX_SAFE_INTEGER)
+        - (levelTwoOrder.get(rightParent?.node_id) ?? Number.MAX_SAFE_INTEGER);
+      return parentDelta || (nodeOrder.get(left.node_id) - nodeOrder.get(right.node_id));
+    });
+  }
   canvas.dataset.levelCount = String(levels.size || 1);
+  const connectorLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  connectorLayer.setAttribute("class", "discovery-mindmap-connectors");
+  connectorLayer.setAttribute("aria-hidden", "true");
+  canvas.appendChild(connectorLayer);
+  const connections = [];
+  const nodeElements = new Map();
   for (const depth of [...levels.keys()].sort((a, b) => a - b)) {
     const level = create("div", `discovery-mindmap-level level-${depth}`);
     level.dataset.nodeCount = String(levels.get(depth).length);
-    for (const node of levels.get(depth)) level.appendChild(renderOutlineDiscoveryNode(node));
+    for (const node of levels.get(depth)) {
+      const visualParent = depth > 1
+        ? outlineDiscoveryVisualParent(node, depth, nodesById, visualDepthById)
+        : null;
+      const nodeElement = renderOutlineDiscoveryNode(node);
+      if (visualParent) {
+        nodeElement.dataset.parentNodeId = visualParent.node_id;
+        connections.push({ parentId: visualParent.node_id, childId: node.node_id, visualDepth: depth });
+      }
+      nodeElements.set(node.node_id, nodeElement);
+      level.appendChild(nodeElement);
+    }
     canvas.appendChild(level);
   }
+  canvas.dataset.connectionCount = String(connections.length);
   const hint = create("p", "discovery-mindmap-hint");
-  hint.textContent = "节点数量和层级由 review data 的密度预算控制；手机端可横向滚动查看完整分支。";
+  hint.textContent = "连线按 parent_node_id 展示真实父子关系；第三列按第二列父节点归组，手机端可横向滚动查看完整分支。";
   canvas.appendChild(hint);
+  scheduleOutlineDiscoveryConnectors(canvas, connections, nodeElements);
   return canvas;
 }
 
