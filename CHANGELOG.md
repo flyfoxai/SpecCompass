@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.21] - 2026-07-22
+
+### Fixed
+
+- Made the overview third column project each linked child map's root-level nodes from the same source used by the detail map, keeping node counts consistent across views.
+- Connected every projected node to its owning second-level map link with collision-safe render keys instead of reusing detail-map parent identifiers.
+- Added empty-map handling, click-through selection, and validation that prevents a map link from mixing local children with child-map content.
+
 ## [0.11.20] - 2026-07-22
 
 ### Fixed

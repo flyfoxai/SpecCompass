@@ -1813,6 +1813,16 @@ details {
   align-items: stretch;
 }
 
+.discovery-mindmap-node.is-map-preview {
+  border-style: dashed;
+}
+
+.discovery-map-preview-badge,
+.discovery-mindmap-empty-child {
+  color: var(--muted, #64748b);
+  font-size: 0.75rem;
+}
+
 .discovery-mindmap-branch-stage.has-no-detail .discovery-mindmap-branch-group {
   grid-template-columns: minmax(220px, 1fr);
 }

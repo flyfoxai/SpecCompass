@@ -61,6 +61,32 @@ function outlineDiscoveryNodesForMap(mapId, data = reviewData) {
   return outlineDiscoveryNodes(data).filter((node) => node.map_id === mapId);
 }
 
+function outlineDiscoveryMapRootChildren(mapId, data = reviewData) {
+  const map = outlineDiscoveryMap(mapId, data);
+  if (!map) return [];
+  const nodes = outlineDiscoveryNodesForMap(mapId, data);
+  return nodes.filter((node) => node.parent_node_id === map.root_node_id);
+}
+
+function outlineDiscoveryOverviewPreviewEntries(map, data = reviewData) {
+  if (map?.map_kind !== "overview") return [];
+  const overviewNodes = outlineDiscoveryNodesForMap(map.map_id, data);
+  const rootLinks = overviewNodes.filter(
+    (node) => node.parent_node_id === map.root_node_id && node.node_kind === "map_link" && node.child_map_id
+  );
+  return rootLinks.flatMap((mapLink) => {
+    const childMap = outlineDiscoveryMap(mapLink.child_map_id, data);
+    if (!childMap) return [];
+    return outlineDiscoveryMapRootChildren(childMap.map_id, data).map((node) => ({
+      node,
+      key: `preview:${mapLink.node_id}:${node.node_id}`,
+      parentId: mapLink.node_id,
+      previewMapId: childMap.map_id,
+      previewMapTitle: childMap.title
+    }));
+  });
+}
+
 function outlineDiscoveryNode(nodeId, data = reviewData) {
   return outlineDiscoveryNodes(data).find((node) => node.node_id === nodeId) || null;
 }
@@ -231,12 +257,13 @@ function renderOutlineDiscoveryMaps() {
   list.appendChild(constitutionButton);
 }
 
-function openOutlineDiscoveryMap(mapId) {
+function openOutlineDiscoveryMap(mapId, nodeId = null) {
   const map = outlineDiscoveryMap(mapId);
   if (!map) return;
   outlineDiscoveryConstitutionOpen = false;
   outlineDiscoveryActiveMapId = mapId;
-  outlineDiscoveryActiveNodeId = map.root_node_id;
+  const selectedNode = nodeId && outlineDiscoveryNode(nodeId);
+  outlineDiscoveryActiveNodeId = selectedNode?.map_id === mapId ? nodeId : map.root_node_id;
   saveOutlineDiscoveryState("已切换导图。");
   renderOutlineDiscoveryMaps();
   renderOutlineDiscoveryCurrentMap();
@@ -512,6 +539,7 @@ function drawOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
     trunk.dataset.parentNodeId = firstConnection.parentId;
     trunk.dataset.childCount = String(childGeometry.length);
     trunk.dataset.laneIndex = String(laneIndex);
+    trunk.dataset.relationshipType = firstConnection.relationshipType || "in_map_parent";
     layer.appendChild(trunk);
     for (const { connection, endX, endY } of childGeometry) {
       const branch = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -519,6 +547,7 @@ function drawOutlineDiscoveryConnectors(canvas, connections, nodeElements) {
       branch.setAttribute("class", `discovery-mindmap-connector discovery-mindmap-branch connector-level-${connection.visualDepth}`);
       branch.dataset.parentNodeId = connection.parentId;
       branch.dataset.childNodeId = connection.childId;
+      branch.dataset.relationshipType = connection.relationshipType || "in_map_parent";
       layer.appendChild(branch);
     }
   }
@@ -580,24 +609,43 @@ function renderOutlineDiscoveryMindmap(map) {
       return parentDelta || (nodeOrder.get(left.node_id) - nodeOrder.get(right.node_id));
     });
   }
-  canvas.dataset.levelCount = String(levels.size || 1);
+  const previewEntries = outlineDiscoveryOverviewPreviewEntries(map);
+  const previewEntriesByParent = new Map();
+  for (const entry of previewEntries) {
+    const entries = previewEntriesByParent.get(entry.parentId) || [];
+    entries.push(entry);
+    previewEntriesByParent.set(entry.parentId, entries);
+  }
+  const actualLevelThreeNodes = levels.get(3) || [];
+  const hasDetail = actualLevelThreeNodes.length > 0 || previewEntries.length > 0;
+  canvas.dataset.levelCount = String(Math.max(levels.size || 1, hasDetail ? 3 : 1));
+  if (map.map_kind === "overview") canvas.dataset.previewNodeCount = String(previewEntries.length);
   const connectorLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   connectorLayer.setAttribute("class", "discovery-mindmap-connectors");
   connectorLayer.setAttribute("aria-hidden", "true");
   canvas.appendChild(connectorLayer);
   const connections = [];
   const nodeElements = new Map();
-  const appendNode = (node, depth, level) => {
-    const visualParent = depth > 1
-      ? outlineDiscoveryVisualParent(node, depth, nodesById, visualDepthById)
-      : null;
-    const nodeElement = renderOutlineDiscoveryNode(node);
+  const appendNode = (node, depth, level, options = {}) => {
+    const visualParent = options.parentId
+      ? nodesById.get(options.parentId)
+      : depth > 1
+        ? outlineDiscoveryVisualParent(node, depth, nodesById, visualDepthById)
+        : null;
+    const nodeKey = options.domKey || node.node_id;
+    const nodeElement = renderOutlineDiscoveryNode(node, { ...options, domKey: nodeKey });
     if (node.parent_node_id) nodeElement.dataset.directParentNodeId = node.parent_node_id;
+    if (options.previewMapId) nodeElement.dataset.previewOfNodeId = node.node_id;
     if (visualParent) {
       nodeElement.dataset.parentNodeId = visualParent.node_id;
-      connections.push({ parentId: visualParent.node_id, childId: node.node_id, visualDepth: depth });
+      connections.push({
+        parentId: visualParent.node_id,
+        childId: nodeKey,
+        visualDepth: depth,
+        relationshipType: options.previewMapId ? "child_map_preview" : "in_map_parent"
+      });
     }
-    nodeElements.set(node.node_id, nodeElement);
+    nodeElements.set(nodeKey, nodeElement);
     level.appendChild(nodeElement);
   };
   const levelOne = create("div", "discovery-mindmap-level level-1");
@@ -605,30 +653,37 @@ function renderOutlineDiscoveryMindmap(map) {
   for (const node of levels.get(1) || []) appendNode(node, 1, levelOne);
   canvas.appendChild(levelOne);
   const levelTwoNodes = levels.get(2) || [];
-  const levelThreeNodes = levels.get(3) || [];
-  if (levelTwoNodes.length || levelThreeNodes.length) {
-    const branchStage = create("div", `discovery-mindmap-branch-stage${levelThreeNodes.length ? "" : " has-no-detail"}`);
+  if (levelTwoNodes.length || hasDetail) {
+    const branchStage = create("div", `discovery-mindmap-branch-stage${hasDetail ? "" : " has-no-detail"}`);
     const levelTwoIds = new Set(levelTwoNodes.map((node) => node.node_id));
     const childrenByParent = new Map(levelTwoNodes.map((node) => [node.node_id, []]));
     const orphanNodes = [];
-    for (const node of levelThreeNodes) {
+    for (const node of actualLevelThreeNodes) {
       const visualParent = outlineDiscoveryVisualParent(node, 3, nodesById, visualDepthById);
-      if (visualParent && levelTwoIds.has(visualParent.node_id)) childrenByParent.get(visualParent.node_id).push(node);
-      else orphanNodes.push(node);
+      if (visualParent && levelTwoIds.has(visualParent.node_id)) childrenByParent.get(visualParent.node_id).push({ node });
+      else orphanNodes.push({ node });
+    }
+    for (const [parentId, entries] of previewEntriesByParent) {
+      if (childrenByParent.has(parentId)) childrenByParent.get(parentId).push(...entries);
     }
     for (const parentNode of levelTwoNodes) {
-      const childNodes = childrenByParent.get(parentNode.node_id) || [];
+      const childEntries = childrenByParent.get(parentNode.node_id) || [];
       const group = create("section", "discovery-mindmap-branch-group");
       group.dataset.parentNodeId = parentNode.node_id;
-      group.dataset.childCount = String(childNodes.length);
+      group.dataset.childCount = String(childEntries.length);
       const parentLevel = create("div", "discovery-mindmap-level level-2 discovery-mindmap-parent-slot");
       parentLevel.dataset.nodeCount = "1";
       appendNode(parentNode, 2, parentLevel);
       group.appendChild(parentLevel);
-      if (levelThreeNodes.length) {
+      if (hasDetail) {
         const childLevel = create("div", "discovery-mindmap-level level-3 discovery-mindmap-child-list");
-        childLevel.dataset.nodeCount = String(childNodes.length);
-        for (const childNode of childNodes) appendNode(childNode, 3, childLevel);
+        childLevel.dataset.nodeCount = String(childEntries.length);
+        if (!childEntries.length && parentNode.child_map_id) {
+          appendText(childLevel, "p", "该分图暂无直接下级节点。", "discovery-mindmap-empty-child");
+        }
+        for (const entry of childEntries) {
+          appendNode(entry.node, 3, childLevel, { ...entry, domKey: entry.key });
+        }
         group.appendChild(childLevel);
       }
       branchStage.appendChild(group);
@@ -640,7 +695,7 @@ function renderOutlineDiscoveryMindmap(map) {
       appendText(group, "div", "未找到对应二级父节点", "discovery-mindmap-orphan-label");
       const childLevel = create("div", "discovery-mindmap-level level-3 discovery-mindmap-child-list");
       childLevel.dataset.nodeCount = String(orphanNodes.length);
-      for (const childNode of orphanNodes) appendNode(childNode, 3, childLevel);
+      for (const entry of orphanNodes) appendNode(entry.node, 3, childLevel);
       group.appendChild(childLevel);
       branchStage.appendChild(group);
     }
@@ -648,7 +703,9 @@ function renderOutlineDiscoveryMindmap(map) {
   }
   canvas.dataset.connectionCount = String(connections.length);
   const hint = create("p", "discovery-mindmap-hint");
-  hint.textContent = "连线按 parent_node_id 展示真实父子关系；第三列按第二列父节点归组，手机端可横向滚动查看完整分支。";
+  hint.textContent = map.map_kind === "overview"
+    ? "总图第三列是各分图根节点的直接子节点预览；预览线按分图入口建立，点击节点可进入对应分图。"
+    : "连线按 parent_node_id 展示当前导图内的真实父子关系；第三列按第二列父节点归组。";
   canvas.appendChild(hint);
   scheduleOutlineDiscoveryConnectors(canvas, connections, nodeElements);
   return canvas;
@@ -660,19 +717,26 @@ function hasUnmappedConstitutionImpact(node) {
     && (!Array.isArray(node.affected_node_ids) || node.affected_node_ids.length === 0);
 }
 
-function renderOutlineDiscoveryNode(node) {
+function renderOutlineDiscoveryNode(node, options = {}) {
   const questions = outlineDiscoveryQuestionsForNode(node.node_id);
   const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
-  const button = create("button", `discovery-mindmap-node${node.node_id === outlineDiscoveryActiveNodeId ? " is-selected" : ""}`);
+  const isPreview = Boolean(options.previewMapId);
+  const button = create("button", `discovery-mindmap-node${node.node_id === outlineDiscoveryActiveNodeId && !isPreview ? " is-selected" : ""}`);
   button.type = "button";
   button.dataset.sourceStatus = node.source_status || "unresolved";
   button.dataset.nodeId = node.node_id;
+  if (options.domKey) button.dataset.renderKey = options.domKey;
+  if (isPreview) {
+    button.dataset.previewMapId = options.previewMapId;
+    button.classList.add("is-map-preview");
+  }
   appendText(button, "strong", node.label || node.node_id);
   appendText(button, "span", node.summary || "");
   const meta = create("small", "discovery-node-meta");
   appendText(meta, "span", node.source_status || "unresolved", "discovery-source-status");
   appendText(meta, "span", questions.length ? `${completed}/${questions.length} 个问题` : "无待回应问题");
   button.appendChild(meta);
+  if (isPreview) appendText(button, "span", `来自分图：${options.previewMapTitle || "进入查看"}`, "discovery-map-preview-badge");
   if (node.child_map_id) appendText(button, "span", "进入分图 ↗", "discovery-map-link");
   if (Array.isArray(node.affected_node_ids) && node.affected_node_ids.length) {
     const affected = create("span", "discovery-affected-count");
@@ -682,7 +746,8 @@ function renderOutlineDiscoveryNode(node) {
     appendText(button, "span", "影响范围尚未映射", "discovery-affected-count");
   }
   button.addEventListener("click", () => {
-    if (node.child_map_id) openOutlineDiscoveryMap(node.child_map_id);
+    if (isPreview) openOutlineDiscoveryMap(options.previewMapId, node.node_id);
+    else if (node.child_map_id) openOutlineDiscoveryMap(node.child_map_id);
     else selectOutlineDiscoveryNode(node.node_id);
   });
   return button;

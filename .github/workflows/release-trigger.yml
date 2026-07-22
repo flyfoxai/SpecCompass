@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Stabilized Outline parent-child grouping and connector rendering so second-level nodes do not overlap and every third-level branch remains visible." \
+              "- Aligned Outline overview previews and connectors with each linked child map so overview counts and detail-map root children remain consistent." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

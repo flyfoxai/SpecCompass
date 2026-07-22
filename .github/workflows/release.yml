@@ -44,15 +44,16 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Outline review: stable parent-child branches
+          ## Outline review: consistent cross-map branches
 
-          This release makes the three-column Outline review accurately display every second-to-third-level relationship:
+          This release keeps the Outline overview and branch detail maps aligned to the same hierarchy:
 
-          - Each second-level node is grouped with only its own third-level children, making the one-to-many hierarchy explicit.
-          - Connector trunks and branches are measured from the rendered canvas and no longer cross into unrelated parent groups.
-          - Parent alignment uses normal document flow instead of visual transforms, preventing second-level node overlap.
-          - Third-level and deeper nodes remain visible and retain their direct-parent metadata while using the nearest displayed second-level group.
-          - Browser layout checks cover uneven child counts, deeper nodes, narrow viewports, and overlap detection.
+          - The overview third column projects each linked child map's root-level nodes from the same source used by its detail map.
+          - Every projected node connects to its owning second-level map link instead of reusing the detail map's internal parent identifier.
+          - Collision-safe preview keys preserve all projected nodes when identifiers repeat across maps.
+          - Empty child maps remain explicit, while clicking a preview opens the detail map and selects the corresponding real node.
+          - Validation rejects map links that mix local children with child-map content, preventing competing hierarchy sources.
+          - Automated and browser checks cover projected counts, connector ownership, empty maps, and detail-map selection.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

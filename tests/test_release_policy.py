@@ -34,28 +34,29 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Outline review: stable parent-child branches" in release_workflow
-    assert "grouped with only its own third-level children" in release_workflow
-    assert "no longer cross into unrelated parent groups" in release_workflow
-    assert "normal document flow instead of visual transforms" in release_workflow
-    assert "retain their direct-parent metadata" in release_workflow
-    assert "uneven child counts, deeper nodes, narrow viewports, and overlap detection" in release_workflow
+    assert "## Outline review: consistent cross-map branches" in release_workflow
+    assert "projects each linked child map's root-level nodes" in release_workflow
+    assert "connects to its owning second-level map link" in release_workflow
+    assert "Collision-safe preview keys" in release_workflow
+    assert "clicking a preview opens the detail map" in release_workflow
+    assert "rejects map links that mix local children with child-map content" in release_workflow
+    assert "projected counts, connector ownership, empty maps, and detail-map selection" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- Each second-level node is grouped" in release_workflow
+    assert r"- The overview third column projects" in release_workflow
 
 
-def test_release_changelog_summary_matches_outline_branch_focus():
-    """The generated changelog should lead with the Outline branch fix."""
+def test_release_changelog_summary_matches_cross_map_outline_focus():
+    """The generated changelog should lead with the cross-map Outline fix."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Stabilized Outline parent-child grouping" in trigger_workflow
-    assert "second-level nodes do not overlap" in trigger_workflow
-    assert "every third-level branch remains visible" in trigger_workflow
+    assert "Aligned Outline overview previews and connectors" in trigger_workflow
+    assert "linked child map" in trigger_workflow
+    assert "overview counts and detail-map root children remain consistent" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

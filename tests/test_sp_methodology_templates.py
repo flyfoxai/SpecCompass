@@ -6148,6 +6148,8 @@ def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_sele
         "outlineDiscoveryActiveNodeId",
         "outlineDiscoveryMaps",
         "outlineDiscoveryNodesForMap",
+        "outlineDiscoveryMapRootChildren",
+        "outlineDiscoveryOverviewPreviewEntries",
         "renderOutlineDiscoveryMindmap",
         "selectOutlineDiscoveryNode",
         "openOutlineDiscoveryMap",
@@ -6175,6 +6177,52 @@ def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_sele
         "overflow: visible",
     ):
         assert token in styles, token
+
+
+def test_outline_discovery_overview_preview_uses_child_map_root_children_only():
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer projection tests")
+
+    renderer = REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(renderer))}, "utf8");
+const data = {{
+  maps: [
+    {{ map_id: "overview", map_kind: "overview", root_node_id: "overview-root", title: "总图" }},
+    {{ map_id: "branch-a", map_kind: "branch", root_node_id: "branch-a-root", title: "分图 A" }},
+    {{ map_id: "branch-b", map_kind: "branch", root_node_id: "branch-b-root", title: "分图 B" }},
+    {{ map_id: "constraints", map_kind: "global_constraints", root_node_id: "constraints-root", title: "全局约束" }}
+  ],
+  outline_nodes: [
+    {{ node_id: "overview-root", map_id: "overview", node_kind: "root", parent_node_id: null }},
+    {{ node_id: "link-a", map_id: "overview", node_kind: "map_link", parent_node_id: "overview-root", child_map_id: "branch-a" }},
+    {{ node_id: "link-b", map_id: "overview", node_kind: "map_link", parent_node_id: "overview-root", child_map_id: "branch-b" }},
+    {{ node_id: "link-c", map_id: "overview", node_kind: "map_link", parent_node_id: "overview-root", child_map_id: "constraints" }},
+    {{ node_id: "branch-a-root", map_id: "branch-a", node_kind: "root", parent_node_id: null }},
+    {{ node_id: "a-1", map_id: "branch-a", node_kind: "capability", parent_node_id: "branch-a-root" }},
+    {{ node_id: "a-2", map_id: "branch-a", node_kind: "capability", parent_node_id: "branch-a-root" }},
+    {{ node_id: "a-deep", map_id: "branch-a", node_kind: "acceptance", parent_node_id: "a-1" }},
+    {{ node_id: "branch-b-root", map_id: "branch-b", node_kind: "root", parent_node_id: null }},
+    {{ node_id: "constraints-root", map_id: "constraints", node_kind: "root", parent_node_id: null }},
+    {{ node_id: "c-1", map_id: "constraints", node_kind: "constraint", parent_node_id: "constraints-root" }},
+    {{ node_id: "c-2", map_id: "constraints", node_kind: "constraint", parent_node_id: "constraints-root" }}
+  ]
+}};
+const context = {{ console, reviewData: data }};
+vm.createContext(context);
+vm.runInContext(source, context);
+const overview = data.maps[0];
+const entries = context.outlineDiscoveryOverviewPreviewEntries(overview, data);
+const counts = Object.fromEntries(["link-a", "link-b", "link-c"].map((id) => [id, entries.filter((entry) => entry.parentId === id).length]));
+if (JSON.stringify(counts) !== JSON.stringify({{"link-a": 2, "link-b": 0, "link-c": 2}})) throw new Error(JSON.stringify(counts));
+if (entries.some((entry) => entry.node.node_id === "a-deep")) throw new Error("deep descendants leaked into overview preview");
+if (new Set(entries.map((entry) => entry.key)).size !== entries.length) throw new Error("preview render keys are not unique");
+if (entries.some((entry) => !entry.key.startsWith("preview:" + entry.parentId + ":"))) throw new Error("preview key lost map-link ownership");
+"""
+    result = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr or result.stdout
 
 
 def test_outline_discovery_renderer_uses_business_context_and_shows_constitution_read_only():
@@ -6238,7 +6286,10 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         "ResizeObserver",
         "parentNodeId",
         "childNodeId",
-        "连线按 parent_node_id 展示真实父子关系",
+        "总图第三列是各分图根节点的直接子节点预览",
+        'relationshipType: options.previewMapId ? "child_map_preview" : "in_map_parent"',
+        "previewNodeCount",
+        "previewMapId",
         "levelOne.dataset.nodeCount",
         "parentLevel.dataset.nodeCount",
         "childLevel.dataset.nodeCount",
@@ -6290,6 +6341,8 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         ".discovery-mindmap-connector.connector-level-3",
         ".discovery-mindmap-trunk",
         ".discovery-mindmap-branch",
+        ".discovery-mindmap-node.is-map-preview",
+        ".discovery-map-preview-badge",
     ):
         assert token in styles, token
 

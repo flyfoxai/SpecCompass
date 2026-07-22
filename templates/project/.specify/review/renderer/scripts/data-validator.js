@@ -80,6 +80,11 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
       childrenByParent.set(parent.node_id, children);
     }
   }
+  for (const node of data.outline_nodes) {
+    if (node.node_kind === "map_link" && (childrenByParent.get(node.node_id) || []).length) {
+      return "Outline 分图入口不能同时承载本图子节点；下一级内容必须来自 child_map_id 指向的分图。";
+    }
+  }
   for (const map of data.maps) {
     const mapNodes = nodesByMap.get(map.map_id);
     const layers = new Map();
