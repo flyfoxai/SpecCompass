@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.23] - 2026-07-23
+
+### Added
+
+- Added an Outline adjustment mode that preserves the existing three-level hierarchy and connectors while highlighting the affected nodes.
+- Added a right-side adjustment workbench for model proposals, before-and-after comparisons, rationale, impact, maturity, and write-back plans.
+- Added draft revision requests for non-recommended options, including revision type and requirements capture.
+- Added Owner confirmation gates for high-impact Outline nodes and local persistence for adjustment-mode state.
+
 ## [0.11.22] - 2026-07-22
 
 ### Fixed

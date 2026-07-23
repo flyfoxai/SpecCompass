@@ -13,6 +13,7 @@ let selectedModuleIndex = 0;
 let selectedItemIndex = 0;
 let selectedNodeId = null;
 let selectedPriority = "all";
+let reviewMode = "confirm";
 let state = {};
 let pendingFocusNodeId = null;
 let copyDraftWarningArmed = false;

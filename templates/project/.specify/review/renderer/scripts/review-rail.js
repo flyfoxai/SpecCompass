@@ -27,12 +27,16 @@ const uiChangeTypes = [
 ];
 
 const outlineChangeTypes = [
-  { value: "MODIFY_INTENT", label: "调整产品意图或用户问题" },
-  { value: "MODIFY_SCOPE", label: "调整范围或非目标" },
-  { value: "MODIFY_FIRST_SLICE", label: "调整推荐首切片" },
-  { value: "MODIFY_COVERAGE", label: "补充场景或验收种子" },
-  { value: "MODIFY_AUTHORITY", label: "修正来源权威或追溯范围" },
-  { value: "MODIFY_READINESS", label: "调整风险、阻断项或下一路由" },
+  { value: "REVISE_INTENT", label: "调整产品意图" },
+  { value: "REVISE_USERS", label: "调整用户或角色" },
+  { value: "REVISE_PROBLEM_SLICE", label: "调整问题切片" },
+  { value: "REVISE_CAPABILITY_BOUNDARY", label: "调整能力边界" },
+  { value: "REVISE_SCOPE", label: "调整范围" },
+  { value: "REVISE_NON_GOAL", label: "调整非目标" },
+  { value: "REVISE_SCENARIO_COVERAGE", label: "补充场景或验收种子" },
+  { value: "REVISE_FIRST_SLICE", label: "调整推荐首切片" },
+  { value: "REVISE_SOURCE_AUTHORITY", label: "修正来源权威或追溯范围" },
+  { value: "REVISE_READINESS", label: "调整风险、阻断项或下一路由" },
   { value: "OTHER", label: "其他纲要修改" }
 ];
 
@@ -46,7 +50,7 @@ function changeTypeOptions() {
 function defaultChangeType() {
   if (reviewData?.review_type === "flow") return "MODIFY_NODE";
   if (reviewData?.review_type === "ui") return "MODIFY_SCREEN_STRUCTURE";
-  if (reviewData?.review_type === "outline") return "MODIFY_SCOPE";
+  if (reviewData?.review_type === "outline") return "REVISE_SCOPE";
   return "OTHER";
 }
 
@@ -119,6 +123,14 @@ function renderPackageDownloadLinks(parts) {
 }
 
 function renderRail() {
+  if (reviewData?.review_type === "outline" && reviewMode === "adjust") {
+    renderOutlineAdjustmentRail();
+    return;
+  }
+  $("rail-title").textContent = "当前确认";
+  $("authorization-steps").classList.remove("hidden");
+  $("priority-filters").classList.remove("hidden");
+  document.querySelector(".rail-actions")?.classList.remove("hidden");
   const item = currentItem();
   $("rail-summary").textContent = selectedNodeId
     ? "当前只显示选中的确认点。"
@@ -142,6 +154,211 @@ function renderRail() {
     if (textarea) textarea.focus();
     pendingFocusNodeId = null;
   }
+}
+
+function outlineAdjustmentTarget() {
+  const nodes = currentItemNodes();
+  return nodes.find((node) => node.id === selectedNodeId)
+    || nodes.find((node) => node.review_level === "must_confirm")
+    || nodes[0]
+    || null;
+}
+
+function outlineAdjustmentImpact(node = outlineAdjustmentTarget()) {
+  if (!node) return { affected: [], stable: [], level: "normal" };
+  const moduleNodes = currentModuleNodes();
+  const affected = moduleNodes.filter((candidate) => candidate.id !== node.id && (
+    node.confirmation_priority === "critical"
+    || candidate.confirmation_priority === "critical"
+    || candidate.review_level === "must_confirm"
+  ));
+  const affectedIds = new Set(affected.map((candidate) => candidate.id));
+  return {
+    affected,
+    stable: moduleNodes.filter((candidate) => candidate.id !== node.id && !affectedIds.has(candidate.id)),
+    level: node.confirmation_priority || "normal"
+  };
+}
+
+function outlineRecommendedOption(node) {
+  return (node?.options || []).find((option) => option.id === node.recommended_option) || null;
+}
+
+function adjustmentSection(title, className = "") {
+  const section = create("section", `adjustment-section ${className}`.trim());
+  appendText(section, "h3", title);
+  return section;
+}
+
+function appendAdjustmentFact(parent, label, value) {
+  const row = create("div", "adjustment-fact");
+  appendText(row, "span", label);
+  appendText(row, "strong", value || "未提供");
+  parent.appendChild(row);
+}
+
+function renderOutlineAdjustmentRail() {
+  const node = outlineAdjustmentTarget();
+  const list = $("node-list");
+  list.replaceChildren();
+  $("rail-title").textContent = "Outline 调整工作台";
+  $("authorization-steps").classList.add("hidden");
+  $("priority-filters").classList.add("hidden");
+  document.querySelector(".rail-actions")?.classList.add("hidden");
+  $("show-all").classList.add("hidden");
+
+  if (!node) {
+    $("rail-summary").textContent = "当前视图没有可调整的确认点。";
+    appendText(list, "p", "请切换到包含确认点的 Outline 视图。", "status");
+    return;
+  }
+
+  if (!selectedNodeId) selectedNodeId = node.id;
+  const recommended = outlineRecommendedOption(node);
+  const saved = nodeState(node.id);
+  const impact = outlineAdjustmentImpact(node);
+  $("rail-summary").textContent = `正在评估「${node.label || node.id}」的调整方案。中间结构保持不变，仅标记影响范围。`;
+
+  const overview = adjustmentSection("调整提案", "adjustment-proposal");
+  const heading = create("div", "adjustment-heading");
+  appendText(heading, "span", node.confirmation_priority === "critical" ? "高影响 · 必须人工确认" : "模型建议", `priority-badge priority-${safeClassToken(node.confirmation_priority || "normal")}`);
+  appendText(heading, "h4", recommended?.label || node.action_prompt || node.label);
+  overview.appendChild(heading);
+  appendText(overview, "p", recommended?.recommendation_reason || node.decision_summary || node.plain_summary);
+  list.appendChild(overview);
+
+  const comparison = adjustmentSection("调整前 / 调整后", "adjustment-comparison");
+  const comparisonGrid = create("div", "adjustment-comparison-grid");
+  const before = create("article", "adjustment-before");
+  appendText(before, "span", "当前 Outline", "adjustment-kicker");
+  appendText(before, "p", node.decision_background || node.plain_summary);
+  const after = create("article", "adjustment-after");
+  appendText(after, "span", "建议结果", "adjustment-kicker");
+  appendText(after, "p", recommended?.consequence || node.decision_summary || "按建议重新生成 Outline。" );
+  comparisonGrid.append(before, after);
+  comparison.appendChild(comparisonGrid);
+  list.appendChild(comparison);
+
+  const evidence = adjustmentSection("依据与影响", "adjustment-evidence");
+  appendAdjustmentFact(evidence, "依据位置", node.source_ref);
+  appendAdjustmentFact(evidence, "影响级别", priorityLabel(impact.level));
+  appendAdjustmentFact(evidence, "直接关联", impact.affected.length ? impact.affected.map((entry) => entry.label || entry.id).join("、") : "当前视图内部");
+  appendAdjustmentFact(evidence, "保持稳定", impact.stable.length ? impact.stable.map((entry) => entry.label || entry.id).join("、") : "无额外节点");
+  if (node.priority_reason) appendAdjustmentFact(evidence, "优先级原因", node.priority_reason);
+  if (node.critical_basis) appendAdjustmentFact(evidence, "高影响依据", node.critical_basis);
+  list.appendChild(evidence);
+
+  const writeback = adjustmentSection("成熟度与写回计划", "adjustment-writeback");
+  appendAdjustmentFact(writeback, "当前阶段", reviewData.outline_maturity || "specify_ready");
+  appendAdjustmentFact(writeback, "调整后路由", recommended?.next_exit || "生成修订请求并刷新 Outline");
+  appendText(writeback, "p", "语义调整不会直接改写当前渲染结果。系统会把选择和说明写入修订请求，由模型更新权威来源后重新生成 Outline；若证据不足，应回退到 frame 或 explore。", "adjustment-note");
+  list.appendChild(writeback);
+
+  const actions = adjustmentSection("Owner 操作", "adjustment-owner-actions");
+  appendAdjustmentFact(actions, "责任人", node.owner || "待定");
+  const actionRow = create("div", "adjustment-action-row");
+  for (const option of node.options || []) {
+    const button = create("button", option.id === node.recommended_option ? "primary" : "", option.id === node.recommended_option ? `接受建议：${option.label}` : `要求调整：${option.label}`);
+    button.type = "button";
+    button.addEventListener("click", () => chooseOption(node, option));
+    actionRow.appendChild(button);
+  }
+  actions.appendChild(actionRow);
+  if (saved.status === "DRAFT") {
+    actions.appendChild(outlineAdjustmentDraftEditor(node, saved));
+  }
+  const status = create("div", "status");
+  status.textContent = saved.status === "MISSING"
+    ? (node.confirmation_priority === "critical" ? "高影响节点不能自动接受，必须由 Owner 明确选择。" : "尚未记录调整决定。")
+    : nodeStatusLabel(node, saved);
+  actions.appendChild(status);
+  if (saved.status === "SAVED_RECOMMENDED" || saved.status === "SAVED_SUBMITTED") {
+    const reset = create("button", "", "重新选择");
+    reset.type = "button";
+    reset.addEventListener("click", () => resetNodeChoice(node));
+    actions.appendChild(reset);
+  }
+  list.appendChild(actions);
+}
+
+function outlineAdjustmentDraftEditor(node, saved) {
+  const editor = create("div", "adjustment-draft-editor");
+  appendText(editor, "strong", "补充修订要求");
+  const typeLabel = create("label", "feedback-label", "纲要修改类型");
+  const typeSelect = document.createElement("select");
+  for (const changeType of changeTypeOptions()) {
+    const option = document.createElement("option");
+    option.value = changeType.value;
+    option.textContent = changeType.label;
+    typeSelect.appendChild(option);
+  }
+  typeSelect.value = saved.change_type || defaultChangeType();
+  typeSelect.addEventListener("change", () => updateAdjustmentDraft(node, { change_type: typeSelect.value }));
+  typeLabel.appendChild(typeSelect);
+  editor.appendChild(typeLabel);
+
+  const note = document.createElement("textarea");
+  note.placeholder = "说明希望模型如何修改权威来源、重新生成哪些 Outline 节点，以及可接受的成熟度回退。";
+  note.value = saved.note || "";
+  note.addEventListener("input", () => updateAdjustmentDraft(node, { note: note.value }));
+  editor.appendChild(note);
+
+  const submit = create("button", "primary", "提交修订请求");
+  const feedback = create("div", "status");
+  submit.type = "button";
+  submit.addEventListener("click", () => {
+    const current = nodeState(node.id);
+    const reviewerNote = note.value.trim();
+    if (!reviewerNote) {
+      feedback.textContent = "请先写清楚修订要求。";
+      feedback.classList.add("error");
+      note.focus();
+      return;
+    }
+    const previousState = snapshotReviewState();
+    state[node.id] = {
+      status: "SAVED_SUBMITTED",
+      option: current.draft_option,
+      change_type: typeSelect.value || current.change_type || defaultChangeType(),
+      note: reviewerNote
+    };
+    markSummaryDirty();
+    if (!saveState()) {
+      restoreReviewState(previousState);
+      return;
+    }
+    copyDraftWarningArmed = false;
+    downloadDraftWarningArmed = false;
+    resetExportButtonLabels();
+    setStatus("已提交 Outline 修订请求；下载确认包后由模型写回权威来源并重新生成 Outline。");
+    render();
+  });
+  editor.append(submit, feedback);
+  return editor;
+}
+
+function updateAdjustmentDraft(node, patch) {
+  const current = nodeState(node.id);
+  if (current.status !== "DRAFT") return;
+  const previousState = snapshotReviewState();
+  state[node.id] = { ...current, ...patch };
+  markSummaryDirty();
+  if (!saveState()) restoreReviewState(previousState);
+}
+
+function resetNodeChoice(node) {
+  const previousState = snapshotReviewState();
+  delete state[node.id];
+  markSummaryDirty();
+  if (!saveState()) {
+    restoreReviewState(previousState);
+    return;
+  }
+  copyDraftWarningArmed = false;
+  downloadDraftWarningArmed = false;
+  resetExportButtonLabels();
+  setStatus("已重置该确认点。需要重新选择处理方式。");
+  render();
 }
 
 function nodeCard(node) {
@@ -316,20 +533,7 @@ function nodeCard(node) {
     const reselect = document.createElement("button");
     reselect.type = "button";
     reselect.textContent = "重新选择";
-    reselect.addEventListener("click", () => {
-      const previousState = snapshotReviewState();
-      delete state[node.id];
-      markSummaryDirty();
-      if (!saveState()) {
-        restoreReviewState(previousState);
-        return;
-      }
-      copyDraftWarningArmed = false;
-      downloadDraftWarningArmed = false;
-      resetExportButtonLabels();
-      setStatus("已重置该确认点。");
-      render();
-    });
+    reselect.addEventListener("click", () => resetNodeChoice(node));
     card.appendChild(reselect);
   }
 

@@ -44,16 +44,16 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Outline review: compact dense third-level maps
+          ## Outline adjustment mode
 
-          This release makes large Outline overview maps easier to scan without changing their hierarchy:
+          This release adds a controlled adjustment workflow for Outline review without changing the existing three-level hierarchy:
 
-          - The third column receives more horizontal space while the first and second columns remain compact.
-          - Third-level cards use a stable two-row layout with tighter spacing, padding, and minimum heights.
-          - Dense overview maps activate adaptive sizing when six or more third-level nodes are visible.
-          - Long titles and summaries use ellipsis handling instead of increasing card height unpredictably.
-          - Existing cross-map projection and connector ownership remain aligned with each linked child map.
-          - Automated and browser checks cover dense layouts, two-row cards, and third-level node visibility.
+          - The original three-column Outline hierarchy and connectors remain visible in adjustment mode.
+          - A right-side workbench presents model proposals, before-and-after comparisons, rationale, impact, maturity, and write-back plans.
+          - Non-recommended options can enter a draft revision flow with revision type and requirement capture.
+          - High-impact nodes require explicit Owner confirmation before write-back.
+          - Adjustment-mode state is persisted locally without expanding the Review schema.
+          - Automated and browser checks cover mode switching, proposal review, draft revisions, and confirmation gates.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

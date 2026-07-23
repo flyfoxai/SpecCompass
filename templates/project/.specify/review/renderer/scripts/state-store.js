@@ -102,6 +102,23 @@ function loadState() {
   if (!state.__meta || typeof state.__meta !== "object" || Array.isArray(state.__meta)) {
     state.__meta = {};
   }
+  reviewMode = reviewData?.review_type === "outline" && state.__meta.review_mode === "adjust"
+    ? "adjust"
+    : "confirm";
+}
+
+function setReviewMode(nextMode) {
+  if (reviewData?.review_type !== "outline") return;
+  reviewMode = nextMode === "adjust" ? "adjust" : "confirm";
+  if (reviewMode === "adjust" && !selectedNodeId) {
+    selectedNodeId = currentItemNodes().find((node) => node.review_level === "must_confirm")?.id
+      || currentItemNodes()[0]?.id
+      || null;
+  }
+  const previousState = snapshotReviewState();
+  state.__meta = { ...(state.__meta || {}), review_mode: reviewMode };
+  if (!saveState()) restoreReviewState(previousState);
+  render();
 }
 
 function saveState() {

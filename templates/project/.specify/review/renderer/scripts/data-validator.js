@@ -336,6 +336,11 @@ function validateReviewData(data) {
     return "review_type 必须是 flow、ui、outline 或 outline_discovery。";
   }
   if (data.review_type === "outline_discovery") {
+    reviewMode = "confirm";
+    if (typeof document !== "undefined") {
+      document.body.classList.remove("outline-adjustment-mode");
+      $("review-mode-switch")?.classList.add("hidden");
+    }
     if (data.schema_version !== 3) return "outline_discovery 必须使用 schema_version 3。";
     if (data.interaction_mode !== "discovery") return "outline_discovery 的 interaction_mode 必须是 discovery。";
     if (!new Set(["explore", "frame"]).has(data.outline_maturity)) return "outline_maturity 必须是 explore 或 frame。";
@@ -817,6 +822,7 @@ function acceptReviewData(data) {
   selectedModuleIndex = 0;
   selectedItemIndex = 0;
   selectedNodeId = null;
+  reviewMode = "confirm";
   copyDraftWarningArmed = false;
   downloadDraftWarningArmed = false;
   resetExportButtonLabels();

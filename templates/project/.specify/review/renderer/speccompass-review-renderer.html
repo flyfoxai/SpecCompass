@@ -6,7 +6,7 @@
   <title>SpecCompass Review</title>
   <link rel="stylesheet" href="styles/tokens.css?v=20260626-ui-layout">
   <link rel="stylesheet" href="styles/layout.css?v=20260713-mobile-review-actions">
-  <link rel="stylesheet" href="styles/review-ui.css?v=20260722-dense-third-column">
+  <link rel="stylesheet" href="styles/review-ui.css?v=20260722-outline-adjustment-mode">
 </head>
 <body>
   <div class="app">
@@ -25,6 +25,10 @@
         </div>
       </div>
       <div class="tools">
+        <div id="review-mode-switch" class="review-mode-switch hidden" role="group" aria-label="Outline 复核模式">
+          <button type="button" data-review-mode="confirm" aria-pressed="true">确认模式</button>
+          <button type="button" data-review-mode="adjust" aria-pressed="false">调整模式</button>
+        </div>
         <button id="load-flow">加载 flow-review-data.json</button>
         <button id="load-ui">加载 ui-review-data.json</button>
         <button id="load-outline">加载 outline-review-data.json</button>
@@ -68,7 +72,7 @@
 
         <aside class="right-rail" aria-label="右侧确认栏">
           <section class="panel">
-            <h2>当前确认</h2>
+            <h2 id="rail-title">当前确认</h2>
             <p id="rail-summary">选择模块、流程或节点后在这里确认。</p>
             <ol id="authorization-steps" class="authorization-steps">
               <li><strong>本地选择</strong>：点击推荐项会保存到浏览器草稿；建议确认不计入红色待处理必审。</li>
@@ -98,16 +102,16 @@
   </div>
 
   <script defer src="scripts/simple-overlays.js?v=20260718-prd-business-context"></script>
-  <script defer src="scripts/state-store.js?v=20260713-localhost-scope"></script>
-  <script defer src="scripts/data-validator.js?v=20260718-prd-business-context"></script>
+  <script defer src="scripts/state-store.js?v=20260722-outline-adjustment-mode"></script>
+  <script defer src="scripts/data-validator.js?v=20260722-outline-adjustment-mode"></script>
   <script defer src="scripts/confirmation-package.js?v=20260629-confirmation-package"></script>
   <script defer src="scripts/discovery-response-package.js?v=20260718-prd-business-context"></script>
-  <script defer src="scripts/ui-preview-renderer.js?v=20260626-ui-layout"></script>
-  <script defer src="scripts/outline-preview-renderer.js?v=20260716-outline-review"></script>
+  <script defer src="scripts/ui-preview-renderer.js?v=20260722-outline-adjustment-mode"></script>
+  <script defer src="scripts/outline-preview-renderer.js?v=20260722-outline-adjustment-mode"></script>
   <script defer src="scripts/outline-discovery-renderer.js?v=20260722-dense-third-column"></script>
-  <script defer src="scripts/review-rail.js?v=20260711-recommendation-completion"></script>
+  <script defer src="scripts/review-rail.js?v=20260722-outline-adjustment-mode"></script>
   <script defer src="scripts/right-rail-resizer.js?v=20260702-right-rail"></script>
   <script defer src="scripts/feature-nav.js?v=20260701-feature-nav"></script>
-  <script defer src="scripts/data-loader.js?v=20260713-localhost-scope"></script>
+  <script defer src="scripts/data-loader.js?v=20260722-outline-adjustment-mode"></script>
 </body>
 </html>

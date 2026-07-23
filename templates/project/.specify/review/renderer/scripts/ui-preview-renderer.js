@@ -16,9 +16,21 @@ function render() {
   warnings.textContent = runtimeMessages.length
     ? `${runtimeErrors.length ? "阻断问题" : "数据提示"}：${runtimeMessages.slice(0, 3).join("；")}${runtimeMessages.length > 3 ? "；更多问题请运行 validator。" : ""}`
     : "";
+  renderReviewModeSwitch();
   renderModules();
   renderCenter();
   renderRail();
+}
+
+function renderReviewModeSwitch() {
+  const switcher = $("review-mode-switch");
+  if (!switcher) return;
+  const isOutline = reviewData?.review_type === "outline";
+  switcher.classList.toggle("hidden", !isOutline);
+  document.body.classList.toggle("outline-adjustment-mode", isOutline && reviewMode === "adjust");
+  for (const button of switcher.querySelectorAll("[data-review-mode]")) {
+    button.setAttribute("aria-pressed", String(button.dataset.reviewMode === reviewMode));
+  }
 }
 
 function renderModules() {

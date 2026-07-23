@@ -7,6 +7,18 @@ const outlineViewLabels = {
 
 function renderOutlinePreview(view) {
   const wrap = create("section", `outline-preview outline-${safeClassToken(view?.view_type)}`);
+  const adjustment = outlineAdjustmentPresentation(view);
+  if (adjustment.active) {
+    wrap.classList.add("outline-adjustment-active");
+    wrap.dataset.adjustmentTarget = adjustment.target?.id || "";
+    const banner = create("div", "outline-adjustment-banner");
+    appendText(banner, "span", "调整模式", "outline-view-label");
+    appendText(banner, "strong", adjustment.target?.label || "当前调整目标");
+    appendText(banner, "p", adjustment.target?.confirmation_priority === "critical"
+      ? "该节点影响巨大，必须由 Owner 明确确认；其他结构保持原有三列与连线布局。"
+      : "已标记建议调整的直接影响区域；未受影响内容保持原位。");
+    wrap.appendChild(banner);
+  }
   const heading = create("div", "outline-preview-heading");
   appendText(heading, "span", outlineViewLabels[view?.view_type] || "Outline 视图", "outline-view-label");
   appendText(heading, "strong", view?.title || "未命名 Outline 视图");
@@ -41,6 +53,7 @@ function renderOutlineIntentMap(view) {
 
 function outlineMapColumn(title, values, kind) {
   const column = create("section", `outline-map-column outline-map-${kind}`);
+  applyOutlineAdjustmentState(column, kind);
   appendText(column, "h4", title);
   const list = create("ul", "outline-value-list");
   const entries = (values || []).filter((value) => String(value || "").trim());
@@ -52,6 +65,7 @@ function outlineMapColumn(title, values, kind) {
 
 function outlineMapArrow() {
   const arrow = create("span", "outline-map-arrow", "→");
+  applyOutlineAdjustmentState(arrow, "connector");
   arrow.setAttribute("aria-hidden", "true");
   return arrow;
 }
@@ -62,6 +76,7 @@ function renderOutlineScopeSlice(view) {
   content.appendChild(outlineListPanel("明确非目标", view.non_goals || [], "non-goals"));
 
   const coverage = create("section", "outline-coverage");
+  applyOutlineAdjustmentState(coverage, "coverage");
   appendText(coverage, "h4", "场景与验收种子覆盖");
   for (const entry of view.scenario_coverage || []) {
     const row = create("article", "outline-coverage-row");
@@ -74,6 +89,7 @@ function renderOutlineScopeSlice(view) {
   content.appendChild(coverage);
 
   const firstSlice = create("section", "outline-first-slice");
+  applyOutlineAdjustmentState(firstSlice, "first-slice");
   appendText(firstSlice, "span", "推荐", "outline-view-label");
   appendText(firstSlice, "h4", "首个交付切片");
   appendText(firstSlice, "p", view.recommended_first_slice || "未提供推荐首切片。");
@@ -83,6 +99,7 @@ function renderOutlineScopeSlice(view) {
 
 function outlineListPanel(title, values, kind) {
   const panel = create("section", `outline-list-panel outline-${kind}`);
+  applyOutlineAdjustmentState(panel, kind);
   appendText(panel, "h4", title);
   const list = create("ul", "outline-value-list");
   const entries = (values || []).filter((value) => String(value || "").trim());
@@ -95,6 +112,7 @@ function outlineListPanel(title, values, kind) {
 function renderOutlineReadiness(view) {
   const content = create("div", "outline-readiness-layout");
   const authorities = create("section", "outline-authorities");
+  applyOutlineAdjustmentState(authorities, "authority");
   appendText(authorities, "h4", "来源权威");
   for (const source of view.source_authorities || []) {
     const row = create("article", "outline-authority-row");
@@ -109,16 +127,49 @@ function renderOutlineReadiness(view) {
   content.appendChild(authorities);
 
   const signals = create("div", "outline-readiness-signals");
+  applyOutlineAdjustmentState(signals, "readiness");
   signals.appendChild(outlineListPanel("风险", view.risks || [], "risks"));
   signals.appendChild(outlineListPanel("开放项", view.open_items || [], "open-items"));
   signals.appendChild(outlineListPanel("阻断项", view.blockers || [], "blockers"));
   content.appendChild(signals);
 
   const route = create("section", "outline-next-route");
+  applyOutlineAdjustmentState(route, "route");
   appendText(route, "span", "确认完成后的工作路由", "outline-view-label");
   appendText(route, "strong", view.next_route || "未提供 next route");
   content.appendChild(route);
   return content;
+}
+
+function outlineAdjustmentPresentation(view) {
+  if (reviewData?.review_type !== "outline" || reviewMode !== "adjust") {
+    return { active: false, target: null, affected: [], stable: [] };
+  }
+  const target = outlineAdjustmentTarget?.() || (view?.nodes || [])[0] || null;
+  if (!target) return { active: true, target: null, affected: [], stable: [] };
+  const impact = outlineAdjustmentImpact?.(target) || { affected: [], stable: [] };
+  return { active: true, target, ...impact };
+}
+
+function outlineAdjustmentTargetKey(target) {
+  const ref = `${target?.source_ref || ""} ${target?.label || ""}`.toLowerCase();
+  if (ref.includes("intent") || ref.includes("意图") || ref.includes("问题")) return "intent";
+  if (ref.includes("scope") || ref.includes("范围") || ref.includes("首切片")) return "scope";
+  if (ref.includes("ready") || ref.includes("authority") || ref.includes("权威") || ref.includes("路由")) return "readiness";
+  return "all";
+}
+
+function applyOutlineAdjustmentState(element, semanticKey) {
+  if (reviewData?.review_type !== "outline" || reviewMode !== "adjust") return;
+  const target = outlineAdjustmentTarget?.();
+  if (!target) return;
+  const targetKey = outlineAdjustmentTargetKey(target);
+  const applies = targetKey === "all"
+    || semanticKey === targetKey
+    || (targetKey === "scope" && ["in-scope", "non-goals", "coverage", "first-slice"].includes(semanticKey))
+    || (targetKey === "readiness" && ["authority", "readiness", "route"].includes(semanticKey));
+  element.classList.add(applies ? "is-adjustment-affected" : "is-adjustment-stable");
+  if (semanticKey === "connector" && applies) element.classList.add("is-adjustment-connector");
 }
 
 function renderOutlineDecisionPoints(nodes) {

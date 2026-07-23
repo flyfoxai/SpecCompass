@@ -142,6 +142,11 @@ $("load-flow").addEventListener("click", () => loadDefault("flow"));
 $("load-ui").addEventListener("click", () => loadDefault("ui"));
 $("load-outline").addEventListener("click", () => loadDefault("outline"));
 $("load-outline-discovery")?.addEventListener("click", () => loadDefault("outline-discovery"));
+$("review-mode-switch")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-review-mode]");
+  if (!button) return;
+  setReviewMode(button.dataset.reviewMode);
+});
 $("file-input").addEventListener("change", async (event) => {
   if (!requireSupportedReviewTransport()) return;
   const file = event.target.files?.[0];

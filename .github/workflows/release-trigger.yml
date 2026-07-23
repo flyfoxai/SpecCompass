@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Compacted dense Outline overview maps with a wider third column and stable two-row third-level cards." \
+              "- Added an Outline adjustment mode with proposal comparison, revision drafts, and Owner confirmation gates while preserving the existing hierarchy and connectors." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

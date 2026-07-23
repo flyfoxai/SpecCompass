@@ -34,29 +34,29 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Outline review: compact dense third-level maps" in release_workflow
-    assert "third column receives more horizontal space" in release_workflow
-    assert "stable two-row layout" in release_workflow
-    assert "six or more third-level nodes" in release_workflow
-    assert "ellipsis handling" in release_workflow
-    assert "connector ownership remain aligned" in release_workflow
-    assert "dense layouts, two-row cards, and third-level node visibility" in release_workflow
+    assert "## Outline adjustment mode" in release_workflow
+    assert "original three-column Outline hierarchy and connectors remain visible" in release_workflow
+    assert "right-side workbench presents model proposals" in release_workflow
+    assert "Non-recommended options can enter a draft revision flow" in release_workflow
+    assert "High-impact nodes require explicit Owner confirmation" in release_workflow
+    assert "Adjustment-mode state is persisted locally" in release_workflow
+    assert "mode switching, proposal review, draft revisions, and confirmation gates" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- The third column receives" in release_workflow
+    assert r"- The original three-column Outline hierarchy" in release_workflow
 
 
-def test_release_changelog_summary_matches_dense_outline_focus():
-    """The generated changelog should lead with the dense Outline layout fix."""
+def test_release_changelog_summary_matches_outline_adjustment_focus():
+    """The generated changelog should lead with the Outline adjustment workflow."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Compacted dense Outline overview maps" in trigger_workflow
-    assert "wider third column" in trigger_workflow
-    assert "stable two-row third-level cards" in trigger_workflow
+    assert "Added an Outline adjustment mode" in trigger_workflow
+    assert "proposal comparison" in trigger_workflow
+    assert "Owner confirmation gates" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():
