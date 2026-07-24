@@ -33,21 +33,32 @@ function renderReviewModeSwitch() {
   }
 }
 
+function reviewCountState(count) {
+  if (!count?.total) return "passive";
+  if (count.pending === 0) return "resolved";
+  return "open";
+}
+
 function renderModules() {
   const list = $("module-list");
   list.replaceChildren();
   (reviewData.modules || []).forEach((module, index) => {
     const count = countModuleMust(module);
     const recommendedCount = countModuleRecommended(module);
+    const moduleState = reviewCountState(count);
     const button = document.createElement("button");
-    button.className = "module-button";
+    button.className = `module-button is-${moduleState}`;
     button.type = "button";
+    button.dataset.reviewState = moduleState;
     button.setAttribute("aria-pressed", String(index === selectedModuleIndex));
-    appendText(button, "strong", module.title || module.id || "未命名模块");
+    const heading = create("span", "module-heading");
+    appendText(heading, "span", `M${String(index + 1).padStart(2, "0")}`, "module-ordinal");
+    appendText(heading, "strong", module.title || module.id || "未命名模块");
+    button.appendChild(heading);
     button.appendChild(document.createElement("br"));
     appendText(button, "span", module.summary || "");
     button.appendChild(document.createElement("br"));
-    appendText(button, "span", `待处理必审 ${count.pending}/${count.total}`, "must-count");
+    appendText(button, "span", `待处理必审 ${count.pending}/${count.total}`, `must-count must-count-${moduleState}`);
     button.appendChild(document.createElement("br"));
     appendText(
       button,
@@ -116,14 +127,17 @@ function renderCenter() {
   tabs.setAttribute("aria-label", tabLabels[reviewData.review_type]);
   currentItems().forEach((entry, index) => {
     const mustCount = countItemMust(entry);
+    const tabState = reviewCountState(mustCount);
     const button = document.createElement("button");
     button.type = "button";
-    button.className = `diagram-tab ${index === selectedItemIndex ? "active" : ""}`;
+    button.className = `diagram-tab is-${tabState} ${index === selectedItemIndex ? "active" : ""}`;
+    button.dataset.reviewState = tabState;
     button.setAttribute("role", "tab");
     button.setAttribute("aria-selected", String(index === selectedItemIndex));
     button.tabIndex = index === selectedItemIndex ? 0 : -1;
+    appendText(button, "span", `${String(selectedModuleIndex + 1).padStart(2, "0")}.${index + 1}`, "diagram-tab-ordinal");
     appendText(button, "span", entry.title || entry.id, "diagram-tab-title");
-    appendText(button, "span", `待处理 ${mustCount.pending}/${mustCount.total}`, "diagram-tab-pending");
+    appendText(button, "span", `待处理 ${mustCount.pending}/${mustCount.total}`, `diagram-tab-pending diagram-tab-pending-${tabState}`);
     button.addEventListener("click", () => {
       selectedItemIndex = index;
       selectedNodeId = null;

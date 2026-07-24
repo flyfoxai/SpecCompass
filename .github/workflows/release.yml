@@ -44,16 +44,16 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Outline adjustment mode
+          ## Semantic review status system
 
-          This release adds a controlled adjustment workflow for Outline review without changing the existing three-level hierarchy:
+          This release makes review state and Outline hierarchy easier to understand at a glance:
 
-          - The original three-column Outline hierarchy and connectors remain visible in adjustment mode.
-          - A right-side workbench presents model proposals, before-and-after comparisons, rationale, impact, maturity, and write-back plans.
-          - Non-recommended options can enter a draft revision flow with revision type and requirement capture.
-          - High-impact nodes require explicit Owner confirmation before write-back.
-          - Adjustment-mode state is persisted locally without expanding the Review schema.
-          - Automated and browser checks cover mode switching, proposal review, draft revisions, and confirmation gates.
+          - Shared semantic tokens distinguish open, resolved, draft, focus, blocked, and passive states.
+          - Review modules, diagram tabs, and node cards use consistent state indicators and emphasis.
+          - Outline discovery nodes receive hierarchical numbering for faster navigation and parent-child tracing.
+          - Source labels clearly distinguish unresolved, model-proposed, document-backed, and user-confirmed content.
+          - Status presentation is derived from existing review data without expanding the Review schema.
+          - Automated and browser checks cover semantic state rendering, hierarchy numbering, and Outline readability.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

@@ -361,11 +361,37 @@ function resetNodeChoice(node) {
   render();
 }
 
+function nodeVisualState(node, saved = nodeState(node.id)) {
+  if (!requiresNodeDecision(node)) return "passive";
+  if (saved.status === "DRAFT") return "draft";
+  if (saved.status === "SAVED_RECOMMENDED" || saved.status === "SAVED_SUBMITTED") return "resolved";
+  return "open";
+}
+
+function nodeEmphasisClass(node) {
+  return node.confirmation_priority === "critical" ? "is-focus" : "";
+}
+
+function nodeStatusDisplayLabel(node, saved) {
+  if (!requiresNodeDecision(node)) return "无需人工操作";
+  if (saved.status === "DRAFT") return "待提交";
+  if (saved.status === "SAVED_RECOMMENDED" || saved.status === "SAVED_SUBMITTED") return "已解决";
+  return "待解决";
+}
+
 function nodeCard(node) {
   const saved = nodeState(node.id);
+  const visualState = nodeVisualState(node, saved);
   const card = document.createElement("article");
   card.dataset.nodeId = node.id;
-  card.className = `node-card ${selectedNodeId === node.id ? "selected" : ""}`;
+  card.dataset.reviewState = visualState;
+  card.dataset.priority = node.confirmation_priority || "normal";
+  card.className = [
+    "node-card",
+    `is-${visualState}`,
+    nodeEmphasisClass(node),
+    selectedNodeId === node.id ? "selected" : ""
+  ].filter(Boolean).join(" ");
   card.setAttribute("role", "button");
   card.setAttribute("tabindex", "0");
   card.setAttribute("aria-pressed", String(selectedNodeId === node.id));
@@ -393,7 +419,7 @@ function nodeCard(node) {
   if (node.confirmation_priority) {
     appendText(metaRight, "span", priorityLabel(node.confirmation_priority), `priority-badge priority-${safeClassToken(node.confirmation_priority)}`);
   }
-  appendText(metaRight, "span", nodeStatusLabel(node, saved));
+  appendText(metaRight, "span", nodeStatusLabel(node, saved), `node-state-badge node-state-${visualState}`);
   meta.appendChild(metaRight);
   card.appendChild(meta);
 
@@ -554,13 +580,7 @@ function optionClassName(node, option, saved) {
 }
 
 function nodeStatusLabel(node, saved) {
-  if (!requiresNodeDecision(node)) {
-    return "无需人工操作";
-  }
-  if (savedRecommendedOption(node, saved)) {
-    return saved.status || "SAVED_RECOMMENDED";
-  }
-  return saved.status || "MISSING";
+  return nodeStatusDisplayLabel(node, saved);
 }
 
 function savedRecommendedOption(node, saved) {

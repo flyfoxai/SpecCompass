@@ -2,6 +2,18 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.24] - 2026-07-24
+
+### Added
+
+- Added shared semantic status tokens for open, resolved, draft, focus, blocked, and passive review states.
+- Added hierarchical Outline node numbering and clearer source-status labels for faster navigation and traceability.
+
+### Changed
+
+- Unified status styling across review modules, diagram tabs, node cards, and Outline discovery nodes.
+- Improved visual emphasis for unresolved, model-proposed, confirmed, and in-progress review content without changing the underlying review data.
+
 ## [0.11.23] - 2026-07-23
 
 ### Added

@@ -3,6 +3,18 @@
   --sc-primary: #0ABAB5;
   --sc-primary-dark: #078985;
   --sc-red: #C73D3D;
+  --sc-status-open: #D97706;
+  --sc-status-open-soft: #FFF7E6;
+  --sc-status-resolved: #059669;
+  --sc-status-resolved-soft: #EAF7EF;
+  --sc-status-draft: #2563EB;
+  --sc-status-draft-soft: #EDF3FF;
+  --sc-status-focus: #7C3AED;
+  --sc-status-focus-soft: #F4F0FF;
+  --sc-status-blocked: #DC2626;
+  --sc-status-blocked-soft: #FEF2F2;
+  --sc-status-muted: #64748B;
+  --sc-status-muted-soft: #F1F5F9;
   --sc-bg: #F7FAFA;
   --sc-panel: #FFFFFF;
   --sc-border: #DCE8E8;

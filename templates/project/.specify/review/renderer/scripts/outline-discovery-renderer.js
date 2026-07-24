@@ -638,6 +638,30 @@ function renderOutlineDiscoveryMindmap(map) {
       return parentDelta || (nodeOrder.get(left.node_id) - nodeOrder.get(right.node_id));
     });
   }
+  const ordinalById = new Map();
+  const directChildrenByParent = new Map();
+  for (const node of nodes) {
+    if (!node.parent_node_id) continue;
+    const children = directChildrenByParent.get(node.parent_node_id) || [];
+    children.push(node);
+    directChildrenByParent.set(node.parent_node_id, children);
+  }
+  for (const node of levels.get(1) || []) {
+    ordinalById.set(node.node_id, String((levels.get(1) || []).indexOf(node) + 1).padStart(2, "0"));
+  }
+  for (const node of levels.get(2) || []) {
+    const parent = outlineDiscoveryVisualParent(node, 2, nodesById, visualDepthById);
+    const siblings = (levels.get(2) || []).filter((entry) => outlineDiscoveryVisualParent(entry, 2, nodesById, visualDepthById)?.node_id === parent?.node_id);
+    const parentOrdinal = ordinalById.get(parent?.node_id) || "00";
+    ordinalById.set(node.node_id, `${parentOrdinal}.${siblings.indexOf(node) + 1}`);
+  }
+  for (const node of levels.get(3) || []) {
+    const parent = outlineDiscoveryVisualParent(node, 3, nodesById, visualDepthById);
+    const siblings = (directChildrenByParent.get(parent?.node_id) || levels.get(3) || [])
+      .filter((entry) => visualDepthById.get(entry.node_id) === 3);
+    const parentOrdinal = ordinalById.get(parent?.node_id) || "00.0";
+    ordinalById.set(node.node_id, `${parentOrdinal}.${Math.max(siblings.indexOf(node), 0) + 1}`);
+  }
   const previewEntries = outlineDiscoveryOverviewPreviewEntries(map);
   const previewEntriesByParent = new Map();
   for (const entry of previewEntries) {
@@ -667,7 +691,12 @@ function renderOutlineDiscoveryMindmap(map) {
         ? outlineDiscoveryVisualParent(node, depth, nodesById, visualDepthById)
         : null;
     const nodeKey = options.domKey || node.node_id;
-    const nodeElement = renderOutlineDiscoveryNode(node, { ...options, domKey: nodeKey });
+    const nodeElement = renderOutlineDiscoveryNode(node, {
+      ...options,
+      depth,
+      domKey: nodeKey,
+      ordinal: options.ordinal || ordinalById.get(node.node_id)
+    });
     if (node.parent_node_id) nodeElement.dataset.directParentNodeId = node.parent_node_id;
     if (options.previewMapId) nodeElement.dataset.previewOfNodeId = node.node_id;
     if (visualParent) {
@@ -715,8 +744,9 @@ function renderOutlineDiscoveryMindmap(map) {
         if (!childEntries.length && parentNode.child_map_id) {
           appendText(childLevel, "p", "该分图暂无直接下级节点。", "discovery-mindmap-empty-child");
         }
-        for (const entry of childEntries) {
-          appendNode(entry.node, 3, childLevel, { ...entry, domKey: entry.key });
+        const parentOrdinal = ordinalById.get(parentNode.node_id) || "00.0";
+        for (const [index, entry] of childEntries.entries()) {
+          appendNode(entry.node, 3, childLevel, { ...entry, domKey: entry.key, ordinal: `${parentOrdinal}.${index + 1}` });
         }
         group.appendChild(childLevel);
       }
@@ -751,24 +781,53 @@ function hasUnmappedConstitutionImpact(node) {
     && (!Array.isArray(node.affected_node_ids) || node.affected_node_ids.length === 0);
 }
 
+function outlineDiscoverySourceStatusLabel(status) {
+  return {
+    "user": "已确认",
+    "user-confirmed": "已确认",
+    "doc": "有来源",
+    "ai-proposed": "模型建议",
+    "unresolved": "待解决"
+  }[status] || "待解决";
+}
+
+function outlineDiscoveryQuestionState(node, completed, total) {
+  if (!total) {
+    return ["user", "user-confirmed", "doc"].includes(node.source_status) ? "resolved" : "open";
+  }
+  if (completed >= total) return "resolved";
+  return completed ? "draft" : "open";
+}
+
 function renderOutlineDiscoveryNode(node, options = {}) {
   const questions = outlineDiscoveryQuestionsForNode(node.node_id);
   const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
   const isPreview = Boolean(options.previewMapId);
-  const button = create("button", `discovery-mindmap-node${node.node_id === outlineDiscoveryActiveNodeId && !isPreview ? " is-selected" : ""}`);
+  const visualState = outlineDiscoveryQuestionState(node, completed, questions.length);
+  const button = create("button", [
+    "discovery-mindmap-node",
+    `is-${visualState}`,
+    node.node_id === outlineDiscoveryActiveNodeId && !isPreview ? "is-selected" : ""
+  ].filter(Boolean).join(" "));
   button.type = "button";
   button.dataset.sourceStatus = node.source_status || "unresolved";
+  button.dataset.reviewState = visualState;
+  button.dataset.nodeKind = node.node_kind || "node";
+  if (options.depth) button.dataset.depth = String(options.depth);
   button.dataset.nodeId = node.node_id;
   if (options.domKey) button.dataset.renderKey = options.domKey;
   if (isPreview) {
     button.dataset.previewMapId = options.previewMapId;
     button.classList.add("is-map-preview");
   }
-  appendText(button, "strong", node.label || node.node_id);
+  const title = create("strong", "discovery-node-title");
+  appendText(title, "span", options.ordinal || "", "discovery-node-ordinal");
+  appendText(title, "span", node.label || node.node_id);
+  button.appendChild(title);
   appendText(button, "span", node.summary || "");
   const footer = create("span", "discovery-node-footer");
   const meta = create("small", "discovery-node-meta");
-  appendText(meta, "span", node.source_status || "unresolved", "discovery-source-status");
+  appendText(meta, "span", outlineDiscoverySourceStatusLabel(node.source_status || "unresolved"), `discovery-source-status source-${safeClassToken(node.source_status || "unresolved")}`);
   appendText(meta, "span", questions.length ? `${completed}/${questions.length} 个问题` : "无待回应问题");
   footer.appendChild(meta);
   if (isPreview) appendText(footer, "span", `来自分图：${options.previewMapTitle || "进入查看"}`, "discovery-map-preview-badge");

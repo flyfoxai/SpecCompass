@@ -34,29 +34,29 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Outline adjustment mode" in release_workflow
-    assert "original three-column Outline hierarchy and connectors remain visible" in release_workflow
-    assert "right-side workbench presents model proposals" in release_workflow
-    assert "Non-recommended options can enter a draft revision flow" in release_workflow
-    assert "High-impact nodes require explicit Owner confirmation" in release_workflow
-    assert "Adjustment-mode state is persisted locally" in release_workflow
-    assert "mode switching, proposal review, draft revisions, and confirmation gates" in release_workflow
+    assert "## Semantic review status system" in release_workflow
+    assert "Shared semantic tokens distinguish open, resolved, draft, focus, blocked, and passive states" in release_workflow
+    assert "Review modules, diagram tabs, and node cards use consistent state indicators" in release_workflow
+    assert "Outline discovery nodes receive hierarchical numbering" in release_workflow
+    assert "Source labels clearly distinguish unresolved, model-proposed" in release_workflow
+    assert "derived from existing review data without expanding the Review schema" in release_workflow
+    assert "semantic state rendering, hierarchy numbering, and Outline readability" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- The original three-column Outline hierarchy" in release_workflow
+    assert r"- Shared semantic tokens distinguish" in release_workflow
 
 
-def test_release_changelog_summary_matches_outline_adjustment_focus():
-    """The generated changelog should lead with the Outline adjustment workflow."""
+def test_release_changelog_summary_matches_semantic_style_focus():
+    """The generated changelog should lead with the semantic review style system."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Added an Outline adjustment mode" in trigger_workflow
-    assert "proposal comparison" in trigger_workflow
-    assert "Owner confirmation gates" in trigger_workflow
+    assert "Added a semantic review style system" in trigger_workflow
+    assert "hierarchical Outline numbering" in trigger_workflow
+    assert "modules, tabs, and nodes" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

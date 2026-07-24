@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added an Outline adjustment mode with proposal comparison, revision drafts, and Owner confirmation gates while preserving the existing hierarchy and connectors." \
+              "- Added a semantic review style system with shared status tokens, hierarchical Outline numbering, and consistent state indicators across modules, tabs, and nodes." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp
