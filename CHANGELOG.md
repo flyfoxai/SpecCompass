@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.25] - 2026-07-24
+
+### Changed
+
+- Improved the right confirmation rail with hierarchical parent and option numbering, clearer font hierarchy, and indentation tuned for desktop and mobile review layouts.
+- Preserved semantic module selection colors in the left review rail so unresolved modules remain orange, resolved modules turn green, and passive modules stay muted after selection.
+- Adjusted confirmation option details to read cleanly in narrow sidebars without changing the Review data contract.
+
 ## [0.11.24] - 2026-07-24
 
 ### Added

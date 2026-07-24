@@ -379,12 +379,19 @@ function nodeStatusDisplayLabel(node, saved) {
   return "待解决";
 }
 
+function currentNodeOrdinal(node) {
+  const nodeIndex = Math.max(currentItemNodes().findIndex((entry) => entry.id === node.id), 0);
+  return `${String(selectedModuleIndex + 1).padStart(2, "0")}.${selectedItemIndex + 1}.${nodeIndex + 1}`;
+}
+
 function nodeCard(node) {
   const saved = nodeState(node.id);
   const visualState = nodeVisualState(node, saved);
+  const nodeOrdinal = currentNodeOrdinal(node);
   const card = document.createElement("article");
   card.dataset.nodeId = node.id;
   card.dataset.reviewState = visualState;
+  card.dataset.nodeOrdinal = nodeOrdinal;
   card.dataset.priority = node.confirmation_priority || "normal";
   card.className = [
     "node-card",
@@ -423,7 +430,10 @@ function nodeCard(node) {
   meta.appendChild(metaRight);
   card.appendChild(meta);
 
-  appendText(card, "h4", node.label || node.id || "未命名确认点");
+  const titleRow = create("div", "node-title-row");
+  appendText(titleRow, "span", nodeOrdinal, "node-ordinal");
+  appendText(titleRow, "h4", node.label || node.id || "未命名确认点");
+  card.appendChild(titleRow);
   appendText(card, "p", node.action_prompt || node.plain_summary || "请判断这个确认点是否符合业务要求。");
   const decisionIntro = create("div", "decision-intro");
   appendOptionDetail(decisionIntro, "背景信息", node.decision_background || node.plain_summary);
@@ -432,11 +442,15 @@ function nodeCard(node) {
 
   const optionRow = create("div", "option-row");
   card.appendChild(optionRow);
-  for (const option of options) {
+  for (const [index, option] of options.entries()) {
     const button = document.createElement("button");
     button.type = "button";
+    button.dataset.optionOrdinal = `${nodeOrdinal}.${index + 1}`;
     button.className = optionClassName(node, option, saved);
-    appendText(button, "strong", `${option.label || option.id}${option.id === node.recommended_option ? "（推荐）" : ""}`);
+    const optionHeading = create("span", "option-heading");
+    appendText(optionHeading, "span", `${nodeOrdinal}.${index + 1}`, "option-ordinal");
+    appendText(optionHeading, "strong", `${option.label || option.id}${option.id === node.recommended_option ? "（推荐）" : ""}`);
+    button.appendChild(optionHeading);
     const detailList = create("span", "option-detail-list");
     appendOptionDetail(detailList, "收益", option.benefit || option.project_impact || option.when_to_choose);
     appendOptionDetail(detailList, "代价", option.cost || option.project_impact);
