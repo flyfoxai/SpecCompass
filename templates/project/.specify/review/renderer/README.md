@@ -227,11 +227,14 @@ draft migration only; neither key is authorization evidence.
 
 The renderer may also store display-only layout preferences in `localStorage`,
 for example `speccompass-review:right-rail-width` for the draggable right
-confirmation rail. This preference only changes the local page width. It is not
-authorization, must not enter the confirmation package, and must not be mixed
-with review draft state. The right rail uses a slightly larger reading size than
-the rest of the page so long decision options remain legible on lower-resolution
-screens.
+confirmation rail and `speccompass-review:display-theme` for the explicit light
+or dark appearance. The theme follows the operating-system preference until the
+reviewer chooses a mode, then keeps that local choice in the browser. These
+preferences only change the local page presentation. They are not authorization,
+must not enter a confirmation or discovery response package, and must not be
+mixed with review draft state. The right rail uses a slightly larger reading
+size than the rest of the page so long decision options remain legible on
+lower-resolution screens.
 
 The primary export path is 下载确认包 / download confirmation package. The
 renderer writes a JSON package with `format:

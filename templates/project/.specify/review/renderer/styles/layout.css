@@ -15,7 +15,7 @@ header {
   gap: 18px;
   padding: 14px 18px;
   border-bottom: 1px solid var(--sc-border);
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--sc-header);
 }
 
 .brand {
@@ -54,6 +54,26 @@ header {
   justify-content: flex-end;
 }
 
+.theme-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-color: var(--sc-border-strong);
+  background: var(--sc-surface);
+  color: var(--sc-primary-ink);
+  font-size: 18px;
+  line-height: 1;
+}
+
+.theme-toggle:hover {
+  border-color: var(--sc-primary);
+  background: var(--sc-primary-surface);
+}
+
 .shell {
   display: grid;
   grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(340px, 400px);
@@ -65,7 +85,7 @@ header {
 .left-nav {
   overflow: auto;
   border-right: 1px solid var(--sc-border);
-  background: #FBFDFD;
+  background: var(--sc-surface-subtle);
   padding: 14px;
 }
 

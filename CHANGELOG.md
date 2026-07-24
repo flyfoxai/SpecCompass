@@ -2,6 +2,18 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.28] - 2026-07-25
+
+### Added
+
+- Added a light/dark appearance toggle to the Outline, Flow, and UI browser review pages.
+- Followed the operating-system color preference on first use and persisted an explicit browser-local choice without adding it to review evidence.
+
+### Changed
+
+- Applied theme-aware surfaces, controls, overlays, review rails, diagrams, and connectors while preserving the existing semantic status colors.
+- Kept desktop and mobile review layouts readable in both appearance modes.
+
 ## [0.11.27] - 2026-07-25
 
 ### Fixed

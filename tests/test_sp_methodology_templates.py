@@ -35,6 +35,7 @@ REVIEW_RENDERER_STYLE_FILES = (
     REVIEW_ROOT / "renderer" / "styles" / "review-ui.css",
 )
 REVIEW_RENDERER_SCRIPT_FILES = (
+    REVIEW_ROOT / "renderer" / "scripts" / "theme-toggle.js",
     REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js",
     REVIEW_ROOT / "renderer" / "scripts" / "state-store.js",
     REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js",
@@ -4363,6 +4364,98 @@ def test_downstream_commands_use_current_confirmation_decision_vocabulary():
         assert "approve/defer/reject controls" not in content, command
 
 
+def test_review_display_theme_follows_system_then_persists_manual_choice():
+    """Display theme should initialize before paint without entering review state."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer theme tests")
+
+    script = REVIEW_ROOT / "renderer" / "scripts" / "theme-toggle.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+
+function runCase(stored, prefersDark, storageThrows = false) {{
+  let button = null;
+  let onReady = null;
+  const writes = [];
+  const root = {{ dataset: {{}} }};
+  const icon = {{ textContent: "" }};
+  const attrs = {{}};
+  const handlers = {{}};
+  const storage = {{
+    getItem: () => {{
+      if (storageThrows) throw new Error("storage unavailable");
+      return stored;
+    }},
+    setItem: (key, value) => {{
+      if (storageThrows) throw new Error("storage unavailable");
+      writes.push([key, value]);
+    }}
+  }};
+  const document = {{
+    documentElement: root,
+    readyState: "loading",
+    getElementById: () => button,
+    addEventListener: (type, handler) => {{
+      if (type === "DOMContentLoaded") onReady = handler;
+    }}
+  }};
+  const context = {{
+    window: {{
+      localStorage: storage,
+      matchMedia: () => ({{ matches: prefersDark }})
+    }},
+    document,
+    console
+  }};
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  button = {{
+    setAttribute: (name, value) => {{ attrs[name] = value; }},
+    querySelector: () => icon,
+    addEventListener: (type, handler) => {{ handlers[type] = handler; }}
+  }};
+  onReady();
+  return {{
+    attrs,
+    icon,
+    root,
+    writes,
+    click: () => handlers.click()
+  }};
+}}
+
+const storedLight = runCase("light", true);
+if (storedLight.root.dataset.theme !== "light") throw new Error("stored light theme did not win");
+if (storedLight.attrs["aria-pressed"] !== "false") throw new Error("light aria state is incorrect");
+if (storedLight.attrs["aria-label"] !== "切换到深色模式") throw new Error("light action label is incorrect");
+if (storedLight.icon.textContent !== "☾") throw new Error("light icon is incorrect");
+storedLight.click();
+if (storedLight.root.dataset.theme !== "dark") throw new Error("click did not switch to dark");
+if (storedLight.attrs["title"] !== "切换到浅色模式") throw new Error("dark title is incorrect");
+if (storedLight.icon.textContent !== "☀") throw new Error("dark icon is incorrect");
+if (JSON.stringify(storedLight.writes) !== JSON.stringify([["speccompass-review:display-theme", "dark"]])) {{
+  throw new Error("manual theme was not persisted");
+}}
+
+const systemDark = runCase("invalid", true);
+if (systemDark.root.dataset.theme !== "dark") throw new Error("system dark theme was ignored");
+
+const unavailableStorage = runCase(null, false, true);
+if (unavailableStorage.root.dataset.theme !== "light") throw new Error("storage failure blocked startup");
+unavailableStorage.click();
+if (unavailableStorage.root.dataset.theme !== "dark") throw new Error("storage failure blocked switching");
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
 def test_review_data_template_assets_exist_and_describe_reusable_renderer_contract():
     """Project templates should ship the reusable SpecCompass review data toolchain."""
     for path in (
@@ -4485,6 +4578,15 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
 
     assert "SpecCompass" in renderer
     assert "#0ABAB5" in renderer
+    assert ':root[data-theme="dark"]' in renderer
+    assert "color-scheme: light" in renderer
+    assert "color-scheme: dark" in renderer
+    assert 'id="theme-toggle"' in renderer_entry
+    assert "speccompass-review:display-theme" in renderer
+    assert (
+        "must not enter a confirmation or discovery response package"
+        in RENDERER_README.read_text(encoding="utf-8")
+    )
     assert "right-rail" in renderer
     assert renderer_entry.lstrip().lower().startswith("<!doctype html>")
     assert '<html lang="zh-CN">' in renderer_entry
@@ -4495,9 +4597,14 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     for path in REVIEW_RENDERER_STYLE_FILES:
         relative_path = path.relative_to(REVIEW_PAGE_RENDERER.parent).as_posix()
         assert re.search(rf'href="{re.escape(relative_path)}(?:\?[^"]*)?"', renderer_entry)
+    theme_script = REVIEW_RENDERER_SCRIPT_FILES[0]
     for path in REVIEW_RENDERER_SCRIPT_FILES:
         relative_path = path.relative_to(REVIEW_PAGE_RENDERER.parent).as_posix()
-        assert re.search(rf'defer src="{re.escape(relative_path)}(?:\?[^"]*)?"', renderer_entry)
+        if path == theme_script:
+            assert re.search(rf'<script src="{re.escape(relative_path)}(?:\?[^"]*)?"></script>', renderer_entry)
+            assert renderer_entry.index(relative_path) < renderer_entry.index("styles/tokens.css")
+        else:
+            assert re.search(rf'defer src="{re.escape(relative_path)}(?:\?[^"]*)?"', renderer_entry)
     assert renderer_entry.count("<script") == len(REVIEW_RENDERER_SCRIPT_FILES)
     assert "localStorage" in renderer
     assert "flow-review-data.json" in renderer

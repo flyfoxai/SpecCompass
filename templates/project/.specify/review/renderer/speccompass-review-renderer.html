@@ -4,9 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SpecCompass Review</title>
-  <link rel="stylesheet" href="styles/tokens.css?v=20260626-ui-layout">
-  <link rel="stylesheet" href="styles/layout.css?v=20260713-mobile-review-actions">
-  <link rel="stylesheet" href="styles/review-ui.css?v=20260722-outline-adjustment-mode">
+  <script src="scripts/theme-toggle.js?v=20260725-display-theme"></script>
+  <link rel="stylesheet" href="styles/tokens.css?v=20260725-display-theme">
+  <link rel="stylesheet" href="styles/layout.css?v=20260725-display-theme">
+  <link rel="stylesheet" href="styles/review-ui.css?v=20260725-display-theme">
 </head>
 <body>
   <div class="app">
@@ -25,6 +26,9 @@
         </div>
       </div>
       <div class="tools">
+        <button id="theme-toggle" class="theme-toggle" type="button" aria-label="切换到深色模式" title="切换到深色模式">
+          <span class="theme-toggle-icon" aria-hidden="true">&#9790;</span>
+        </button>
         <div id="review-mode-switch" class="review-mode-switch hidden" role="group" aria-label="Outline 复核模式">
           <button type="button" data-review-mode="confirm" aria-pressed="true">确认模式</button>
           <button type="button" data-review-mode="adjust" aria-pressed="false">调整模式</button>
