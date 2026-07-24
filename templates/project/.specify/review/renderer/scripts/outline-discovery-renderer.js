@@ -233,24 +233,34 @@ function renderOutlineDiscoveryMaps() {
   const list = $("module-list");
   list.replaceChildren();
   list.classList.add("discovery-map-list");
-  for (const map of outlineDiscoveryMaps()) {
+  for (const [index, map] of outlineDiscoveryMaps().entries()) {
     const nodes = outlineDiscoveryNodesForMap(map.map_id);
     const questions = nodes.flatMap((node) => outlineDiscoveryQuestionsForNode(node.node_id));
     const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
-    const button = create("button", "module-button discovery-map-button");
+    const mapState = outlineDiscoveryMapReviewState(completed, questions.length);
+    const mapOrdinal = String(index + 1).padStart(2, "0");
+    const button = create("button", `module-button discovery-map-button is-${mapState}`);
     button.type = "button";
+    button.dataset.mapOrdinal = mapOrdinal;
+    button.dataset.reviewState = mapState;
     button.setAttribute("aria-pressed", String(!outlineDiscoveryConstitutionOpen && map.map_id === outlineDiscoveryActiveMapId));
-    appendText(button, "strong", map.title || map.map_id);
+    const heading = create("span", "module-heading discovery-map-heading");
+    appendText(heading, "span", mapOrdinal, "module-ordinal discovery-map-ordinal");
+    appendText(heading, "strong", map.title || map.map_id);
+    button.appendChild(heading);
     appendText(button, "span", map.summary || "");
     appendText(button, "span", `${completed}/${questions.length} 个问题已回应`, "discovery-progress-badge");
     appendText(button, "span", `${nodes.length} 个节点`, "discovery-map-count");
     button.addEventListener("click", () => openOutlineDiscoveryMap(map.map_id));
     list.appendChild(button);
   }
-  const constitutionButton = create("button", "module-button discovery-constitution-button");
+  const constitutionButton = create("button", "module-button discovery-constitution-button is-passive");
   constitutionButton.type = "button";
   constitutionButton.setAttribute("aria-pressed", String(outlineDiscoveryConstitutionOpen));
-  appendText(constitutionButton, "strong", "Constitution");
+  const constitutionHeading = create("span", "module-heading discovery-map-heading");
+  appendText(constitutionHeading, "span", "GOV", "module-ordinal discovery-map-ordinal");
+  appendText(constitutionHeading, "strong", "Constitution");
+  constitutionButton.appendChild(constitutionHeading);
   appendText(constitutionButton, "span", "按需查看项目治理条款，不参与业务确认。", "discovery-constitution-button-copy");
   appendText(constitutionButton, "span", "只读治理参考", "discovery-read-only-badge");
   constitutionButton.addEventListener("click", openOutlineDiscoveryConstitution);
@@ -607,61 +617,12 @@ function renderOutlineDiscoveryMindmap(map) {
     appendText(canvas, "p", "暂无可展示的导图。", "error");
     return canvas;
   }
-  const nodes = outlineDiscoveryNodesForMap(map.map_id);
-  const nodesById = new Map(nodes.map((node) => [node.node_id, node]));
-  const nodeOrder = new Map(nodes.map((node, index) => [node.node_id, index]));
-  const visualDepthById = new Map();
-  for (const node of nodes) visualDepthById.set(node.node_id, Math.min(outlineDiscoveryNodeDepth(node, nodesById), 3));
-  const levels = new Map();
-  for (const node of nodes) {
-    const visualDepth = visualDepthById.get(node.node_id);
-    if (!levels.has(visualDepth)) levels.set(visualDepth, []);
-    levels.get(visualDepth).push(node);
-  }
-  const levelOneOrder = new Map((levels.get(1) || []).map((node, index) => [node.node_id, index]));
-  if (levels.has(2)) {
-    levels.get(2).sort((left, right) => {
-      const leftParent = outlineDiscoveryVisualParent(left, 2, nodesById, visualDepthById);
-      const rightParent = outlineDiscoveryVisualParent(right, 2, nodesById, visualDepthById);
-      const parentDelta = (levelOneOrder.get(leftParent?.node_id) ?? Number.MAX_SAFE_INTEGER)
-        - (levelOneOrder.get(rightParent?.node_id) ?? Number.MAX_SAFE_INTEGER);
-      return parentDelta || (nodeOrder.get(left.node_id) - nodeOrder.get(right.node_id));
-    });
-  }
-  const levelTwoOrder = new Map((levels.get(2) || []).map((node, index) => [node.node_id, index]));
-  if (levels.has(3)) {
-    levels.get(3).sort((left, right) => {
-      const leftParent = outlineDiscoveryVisualParent(left, 3, nodesById, visualDepthById);
-      const rightParent = outlineDiscoveryVisualParent(right, 3, nodesById, visualDepthById);
-      const parentDelta = (levelTwoOrder.get(leftParent?.node_id) ?? Number.MAX_SAFE_INTEGER)
-        - (levelTwoOrder.get(rightParent?.node_id) ?? Number.MAX_SAFE_INTEGER);
-      return parentDelta || (nodeOrder.get(left.node_id) - nodeOrder.get(right.node_id));
-    });
-  }
-  const ordinalById = new Map();
-  const directChildrenByParent = new Map();
-  for (const node of nodes) {
-    if (!node.parent_node_id) continue;
-    const children = directChildrenByParent.get(node.parent_node_id) || [];
-    children.push(node);
-    directChildrenByParent.set(node.parent_node_id, children);
-  }
-  for (const node of levels.get(1) || []) {
-    ordinalById.set(node.node_id, String((levels.get(1) || []).indexOf(node) + 1).padStart(2, "0"));
-  }
-  for (const node of levels.get(2) || []) {
-    const parent = outlineDiscoveryVisualParent(node, 2, nodesById, visualDepthById);
-    const siblings = (levels.get(2) || []).filter((entry) => outlineDiscoveryVisualParent(entry, 2, nodesById, visualDepthById)?.node_id === parent?.node_id);
-    const parentOrdinal = ordinalById.get(parent?.node_id) || "00";
-    ordinalById.set(node.node_id, `${parentOrdinal}.${siblings.indexOf(node) + 1}`);
-  }
-  for (const node of levels.get(3) || []) {
-    const parent = outlineDiscoveryVisualParent(node, 3, nodesById, visualDepthById);
-    const siblings = (directChildrenByParent.get(parent?.node_id) || levels.get(3) || [])
-      .filter((entry) => visualDepthById.get(entry.node_id) === 3);
-    const parentOrdinal = ordinalById.get(parent?.node_id) || "00.0";
-    ordinalById.set(node.node_id, `${parentOrdinal}.${Math.max(siblings.indexOf(node), 0) + 1}`);
-  }
+  const {
+    nodesById,
+    visualDepthById,
+    levels,
+    ordinalById
+  } = outlineDiscoveryMapPresentation(map);
   const previewEntries = outlineDiscoveryOverviewPreviewEntries(map);
   const previewEntriesByParent = new Map();
   for (const entry of previewEntries) {
@@ -799,6 +760,101 @@ function outlineDiscoveryQuestionState(node, completed, total) {
   return completed ? "draft" : "open";
 }
 
+function outlineDiscoveryMapReviewState(completed, total) {
+  if (!total) return "passive";
+  if (completed >= total) return "resolved";
+  return completed ? "draft" : "open";
+}
+
+function outlineDiscoveryMapPresentation(map) {
+  const nodes = map ? outlineDiscoveryNodesForMap(map.map_id) : [];
+  const nodesById = new Map(nodes.map((node) => [node.node_id, node]));
+  const nodeOrder = new Map(nodes.map((node, index) => [node.node_id, index]));
+  const visualDepthById = new Map();
+  for (const node of nodes) visualDepthById.set(node.node_id, Math.min(outlineDiscoveryNodeDepth(node, nodesById), 3));
+  const levels = new Map();
+  for (const node of nodes) {
+    const visualDepth = visualDepthById.get(node.node_id);
+    if (!levels.has(visualDepth)) levels.set(visualDepth, []);
+    levels.get(visualDepth).push(node);
+  }
+  const levelOneOrder = new Map((levels.get(1) || []).map((node, index) => [node.node_id, index]));
+  if (levels.has(2)) {
+    levels.get(2).sort((left, right) => {
+      const leftParent = outlineDiscoveryVisualParent(left, 2, nodesById, visualDepthById);
+      const rightParent = outlineDiscoveryVisualParent(right, 2, nodesById, visualDepthById);
+      const parentDelta = (levelOneOrder.get(leftParent?.node_id) ?? Number.MAX_SAFE_INTEGER)
+        - (levelOneOrder.get(rightParent?.node_id) ?? Number.MAX_SAFE_INTEGER);
+      return parentDelta || (nodeOrder.get(left.node_id) - nodeOrder.get(right.node_id));
+    });
+  }
+  const levelTwoOrder = new Map((levels.get(2) || []).map((node, index) => [node.node_id, index]));
+  if (levels.has(3)) {
+    levels.get(3).sort((left, right) => {
+      const leftParent = outlineDiscoveryVisualParent(left, 3, nodesById, visualDepthById);
+      const rightParent = outlineDiscoveryVisualParent(right, 3, nodesById, visualDepthById);
+      const parentDelta = (levelTwoOrder.get(leftParent?.node_id) ?? Number.MAX_SAFE_INTEGER)
+        - (levelTwoOrder.get(rightParent?.node_id) ?? Number.MAX_SAFE_INTEGER);
+      return parentDelta || (nodeOrder.get(left.node_id) - nodeOrder.get(right.node_id));
+    });
+  }
+  const ordinalById = new Map();
+  const directChildrenByParent = new Map();
+  for (const node of nodes) {
+    if (!node.parent_node_id) continue;
+    const children = directChildrenByParent.get(node.parent_node_id) || [];
+    children.push(node);
+    directChildrenByParent.set(node.parent_node_id, children);
+  }
+  for (const node of levels.get(1) || []) {
+    ordinalById.set(node.node_id, String((levels.get(1) || []).indexOf(node) + 1).padStart(2, "0"));
+  }
+  for (const node of levels.get(2) || []) {
+    const parent = outlineDiscoveryVisualParent(node, 2, nodesById, visualDepthById);
+    const siblings = (levels.get(2) || []).filter((entry) => outlineDiscoveryVisualParent(entry, 2, nodesById, visualDepthById)?.node_id === parent?.node_id);
+    const parentOrdinal = ordinalById.get(parent?.node_id) || "00";
+    ordinalById.set(node.node_id, `${parentOrdinal}.${siblings.indexOf(node) + 1}`);
+  }
+  for (const node of levels.get(3) || []) {
+    const parent = outlineDiscoveryVisualParent(node, 3, nodesById, visualDepthById);
+    const siblings = (directChildrenByParent.get(parent?.node_id) || levels.get(3) || [])
+      .filter((entry) => visualDepthById.get(entry.node_id) === 3);
+    const parentOrdinal = ordinalById.get(parent?.node_id) || "00.0";
+    ordinalById.set(node.node_id, `${parentOrdinal}.${Math.max(siblings.indexOf(node), 0) + 1}`);
+  }
+  return { nodes, nodesById, nodeOrder, visualDepthById, levels, ordinalById, directChildrenByParent };
+}
+
+function outlineDiscoveryNodePresentation(node, map = outlineDiscoveryMap(outlineDiscoveryActiveMapId)) {
+  const presentation = outlineDiscoveryMapPresentation(map);
+  const depth = presentation.visualDepthById.get(node?.node_id) || 1;
+  return {
+    ...presentation,
+    depth,
+    ordinal: presentation.ordinalById.get(node?.node_id) || "",
+    parent: depth > 1 ? outlineDiscoveryVisualParent(node, depth, presentation.nodesById, presentation.visualDepthById) : null
+  };
+}
+
+function outlineDiscoveryNodeLevelLabel(node, depth, map = outlineDiscoveryMap(outlineDiscoveryActiveMapId)) {
+  if (depth <= 1) return map?.map_kind === "overview" ? "总图顶层" : "分图总项";
+  if (depth === 2) return node?.child_map_id ? "一级总项 / 分图入口" : "一级分支";
+  if (depth === 3) return "下级分项";
+  return `第 ${depth} 级节点`;
+}
+
+function outlineDiscoveryNodeAncestry(node, presentation) {
+  const ancestry = [];
+  const visited = new Set([node?.node_id]);
+  let parent = node?.parent_node_id ? presentation.nodesById.get(node.parent_node_id) : null;
+  while (parent && !visited.has(parent.node_id)) {
+    ancestry.unshift(parent);
+    visited.add(parent.node_id);
+    parent = parent.parent_node_id ? presentation.nodesById.get(parent.parent_node_id) : null;
+  }
+  return ancestry;
+}
+
 function renderOutlineDiscoveryNode(node, options = {}) {
   const questions = outlineDiscoveryQuestionsForNode(node.node_id);
   const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
@@ -865,9 +921,41 @@ function renderOutlineDiscoveryRail() {
     nodeList.appendChild(panel);
     return;
   }
-  appendText(panel, "span", node.source_status || "unresolved", "discovery-source-status");
-  appendText(panel, "h3", node.label || node.node_id);
-  appendText(panel, "p", node.summary || "");
+  const activeMap = outlineDiscoveryMap(outlineDiscoveryActiveMapId);
+  const presentation = outlineDiscoveryNodePresentation(node, activeMap);
+  const questions = outlineDiscoveryQuestionsForNode(node.node_id);
+  const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
+  const visualState = outlineDiscoveryQuestionState(node, completed, questions.length);
+  panel.classList.add(`is-${visualState}`);
+  panel.dataset.reviewState = visualState;
+  panel.dataset.depth = String(presentation.depth);
+  panel.dataset.nodeOrdinal = presentation.ordinal;
+  const header = create("div", "discovery-node-panel-header");
+  appendText(header, "span", presentation.ordinal || "--", "discovery-node-panel-ordinal");
+  const heading = create("div", "discovery-node-panel-heading");
+  appendText(heading, "span", outlineDiscoveryNodeLevelLabel(node, presentation.depth, activeMap), "discovery-node-level-label");
+  appendText(heading, "h3", node.label || node.node_id);
+  header.appendChild(heading);
+  panel.appendChild(header);
+  const meta = create("div", "discovery-node-panel-meta");
+  appendText(meta, "span", outlineDiscoverySourceStatusLabel(node.source_status || "unresolved"), `discovery-source-status source-${safeClassToken(node.source_status || "unresolved")}`);
+  appendText(meta, "span", questions.length ? `${completed}/${questions.length} 个问题已回应` : "无待回应问题", "discovery-node-question-count");
+  appendText(meta, "span", activeMap?.title || "当前导图", "discovery-node-map-label");
+  panel.appendChild(meta);
+  const ancestry = outlineDiscoveryNodeAncestry(node, presentation);
+  if (ancestry.length) {
+    const trail = create("ol", "discovery-node-trail");
+    for (const parent of ancestry) {
+      const parentDepth = presentation.visualDepthById.get(parent.node_id) || 1;
+      const item = create("li");
+      item.dataset.depth = String(parentDepth);
+      appendText(item, "span", presentation.ordinalById.get(parent.node_id) || "", "discovery-node-trail-ordinal");
+      appendText(item, "span", parent.label || parent.node_id, "discovery-node-trail-label");
+      trail.appendChild(item);
+    }
+    panel.appendChild(trail);
+  }
+  appendText(panel, "p", node.summary || "", "discovery-node-panel-summary");
   if (Array.isArray(node.affected_node_ids) && node.affected_node_ids.length) {
     appendText(panel, "h4", "影响范围");
     const affected = create("div", "discovery-affected-nodes");
@@ -881,10 +969,10 @@ function renderOutlineDiscoveryRail() {
     appendText(panel, "p", "影响范围尚未映射。该条款仅供阅读，不会生成确认问题或修改业务 Outline。", "discovery-empty-copy");
   }
   nodeList.appendChild(panel);
-  renderOutlineDiscoveryNodeQuestions(node, nodeList);
+  renderOutlineDiscoveryNodeQuestions(node, nodeList, presentation);
 }
 
-function renderOutlineDiscoveryNodeQuestions(node, nodeList = $("node-list")) {
+function renderOutlineDiscoveryNodeQuestions(node, nodeList = $("node-list"), presentation = null) {
   const questions = outlineDiscoveryQuestions().filter((question) => question.outline_node_id === outlineDiscoveryActiveNodeId);
   if (!questions.length) {
     const empty = create("section", "panel discovery-empty-panel");
@@ -895,20 +983,32 @@ function renderOutlineDiscoveryNodeQuestions(node, nodeList = $("node-list")) {
   const questionPanel = create("section", "discovery-question-panel");
   appendText(questionPanel, "h3", "只确认这个节点");
   appendText(questionPanel, "p", "候选只是模型建议。请选择、排除或直接输入；未被选择的候选仍是 [src:ai-proposed]。", "discovery-panel-note");
-  for (const question of questions) questionPanel.appendChild(renderOutlineDiscoveryQuestion(question));
+  const baseOrdinal = presentation?.ordinal || "";
+  for (const [index, question] of questions.entries()) {
+    const questionOrdinal = baseOrdinal ? `${baseOrdinal}.${index + 1}` : String(index + 1).padStart(2, "0");
+    questionPanel.appendChild(renderOutlineDiscoveryQuestion(question, questionOrdinal));
+  }
   nodeList.appendChild(questionPanel);
 }
 
-function renderOutlineDiscoveryQuestion(question) {
+function renderOutlineDiscoveryQuestion(question, questionOrdinal = "") {
   const response = outlineDiscoveryResponse(question.id);
   const card = create("article", "discovery-question");
+  if (questionOrdinal) card.dataset.questionOrdinal = questionOrdinal;
   const heading = create("div", "discovery-question-heading");
-  appendText(heading, "span", question.target_kind || "business", "discovery-target-kind");
-  appendText(heading, "h4", question.prompt || question.id);
+  const title = create("div", "discovery-question-title-row");
+  if (questionOrdinal) appendText(title, "span", questionOrdinal, "discovery-question-ordinal");
+  appendText(title, "h4", question.prompt || question.id);
+  heading.appendChild(title);
+  const meta = create("div", "discovery-question-meta");
+  appendText(meta, "span", question.target_kind || "business", "discovery-target-kind");
+  if (questionOrdinal) appendText(meta, "span", "节点问题", "discovery-question-kind");
+  heading.appendChild(meta);
   appendText(heading, "p", question.context || "");
   card.appendChild(heading);
   const candidates = create("div", "discovery-candidates");
-  for (const candidate of question.candidates || []) {
+  for (const [index, candidate] of (question.candidates || []).entries()) {
+    const candidateOrdinal = questionOrdinal ? `${questionOrdinal}.${index + 1}` : "";
     const recommended = (question.recommended_candidate_ids || []).includes(candidate.id);
     const label = create("label", `discovery-candidate${recommended ? " recommended" : ""}`);
     const input = document.createElement("input");
@@ -921,6 +1021,7 @@ function renderOutlineDiscoveryQuestion(question) {
     label.appendChild(input);
     const copy = create("span", "discovery-candidate-copy");
     const title = create("span", "discovery-candidate-title");
+    if (candidateOrdinal) appendText(title, "span", candidateOrdinal, "discovery-candidate-ordinal");
     appendText(title, "strong", candidate.label || candidate.id);
     if (recommended) appendText(title, "span", "推荐", "discovery-recommended-badge");
     copy.appendChild(title); appendText(copy, "span", candidate.value || ""); appendText(copy, "small", candidate.rationale || "");

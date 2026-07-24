@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.26] - 2026-07-24
+
+### Fixed
+
+- Applied the semantic status color system to the Outline Discovery left rail so selected maps keep open, draft, resolved, and passive state colors.
+- Added hierarchical numbering, top-level versus sub-level labels, indentation, and tighter font hierarchy to the Outline Discovery right confirmation rail.
+- Added numbered question and candidate rows in the Outline Discovery confirmation panel so total items, sub-items, and options are visually traceable.
+
 ## [0.11.25] - 2026-07-24
 
 ### Changed
