@@ -380,8 +380,7 @@ function nodeStatusDisplayLabel(node, saved) {
 }
 
 function currentNodeOrdinal(node) {
-  const nodeIndex = Math.max(currentItemNodes().findIndex((entry) => entry.id === node.id), 0);
-  return `${String(selectedModuleIndex + 1).padStart(2, "0")}.${selectedItemIndex + 1}.${nodeIndex + 1}`;
+  return reviewNodeDisplayOrdinal(node, currentItem(), currentModule());
 }
 
 function nodeCard(node) {
@@ -443,12 +442,13 @@ function nodeCard(node) {
   const optionRow = create("div", "option-row");
   card.appendChild(optionRow);
   for (const [index, option] of options.entries()) {
+    const optionOrdinal = reviewOptionDisplayOrdinal(nodeOrdinal, index);
     const button = document.createElement("button");
     button.type = "button";
-    button.dataset.optionOrdinal = `${nodeOrdinal}.${index + 1}`;
+    button.dataset.optionOrdinal = optionOrdinal;
     button.className = optionClassName(node, option, saved);
     const optionHeading = create("span", "option-heading");
-    appendText(optionHeading, "span", `${nodeOrdinal}.${index + 1}`, "option-ordinal");
+    appendText(optionHeading, "span", optionOrdinal, "option-ordinal");
     appendText(optionHeading, "strong", `${option.label || option.id}${option.id === node.recommended_option ? "（推荐）" : ""}`);
     button.appendChild(optionHeading);
     const detailList = create("span", "option-detail-list");

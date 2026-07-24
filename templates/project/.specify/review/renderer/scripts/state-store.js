@@ -190,6 +190,45 @@ function currentItemNodes() {
   return currentItem()?.nodes || [];
 }
 
+function displayOrdinalRoot(index) {
+  return String(Math.max(0, index) + 1).padStart(2, "0");
+}
+
+function displayOrdinalChild(index) {
+  return String(Math.max(0, index) + 1);
+}
+
+function reviewIndexOrFallback(index, fallback = 0) {
+  return index >= 0 ? index : Math.max(fallback, 0);
+}
+
+function reviewModuleDisplayOrdinal(module = currentModule(), moduleIndex = selectedModuleIndex) {
+  const index = Number.isInteger(moduleIndex)
+    ? moduleIndex
+    : reviewIndexOrFallback((reviewData?.modules || []).indexOf(module), selectedModuleIndex);
+  return displayOrdinalRoot(index);
+}
+
+function reviewItemDisplayOrdinal(item = currentItem(), module = currentModule(), itemIndex = selectedItemIndex) {
+  const moduleIndex = reviewIndexOrFallback((reviewData?.modules || []).indexOf(module), selectedModuleIndex);
+  const index = Number.isInteger(itemIndex)
+    ? itemIndex
+    : reviewIndexOrFallback((module?.[itemKey()] || []).indexOf(item), selectedItemIndex);
+  return `${reviewModuleDisplayOrdinal(module, moduleIndex)}.${displayOrdinalChild(index)}`;
+}
+
+function reviewNodeDisplayOrdinal(node, item = currentItem(), module = currentModule()) {
+  const moduleIndex = reviewIndexOrFallback((reviewData?.modules || []).indexOf(module), selectedModuleIndex);
+  const items = module?.[itemKey()] || [];
+  const itemIndex = reviewIndexOrFallback(items.indexOf(item), selectedItemIndex);
+  const nodeIndex = reviewIndexOrFallback((item?.nodes || []).findIndex((entry) => entry.id === node?.id));
+  return `${reviewItemDisplayOrdinal(item, module, itemIndex)}.${displayOrdinalChild(nodeIndex)}`;
+}
+
+function reviewOptionDisplayOrdinal(nodeOrdinal, optionIndex) {
+  return nodeOrdinal ? `${nodeOrdinal}-O${displayOrdinalChild(optionIndex)}` : `O${displayOrdinalChild(optionIndex)}`;
+}
+
 function visibleNodes() {
   const priorityOrder = { critical: 0, important: 1, normal: 2 };
   const nodes = currentItemNodes()

@@ -4132,6 +4132,58 @@ if (JSON.stringify(ids) !== JSON.stringify(["a-1", "a-2"])) {{
     assert result.returncode == 0, result.stderr or result.stdout
 
 
+def test_review_display_ordinals_use_semantic_hierarchy_for_flow_and_ui():
+    """Flow and UI review pages should share module.item.node option coordinates."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer state tests")
+
+    script = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+function assertEqual(actual, expected, label) {{
+  if (actual !== expected) throw new Error(`${{label}}: expected ${{expected}}, got ${{actual}}`);
+}}
+function runCase(reviewType, collectionKey) {{
+  const firstItem = {{ id: `${{reviewType}}-a1`, nodes: [{{ id: "n1" }}, {{ id: "n2" }}] }};
+  const secondItem = {{ id: `${{reviewType}}-a2`, nodes: [{{ id: "n3" }}] }};
+  const moduleA = {{ id: "module-a", [collectionKey]: [firstItem, secondItem] }};
+  const moduleB = {{ id: "module-b", [collectionKey]: [{{ id: `${{reviewType}}-b1`, nodes: [{{ id: "n4" }}] }}] }};
+  const context = {{
+    window: {{ SpecCompassDom: {{}} }},
+    console,
+    reviewData: {{ review_type: reviewType, modules: [moduleA, moduleB] }},
+    selectedModuleIndex: 0,
+    selectedItemIndex: 0,
+    STORAGE_PREFIX: "test:",
+    localStorage: {{}},
+    state: {{}},
+    create: () => ({{}}),
+    requiresNodeDecision: () => true
+  }};
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  assertEqual(context.reviewModuleDisplayOrdinal(moduleA, 0), "01", `${{reviewType}} module A`);
+  assertEqual(context.reviewModuleDisplayOrdinal(moduleB, 1), "02", `${{reviewType}} module B`);
+  assertEqual(context.reviewItemDisplayOrdinal(firstItem, moduleA, 0), "01.1", `${{reviewType}} first item`);
+  assertEqual(context.reviewItemDisplayOrdinal(secondItem, moduleA, 1), "01.2", `${{reviewType}} second item`);
+  assertEqual(context.reviewNodeDisplayOrdinal(firstItem.nodes[0], firstItem, moduleA), "01.1.1", `${{reviewType}} first node`);
+  assertEqual(context.reviewNodeDisplayOrdinal(firstItem.nodes[1], firstItem, moduleA), "01.1.2", `${{reviewType}} second node`);
+  assertEqual(context.reviewOptionDisplayOrdinal("01.1.1", 0), "01.1.1-O1", `${{reviewType}} first option`);
+}}
+runCase("flow", "diagrams");
+runCase("ui", "screens");
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
 def test_review_recommendation_scope_current_module_flattens_only_that_module():
     """The module scope should include every item in the selected module and nothing else."""
     if shutil.which("node") is None:

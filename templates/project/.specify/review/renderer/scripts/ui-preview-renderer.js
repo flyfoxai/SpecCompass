@@ -46,13 +46,15 @@ function renderModules() {
     const count = countModuleMust(module);
     const recommendedCount = countModuleRecommended(module);
     const moduleState = reviewCountState(count);
+    const moduleOrdinal = reviewModuleDisplayOrdinal(module, index);
     const button = document.createElement("button");
     button.className = `module-button is-${moduleState}`;
     button.type = "button";
     button.dataset.reviewState = moduleState;
+    button.dataset.displayOrdinal = moduleOrdinal;
     button.setAttribute("aria-pressed", String(index === selectedModuleIndex));
     const heading = create("span", "module-heading");
-    appendText(heading, "span", `M${String(index + 1).padStart(2, "0")}`, "module-ordinal");
+    appendText(heading, "span", moduleOrdinal, "module-ordinal");
     appendText(heading, "strong", module.title || module.id || "未命名模块");
     button.appendChild(heading);
     button.appendChild(document.createElement("br"));
@@ -135,7 +137,7 @@ function renderCenter() {
     button.setAttribute("role", "tab");
     button.setAttribute("aria-selected", String(index === selectedItemIndex));
     button.tabIndex = index === selectedItemIndex ? 0 : -1;
-    appendText(button, "span", `${String(selectedModuleIndex + 1).padStart(2, "0")}.${index + 1}`, "diagram-tab-ordinal");
+    appendText(button, "span", reviewItemDisplayOrdinal(entry, module, index), "diagram-tab-ordinal");
     appendText(button, "span", entry.title || entry.id, "diagram-tab-title");
     appendText(button, "span", `待处理 ${mustCount.pending}/${mustCount.total}`, `diagram-tab-pending diagram-tab-pending-${tabState}`);
     button.addEventListener("click", () => {

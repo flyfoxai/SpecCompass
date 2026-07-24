@@ -68,6 +68,46 @@ function outlineDiscoveryMapRootChildren(mapId, data = reviewData) {
   return nodes.filter((node) => node.parent_node_id === map.root_node_id);
 }
 
+function outlineDiscoveryOverviewMap(data = reviewData) {
+  return outlineDiscoveryMaps(data).find((map) => map.map_kind === "overview")
+    || outlineDiscoveryMaps(data)[0]
+    || null;
+}
+
+function outlineDiscoveryOverviewMapLinks(data = reviewData) {
+  const overviewMap = outlineDiscoveryOverviewMap(data);
+  if (!overviewMap) return [];
+  return outlineDiscoveryMapRootChildren(overviewMap.map_id, data)
+    .filter((node) => node.node_kind === "map_link" && node.child_map_id);
+}
+
+function outlineDiscoveryBusinessMapLinks(data = reviewData) {
+  return outlineDiscoveryOverviewMapLinks(data).filter((node) => {
+    const childMap = outlineDiscoveryMap(node.child_map_id, data);
+    return childMap?.map_kind !== "global_constraints";
+  });
+}
+
+function outlineDiscoverySemanticMapOrdinal(map, data = reviewData) {
+  if (!map) return "";
+  if (map.map_kind === "overview") return "01";
+  if (map.map_kind === "global_constraints") return "GOV";
+  const businessLinks = outlineDiscoveryBusinessMapLinks(data);
+  const linkedIndex = businessLinks.findIndex((node) => node.child_map_id === map.map_id);
+  if (linkedIndex >= 0) return `01.${linkedIndex + 1}`;
+  const branchMaps = outlineDiscoveryMaps(data).filter((entry) => entry.map_kind !== "overview" && entry.map_kind !== "global_constraints");
+  const fallbackIndex = Math.max(branchMaps.findIndex((entry) => entry.map_id === map.map_id), 0);
+  return `01.${fallbackIndex + 1}`;
+}
+
+function outlineDiscoverySemanticNodeOrdinal(node, map, data = reviewData) {
+  if (!node || !map) return "";
+  if (map.map_kind === "overview" && node.node_kind === "map_link" && node.child_map_id) {
+    return outlineDiscoverySemanticMapOrdinal(outlineDiscoveryMap(node.child_map_id, data), data);
+  }
+  return "";
+}
+
 function outlineDiscoveryOverviewPreviewEntries(map, data = reviewData) {
   if (map?.map_kind !== "overview") return [];
   const overviewNodes = outlineDiscoveryNodesForMap(map.map_id, data);
@@ -233,12 +273,12 @@ function renderOutlineDiscoveryMaps() {
   const list = $("module-list");
   list.replaceChildren();
   list.classList.add("discovery-map-list");
-  for (const [index, map] of outlineDiscoveryMaps().entries()) {
+  for (const map of outlineDiscoveryMaps()) {
     const nodes = outlineDiscoveryNodesForMap(map.map_id);
     const questions = nodes.flatMap((node) => outlineDiscoveryQuestionsForNode(node.node_id));
     const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
     const mapState = outlineDiscoveryMapReviewState(completed, questions.length);
-    const mapOrdinal = String(index + 1).padStart(2, "0");
+    const mapOrdinal = outlineDiscoverySemanticMapOrdinal(map);
     const button = create("button", `module-button discovery-map-button is-${mapState}`);
     button.type = "button";
     button.dataset.mapOrdinal = mapOrdinal;
@@ -258,7 +298,7 @@ function renderOutlineDiscoveryMaps() {
   constitutionButton.type = "button";
   constitutionButton.setAttribute("aria-pressed", String(outlineDiscoveryConstitutionOpen));
   const constitutionHeading = create("span", "module-heading discovery-map-heading");
-  appendText(constitutionHeading, "span", "GOV", "module-ordinal discovery-map-ordinal");
+  appendText(constitutionHeading, "span", "CONST", "module-ordinal discovery-map-ordinal");
   appendText(constitutionHeading, "strong", "Constitution");
   constitutionButton.appendChild(constitutionHeading);
   appendText(constitutionButton, "span", "按需查看项目治理条款，不参与业务确认。", "discovery-constitution-button-copy");
@@ -770,6 +810,7 @@ function outlineDiscoveryMapPresentation(map) {
   const nodes = map ? outlineDiscoveryNodesForMap(map.map_id) : [];
   const nodesById = new Map(nodes.map((node) => [node.node_id, node]));
   const nodeOrder = new Map(nodes.map((node, index) => [node.node_id, index]));
+  const mapOrdinal = outlineDiscoverySemanticMapOrdinal(map);
   const visualDepthById = new Map();
   for (const node of nodes) visualDepthById.set(node.node_id, Math.min(outlineDiscoveryNodeDepth(node, nodesById), 3));
   const levels = new Map();
@@ -806,14 +847,17 @@ function outlineDiscoveryMapPresentation(map) {
     children.push(node);
     directChildrenByParent.set(node.parent_node_id, children);
   }
-  for (const node of levels.get(1) || []) {
-    ordinalById.set(node.node_id, String((levels.get(1) || []).indexOf(node) + 1).padStart(2, "0"));
+  for (const [index, node] of (levels.get(1) || []).entries()) {
+    ordinalById.set(node.node_id, index === 0 ? mapOrdinal : `${mapOrdinal}.${index + 1}`);
   }
   for (const node of levels.get(2) || []) {
     const parent = outlineDiscoveryVisualParent(node, 2, nodesById, visualDepthById);
     const siblings = (levels.get(2) || []).filter((entry) => outlineDiscoveryVisualParent(entry, 2, nodesById, visualDepthById)?.node_id === parent?.node_id);
     const parentOrdinal = ordinalById.get(parent?.node_id) || "00";
-    ordinalById.set(node.node_id, `${parentOrdinal}.${siblings.indexOf(node) + 1}`);
+    ordinalById.set(
+      node.node_id,
+      outlineDiscoverySemanticNodeOrdinal(node, map) || `${parentOrdinal}.${siblings.indexOf(node) + 1}`
+    );
   }
   for (const node of levels.get(3) || []) {
     const parent = outlineDiscoveryVisualParent(node, 3, nodesById, visualDepthById);
@@ -822,7 +866,7 @@ function outlineDiscoveryMapPresentation(map) {
     const parentOrdinal = ordinalById.get(parent?.node_id) || "00.0";
     ordinalById.set(node.node_id, `${parentOrdinal}.${Math.max(siblings.indexOf(node), 0) + 1}`);
   }
-  return { nodes, nodesById, nodeOrder, visualDepthById, levels, ordinalById, directChildrenByParent };
+  return { nodes, nodesById, nodeOrder, visualDepthById, levels, ordinalById, directChildrenByParent, mapOrdinal };
 }
 
 function outlineDiscoveryNodePresentation(node, map = outlineDiscoveryMap(outlineDiscoveryActiveMapId)) {
@@ -985,7 +1029,7 @@ function renderOutlineDiscoveryNodeQuestions(node, nodeList = $("node-list"), pr
   appendText(questionPanel, "p", "候选只是模型建议。请选择、排除或直接输入；未被选择的候选仍是 [src:ai-proposed]。", "discovery-panel-note");
   const baseOrdinal = presentation?.ordinal || "";
   for (const [index, question] of questions.entries()) {
-    const questionOrdinal = baseOrdinal ? `${baseOrdinal}.${index + 1}` : String(index + 1).padStart(2, "0");
+    const questionOrdinal = baseOrdinal ? `${baseOrdinal}-Q${index + 1}` : `Q${index + 1}`;
     questionPanel.appendChild(renderOutlineDiscoveryQuestion(question, questionOrdinal));
   }
   nodeList.appendChild(questionPanel);
@@ -1008,7 +1052,7 @@ function renderOutlineDiscoveryQuestion(question, questionOrdinal = "") {
   card.appendChild(heading);
   const candidates = create("div", "discovery-candidates");
   for (const [index, candidate] of (question.candidates || []).entries()) {
-    const candidateOrdinal = questionOrdinal ? `${questionOrdinal}.${index + 1}` : "";
+    const candidateOrdinal = questionOrdinal ? `${questionOrdinal}.C${index + 1}` : `C${index + 1}`;
     const recommended = (question.recommended_candidate_ids || []).includes(candidate.id);
     const label = create("label", `discovery-candidate${recommended ? " recommended" : ""}`);
     const input = document.createElement("input");

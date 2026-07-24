@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.27] - 2026-07-25
+
+### Fixed
+
+- Replaced flat Outline numbering with semantic parent-child coordinates such as `01`, `01.1`, and `01.1.1`, plus `-Q` and `.C` suffixes for questions and candidates.
+- Reserved `GOV` and `CONST` labels for governance constraints and Constitution content so they remain distinct from business branches.
+- Applied the same module, item, node, and option coordinate hierarchy to the browser-rendered Flow and UI review pages.
+
 ## [0.11.26] - 2026-07-24
 
 ### Fixed
