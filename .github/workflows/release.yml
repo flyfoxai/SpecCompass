@@ -54,7 +54,7 @@ jobs:
           - Bounded retries cover transient file and network failures across macOS, Linux, and Windows.
           - Stale pages, target conflicts, and invalid requests fail closed instead of offering an unsafe fallback package.
           - Fallback downloads appear only for explicitly recoverable transport failures.
-          - Follow-up Flow, UI, and PRD runs use `revision_requests.target_ref` to limit regeneration to reviewed targets and directly affected neighbors.
+          - Follow-up Flow, UI, and PRD runs use \`revision_requests.target_ref\` to limit regeneration to reviewed targets and directly affected neighbors.
           - Automated and browser checks cover all four write-back routes, conflicts, retries, fallback policy, and concurrent launchers.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
