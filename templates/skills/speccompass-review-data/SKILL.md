@@ -62,11 +62,27 @@ relative renderer path, a direct file link, or the Markdown batch manifest as
 the interactive entry. If either self-check fails, repair the generated data or
 fixed infrastructure and restart the launcher before closeout.
 
+The launcher requires Node.js 18 or newer. Its writeback protocol is
+fail-closed and cross-platform: the browser permits one in-flight submission,
+uses a stable request ID and bounded timeout/retry policy, and the launcher
+serializes each fixed target across requests and processes. It verifies the
+review identity and expected target SHA-256 version while holding the lock,
+deduplicates completed requests, fsyncs temporary content, and retries atomic
+replacement for transient Windows file-busy errors. Never retry a response
+unless `retryable` is true. Never expose or consume a download/copy fallback
+unless `allow_fallback` is true. In particular, stale review data, target-version
+conflicts, invalid packages, forbidden requests, and request-ID reuse with
+different content require reload/repair and must not produce a fallback. A
+fallback-eligible failure keeps the primary action as `重试写入` and exposes a
+separate download link; any changed review choice invalidates the old link and
+request payload.
+
 The fixed renderer exposes `当前视图按推荐保存`, `当前模块按推荐保存`, and
 `当前需求按推荐保存`. These scopes fill only unfinished `MISSING` nodes with a
-valid recommendation and preserve drafts and saved choices. Confirmation-package
-download performs the same whole-requirement preflight and asks whether eligible
-unfinished nodes should be saved with their recommendations before downloading.
+valid recommendation and preserve drafts and saved choices. `写入项目` performs
+the same whole-requirement preflight and asks whether eligible unfinished nodes
+should be saved with their recommendations before writeback. Download and copy
+controls are explicit fallbacks only after restricted local writeback fails.
 
 example data must not replace generation rules / 实验数据不能替代生成规则.
 `docs/examples/review/*`, experiment JSON files, and preview-only HTML pages are
@@ -122,8 +138,12 @@ PRD Outline has an orthogonal `outline_maturity` contract:
 `explore | frame | specify_ready`. `explore` and `frame` use
 `interaction_mode: discovery`; `specify_ready` uses
 `interaction_mode: confirmation`. Discovery data is written to
-`specs/<feature>/prd/review/outline-discovery-data.json`, the browser emits
-`outline-discovery-response-*.json`, and `/sp.prd` appends validated events to
+`specs/<feature>/prd/review/outline-discovery-data.json`. The loopback writer
+mechanically records the browser response at
+`specs/<feature>/prd/review/outline-discovery-response-pending.json`; only when
+that writeback fails may the browser download
+`outline-discovery-response-*.json`. On the next `/sp.prd` run, the command
+validates the response and appends accepted events to
 `specs/<feature>/prd/review/outline-intent-ledger.json`. Formal confirmation
 continues to use `outline-review-data.json` and `outline-confirmation.md`.
 
@@ -133,7 +153,7 @@ none of the above, and free-form input. It must expose the explicit operations
 reuse confirmation `options`, `next_exit`, decision authorization, or the
 confirmation package format. Discovery must never authorize `/sp.specify` or
 advance readiness to `AWAITING_OUTLINE_CONFIRMATION` or `READY_FOR_SPECIFY`.
-Discovery's primary action is `Save and continue refinement`. The surface must
+Discovery's primary action is `写入项目并继续`. The surface must
 continuously say that it does not authorize `/sp.specify`.
 
 The intent ledger is append-only. `/sp.prd` validates identities and references,
@@ -160,7 +180,11 @@ both temporary files, run
 The helper appends valid events before validating temporary documents. On
 failure, keep the formal documents unchanged and the matching events pending;
 regenerate the temporary files and retry the same response instead of adding a
-duplicate event.
+duplicate event. When the response came from
+`outline-discovery-response-pending.json`, keep that file in place through every
+failed attempt. Only after the helper succeeds and the formal provenance anchors
+are verified may `/sp.prd` atomically move it into
+`specs/<feature>/prd/review/history/consumed/`.
 The helper serializes each feature with
 `specs/<feature>/prd/review/.outline-discovery-writeback.lock`. If an active
 process owns the lock, wait for that writeback to finish before retrying. If
@@ -172,17 +196,26 @@ closed until an operator verifies no writeback is running and removes only the
 recovery claim. If the old main lock is absent, remove an orphaned recovery
 claim only after acquiring a fresh main lock.
 
-The reviewer-facing export path is 下载确认包 / download confirmation package.
-The fixed renderer, not ordinary `/sp.flow` or `/sp.ui`, creates JSON packages
-with `format: "speccompass-confirmation-package"` and a `target_path` pointing
-to `specs/<feature>/flows/review/flow-confirmation.md` or
-`specs/<feature>/ui/review/ui-confirmation.md`; other repository paths are not
-valid writeback targets. Outline packages target
-`specs/<feature>/prd/review/outline-confirmation.md` and repeat
-`outline_digest` and `source_authority_ids` in each part. 复制摘要 / copy summary is only a fallback when download
-handoff is unavailable. Ordinary commands must still only fill
-`flow-review-data.json` or `ui-review-data.json`; do not add custom package
-scripts or page export logic to generated review data.
+Use `写入项目` as the reviewer-facing primary action. The launcher exposes a
+restricted loopback endpoint protected by a per-process capability token. The
+writer re-reads the current review data, verifies the complete review identity,
+derives the target solely from the served review type and feature, and writes
+only `specs/<feature>/flows/review/flow-confirmation.md`,
+`specs/<feature>/ui/review/ui-confirmation.md`,
+`specs/<feature>/prd/review/outline-confirmation.md`, or the fixed Discovery
+pending path. It must not accept a client-selected repository path.
+
+Treat the writer as a mechanical recorder. It must not call a model, interpret
+`reviewer_note`, change PRD/Flow/UI artifacts, or generate a new review round.
+After a successful write, tell the reviewer the exact target and to return to
+Codex and rerun the owning `/sp.prd`, `/sp.flow`, or `/sp.ui` command. Keep the
+fixed renderer's JSON package with `format:
+"speccompass-confirmation-package"` as the payload contract and download
+fallback. Outline package parts repeat `outline_digest` and
+`source_authority_ids`. 复制摘要 / copy summary is a final fallback after both
+local writeback and download handoff are unavailable. Ordinary commands must
+still only fill their structured review data; do not add custom package scripts
+or page export logic to generated review data.
 
 If one confirmation package would exceed `100000` UTF-8 bytes, the fixed
 renderer automatically splits it into self-contained parts. The split must keep
@@ -206,7 +239,8 @@ Records marked `DRAFT`,
 `draft_excluded_items`, `EXCLUDED_DRAFT`, or `is_authorized_decision: false` are
 not authorized decisions; keep them as follow-up context only.
 
-For Outline, neither browser state nor a downloaded package is authorization.
+For Outline, neither browser state, local writeback by itself, nor a downloaded
+package is authorization.
 Only a complete Markdown confirmation with matching Outline digest, source
 authority IDs, and review-data identity may allow `/sp.prd` to promote
 `AWAITING_OUTLINE_CONFIRMATION` to `READY_FOR_SPECIFY`. `/sp.specify` must reject
@@ -217,13 +251,18 @@ recursively sorts object keys, preserves array order, and covers every review
 field. The downstream gate recomputes it from the current JSON and fails closed
 when the helper, JSON, or declared IDs are missing or disagree.
 
-When a reviewer chooses a non-recommended option, the confirmation package must
-export `revision_requests` (the copied summary does this only as a fallback).
-The next `/sp.flow` or `/sp.ui` run reads those requests, applies them to
-`flow-review-data.json` or `ui-review-data.json`, and regenerates the
-confirmation page. Do not ask reviewers to directly add/delete flow nodes or UI
-elements inside the page; they provide structured change type plus
-plain-language instructions for the model to execute next.
+When a reviewer chooses a non-recommended option, local writeback and every
+fallback confirmation package must preserve `revision_requests`. The next
+owning `/sp.prd`, `/sp.flow`, or `/sp.ui` run verifies feature, review type,
+batch, review-data identity, and source identity before using them. Treat each
+`revision_requests.target_ref` as the repair boundary: regenerate only the named
+item and any direct neighbor that is actually invalidated by a shared contract.
+List every invalidated neighbor explicitly, preserve unaffected accepted
+decisions, and include only changed or explicitly invalidated items in the next
+review round. A revision request is an instruction to revise, not authorization
+for the resulting artifact. Do not ask reviewers to directly add/delete flow
+nodes or UI elements inside the page; they provide a structured change type and
+plain-language instructions for the model to execute on the next command run.
 
 Flow `change_type` values: `ADD_NODE`, `DELETE_NODE`, `MODIFY_NODE`,
 `MODIFY_BRANCH`, `ADD_EXCEPTION_PATH`, `SPLIT_SUBFLOW`, `MERGE_SIMPLIFY`,

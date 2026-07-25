@@ -19,10 +19,59 @@ let pendingFocusNodeId = null;
 let copyDraftWarningArmed = false;
 let downloadDraftWarningArmed = false;
 let packageDownloadUrls = [];
+let writebackFallback = null;
+let writebackInProgress = false;
+let writebackDisabledControls = [];
 let runtimeWarnings = [];
 let runtimeErrors = [];
 
 const $ = (id) => document.getElementById(id);
+
+function defaultWritebackButtonLabel() {
+  return reviewData?.review_type === "outline_discovery" ? "写入项目并继续" : "写入项目";
+}
+
+function beginWriteback() {
+  if (writebackInProgress) {
+    setStatus("项目写入正在进行，请等待当前请求完成。", true);
+    return false;
+  }
+  writebackInProgress = true;
+  writebackDisabledControls = Array.from(document.querySelectorAll("input, textarea, select, button"), (element) => ({
+    element,
+    wasDisabled: element.disabled
+  }));
+  for (const { element } of writebackDisabledControls) element.disabled = true;
+  const button = $("download-package");
+  if (button) {
+    button.disabled = true;
+    button.setAttribute("aria-busy", "true");
+    button.textContent = "正在写入...";
+  }
+  setStatus("正在将审核结果写入项目...");
+  return true;
+}
+
+function finishWriteback() {
+  writebackInProgress = false;
+  for (const { element, wasDisabled } of writebackDisabledControls) {
+    if (element.isConnected) element.disabled = wasDisabled;
+  }
+  writebackDisabledControls = [];
+  const button = $("download-package");
+  if (!button) return;
+  button.disabled = false;
+  button.removeAttribute("aria-busy");
+  button.textContent = writebackFallback ? "重试写入" : defaultWritebackButtonLabel();
+}
+
+function writebackRecoveryGuidance(error) {
+  if (error?.recoveryAction === "reload_review") return "请刷新页面后重新审核并写入。";
+  if (error?.recoveryAction === "free_space_or_download") return "请释放磁盘空间或检查目录权限后重试。";
+  if (error?.recoveryAction === "download_fallback") return "请求内容过大，无法直接写入。";
+  if (error?.recoveryAction === "fix_and_retry") return "请检查审核数据后重试。";
+  return "请检查本地审核服务后重试。";
+}
 
 function create(tag, className, text) {
   const element = document.createElement(tag);

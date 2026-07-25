@@ -34,29 +34,32 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Semantic review status system" in release_workflow
-    assert "Shared semantic tokens distinguish open, resolved, draft, focus, blocked, and passive states" in release_workflow
-    assert "Review modules, diagram tabs, and node cards use consistent state indicators" in release_workflow
-    assert "Outline discovery nodes receive hierarchical numbering" in release_workflow
-    assert "Source labels clearly distinguish unresolved, model-proposed" in release_workflow
-    assert "derived from existing review data without expanding the Review schema" in release_workflow
-    assert "semantic state rendering, hierarchy numbering, and Outline readability" in release_workflow
+    assert "## Direct browser review write-back" in release_workflow
+    assert "Flow, UI, PRD Outline, and Outline Discovery reviews can write" in release_workflow
+    assert "Write-back is mechanical persistence only" in release_workflow
+    assert "stable request IDs, idempotent replay, cross-process locking" in release_workflow
+    assert "across macOS, Linux, and Windows" in release_workflow
+    assert "fail closed instead of offering an unsafe fallback package" in release_workflow
+    assert "Fallback downloads appear only for explicitly recoverable" in release_workflow
+    assert "revision_requests.target_ref" in release_workflow
+    assert "all four write-back routes, conflicts, retries" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- Shared semantic tokens distinguish" in release_workflow
+    assert r"- Flow, UI, PRD Outline, and Outline Discovery reviews" in release_workflow
 
 
-def test_release_changelog_summary_matches_semantic_style_focus():
-    """The generated changelog should lead with the semantic review style system."""
+def test_release_changelog_summary_matches_direct_writeback_focus():
+    """The generated changelog should lead with direct browser write-back."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Added a semantic review style system" in trigger_workflow
-    assert "hierarchical Outline numbering" in trigger_workflow
-    assert "modules, tabs, and nodes" in trigger_workflow
+    assert "Added direct browser write-back" in trigger_workflow
+    assert "Flow, UI, PRD Outline, and Outline Discovery" in trigger_workflow
+    assert "conflict-safe persistence" in trigger_workflow
+    assert "targeted follow-up regeneration" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

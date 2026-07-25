@@ -87,8 +87,8 @@
       const isDiscovery = mode === "outline-discovery";
       const confirmed = window.confirm(
         isDiscovery
-          ? "当前页面有尚未下载的 Outline 探索响应。离开前请先保存并下载；仍要切换到其他需求吗？"
-          : "当前页面有本地选择或尚未导出的确认结果。离开前请先下载确认包；仍要切换到其他需求吗？"
+          ? "当前页面有尚未写入项目的 Outline 探索响应。离开前请先写入项目；仍要切换到其他需求吗？"
+          : "当前页面有本地选择或尚未写回的确认结果。离开前请先写入项目；仍要切换到其他需求吗？"
       );
       if (!confirmed) return;
     }

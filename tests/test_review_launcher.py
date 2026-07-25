@@ -18,6 +18,7 @@ from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 
 import pytest
+import yaml
 from typer.testing import CliRunner
 
 from specify_cli import app
@@ -52,6 +53,16 @@ DISCOVERY_RESPONSE_PACKAGE = (
     / "renderer"
     / "scripts"
     / "discovery-response-package.js"
+)
+WRITEBACK_CLIENT = (
+    PROJECT_ROOT
+    / "templates"
+    / "project"
+    / ".specify"
+    / "review"
+    / "renderer"
+    / "scripts"
+    / "writeback-client.js"
 )
 
 DISCOVERY_DISTRIBUTION_ASSETS = (
@@ -112,15 +123,112 @@ def review_project(tmp_path: Path) -> ReviewProject:
     (renderer.parent / "font.woff2").write_bytes(b"wOF2")
     (renderer.parent / "notes.txt").write_text("review notes", encoding="utf-8")
 
-    payload = {"schema_version": 1, "review_type": "flow", "modules": []}
     project = ReviewProject(tmp_path, launcher, feature)
-    for review_type in ("flow", "ui", "outline", "outline-discovery"):
+    common = {
+        "confirm_strategy": "batch",
+        "batch_id": "REVIEW-BATCH-001",
+        "project": {
+            "name": "Review fixture",
+            "feature": feature,
+            "business_overview": "A realistic business overview for local review writer tests.",
+            "review_goal": "Verify one source-backed decision and preserve its reviewer feedback.",
+        },
+        "source_snapshot": [{"path": f"specs/{feature}/spec.md", "anchors": ["FR-001"]}],
+    }
+    for review_type in ("flow", "ui", "outline"):
         data_path = project.data_path(review_type)
         data_path.parent.mkdir(parents=True, exist_ok=True)
+        item_key = {"flow": "diagrams", "ui": "screens", "outline": "views"}[review_type]
+        item = {
+            "id": f"{review_type}-item-1",
+            "title": f"{review_type.title()} item",
+            "summary": "One review item with a stable decision target.",
+            "nodes": [
+                {
+                    "id": "node-1",
+                    "label": "Choose the supported route",
+                    "options": [
+                        {"id": "OPTION_A", "label": "Use the supported route", "next_exit": "continue"},
+                        {"id": "OPTION_B", "label": "Request a revision", "next_exit": "needs-decision:owner"},
+                    ],
+                }
+            ],
+        }
+        if review_type == "outline":
+            item.update({"source_path": f"specs/{feature}/spec-outline.md", "view_type": "intent_map"})
+        payload = {
+            **common,
+            "schema_version": 2,
+            "review_type": review_type,
+            "artifact_path": f"specs/{feature}/{REVIEW_DATA_PATHS[review_type]}",
+            "modules": [
+                {
+                    "id": "module-1",
+                    "title": "Primary module",
+                    "summary": "The primary module used by the local writer test fixture.",
+                    item_key: [item],
+                }
+            ],
+        }
+        if review_type == "outline":
+            payload.update(
+                {
+                    "outline_source_path": f"specs/{feature}/spec-outline.md",
+                    "outline_digest": "a" * 64,
+                    "source_authority_ids": ["prd-v3"],
+                }
+            )
         data_path.write_text(
-            json.dumps({**payload, "review_type": review_type}),
+            json.dumps(payload),
             encoding="utf-8",
         )
+
+    discovery_path = project.data_path("outline-discovery")
+    discovery_path.parent.mkdir(parents=True, exist_ok=True)
+    discovery_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 3,
+                "review_type": "outline_discovery",
+                "interaction_mode": "discovery",
+                "artifact_path": f"specs/{feature}/{REVIEW_DATA_PATHS['outline-discovery']}",
+                "outline_maturity": "explore",
+                "batch_id": "DISCOVERY-BATCH-001",
+                "authorization_effect": "none",
+                "next_route": "/sp.prd",
+                "project": common["project"],
+                "source_snapshot": common["source_snapshot"],
+                "question_groups": [
+                    {
+                        "id": "group-1",
+                        "questions": [
+                            {
+                                "id": "question-1",
+                                "outline_node_id": "outline-node-1",
+                                "target_kind": "goal",
+                                "allow_none_of_the_above": True,
+                                "free_input": {
+                                    "enabled": True,
+                                    "allowed_operations": [
+                                        "confirm_candidate",
+                                        "add",
+                                        "replace",
+                                        "exclude",
+                                        "context_note",
+                                    ],
+                                },
+                                "candidates": [
+                                    {"id": "candidate-1", "value": "Keep the source-backed goal"},
+                                    {"id": "candidate-2", "value": "Use a narrower goal"},
+                                ],
+                            }
+                        ],
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
     return project
 
 
@@ -196,6 +304,168 @@ def _connection_for(url: str) -> tuple[http.client.HTTPConnection, str]:
     connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=3)
     path = parsed.path + (f"?{parsed.query}" if parsed.query else "")
     return connection, path
+
+
+def _review_data_id(value: object) -> str:
+    def canonicalize(item: object) -> object:
+        if isinstance(item, list):
+            return [canonicalize(entry) for entry in item]
+        if isinstance(item, dict):
+            return {key: canonicalize(item[key]) for key in sorted(item)}
+        return item
+
+    text = json.dumps(canonicalize(value), ensure_ascii=False, separators=(",", ":"))
+    hash_value = 2166136261
+    for character in text:
+        code_point = ord(character)
+        if code_point <= 0xFFFF:
+            units = (code_point,)
+        else:
+            adjusted = code_point - 0x10000
+            units = (0xD800 + (adjusted >> 10), 0xDC00 + (adjusted & 0x3FF))
+        for unit in units:
+            hash_value ^= unit
+            hash_value = (hash_value * 16777619) & 0xFFFFFFFF
+    alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+    if hash_value == 0:
+        return "0"
+    encoded = ""
+    while hash_value:
+        hash_value, remainder = divmod(hash_value, 36)
+        encoded = alphabet[remainder] + encoded
+    return encoded
+
+
+def _browser_normalized_review_data(value: dict[str, object]) -> dict[str, object]:
+    normalized = json.loads(json.dumps(value))
+    if normalized.get("schema_version") != 1 or normalized.get("review_type") not in {"flow", "ui"}:
+        return normalized
+    item_key = "screens" if normalized["review_type"] == "ui" else "diagrams"
+    for module in normalized.get("modules", []):
+        for item in module.get(item_key, []):
+            for node in item.get("nodes", []):
+                if node.get("recommended_option") or node.get("options") or node.get("review_level") == "must_confirm":
+                    node["confirmation_priority"] = "normal"
+    return normalized
+
+
+def _writer_config(ready_url: str) -> tuple[str, dict[str, object]]:
+    parsed = urlsplit(ready_url)
+    origin = f"http://{parsed.hostname}:{parsed.port}"
+    with _http_request(f"{origin}/__speccompass/writeback-config") as response:
+        return origin, json.loads(response.read())
+
+
+def _post_writeback(
+    origin: str,
+    config: dict[str, object],
+    payload: object,
+    *,
+    token: str | None = None,
+    request_origin: str | None = None,
+    content_type: str = "application/json",
+) -> tuple[int, bytes]:
+    parsed = urlsplit(origin)
+    if isinstance(payload, dict):
+        payload.setdefault("expected_target_version", config["target_version"])
+    body = json.dumps(payload).encode("utf-8")
+    connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=5)
+    headers = {
+        "Content-Type": content_type,
+        "Origin": request_origin if request_origin is not None else origin,
+        "X-SpecCompass-Writeback-Token": token if token is not None else str(config["token"]),
+    }
+    connection.request("POST", str(config["endpoint"]), body=body, headers=headers)
+    response = connection.getresponse()
+    response_body = response.read()
+    status = response.status
+    connection.close()
+    return status, response_body
+
+
+def _confirmation_payload(project: ReviewProject, review_type: str = "flow") -> dict[str, object]:
+    review_data = _browser_normalized_review_data(
+        json.loads(project.data_path(review_type).read_text(encoding="utf-8"))
+    )
+    source_path = f"specs/{project.feature}/{REVIEW_DATA_PATHS[review_type]}"
+    target_path = {
+        "flow": f"specs/{project.feature}/flows/review/flow-confirmation.md",
+        "ui": f"specs/{project.feature}/ui/review/ui-confirmation.md",
+        "outline": f"specs/{project.feature}/prd/review/outline-confirmation.md",
+    }[review_type]
+    item_id = f"{review_type}-item-1"
+    record = {
+        "target_ref": f"module-1:{item_id}:node-1",
+        "target_label": "Primary module / item / node",
+        "module_id": "module-1",
+        "module_title": "Primary module",
+        "item_id": item_id,
+        "node_id": "node-1",
+        "bucket": "decision_recorded_items",
+        "status": "SAVED_RECOMMENDED",
+        "authorization_state": "AUTHORIZED",
+        "is_authorized_decision": True,
+        "selected_option": "OPTION_A",
+        "next_exit": "continue",
+        "revision_request": None,
+    }
+    part = {
+        "format": "speccompass-confirmation-package",
+        "version": 1,
+        "schema_version": review_data["schema_version"],
+        "review_type": review_type,
+        "package_session_id": "session-001",
+        "batch_id": review_data["batch_id"],
+        "review_data_id": _review_data_id(review_data),
+        "source_review_data": source_path,
+        "target_path": target_path,
+        "total_record_count": 1,
+        "part_count": 1,
+        "part_index": 1,
+        "part_record_count": 1,
+        "modules": [{"module_id": "module-1", "module_title": "Primary module", "records": [record]}],
+    }
+    if review_type == "outline":
+        part.update(
+            {
+                "outline_digest": review_data["outline_digest"],
+                "source_authority_ids": review_data["source_authority_ids"],
+            }
+        )
+    return {"kind": "confirmation", "review_data_id": _review_data_id(review_data), "parts": [part]}
+
+
+def _discovery_payload(project: ReviewProject) -> dict[str, object]:
+    review_data = json.loads(project.data_path("outline-discovery").read_text(encoding="utf-8"))
+    response = {
+        "schema_version": 3,
+        "format": "speccompass-outline-discovery-response",
+        "response_id": "discovery-response-001",
+        "review_type": "outline_discovery",
+        "batch_id": review_data["batch_id"],
+        "feature": project.feature,
+        "outline_maturity": review_data["outline_maturity"],
+        "source_review_data": f"specs/{project.feature}/{REVIEW_DATA_PATHS['outline-discovery']}",
+        "authorization_effect": "none",
+        "next_route": "/sp.prd",
+        "generated_at": "2026-07-25T00:00:00Z",
+        "deltas": [
+            {
+                "delta_id": "discovery-response-001-delta-001",
+                "question_id": "question-1",
+                "outline_node_id": "outline-node-1",
+                "target_kind": "goal",
+                "operation": "confirm_candidate",
+                "candidate_id": "candidate-1",
+                "target_id": None,
+                "value": "Keep the source-backed goal",
+                "source_tag": "user-confirmed",
+                "none_of_the_above": False,
+                "supersedes_delta_id": None,
+            }
+        ],
+    }
+    return {"kind": "outline_discovery", "review_data_id": _review_data_id(review_data), "response": response}
 
 
 def test_launcher_template_exists():
@@ -556,6 +826,392 @@ try {{
         check=False,
     )
     assert result.returncode == 0, result.stderr or result.stdout
+
+
+@pytest.mark.parametrize("review_type", ("flow", "ui", "outline"))
+def test_local_writer_records_confirmation_at_fixed_target(
+    review_project: ReviewProject, review_type: str
+):
+    target = review_project.root / {
+        "flow": f"specs/{review_project.feature}/flows/review/flow-confirmation.md",
+        "ui": f"specs/{review_project.feature}/ui/review/ui-confirmation.md",
+        "outline": f"specs/{review_project.feature}/prd/review/outline-confirmation.md",
+    }[review_type]
+    target.write_text("old confirmation\n", encoding="utf-8")
+    with _running_launcher(review_project, review_type) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        assert config["review_type"] == review_type
+        assert str(config["target_path"]).startswith(f"specs/{review_project.feature}/")
+
+        assert target == review_project.root / str(config["target_path"])
+        status, body = _post_writeback(origin, config, _confirmation_payload(review_project, review_type))
+
+        assert status == 200, body.decode("utf-8")
+        result = json.loads(body)
+        assert result["target_path"] == config["target_path"]
+        assert result["next_command"].startswith({"flow": "/sp.flow", "ui": "/sp.ui", "outline": "/sp.prd"}[review_type])
+        confirmation = target.read_text(encoding="utf-8")
+        assert "No model interpretation was performed during writeback." in confirmation
+        frontmatter = yaml.safe_load(confirmation.split("---", 2)[1])
+        assert frontmatter["human_confirmation"] == "CONFIRMED"
+        assert frontmatter["review_data_identity_verified"] == "MATCH"
+        assert frontmatter["source_hash_verified"] == "NOT_CHECKED"
+        assert frontmatter["authorization_scope"] == {
+            "flow": "READY_FOR_UI",
+            "ui": "READY_FOR_PLAN",
+            "outline": "READY_FOR_SPECIFY",
+        }[review_type]
+        assert frontmatter["decision_records"][0]["selected_option"] == "OPTION_A"
+        assert not list(target.parent.glob(f"{target.name}.tmp-*"))
+        assert not target.with_name(f"{target.name}.speccompass-writeback.lock").exists()
+
+
+def test_local_writer_config_exposes_version_and_runtime_limits(review_project: ReviewProject):
+    with _running_launcher(review_project) as (_, ready_url):
+        _, config = _writer_config(ready_url)
+
+    assert config["target_version"] == "missing"
+    assert config["request_timeout_ms"] == 30_000
+    assert config["minimum_node_major"] == 18
+
+
+def test_writeback_client_recovers_config_and_bounds_retries():
+    node_program = f"""
+const fs = require("node:fs");
+const vm = require("node:vm");
+const source = fs.readFileSync({json.dumps(str(WRITEBACK_CLIENT))}, "utf8");
+
+function response(status, body) {{
+  const text = JSON.stringify(body);
+  return {{ ok: status >= 200 && status < 300, status, text: async () => text, json: async () => body }};
+}}
+
+function client(fetchImpl) {{
+  const context = {{
+    AbortController,
+    Date,
+    Error,
+    JSON,
+    Math,
+    Promise,
+    Uint8Array,
+    console,
+    fetch: fetchImpl,
+    window: {{
+      clearTimeout,
+      crypto: {{ randomUUID: () => "stable-request-id" }},
+      setTimeout: (callback) => setTimeout(callback, 0)
+    }}
+  }};
+  vm.createContext(context);
+  vm.runInContext(source, context);
+  return context.window.SpecCompassWriteback;
+}}
+
+(async () => {{
+  let configCalls = 0;
+  const recovering = client(async () => {{
+    configCalls += 1;
+    if (configCalls === 1) return response(503, {{ error: {{ code: "CONFIG_BUSY", message: "busy", retryable: true }} }});
+    return response(200, {{ endpoint: "/write", token: "token", target_version: "missing" }});
+  }});
+  try {{ await recovering.loadConfig(); throw new Error("first config load unexpectedly succeeded"); }} catch (error) {{
+    if (error.code !== "CONFIG_BUSY") throw error;
+  }}
+  await recovering.loadConfig();
+  if (configCalls !== 2) throw new Error(`config promise was not reset: ${{configCalls}}`);
+
+  let postCalls = 0;
+  const requestIds = [];
+  const retrying = client(async (url, options = {{}}) => {{
+    if (!options.method || options.method === "GET") return response(200, {{ endpoint: "/write", token: "token", target_version: "missing" }});
+    postCalls += 1;
+    requestIds.push(JSON.parse(options.body).request_id);
+    if (postCalls < 3) return response(503, {{ error: {{ code: "WRITE_BUSY", message: "busy", retryable: true, allow_fallback: true }} }});
+    return response(200, {{ ok: true, target_version: "sha256:new", target_path: "confirmation.md" }});
+  }});
+  const payload = {{ kind: "confirmation" }};
+  await retrying.submit(payload);
+  if (postCalls !== 3 || new Set(requestIds).size !== 1 || requestIds[0] !== "stable-request-id") {{
+    throw new Error("retry count or request identity is unstable");
+  }}
+  const followup = {{ kind: "confirmation" }};
+  await retrying.submit(followup);
+  if (followup.expected_target_version !== "sha256:new") throw new Error("target version was not advanced after success");
+
+  let conflictPosts = 0;
+  const conflicting = client(async (url, options = {{}}) => {{
+    if (!options.method || options.method === "GET") return response(200, {{ endpoint: "/write", token: "token", target_version: "missing" }});
+    conflictPosts += 1;
+    return response(409, {{ error: {{ code: "WRITEBACK_TARGET_CHANGED", message: "changed", retryable: false, allow_fallback: false, recovery_action: "reload_review" }} }});
+  }});
+  try {{ await conflicting.submit({{ kind: "confirmation" }}); throw new Error("conflict unexpectedly succeeded"); }} catch (error) {{
+    if (error.code !== "WRITEBACK_TARGET_CHANGED" || error.allowFallback || error.recoveryAction !== "reload_review") throw error;
+  }}
+  if (conflictPosts !== 1) throw new Error(`conflict was retried ${{conflictPosts}} times`);
+
+  let networkPosts = 0;
+  const offline = client(async (url, options = {{}}) => {{
+    if (!options.method || options.method === "GET") return response(200, {{ endpoint: "/write", token: "token", target_version: "missing" }});
+    networkPosts += 1;
+    throw new Error("offline");
+  }});
+  try {{ await offline.submit({{ kind: "confirmation" }}); throw new Error("network failure unexpectedly succeeded"); }} catch (error) {{
+    if (error.code !== "WRITEBACK_NETWORK_ERROR" || !error.allowFallback || error.attempts !== 3) throw error;
+  }}
+  if (networkPosts !== 3) throw new Error(`network failure used ${{networkPosts}} attempts`);
+}})().catch((error) => {{ console.error(error); process.exitCode = 1; }});
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        cwd=PROJECT_ROOT,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+
+
+def test_local_writer_replays_identical_request_idempotently(review_project: ReviewProject):
+    payload = _confirmation_payload(review_project)
+    payload["request_id"] = "confirmation-idempotency-001"
+    with _running_launcher(review_project) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        first_status, first_body = _post_writeback(origin, config, payload)
+        second_status, second_body = _post_writeback(origin, config, payload)
+
+    assert first_status == second_status == 200
+    assert json.loads(second_body)["idempotent_replay"] is True
+    assert json.loads(first_body)["target_version"] == json.loads(second_body)["target_version"]
+
+
+def test_local_writer_rejects_request_id_reuse_with_different_content(review_project: ReviewProject):
+    first_payload = _confirmation_payload(review_project)
+    first_payload["request_id"] = "confirmation-id-reuse-001"
+    second_payload = json.loads(json.dumps(first_payload))
+    second_payload["unused_difference"] = "different"
+    with _running_launcher(review_project) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        first_status, _ = _post_writeback(origin, config, first_payload)
+        second_status, second_body = _post_writeback(origin, config, second_payload)
+
+    error = json.loads(second_body)["error"]
+    assert first_status == 200
+    assert second_status == 409
+    assert error == {
+        "code": "REQUEST_ID_REUSED",
+        "message": "The writeback request ID was reused with different content.",
+        "retryable": False,
+        "allow_fallback": False,
+        "recovery_action": "reload_review",
+    }
+
+
+def test_local_writer_preserves_target_changed_after_page_load(review_project: ReviewProject):
+    payload = _confirmation_payload(review_project)
+    with _running_launcher(review_project) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        target = review_project.root / str(config["target_path"])
+        target.write_text("external edit must survive\n", encoding="utf-8")
+        status, body = _post_writeback(origin, config, payload)
+
+    error = json.loads(body)["error"]
+    assert status == 409
+    assert error["code"] == "WRITEBACK_TARGET_CHANGED"
+    assert error["retryable"] is False
+    assert error["allow_fallback"] is False
+    assert target.read_text(encoding="utf-8") == "external edit must survive\n"
+
+
+def test_local_writer_deduplicates_concurrent_identical_posts(review_project: ReviewProject):
+    base_payload = _confirmation_payload(review_project)
+    base_payload["request_id"] = "confirmation-concurrent-001"
+    with _running_launcher(review_project) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        barrier = threading.Barrier(3)
+        results: list[tuple[int, bytes]] = []
+
+        def post() -> None:
+            payload = json.loads(json.dumps(base_payload))
+            barrier.wait()
+            results.append(_post_writeback(origin, config, payload))
+
+        threads = [threading.Thread(target=post) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        barrier.wait()
+        for thread in threads:
+            thread.join(timeout=5)
+
+    assert len(results) == 2
+    assert [status for status, _ in results] == [200, 200]
+    bodies = [json.loads(body) for _, body in results]
+    assert any(body.get("idempotent_replay") is True for body in bodies)
+
+
+def test_cross_process_writers_serialize_and_reject_stale_target(review_project: ReviewProject):
+    with _running_launcher(review_project) as (_, first_url), _running_launcher(review_project) as (_, second_url):
+        first_origin, first_config = _writer_config(first_url)
+        second_origin, second_config = _writer_config(second_url)
+        first_payload = _confirmation_payload(review_project)
+        first_payload["request_id"] = "cross-process-001"
+        second_payload = _confirmation_payload(review_project)
+        second_payload["request_id"] = "cross-process-002"
+        barrier = threading.Barrier(3)
+        results: list[tuple[int, bytes]] = []
+
+        def post(origin: str, config: dict[str, object], payload: dict[str, object]) -> None:
+            barrier.wait()
+            results.append(_post_writeback(origin, config, payload))
+
+        threads = [
+            threading.Thread(target=post, args=(first_origin, first_config, first_payload)),
+            threading.Thread(target=post, args=(second_origin, second_config, second_payload)),
+        ]
+        for thread in threads:
+            thread.start()
+        barrier.wait()
+        for thread in threads:
+            thread.join(timeout=5)
+
+    assert len(results) == 2
+    assert sorted(status for status, _ in results) == [200, 409]
+    rejected = json.loads(next(body for status, body in results if status == 409))["error"]
+    assert rejected["code"] == "WRITEBACK_TARGET_CHANGED"
+    assert rejected["allow_fallback"] is False
+
+
+def test_local_writer_accepts_browser_normalized_schema_v1_identity(review_project: ReviewProject):
+    data_path = review_project.data_path("flow")
+    review_data = json.loads(data_path.read_text(encoding="utf-8"))
+    review_data["schema_version"] = 1
+    data_path.write_text(json.dumps(review_data), encoding="utf-8")
+
+    with _running_launcher(review_project, "flow") as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        status, body = _post_writeback(origin, config, _confirmation_payload(review_project))
+
+    assert status == 200, body.decode("utf-8")
+
+
+def test_local_writer_records_revision_request_without_authorizing(review_project: ReviewProject):
+    payload = _confirmation_payload(review_project)
+    record = payload["parts"][0]["modules"][0]["records"][0]
+    record.update(
+        {
+            "bucket": "needs_decision_items",
+            "status": "SAVED_SUBMITTED",
+            "authorization_state": "NOT_AUTHORIZED",
+            "is_authorized_decision": False,
+            "selected_option": "OPTION_B",
+            "next_exit": "needs-decision:owner",
+            "revision_request": {
+                "target_ref": "module-1:flow-item-1:node-1",
+                "target_label": "Primary module / Flow item / Choose the supported route",
+                "review_type": "flow",
+                "change_type": "MODIFY_BRANCH",
+                "selected_option": "OPTION_B",
+                "reviewer_note": "Route this case through a manual approval step.",
+                "expected_model_action": "Revise only this branch and its direct neighbors.",
+                "next_exit": "needs-decision:owner",
+            },
+        }
+    )
+
+    with _running_launcher(review_project) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        status, body = _post_writeback(origin, config, payload)
+        assert status == 200, body.decode("utf-8")
+        confirmation = review_project.root / str(config["target_path"])
+        frontmatter = yaml.safe_load(confirmation.read_text(encoding="utf-8").split("---", 2)[1])
+        assert frontmatter["human_confirmation"] == "NEEDS_REVISION"
+        assert frontmatter["authorization_scope"] == "BLOCKED"
+        assert frontmatter["owner_approval"]["status"] == "PENDING"
+        assert frontmatter["revision_requests"][0]["target_ref"] == "module-1:flow-item-1:node-1"
+
+
+def test_local_writer_records_discovery_response_at_pending_path(review_project: ReviewProject):
+    with _running_launcher(review_project, "outline-discovery") as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        status, body = _post_writeback(origin, config, _discovery_payload(review_project))
+
+        assert status == 200, body.decode("utf-8")
+        result = json.loads(body)
+        assert result["authorization_effect"] == "none"
+        assert result["next_command"] == f"/sp.prd {review_project.feature}"
+        assert result["target_path"].endswith("outline-discovery-response-pending.json")
+        saved = json.loads((review_project.root / result["target_path"]).read_text(encoding="utf-8"))
+        assert saved == _discovery_payload(review_project)["response"]
+
+
+@pytest.mark.parametrize(
+    ("override", "expected_status"),
+    (
+        ({"token": "wrong-token"}, 403),
+        ({"request_origin": "http://127.0.0.1:1"}, 403),
+        ({"content_type": "text/plain"}, 415),
+    ),
+)
+def test_local_writer_rejects_missing_capability_or_wrong_origin_and_type(
+    review_project: ReviewProject, override: dict[str, str], expected_status: int
+):
+    with _running_launcher(review_project) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        status, _ = _post_writeback(origin, config, _confirmation_payload(review_project), **override)
+        assert status == expected_status
+        assert not (review_project.root / str(config["target_path"])).exists()
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    (
+        lambda payload: payload.update(review_data_id="stale"),
+        lambda payload: payload["parts"][0].update(target_path="specs/other/unsafe.md"),
+        lambda payload: payload["parts"][0].update(batch_id="OTHER-BATCH"),
+        lambda payload: payload["parts"][0]["modules"][0]["records"][0].update(selected_option="UNKNOWN"),
+        lambda payload: payload["parts"][0]["modules"][0]["records"][0].update(target_ref="module-1:flow-item-1:unknown"),
+        lambda payload: payload["parts"][0].update(part_count=2),
+    ),
+)
+def test_local_writer_rejects_stale_misdirected_or_incomplete_confirmation(
+    review_project: ReviewProject, mutate
+):
+    payload = _confirmation_payload(review_project)
+    mutate(payload)
+    with _running_launcher(review_project) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        status, _ = _post_writeback(origin, config, payload)
+        assert status in {400, 409}
+        assert not (review_project.root / str(config["target_path"])).exists()
+
+
+def test_local_writer_rejects_invalid_discovery_delta(review_project: ReviewProject):
+    payload = _discovery_payload(review_project)
+    payload["response"]["deltas"][0]["candidate_id"] = "unknown-candidate"
+    with _running_launcher(review_project, "outline-discovery") as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        status, body = _post_writeback(origin, config, payload)
+        assert status == 400
+        error = json.loads(body)["error"]
+        assert error["code"] == "INVALID_DISCOVERY_DELTA"
+        assert error["retryable"] is False
+        assert error["allow_fallback"] is False
+        assert not (review_project.root / str(config["target_path"])).exists()
+
+
+def test_local_writer_enforces_request_size_limit(review_project: ReviewProject):
+    payload = _confirmation_payload(review_project)
+    payload["unused_padding"] = "x" * 2_000_000
+    with _running_launcher(review_project) as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        status, body = _post_writeback(origin, config, payload)
+        assert status == 413
+        error = json.loads(body)["error"]
+        assert error["code"] == "WRITEBACK_PAYLOAD_TOO_LARGE"
+        assert error["retryable"] is False
+        assert error["allow_fallback"] is True
+        assert not (review_project.root / str(config["target_path"])).exists()
 
 
 @pytest.mark.parametrize(

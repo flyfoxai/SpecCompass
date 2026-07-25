@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added a semantic review style system with shared status tokens, hierarchical Outline numbering, and consistent state indicators across modules, tabs, and nodes." \
+              "- Added direct browser write-back for Flow, UI, PRD Outline, and Outline Discovery with conflict-safe persistence and targeted follow-up regeneration." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

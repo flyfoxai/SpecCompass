@@ -74,9 +74,10 @@ ID (computed from the complete JSON by
 `Source Authority IDs` in an `Outline Confirmation`
 block, and launch the fixed renderer with
 `node .specify/review/scripts/serve-review.mjs --outline <feature>`. Browser
-state, localStorage, preview completion, and download alone never authorize
-`sp.specify`. The downloaded package must be validated and written back as
-`specs/<feature>/prd/review/outline-confirmation.md`; only a package bound to
+state, localStorage, preview completion, mechanical local writeback, and download
+alone never authorize `sp.specify`. The page writes the confirmation mechanically
+to `specs/<feature>/prd/review/outline-confirmation.md`; `/sp.prd` must validate
+it on the next run. Only a confirmation bound to
 the current review-data identity, canonical digest, and source authority, with
 no needs-decision, unresolved, draft-excluded, or revision-request records, may
 promote the outline to `READY_FOR_SPECIFY`. If the PRD
@@ -90,6 +91,19 @@ predictable blocker entry point. If information is insufficient but the feature
 directory is clear, a blocking `spec-outline.md` is allowed, but its status must
 be only `NEEDS_PRD`, `NEEDS_CLARIFY`, `NEEDS_SOURCE`, `SPLIT_REQUIRED`,
 `NEEDS_DECISION`, or `BLOCKED`, never `READY_FOR_SPECIFY`.
+
+The shared Flow/UI/Outline/Discovery launcher requires Node.js 18 or newer and
+uses stable request IDs, bounded client retries, per-target cross-process
+serialization, expected target SHA-256 versions, fsynced temporary files, and
+atomic replacement. Commands must distinguish delivery failures from rejected
+data. Only an error explicitly marked `allow_fallback: true` may expose or later
+consume a downloaded package; network/timeouts and temporary filesystem or
+storage failures are eligible. Stale review identity, changed targets, invalid
+packages, forbidden requests, and request-ID conflicts are not delivery
+fallbacks: refresh or regenerate the review, keep the current target untouched,
+and do not treat a downloaded/copy payload as a substitute. The primary page
+action remains retry-write; fallback download is a separate link and becomes
+invalid when any review choice changes.
 `spec-outline.md` is a lightweight bridge into `sp.specify`; it must not become
 flow, UI, API, database, plan, tasks, or implementation design. `sp.outline` or
 PRD-embedded outline logic must not replace `sp.specify`; it only decides
@@ -253,19 +267,45 @@ independence rationale instead of fabricating child handoffs.
 
 Level 1 and Level 2 use `interaction_mode: discovery`; Level 3 uses
 `interaction_mode: confirmation`. Discovery writes
-`specs/<feature>/prd/review/outline-discovery-data.json`, offers 2-4 candidates
-with a recommendation, none of the above, and free-form input, and downloads an
-`outline-discovery-response-*.json` package. The five explicit operations are
+`specs/<feature>/prd/review/outline-discovery-data.json` and offers 2-4 candidates
+with a recommendation, none of the above, and free-form input. Its primary page
+action mechanically writes
+`specs/<feature>/prd/review/outline-discovery-response-pending.json`; downloading
+an `outline-discovery-response-*.json` package is only a local-writeback fallback.
+The five explicit operations are
 `confirm_candidate`, `add`, `replace`, `exclude`, and `context_note`.
-Discovery must never advance the Outline to `AWAITING_OUTLINE_CONFIRMATION` or
-`READY_FOR_SPECIFY` and never authorizes `sp.specify`.
+Discovery writeback does not call a model, interpret notes, or regenerate PRD
+artifacts. The reviewer returns to Codex and reruns `/sp.prd`, which validates
+and consumes the pending response. Discovery must never advance the Outline to
+`AWAITING_OUTLINE_CONFIRMATION` or `READY_FOR_SPECIFY` and never authorizes
+`sp.specify`.
 Keep Level 1 and Level 2 candidate-boundary decisions in this graphical
 Discovery. Do not route them to `/sp.clarify` merely because the split is
 unconfirmed, high-impact, `SPLIT_REQUIRED`, or `NEEDS_DECISION`. After creating
-or refreshing Discovery, use `NEXT_COMMAND_EXEC: None` until the downloaded
-response exists; the next `/sp.prd` consumes that response. Reserve
+or refreshing Discovery, use `NEXT_COMMAND_EXEC: None` until the pending
+response or an explicit fallback file exists; the next `/sp.prd` consumes that
+response. Reserve
 `/sp.clarify` for a focused decision that the node-bound Discovery contract
 cannot express.
+
+Formal Outline, Flow, and UI review pages use `写入项目` as their primary
+action. The loopback writer accepts only the launcher's per-process capability
+token, re-reads the current review data, verifies its complete identity, and
+mechanically records decisions and notes at the fixed `outline-confirmation.md`,
+`flow-confirmation.md`, or `ui-confirmation.md` target. It does not call a model,
+interpret reviewer notes, or regenerate artifacts. Confirmation-package download
+and copy-summary are failure fallbacks only. After a successful write, the
+reviewer returns to Codex and reruns the owning `/sp.prd`, `/sp.flow`, or
+`/sp.ui` command; only that command may apply model reasoning to the recorded
+feedback.
+
+When a current confirmation has `human_confirmation: NEEDS_REVISION`, the
+owning command treats each `revision_requests.target_ref` as the repair boundary.
+It revises the named item and only directly dependent or adjacent items whose
+validity actually changes, explicitly lists any invalidated direct neighbor,
+and preserves unaffected accepted decisions. The next review data contains only
+changed or explicitly invalidated items. A revision request is an instruction
+to regenerate, never authorization.
 
 `sp.prd` explicitly consumes a named discovery response, validates feature and
 response identities, schema version, candidate and target references, allowed

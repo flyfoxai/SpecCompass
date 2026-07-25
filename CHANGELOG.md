@@ -2,6 +2,19 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.29] - 2026-07-26
+
+### Added
+
+- Added direct browser write-back for Flow, UI, PRD Outline, and Outline Discovery reviews without requiring copy or download steps.
+- Added mechanical persistence of decisions and revision requests so the relevant Codex command can consume targeted review feedback on its next run.
+
+### Changed
+
+- Hardened review write-back with target-version checks, stable request IDs, idempotent replay, cross-process locking, atomic replacement, and bounded platform-specific retries.
+- Restricted fallback downloads to explicitly recoverable transport failures while stale pages, target conflicts, and invalid requests fail closed and require refresh or re-review.
+- Updated Flow, UI, and PRD command guidance, review documentation, and the review-data skill for targeted regeneration from `revision_requests.target_ref`.
+
 ## [0.11.28] - 2026-07-25
 
 ### Added

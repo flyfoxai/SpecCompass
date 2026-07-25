@@ -119,7 +119,7 @@ Global rules:
 - Split flow review responsibility into 业务层面 and 系统/架构层面 before asking for confirmation. Business-level flows cover users, business objects, status, approval, exceptions, and outcomes, and are confirmed by the 产品经理. System/architecture flows cover baselines, routing, adjacency checks, evidence chains, cross-module handoffs, or automation governance needed to support business goals, and are confirmed by the 系统负责人 or architecture owner. The product view may explain how system/architecture flows affect the business module, but must mark them as 无需产品确认.
 - Node cards must classify review into 6 类 with a colored dot and short label: 必须确认, 建议确认, 存疑, 关键环节, 已验证, and 系统/架构确认. Use 必须确认 for high-impact business decisions, permissions, state changes, or irreversible results; 建议确认 for low-risk items worth quick human review; 存疑 for incomplete or conflicting facts; 关键环节 for mainline steps reviewers should understand; 已验证 for items already covered by upstream sources; 系统/架构确认 for nodes outside product responsibility. 已 PRD 验证 and 已 spec 验证 must share the same 已验证 level and same color, with the source written only in the remark.
 - Node cards must be human-readable / 说人话 for non-programmer reviewers and use default compact node copy / 默认短句. The default visible layer is a 业务决策卡 / business decision card, not a field table, but 业务决策卡只能作为内部概念 / business decision card is an internal concept; 默认层不得显示可见标题“业务决策卡” / must not display the visible title "business decision card". Reviewers must understand the one business decision / 一句业务判断 within 5 秒 / a 5-second scan and the right-rail top must be a 首屏无技术 / technical-free first screen. The default layer may show only the node name, review level, confirmation owner, status, one action prompt starting with `请判断...`, the recommended choice with one short reason, and tiered executable `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices. `must_confirm` nodes default to 3-4 executable options; a source-backed mutually exclusive binary decision may use 2 options only when `options_count_rationale` explains why no third executable exit exists; ordinary human-judgment nodes default to 3 options. Node name, review level, confirmation owner, and status are card header metadata / 卡片头部元信息 and must render as one compact single line / 紧凑单行; they must not be split into field-table rows / 不得拆成字段表行. Selected-node facts should use reviewer labels such as 谁确认, 要决定, 推荐选法, 确认状态, and 已写意见 instead of technical field labels. The card body / 卡片正文三行 must stay within three compact rows: `请判断...`, `推荐...`, and option buttons. Do not show separate `这是什么` / `要决定什么` / `怎么选` question rows in the default layer; compress them into the action prompt or move them to folded details. Each default sentence must be short, business-bound, and understandable without reading source files.
-- Node option behavior is owned by the fixed renderer contract in `.specify/review/renderer/README.md`. `/sp.flow` must generate valid review data with tiered executable options, `recommended_option`, and `OPTION_B.next_exit` starting with `needs-decision`; it must not restate or reimplement the renderer state machine, browser persistence, summary-copy, navigation-safety, confirmation-package download, or diagram redraw rules in command output. Current-flow bulk recommended-option / 当前流程批量按推荐确认 acts on the current visible flow or node only / 只保存当前可见流程或节点, and the renderer must ask how many unfinished visible items remain before bulk saving recommendations / 批量按推荐保存前提示当前可见未完成数量.
+- Node option behavior is owned by the fixed renderer contract in `.specify/review/renderer/README.md`. `/sp.flow` must generate valid review data with tiered executable options, `recommended_option`, and `OPTION_B.next_exit` starting with `needs-decision`; it must not restate or reimplement the renderer state machine, browser persistence, summary-copy fallback, navigation-safety, restricted local writeback, confirmation-package download fallback, or diagram redraw rules in command output. Current-flow bulk recommended-option / 当前流程批量按推荐确认 acts on the current visible flow or node only / 只保存当前可见流程或节点, and the renderer must ask how many unfinished visible items remain before bulk saving recommendations / 批量按推荐保存前提示当前可见未完成数量.
 - Node cards must keep supporting material in collapsible supporting copy / 折叠详情, but the visible labels must still be human wording. Do not expose field-table labels such as 对象类型, 判断点, 来源, 主流程图, 节点说明, 审核人要看什么, 关联业务, 为什么存在, 需要判断什么, 不需要确认, 不需要管什么, 节点做什么, 通过标准, 可以通过的标准, 风险提示, or 常见风险 in the default right-rail top. Use reviewer-facing labels such as 节点动作, 审核重点, 业务影响, 审核原因, 无需审核, 继续条件, 常见问题, 依据位置, and 原文摘要 in folded details. Source, original text, remarks, trace IDs, `selected_option`, `recommended_option`, and `next_exit` belong only in folded details or compatibility fields and should be relabeled as 依据位置, 原文摘要, or 确认记录 when visible. Use different wording for FLOW, DEC, ERR, STATE, SEQ, ADJ, EXT, and ROLE nodes. Clean Mermaid brackets, braces, quotes, HTML labels, and raw technical markers before showing the business label.
 - Classify visual review into three tiers before promoting flow artifacts:
   - **No confirmation required**: trivial label, copy, formatting, or docs-only refresh; no new or changed flow semantics; no new nodes, branches, states, permissions, exceptions, or downstream readiness impact; and no visual artifact requires a direction choice. Record why confirmation was not required.
@@ -321,16 +321,23 @@ JSON file, or the renderer preview.
 
 review data 是待审内容 / review data is draft review content. The Web review
 page is not an editor / 不是编辑器 and does not directly edit flow or UI design /
-不直接修改 flow 或 UI 设计. It collects local choices and exports authorization
-text. If the reviewer rejects the recommendation, require a `change_type` plus
-natural-language revision / 自然语言修改意见 and write it to `revision_requests` in
-the confirmation document. Flow revision request types are `ADD_NODE`,
+不直接修改 flow 或 UI 设计. Its loopback writer mechanically records local choices
+and human notes in the fixed `flow-confirmation.md` target; it does not call a
+model, interpret the request, or regenerate flow artifacts. Download/copy is an
+explicit fallback only when local writeback fails. If the reviewer rejects the
+recommendation, require a `change_type` plus natural-language revision /
+自然语言修改意见 and write it to `revision_requests` in the confirmation document. Flow revision request types are `ADD_NODE`,
 `DELETE_NODE`, `MODIFY_NODE`, `MODIFY_BRANCH`, `ADD_EXCEPTION_PATH`,
 `SPLIT_SUBFLOW`, `MERGE_SIMPLIFY`, `ADD_ENTRY_EXIT`, and `OTHER`. A later
 `/sp.flow` run must read existing `flow-confirmation.md` `revision_requests`,
-apply the requested changes to the flow artifacts and `flow-review-data.json`,
-validate the data again, and regenerate the review page before asking for fresh
-confirmation.
+verify that the confirmation batch and Review Data ID still match the current
+complete review data, and treat every `target_ref` as the repair boundary. Apply
+the human note to the named flow item and only the directly dependent or adjacent
+items whose validity actually changes. Preserve unaffected accepted decisions.
+If a shared contract invalidates a direct neighbor, list that reference
+explicitly instead of silently regenerating the whole batch. Regenerate fresh
+review data containing only changed or explicitly invalidated nodes, validate
+it, and ask for fresh confirmation. A revision request is not authorization.
 
 Legacy compatibility is read-only: old `owner_approval.status: APPROVED` may be
 read as `CONFIRMED`, and old `REJECTED` may be migrated or interpreted as
@@ -457,16 +464,28 @@ vocabulary instead.
   and do not invent future 002/003 feature slugs. Required entry fields are
   `order`, `feature`, `title`, `has_flow_review`, and `has_ui_review`; root
   fields are `schema_version`, `project`, `updated_at`, and `features`.
-- If `specs/<feature>/flows/review/flow-confirmation.md` already contains
-  `revision_requests`, read them before generating new flow review data. Treat
-  each request as a model-actionable repair instruction, reason against the
-  current PRD/spec/flow sources, update the flow artifacts and review data, and
-  then regenerate the Web review page. Do not ask the reviewer to directly
-  edit the flow in the browser page.
-- After the user completes batch confirmation, write or update
-  `specs/<feature>/flows/review/flow-confirmation.md` using the Confirmation
-  Document Schema above. This Markdown file is the authorization evidence
-  downstream commands must read before treating flow artifacts as stable input.
+- At the start of every run, read
+  `specs/<feature>/flows/review/flow-confirmation.md` when it exists and verify
+  its feature, review type, batch, Review Data ID, and current source identity
+  before using it. When it contains `human_confirmation: NEEDS_REVISION`, use
+  each `revision_requests.target_ref` as a model-actionable repair boundary,
+  reason against the current PRD/spec/flow sources, and update only the named
+  artifacts plus explicitly invalidated direct neighbors. Preserve unaffected
+  accepted decisions and exclude them from the next review data. Do not ask the
+  reviewer to edit the flow in the browser page, and do not expand a local
+  request into full-batch regeneration without a recorded shared-contract
+  invalidation.
+- After the user completes batch confirmation, the served review page writes
+  `specs/<feature>/flows/review/flow-confirmation.md` through the restricted
+  loopback writer using the Confirmation Document Schema above. This is a
+  mechanical record operation and invokes no model capability. On the next
+  `/sp.flow <feature>` run, consume that document: process scoped revisions or,
+  when it is current and fully `CONFIRMED`, use it as the authorization evidence
+  downstream commands need. Accept a downloaded package or copied summary only
+  as an explicit fallback after a delivery failure marked `allow_fallback:
+  true`. A stale review identity, changed confirmation target, invalid package,
+  forbidden request, or request-ID conflict requires refreshing/regenerating the
+  review and must not be bypassed with a fallback package.
 - Present flow review data with the fixed renderer main entry
   `.specify/review/renderer/speccompass-review-renderer.html?flow=<feature>`.
   Command output must point reviewers to this Web review page first because it
@@ -482,7 +501,8 @@ vocabulary instead.
   `/sp.flow` and `/sp.ui` runs. The fixed renderer's right feedback rail is mandatory
   for human confirmation. The fixed renderer owns the unified template,
   right feedback rail, selected-state behavior, browser draft handling,
-  confirmation-package download, summary-copy fallback, navigation safety,
+  restricted local writeback, confirmation-package download fallback,
+  summary-copy fallback, navigation safety,
   native SVG/DAG review rendering, and
   accessibility details.
   `/sp.flow` must instead provide complete data for that renderer: project

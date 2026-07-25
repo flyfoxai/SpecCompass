@@ -227,13 +227,13 @@ $("reset-visible").addEventListener("click", () => {
 });
 $("download-package").addEventListener("click", () => {
   if (!requireSupportedReviewTransport()) return;
-  if (reviewData?.review_type === "outline_discovery") downloadOutlineDiscoveryResponse();
-  else downloadConfirmationPackage();
+  if (reviewData?.review_type === "outline_discovery") void writeOutlineDiscoveryResponse();
+  else void writeConfirmationPackage();
 });
 $("copy-summary").addEventListener("click", () => {
   if (!requireSupportedReviewTransport()) return;
   if (reviewData?.review_type === "outline_discovery") {
-    setStatus("探索结果请使用“保存并继续完善”下载结构化响应，再交回 /sp.prd。", true);
+    setStatus("探索结果请使用“写入项目并继续”；仅在本地写回不可用时使用降级下载。", true);
   } else copySummary();
 });
 window.addEventListener("beforeunload", (event) => {
@@ -241,7 +241,7 @@ window.addEventListener("beforeunload", (event) => {
   if (!reviewData || (!hasDrafts() && !hasUnexportedSavedChoices() && !hasDiscoveryWork)) return;
   event.preventDefault();
   event.returnValue = hasDiscoveryWork
-    ? "仍有尚未下载的 Outline 探索响应；这些内容只会回到 /sp.prd，不构成授权。"
+    ? "仍有尚未写入项目的 Outline 探索响应；这些内容只会回到 /sp.prd，不构成授权。"
     : "仍有待提交草稿或尚未写回确认文档的选择，正式授权以确认文档为准。";
   return event.returnValue;
 });

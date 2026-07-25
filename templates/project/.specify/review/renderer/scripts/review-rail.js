@@ -72,8 +72,17 @@ function hasUnexportedSavedChoices() {
 function resetExportButtonLabels() {
   const copyButton = $("copy-summary");
   const downloadButton = $("download-package");
-  if (copyButton) copyButton.textContent = "复制确认摘要兜底";
-  if (downloadButton) downloadButton.textContent = "下载确认包";
+  if (copyButton) {
+    copyButton.textContent = "复制确认摘要兜底";
+    copyButton.classList.add("hidden");
+  }
+  if (downloadButton && !writebackInProgress) {
+    downloadButton.disabled = false;
+    downloadButton.removeAttribute("aria-busy");
+    downloadButton.textContent = defaultWritebackButtonLabel();
+  }
+  clearPackageDownloadLinks();
+  writebackFallback = null;
 }
 
 function clearPackageDownloadLinks() {
@@ -97,13 +106,13 @@ function renderPackageDownloadLinks(parts) {
   clearPackageDownloadLinks();
   if (!parts?.length) return;
 
-  appendText(container, "strong", parts.length > 1 ? "多包下载链接" : "确认包下载链接");
+  appendText(container, "strong", parts.length > 1 ? "多包降级下载链接" : "确认包降级下载链接");
   appendText(
     container,
     "p",
     parts.length > 1
-      ? "浏览器可能拦截连续下载；请按 part 顺序确认每个文件都已下载。"
-      : "如果自动下载没有出现，请点击下方链接。"
+      ? "本地写回不可用。仅在降级交接时按 part 顺序下载全部文件。"
+      : "本地写回不可用。仅在降级交接时下载此文件。"
   );
 
   const list = document.createElement("ol");
@@ -935,11 +944,12 @@ ${formatSummaryList(groups.revision_requests)}
   setStatus(`确认摘要已复制，请写回 ${target}。`);
 }
 
-function downloadConfirmationPackage() {
+async function writeConfirmationPackage() {
   if (!window.SpecCompassConfirmationPackage) {
-    setStatus("确认包下载模块未加载，请刷新页面后重试，或使用复制摘要兜底。", true);
+    setStatus("确认包模块未加载，请刷新页面后重试，或使用复制摘要兜底。", true);
     return;
   }
+  const pendingFallback = writebackFallback?.kind === "confirmation" ? writebackFallback : null;
   const allReviewNodes = allNodes().map(({ node }) => node);
   const completion = summarizeRecommendationCompletion(allReviewNodes);
   if (completion.unfinished) {
@@ -947,10 +957,10 @@ function downloadConfirmationPackage() {
       ? `\n其中 ${completion.criticalRequiresIndividual} 个非常重要确认点必须逐项处理，不会批量保存。`
       : "";
     const confirmed = window.confirm(
-      `所有模块和流程还有 ${completion.unfinished} 个剩余未选项，其中 ${completion.canSaveRecommended} 个可按推荐自动保存。${criticalText}\n不会覆盖已有选择或草稿；缺少推荐选项或非常重要的确认点会阻止下载。\n是否将符合条件的剩余未选项按推荐设置并继续下载？`
+      `所有模块和流程还有 ${completion.unfinished} 个剩余未选项，其中 ${completion.canSaveRecommended} 个可按推荐自动保存。${criticalText}\n不会覆盖已有选择或草稿；缺少推荐选项或非常重要的确认点会阻止写回。\n是否将符合条件的剩余未选项按推荐设置并继续写回？`
     );
     if (!confirmed) {
-      setStatus("已取消按推荐补齐，未下载确认包。");
+      setStatus("已取消按推荐补齐，未写入项目。");
       return;
     }
     const result = applyRecommendedToMissing(allReviewNodes);
@@ -965,57 +975,90 @@ function downloadConfirmationPackage() {
       if (!result.drafts) render();
     }
     if (result.missingRecommendation) {
-      setStatus(`仍有 ${result.missingRecommendation} 个剩余未选项缺少推荐选项，请人工处理后再下载确认包。`, true);
+      setStatus(`仍有 ${result.missingRecommendation} 个剩余未选项缺少推荐选项，请人工处理后再写入项目。`, true);
       return;
     }
     if (result.criticalRequiresIndividual) {
-      setStatus(`仍有 ${result.criticalRequiresIndividual} 个非常重要确认点必须逐项处理，请完成后再下载确认包。`, true);
+      setStatus(`仍有 ${result.criticalRequiresIndividual} 个非常重要确认点必须逐项处理，请完成后再写入项目。`, true);
       return;
     }
   }
   const groups = buildSummaryGroups();
   if (groups.unresolved_decision_items.length) {
-    setStatus(`仍有 ${groups.unresolved_decision_items.length} 个确认点没有有效选择，请人工处理后再下载确认包。`, true);
+    setStatus(`仍有 ${groups.unresolved_decision_items.length} 个确认点没有有效选择，请人工处理后再写入项目。`, true);
     return;
   }
   if (groups.draft_excluded_items.length && !downloadDraftWarningArmed) {
     downloadDraftWarningArmed = true;
-    $("download-package").textContent = "仍要下载确认包";
-    setStatus("草稿不具备授权意义，下载确认包前请先处理草稿。再次点击会下载，但草稿只进入排除清单。", true);
+    $("download-package").textContent = "仍要写入项目";
+    setStatus("草稿不具备授权意义，写入前请先处理草稿。再次点击会写入，但草稿只进入排除清单。", true);
     return;
   }
 
+  let parts = pendingFallback?.parts;
+  let payload = pendingFallback?.payload;
+  const target = pendingFallback?.target_path || writebackTarget();
+  if (!parts || !payload) {
+    try {
+      parts = window.SpecCompassConfirmationPackage.splitConfirmationPackage(buildConfirmationPackageInput());
+    } catch (error) {
+      setStatus(`确认包生成失败：${error.message || error}。请使用复制摘要兜底。`, true);
+      return;
+    }
+    payload = {
+      kind: "confirmation",
+      review_data_id: reviewDataIdentifier(),
+      parts
+    };
+  }
+  if (!beginWriteback()) return;
   let result;
   try {
-    result = window.SpecCompassConfirmationPackage.downloadConfirmationPackage(buildConfirmationPackageInput());
+    if (!window.SpecCompassWriteback) {
+      const unavailable = new Error("本地写回客户端未加载");
+      unavailable.allowFallback = true;
+      unavailable.recoveryAction = "retry_then_download";
+      throw unavailable;
+    }
+    result = await window.SpecCompassWriteback.submit(payload);
   } catch (error) {
-    setStatus(`确认包生成失败：${error.message || error}。请使用复制摘要兜底。`, true);
+    clearPackageDownloadLinks();
+    if (error?.allowFallback === true) {
+      writebackFallback = { kind: "confirmation", parts, payload, target_path: target };
+      renderPackageDownloadLinks(parts);
+      $("copy-summary").classList.remove("hidden");
+      setStatus(`项目写入失败：${error.message || error}。可重试写入，或使用下方降级下载链接；复制摘要是最后兜底。`, true);
+    } else {
+      writebackFallback = null;
+      $("copy-summary").classList.add("hidden");
+      setStatus(`项目写入被拒绝：${error.message || error}。${writebackRecoveryGuidance(error)}`, true);
+    }
     return;
+  } finally {
+    finishWriteback();
   }
-  renderPackageDownloadLinks(result.parts);
+  clearPackageDownloadLinks();
 
   const previousState = snapshotReviewState();
   state.__meta = {
     ...(state.__meta || {}),
     copied_fingerprint: summaryFingerprint(),
-    downloaded_at: new Date().toISOString(),
-    downloaded_part_count: result.part_count,
-    downloaded_filenames: result.filenames
+    written_at: new Date().toISOString(),
+    written_target_path: result.target_path,
+    written_review_data_id: result.review_data_id
   };
-  const downloadStateSaved = saveState();
-  if (!downloadStateSaved) restoreReviewState(previousState);
+  const writeStateSaved = saveState();
+  if (!writeStateSaved) restoreReviewState(previousState);
   copyDraftWarningArmed = false;
   downloadDraftWarningArmed = false;
   resetExportButtonLabels();
-  const target = writebackTarget();
-  const splitText = result.part_count > 1
-    ? `已按 100000 UTF-8 bytes 自动分为 ${result.part_count} 个确认包，请按 part_index 顺序发给模型写回 ${target}。`
-    : `确认包已下载，请发给模型写回 ${target}。`;
-  const fileText = result.filenames?.length ? ` 文件：${result.filenames.join("；")}` : "";
+  const revisionText = result.revision_request_count
+    ? `记录了 ${result.revision_request_count} 条人工修订意见。`
+    : "没有新的人工修订意见。";
   setStatus(
-    downloadStateSaved
-      ? `${splitText}${fileText}`
-      : `确认包已下载，但浏览器未能记录下载状态。${fileText}`,
-    !downloadStateSaved
+    writeStateSaved
+      ? `已写入 ${result.target_path}。${revisionText} 回到 Codex 重新执行 ${result.next_command}。`
+      : `已写入 ${result.target_path}，但浏览器未能记录本地状态。回到 Codex 重新执行 ${result.next_command}。`,
+    !writeStateSaved
   );
 }

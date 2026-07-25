@@ -527,6 +527,16 @@
     };
   }
 
+  function downloadConfirmationParts(parts) {
+    if (!Array.isArray(parts) || !parts.length) throw new Error("confirmation parts are required");
+    parts.forEach((part, index) => downloadJson(part, index * 250));
+    return {
+      parts,
+      part_count: parts.length,
+      filenames: parts.map(packageFilename)
+    };
+  }
+
   window.SpecCompassConfirmationPackage = {
     FORMAT,
     VERSION,
@@ -536,6 +546,7 @@
     safeWritebackTarget,
     splitConfirmationPackage,
     downloadConfirmationPackage,
+    downloadConfirmationParts,
     packageFilename
   };
 })();

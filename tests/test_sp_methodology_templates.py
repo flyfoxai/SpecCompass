@@ -41,6 +41,7 @@ REVIEW_RENDERER_SCRIPT_FILES = (
     REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js",
     REVIEW_ROOT / "renderer" / "scripts" / "confirmation-package.js",
     REVIEW_ROOT / "renderer" / "scripts" / "discovery-response-package.js",
+    REVIEW_ROOT / "renderer" / "scripts" / "writeback-client.js",
     REVIEW_ROOT / "renderer" / "scripts" / "ui-preview-renderer.js",
     REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js",
     REVIEW_ROOT / "renderer" / "scripts" / "outline-preview-renderer.js",
@@ -1962,7 +1963,7 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "连续两次临时文档验证失败" in methodology
 
     assert "interaction_mode" in renderer_readme
-    assert "Save and continue refinement" in renderer_readme
+    assert "写入项目" in renderer_readme
     assert "does not authorize `/sp.specify`" in renderer_readme
     assert "must not accept" in renderer_readme
 
@@ -2031,7 +2032,7 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
     assert "final visible-copy sanitization pass" in prd
     assert "do not announce that sanitization occurred" in prd
     assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in prd
-    assert "use `NEXT_COMMAND_EXEC: None` until the downloaded response exists" in prd
+    assert "use `NEXT_COMMAND_EXEC: None` until the page has written the pending response" in prd
     assert "do not silently replace it and do not canonize it" in prd
     assert "show the original proposal beside one source-backed business alternative" in prd
     assert "complete business chain" in prd
@@ -2050,7 +2051,7 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
     assert "final visible-copy sanitization pass" in command_spec_text
     assert "do not announce that sanitization occurred" in command_spec_text
     assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in command_spec_text
-    assert "use `NEXT_COMMAND_EXEC: None` until the downloaded response exists" in command_spec_text
+    assert "use `NEXT_COMMAND_EXEC: None` until the pending response or an explicit fallback file exists" in command_spec_text
     assert "Constitution is displayed only as a read-only governance snapshot" in command_spec
     assert "三阶段" in methodology
     assert "能力原子" in methodology
@@ -3678,9 +3679,10 @@ def test_flow_methodology_requires_human_focused_review_page_contract():
         assert "MISSING | DRAFT | SAVED_RECOMMENDED | SAVED_SUBMITTED" in content, label
         assert "重新选择清空正式选择和草稿，回到未选择" in content or "reselect clears saved selection" in content, label
         assert "draft_excluded_items:" in content, label
-        assert "DRAFT nodes must be listed only in `draft_excluded_items`" in content or "待提交草稿节点只能进入 `draft_excluded_items`" in content or "仍处于 `DRAFT` 的待提交草稿只能进入 `draft_excluded_items`" in content, label
+        assert "DRAFT nodes must be listed only in `draft_excluded_items`" in content or "待提交草稿节点只能进入 `draft_excluded_items`" in content or "仍处于 `DRAFT` 的待提交草稿只能进入 `draft_excluded_items`" in content or "DRAFT 状态 / nodes in DRAFT state 的待提交草稿只能进入 `draft_excluded_items`" in content, label
         assert "ordinary unresolved" in content or "普通 unresolved" in content or "普通未处理决策" in content, label
-        assert "下载确认包前" in content or "download confirmation package" in content, label
+        assert "写入项目" in content or "write to project" in content, label
+        assert "download fallback" in content or "下载确认包降级" in content, label
         assert "复制摘要" in content or "copy-summary" in content, label
         assert "离开页面" in content or "beforeunload" in content or "navigation/close" in content, label
         assert "草稿不具备授权意义" in content or "draft choices do not authorize" in content, label
@@ -4651,7 +4653,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert 'id="feature-position"' in renderer
     assert 'id="next-feature"' in renderer
     assert 'id="feature-nav-note"' in renderer
-    assert "当前页面有本地选择或尚未导出的确认结果" in renderer
+    assert "当前页面有本地选择或尚未写回的确认结果" in renderer
     assert 'id="prev-module"' in renderer
     assert 'id="next-module"' in renderer
     assert 'id="module-position"' in renderer
@@ -4675,7 +4677,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "font-size: 13px" in renderer
     assert ".right-rail .option-detail-label" in renderer
     assert "font-size: 12px" in renderer
-    assert "本地选择" in renderer and "复制摘要" in renderer and "写回确认文档" in renderer
+    assert "本地选择" in renderer and "本地写回" in renderer and "回到 Codex" in renderer
     assert "localStorageAvailable" in renderer
     assert "storageStatusWarning" in renderer
     assert "review_data_id" in renderer
@@ -4739,7 +4741,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "snapshotReviewState" in renderer
     assert "restoreReviewState" in renderer
     assert "result.previousState" in renderer
-    assert "确认包已下载，但浏览器未能记录下载状态" in renderer
+    assert "已写入 ${result.target_path}，但浏览器未能记录本地状态" in renderer
     assert "剩余未选项" in renderer
     assert "缺少推荐选项" in renderer
     assert "不会覆盖已有选择或草稿" in renderer
@@ -4775,7 +4777,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     for content, label in ((methodology, "methodology"), (renderer_readme, "renderer README")):
         assert "native `<dialog>`" in content, label
         assert "only for explanation or preview" in content or "只用于说明或预览" in content, label
-        assert "must not carry recommendation choices" in content or "不得承载推荐/非推荐选择" in content, label
+        assert "must not carry recommendation choices" in content or "不得承载推荐/非推荐选择" in content or "不承载选择" in content, label
 
     assert "style\\s*=" in validator
     assert "data\\s*:\\s*text\\/html" in validator
@@ -4788,7 +4790,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "説明" not in renderer_readme
     assert "`当前需求按推荐保存` covers every module and item" in renderer_readme
     assert "only `MISSING`" in renderer_readme
-    assert "without a valid recommendation remain" in renderer_readme
+    assert re.search(r"without a valid recommendation\s+remain", renderer_readme)
     assert "only for explanation or preview" in renderer_readme or "只用于说明或预览" in renderer_readme
     assert "must not carry recommendation choices" in renderer_readme or "不得承载推荐/非推荐选择" in renderer_readme
 
@@ -6285,6 +6287,8 @@ def test_outline_discovery_renderer_tracks_unexported_work_and_mobile_navigation
 
     assert "hasUnexportedOutlineDiscoveryWork" in renderer
     assert "hasOutlineDiscoveryDraft" in renderer
+    assert "outlineDiscoveryState.meta?.written_at" in renderer
+    assert "updatedAt > persistedAt" in renderer
     assert "hasUnexportedOutlineDiscoveryWork" in data_loader
     assert "hasUnexportedOutlineDiscoveryWork" in feature_nav
     assert 'params.get("outline-discovery")' in feature_nav
@@ -6319,7 +6323,7 @@ def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_sele
         "canvas.dataset.levelCount",
         "outline_node_id",
         "question.outline_node_id === outlineDiscoveryActiveNodeId",
-        "downloadOutlineDiscoveryResponse",
+        "writeOutlineDiscoveryResponse",
         "影响范围尚未映射",
     ):
         assert token in renderer, token
@@ -6550,11 +6554,11 @@ def test_outline_discovery_renderer_does_not_use_question_groups_as_primary_navi
     assert re.search(r"function renderOutlineDiscoveryRail\(\) \{\s*updateOutlineDiscoveryProgress\(\);", renderer)
 
 
-def test_outline_discovery_renderer_clears_discovery_downloads_when_leaving_mode():
+def test_outline_discovery_renderer_resets_writeback_fallback_when_leaving_mode():
     renderer = (REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js").read_text(encoding="utf-8")
     leave_mode = renderer.split("function leaveOutlineDiscoveryMode()", 1)[1].split("\n}", 1)[0]
 
-    assert "clearPackageDownloadLinks();" in leave_mode
+    assert "resetExportButtonLabels();" in leave_mode
 
 
 def test_outline_intent_ledger_validator_rejects_duplicate_and_forward_supersede(tmp_path):
@@ -7841,12 +7845,12 @@ def test_review_localhost_launcher_is_required_by_commands_and_documentation():
         assert "specify init --force" in content, label
 
 
-def test_review_renderer_downloads_split_confirmation_packages():
-    """The fixed renderer should export confirmation packages instead of unlimited clipboard text."""
+def test_review_renderer_writes_split_confirmation_packages_with_download_fallback():
+    """The renderer should write split packages and retain a bounded download fallback."""
     renderer = _review_renderer_bundle()
     renderer_readme = RENDERER_README.read_text(encoding="utf-8")
     for content, label in ((renderer, "renderer"), (renderer_readme, "renderer README")):
-        assert "下载确认包" in content or "download confirmation package" in content, label
+        assert "下载确认包" in content or "download confirmation package" in content or "download fallback" in content, label
         assert "100000" in content or "100K" in content, label
         assert "UTF-8" in content, label
         assert "speccompass-confirmation-package" in content, label
@@ -7872,9 +7876,58 @@ def test_review_renderer_downloads_split_confirmation_packages():
     assert "剩余未选项" in renderer
     assert "缺少推荐选项" in renderer
     assert "renderPackageDownloadLinks" in renderer
-    assert "多包下载链接" in renderer
+    assert "多包降级下载链接" in renderer
     assert "createObjectURL" in renderer
     assert "copy-summary" in renderer
+    assert 'id="copy-summary" class="hidden"' in renderer
+    assert '$("copy-summary").classList.remove("hidden")' in renderer
+
+
+def test_review_writeback_is_mechanical_and_commands_repair_only_targeted_items():
+    """Local writeback records input; owning commands perform narrowly scoped regeneration."""
+    renderer = _review_renderer_bundle()
+    launcher = (REVIEW_ROOT / "scripts" / "serve-review.mjs").read_text(encoding="utf-8")
+    skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+    command_spec = (PROJECT_ROOT / "templates" / "project" / "docs" / "reference" / "sp-command-spec.md").read_text(
+        encoding="utf-8"
+    )
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    commands = {
+        name: (PROJECT_ROOT / "templates" / "commands" / f"{name}.md").read_text(encoding="utf-8")
+        for name in ("prd", "flow", "ui")
+    }
+
+    assert 'id="download-package" class="primary">写入项目</button>' in renderer
+    assert 'id="copy-summary" class="hidden"' in renderer
+    assert 'fetchWithTimeout("/__speccompass/writeback-config"' in renderer
+    assert '"X-SpecCompass-Writeback-Token"' in renderer
+    assert "重试写入" in renderer
+    assert "allowFallback === true" in renderer
+    assert 'setAttribute("aria-busy", "true")' in renderer
+    assert "AbortController" in renderer
+    assert "RETRY_DELAYS_MS = [250, 750]" in renderer
+    assert "WRITEBACK_TARGET_CHANGED" in launcher
+    assert "expected_target_version" in launcher
+    assert "withWriteLock" in launcher
+    assert "handle.sync()" in launcher
+    assert 'new Set(["EACCES", "EBUSY", "EEXIST", "EPERM"])' in launcher
+    assert "outline-discovery-response-pending.json" in launcher
+    assert "No model interpretation was performed during writeback." in launcher
+
+    for content, label in (
+        (skill, "review-data skill"),
+        (command_spec, "command spec"),
+        (methodology, "methodology"),
+    ):
+        assert "mechanical" in content or "机械" in content, label
+        assert "target_ref" in content, label
+        assert "unaffected" in content or "未受影响" in content, label
+
+    for name, content in commands.items():
+        assert "target_ref" in content, name
+        assert "Preserve unaffected accepted decisions" in content or "preserve unaffected accepted decisions" in content, name
+        assert re.search(r"only\s+changed or explicitly invalidated", content), name
+        assert "never authorization" in content or "not authorization" in content, name
 
 
 def test_review_renderer_keeps_recommendation_actions_inside_mobile_viewport():

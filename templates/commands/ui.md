@@ -312,17 +312,25 @@ they are not authorization evidence until written to `ui-confirmation.md`.
 
 review data 是待审内容 / review data is draft review content. The Web review
 page is not an editor / 不是编辑器 and does not directly edit flow or UI design /
-不直接修改 flow 或 UI 设计. It collects local choices and exports authorization
-text. If the reviewer rejects the recommendation, require a `change_type` plus
-natural-language revision / 自然语言修改意见 and write it to `revision_requests` in
-the confirmation document. UI revision request types are `ADD_SCREEN`,
+不直接修改 flow 或 UI 设计. Its loopback writer mechanically records local choices
+and human notes in the fixed `ui-confirmation.md` target; it does not call a
+model, interpret the request, or regenerate UI artifacts. Download/copy is an
+explicit fallback only when local writeback fails. If the reviewer rejects the
+recommendation, require a `change_type` plus natural-language revision /
+自然语言修改意见 and write it to `revision_requests` in the confirmation document. UI revision request types are `ADD_SCREEN`,
 `DELETE_SCREEN`, `MODIFY_SCREEN_STRUCTURE`, `ADD_REGION`,
 `MODIFY_REGION_LAYOUT`, `ADD_COMPONENT`, `DELETE_COMPONENT`,
 `MODIFY_FIELD_ACTION_COPY`, `ADD_STATE`, `MODIFY_INTERACTION`,
 `ADD_PERMISSION_DISPLAY`, and `OTHER`. A later `/sp.ui` run must read existing
-`ui-confirmation.md` `revision_requests`, apply the requested changes to the UI
-artifacts and `ui-review-data.json`, validate the data again, and regenerate the
-review page before asking for fresh confirmation.
+`ui-confirmation.md` `revision_requests`, verify that the confirmation batch and
+Review Data ID still match the current complete review data, and treat every
+`target_ref` as the repair boundary. Apply the human note to the named UI item
+and only the directly dependent or adjacent items whose validity actually
+changes. Preserve unaffected accepted decisions. If a shared contract invalidates
+a direct neighbor, list that reference explicitly instead of silently
+regenerating the whole batch. Regenerate fresh review data containing only
+changed or explicitly invalidated nodes, validate it, and ask for fresh
+confirmation. A revision request is not authorization.
 
 Review pages are rendered by the reusable `speccompass-review-data` toolchain:
 normal `/sp.flow` and `/sp.ui` commands must fill structured review data, must
@@ -513,16 +521,28 @@ instead.
   and do not invent future 002/003 feature slugs. Required entry fields are
   `order`, `feature`, `title`, `has_flow_review`, and `has_ui_review`; root
   fields are `schema_version`, `project`, `updated_at`, and `features`.
-- If `specs/<feature>/ui/review/ui-confirmation.md` already contains
-  `revision_requests`, read them before generating new UI review data. Treat
-  each request as a model-actionable repair instruction, reason against the
-  current PRD/spec/flow/UI sources, update the UI artifacts and review data, and
-  then regenerate the Web review page. Do not ask the reviewer to directly
-  edit screens, regions, components, or interactions in the browser page.
-- After the user completes batch confirmation, write or update
-  `specs/<feature>/ui/review/ui-confirmation.md` using the Confirmation
-  Document Schema above. This Markdown file is the authorization evidence
-  downstream commands must read before treating UI artifacts as stable input.
+- At the start of every run, read
+  `specs/<feature>/ui/review/ui-confirmation.md` when it exists and verify its
+  feature, review type, batch, Review Data ID, and current source identity
+  before using it. When it contains `human_confirmation: NEEDS_REVISION`, use
+  each `revision_requests.target_ref` as a model-actionable repair boundary,
+  reason against the current PRD/spec/flow/UI sources, and update only the named
+  artifacts plus explicitly invalidated direct neighbors. Preserve unaffected
+  accepted decisions and exclude them from the next review data. Do not ask the
+  reviewer to directly edit screens, regions, components, or interactions in
+  the browser page, and do not expand a local request into full-batch
+  regeneration without a recorded shared-contract invalidation.
+- After the user completes batch confirmation, the served review page writes
+  `specs/<feature>/ui/review/ui-confirmation.md` through the restricted loopback
+  writer using the Confirmation Document Schema above. This is a mechanical
+  record operation and invokes no model capability. On the next `/sp.ui
+  <feature>` run, consume that document: process scoped revisions or, when it is
+  current and fully `CONFIRMED`, use it as the authorization evidence downstream
+  commands need. Accept a downloaded package or copied summary only as an
+  explicit fallback after a delivery failure marked `allow_fallback: true`. A
+  stale review identity, changed confirmation target, invalid package, forbidden
+  request, or request-ID conflict requires refreshing/regenerating the review
+  and must not be bypassed with a fallback package.
 - Present UI review data with the fixed renderer main entry
   `.specify/review/renderer/speccompass-review-renderer.html?ui=<feature>`.
   Command output must point reviewers to this Web review page first because it
@@ -537,7 +557,8 @@ instead.
   layout rules, click handlers, persistence, or summary logic during normal
   `/sp.flow` and `/sp.ui` runs. The fixed renderer owns the unified confirmation
   template, right confirmation sidebar, browser draft handling, decision
-  interactions, summary copy, visual grouping, and accessibility details. `/sp.ui`
+  interactions, restricted local writeback, download/copy fallback, visual
+  grouping, and accessibility details. `/sp.ui`
   must instead provide complete data for that renderer: page title, project UI
   overview, screen map summary, per-screen business context, primary users,
   entry scenarios, user goal, user outcome, Flow evidence references, stable review IDs, visible

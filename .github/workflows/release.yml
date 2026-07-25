@@ -44,16 +44,18 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Semantic review status system
+          ## Direct browser review write-back
 
-          This release makes review state and Outline hierarchy easier to understand at a glance:
+          This release removes the copy-and-download step from browser review completion:
 
-          - Shared semantic tokens distinguish open, resolved, draft, focus, blocked, and passive states.
-          - Review modules, diagram tabs, and node cards use consistent state indicators and emphasis.
-          - Outline discovery nodes receive hierarchical numbering for faster navigation and parent-child tracing.
-          - Source labels clearly distinguish unresolved, model-proposed, document-backed, and user-confirmed content.
-          - Status presentation is derived from existing review data without expanding the Review schema.
-          - Automated and browser checks cover semantic state rendering, hierarchy numbering, and Outline readability.
+          - Flow, UI, PRD Outline, and Outline Discovery reviews can write their final decisions directly from the browser.
+          - Write-back is mechanical persistence only; model reasoning and regeneration happen when the relevant Codex command is run again.
+          - Target-version checks, stable request IDs, idempotent replay, cross-process locking, and atomic replacement protect review artifacts.
+          - Bounded retries cover transient file and network failures across macOS, Linux, and Windows.
+          - Stale pages, target conflicts, and invalid requests fail closed instead of offering an unsafe fallback package.
+          - Fallback downloads appear only for explicitly recoverable transport failures.
+          - Follow-up Flow, UI, and PRD runs use `revision_requests.target_ref` to limit regeneration to reviewed targets and directly affected neighbors.
+          - Automated and browser checks cover all four write-back routes, conflicts, retries, fallback policy, and concurrent launchers.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

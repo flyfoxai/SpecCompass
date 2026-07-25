@@ -38,8 +38,8 @@
         <button id="load-outline">加载 outline-review-data.json</button>
         <button id="load-outline-discovery">加载 outline-discovery-data.json</button>
         <input id="file-input" class="hidden" type="file" accept="application/json,.json">
-        <button id="download-package" class="primary">下载确认包</button>
-        <button id="copy-summary">复制确认摘要兜底</button>
+        <button id="download-package" class="primary">写入项目</button>
+        <button id="copy-summary" class="hidden">复制确认摘要兜底</button>
       </div>
     </header>
 
@@ -80,8 +80,8 @@
             <p id="rail-summary">选择模块、流程或节点后在这里确认。</p>
             <ol id="authorization-steps" class="authorization-steps">
               <li><strong>本地选择</strong>：点击推荐项会保存到浏览器草稿；建议确认不计入红色待处理必审。</li>
-              <li><strong>下载确认包</strong>：点击顶部按钮生成可交给模型写回的 JSON 包。</li>
-              <li><strong>写回确认文档</strong>：确认包写入对应的 flow、UI 或 Outline confirmation 文档后才是正式授权。</li>
+              <li><strong>本地写回</strong>：点击顶部按钮，由本次 127.0.0.1 服务把结构化决定写入项目。</li>
+              <li><strong>回到 Codex</strong>：重新执行对应命令，由模型处理审核意见并只重生成受影响部分。</li>
             </ol>
             <div id="priority-filters" class="priority-filters" aria-label="按确认优先级筛选">
               <button type="button" data-priority="all" aria-pressed="true">全部 0</button>
@@ -110,12 +110,13 @@
   <script defer src="scripts/data-validator.js?v=20260722-outline-adjustment-mode"></script>
   <script defer src="scripts/confirmation-package.js?v=20260629-confirmation-package"></script>
   <script defer src="scripts/discovery-response-package.js?v=20260718-prd-business-context"></script>
+  <script defer src="scripts/writeback-client.js?v=20260725-direct-writeback"></script>
   <script defer src="scripts/ui-preview-renderer.js?v=20260724-display-coordinates"></script>
   <script defer src="scripts/outline-preview-renderer.js?v=20260722-outline-adjustment-mode"></script>
   <script defer src="scripts/outline-discovery-renderer.js?v=20260724-display-coordinates"></script>
   <script defer src="scripts/review-rail.js?v=20260724-display-coordinates"></script>
   <script defer src="scripts/right-rail-resizer.js?v=20260702-right-rail"></script>
-  <script defer src="scripts/feature-nav.js?v=20260701-feature-nav"></script>
+  <script defer src="scripts/feature-nav.js?v=20260725-direct-writeback"></script>
   <script defer src="scripts/data-loader.js?v=20260722-outline-adjustment-mode"></script>
 </body>
 </html>

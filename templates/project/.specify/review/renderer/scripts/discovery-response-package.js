@@ -155,12 +155,20 @@
 
   function downloadDiscoveryResponse(input = {}) {
     const response = buildDiscoveryResponse(input);
+    return downloadBuiltDiscoveryResponse(response);
+  }
+
+  function discoveryResponseFilename(response) {
+    const feature = safeToken(response.feature, "feature");
+    return `outline-discovery-response-${feature}-${safeToken(response.response_id, "response")}.json`;
+  }
+
+  function downloadBuiltDiscoveryResponse(response) {
     const blob = new Blob([`${JSON.stringify(response, null, 2)}\n`], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    const feature = safeToken(response.feature, "feature");
     anchor.href = url;
-    anchor.download = `outline-discovery-response-${feature}-${safeToken(response.response_id, "response")}.json`;
+    anchor.download = discoveryResponseFilename(response);
     anchor.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
     return { response, filename: anchor.download };
@@ -168,6 +176,8 @@
 
   window.SpecCompassDiscoveryResponsePackage = {
     buildDiscoveryResponse,
-    downloadDiscoveryResponse
+    downloadDiscoveryResponse,
+    downloadBuiltDiscoveryResponse,
+    discoveryResponseFilename
   };
 })();

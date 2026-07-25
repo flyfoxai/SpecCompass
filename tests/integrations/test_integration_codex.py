@@ -95,7 +95,7 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "final visible-copy sanitization pass" in content
         assert "do not announce that sanitization occurred" in content
         assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in content
-        assert "use `NEXT_COMMAND_EXEC: None` until the downloaded response exists" in content
+        assert "use `NEXT_COMMAND_EXEC: None` until the page has written the pending response" in content
         assert "do not silently replace it and do not canonize it" in content
         assert "show the original proposal beside one source-backed business alternative" in content
         assert "must not use Constitution content as business evidence" in content

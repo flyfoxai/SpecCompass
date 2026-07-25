@@ -61,8 +61,10 @@ instead. Renderer changes require a separate implementation task with tests.
 - Outline data path: `specs/<feature>/prd/review/outline-review-data.json`
 - Outline discovery data path:
   `specs/<feature>/prd/review/outline-discovery-data.json`
-- Outline discovery response download (browser download, not committed to the
-  repository; the user supplies it explicitly to `/sp.prd`):
+- Outline discovery pending response (restricted local writeback, consumed by
+  the next `/sp.prd` run):
+  `specs/<feature>/prd/review/outline-discovery-response-pending.json`
+- Outline discovery response download fallback:
   `outline-discovery-response-*.json`
 - Outline intent ledger path:
   `specs/<feature>/prd/review/outline-intent-ledger.json`
@@ -89,15 +91,17 @@ Outline has two explicit modes. Level 1 `outline_maturity: explore` and Level 2
 `outline_maturity: specify_ready` uses `interaction_mode: confirmation`.
 Discovery shows 2-4 candidates, a recommendation and reason, none of the above,
 free-form input, and the operations `confirm_candidate`, `add`, `replace`,
-`exclude`, and `context_note`. Its primary action is `Save and continue refinement`,
-and the surface must continuously say that it does not authorize `/sp.specify`.
+`exclude`, and `context_note`. Its primary action is `写入项目`; after success,
+the surface directs the reviewer to rerun `/sp.prd` and continuously says that
+the writeback does not authorize `/sp.specify`.
 
 Discovery and confirmation share the fixed visual shell, but not their schemas,
 packages, or state machines. A discovery package must not accept or emit
 `speccompass-confirmation-package`, and the confirmation package logic must not
-accept `outline-discovery-response`. Browser discovery state and response
-downloads are non-authoritative; only `/sp.prd` may validate the response,
-append `outline-intent-ledger.json`, and write provenance anchors. Accepted new
+accept `outline-discovery-response`. Browser discovery state, mechanical local
+writeback, and response downloads are non-authoritative; only `/sp.prd` may
+interpret and validate the response, append `outline-intent-ledger.json`, and
+write provenance anchors. Accepted new
 text uses `[src:user]`, accepted candidates use `[src:user-confirmed]`,
 unaccepted candidates stay `[src:ai-proposed]`, and consumed events use
 `<!-- intent-delta:<id> -->`.
@@ -108,7 +112,9 @@ reference as `<!-- intent-ref:<delta-id>:<target-or-candidate-id> -->`. After
 `node .specify/review/scripts/apply-outline-discovery.mjs --response <response-package> --prd-temp specs/<feature>/prd.md.tmp --outline-temp specs/<feature>/spec-outline.md.tmp`.
 Valid events are appended before temporary-document validation. A failure keeps
 the formal documents unchanged and leaves those events pending, so the same
-response can be retried without duplicating the ledger.
+response can be retried without duplicating the ledger. Keep the pending file
+in place on failure; only after helper success and provenance-anchor validation
+may `/sp.prd` atomically move it into `prd/review/history/consumed/`.
 The helper serializes writeback for each feature with
 `specs/<feature>/prd/review/.outline-discovery-writeback.lock`. If an active
 process owns the lock, wait for it to finish before retrying. If the recorded
@@ -214,10 +220,11 @@ the relevant review flag plus `updated_at`. A PRD discovery run sets
 Browser `localStorage` is only a draft convenience for review selections. It is
 scoped by review type, artifact path, batch id, source snapshot, and the current
 module/item/node structure so a later review-data version does not silently reuse
-an older local draft. It is not authorization. Authorization is the downloaded
-confirmation package, or fallback copied summary, after it has been written into
-`flow-confirmation.md`, `ui-confirmation.md`, or `outline-confirmation.md` and
-tracked with the project.
+an older local draft. It is not authorization. The restricted loopback writer
+mechanically records the current decisions and notes in `flow-confirmation.md`,
+`ui-confirmation.md`, or `outline-confirmation.md`; it does not call a model or
+regenerate artifacts. Downloaded packages and copied summaries are fallbacks
+only when that local writeback fails.
 
 Schema-v1 data remains readable. Because schema-v2 identity covers the complete
 review contract, a v1 page first checks the new complete-identity storage key and
@@ -236,19 +243,41 @@ mixed with review draft state. The right rail uses a slightly larger reading
 size than the rest of the page so long decision options remain legible on
 lower-resolution screens.
 
-The primary export path is 下载确认包 / download confirmation package. The
-renderer writes a JSON package with `format:
-speccompass-confirmation-package`; the older copy-summary / 复制摘要 control is
-only a fallback when downloads or file handoff are unavailable. The confirmation
-package always includes `target_path`, which must point to
-`specs/<feature>/flows/review/flow-confirmation.md` for flow review or
-`specs/<feature>/ui/review/ui-confirmation.md` for UI review. Other repository
-paths are rejected even when they are repo-relative. Outline review instead
-targets `specs/<feature>/prd/review/outline-confirmation.md` and repeats the
-canonical `outline_digest` plus ordered `source_authority_ids` in every package
-part. A model that receives the
-package should write the contained decisions and `revision_requests` to that
-`target_path` without needing extra instructions.
+The primary action is 写入项目 / write to project. The launcher provides a
+loopback-only endpoint with a random per-process capability token. On each
+request it re-reads the current review data, verifies the complete
+`review_data_id` and source identity, derives the target from the served review
+type and feature, and rejects client-selected repository paths. It then
+atomically writes the fixed Flow, UI, Outline, or Discovery target. This writer
+is a mechanical recorder: it does not call a model, interpret reviewer notes,
+or change PRD/Flow/UI artifacts. After success, the page shows the exact target
+and directs the reviewer to rerun the owning `/sp.flow`, `/sp.ui`, or `/sp.prd`
+command so the model can process revision requests.
+
+The launcher requires Node.js 18 or newer. The browser allows only one active
+write per page, assigns a stable request ID, applies bounded timeouts, and
+retries only failures marked `retryable`. The writer serializes each target
+across browser requests and launcher processes, verifies the target SHA-256
+version while holding the target lock, records completed request IDs for
+idempotent replay, fsyncs the temporary file, and uses atomic replacement with
+bounded retries for Windows `EPERM`, `EACCES`, and `EBUSY` conditions. A target
+changed after page load, stale review identity, reused request ID with different
+content, forbidden request, or invalid package fails closed and returns
+`allow_fallback: false`; the page tells the reviewer to reload or repair the
+data and does not expose download/copy controls. Network/timeouts and temporary
+filesystem failures may return `allow_fallback: true`; oversized or unavailable
+storage writes may permit fallback without automatic retry. In every fallback
+case the primary button remains `重试写入`, while download is a separate visible
+link. Changing a choice invalidates that link and its stable request payload.
+
+The renderer still builds JSON packages with `format:
+speccompass-confirmation-package` for the local writer payload and explicit
+download fallback. The package `target_path` must be the fixed target for the
+served review type; other repository paths are rejected. Outline parts repeat
+the canonical `outline_digest` plus ordered `source_authority_ids`. Show package
+download only after local writeback fails with `allow_fallback: true`, and keep
+copy-summary / 复制摘要 as the last fallback when download or file handoff is
+unavailable.
 
 Confirmation packages must stay small enough for model handoff. If the package
 would exceed `100000` UTF-8 bytes, the renderer must split it into multiple
@@ -279,11 +308,11 @@ of writing `target_path`.
 not proof that a record was cut in half, and must not replace `module_context`
 or `target_path`.
 
-When an export creates multiple parts, the renderer may attempt browser
+When a fallback export creates multiple parts, the renderer may attempt browser
 downloads for each file, but it must also leave visible 多包下载链接 / manual
 part download links in the right rail. Browsers can block repeated automatic
-downloads, so the link list is the stable fallback: reviewers should download
-each `part_index` file in order and hand all parts to the model together.
+downloads, so the link list remains the fallback: reviewers should provide each
+`part_index` file in order when local writeback is unavailable.
 Changing any local choice clears the old link list so stale packages are not
 mistaken for current authorization.
 
@@ -292,7 +321,8 @@ records. Confirmation packages include `has_unauthorized_drafts`,
 `unauthorized_draft_count`, and a `draft_rule` instruction so a later model
 does not write local draft choices as approved decisions.
 
-For Outline, browser state and the downloaded package remain non-authoritative.
+For Outline, browser state, local writeback by itself, and the downloaded package
+remain non-authoritative.
 Only a complete Markdown confirmation whose digest, source authority IDs, and
 review-data identity match the current Outline may promote
 `AWAITING_OUTLINE_CONFIRMATION` to `READY_FOR_SPECIFY`. Missing, incomplete,
@@ -425,7 +455,8 @@ The visible node state machine is `MISSING | DRAFT | SAVED_RECOMMENDED | SAVED_S
 `MISSING` means no option is selected; `DRAFT` means a non-recommended option
 is waiting for a human note and submit action;
 `SAVED_RECOMMENDED` means the recommended option is locally saved and still
-needs download-package writeback before it becomes external authorization; and
+needs confirmation-document writeback before it becomes external authorization;
+and
 `SAVED_SUBMITTED` means a non-recommended option was submitted with a note.
 重新选择清空正式选择和草稿，回到未选择 / reselect clears saved selection and draft
 back to `MISSING`.
@@ -449,28 +480,31 @@ Writeback classification is fixed:
 Draft nodes are excluded separately so exported authorization cannot confuse a
 local draft with a real decision.
 
-Download-package, copy-summary fallback, and navigation safety are mandatory.
-If any DRAFT node exists, the first 下载确认包 click must warn near the export
-button, change the button to `仍要下载确认包`, and return without rebuilding the
+Write-to-project, download fallback, copy-summary fallback, and navigation
+safety are mandatory. If any DRAFT node exists, the first 写入项目 click must
+warn near the action button, change the button to `仍要写入项目`, and return
+without rebuilding the
 right rail, losing the current input, redrawing the diagram, or calling a
-whole-page render. A second explicit click may download, but the package must
+whole-page render. A second explicit click may write, but the payload must
 keep DRAFT nodes only in `draft_excluded_items` and include a top-level warning.
-The same rule applies to the fallback copy-summary / 复制摘要 action: the first
+Apply the same exclusion rule to fallback download; downloading must not turn a
+draft into authorization. The same rule applies to the fallback copy-summary /
+复制摘要 action: the first
 copy-summary click changes the button to `仍要复制摘要`, and a second explicit
 click may copy only if the copied summary keeps DRAFT nodes excluded. Copy
 success must be checked; if the browser clipboard call fails, the page must not
 claim the summary was copied and must not mark the current choices as exported.
 The page must also warn on 离开页面 / beforeunload or navigation/close when
-drafts are excluded or locally saved choices have not yet been downloaded or
-copied for writeback.
+drafts are excluded or locally saved choices have not yet been written to the
+project or exported through a fallback.
 
-The right confirmation rail must show the authorization path as three distinct
-steps: 本地选择 / local browser choice, 下载确认包 / download confirmation
-package, and 写回确认文档 / write back to `flow-confirmation.md` or
-`ui-confirmation.md`. The fallback 复制摘要 / copy confirmation summary must be
-visibly labeled as a fallback, not the primary authorization path. This prevents
-browser state or a successful button click from being mistaken for
-repository-tracked authorization.
+The right confirmation rail must show the path as three distinct steps: 本地选择
+/ local browser choice, 写入项目 / mechanically record the confirmation document,
+and 回到 Codex 重跑所属命令 / rerun the owning command so the model handles
+revision requests. Download confirmation package and 复制摘要 / copy confirmation
+summary must be visibly labeled as failure fallbacks. This prevents browser
+state or mechanical writeback from being mistaken for model-generated revision
+or downstream authorization.
 
 The red 待处理必审 counter is must-confirm only. Recommended nodes are not
 included in the red must-confirm pending count / 建议确认不计入红色待处理必审, so
@@ -489,16 +523,17 @@ eligible items with recommendations / 批量按推荐保存前提示当前范围
 feedback must say how many nodes were saved and how many saved or draft choices
 were skipped and preserved / 跳过并保留已有选择或草稿.
 
-Before confirmation-package download, the renderer scans all decision nodes. If
+Before write-to-project or fallback confirmation-package download, the renderer
+scans all decision nodes. If
 `MISSING` nodes remain, it asks whether to fill eligible nodes with
 recommendations. Cancelling the prompt must not mutate browser state or start a
-download. After confirmation, nodes without a valid recommendation remain
-unresolved and block the download until they are handled manually. If browser
+write or download. After confirmation, nodes without a valid recommendation
+remain unresolved and block writeback until they are handled manually. If browser
 persistence fails, selection mutations must be rolled back and the renderer
 must show the storage error instead of claiming that choices were saved. The existing draft
 warning still runs after this preflight: the first click warns without rebuilding
-the rail when drafts exist, and only a second explicit click may download a
-package that excludes drafts from authorization.
+the rail when drafts exist, and only a second explicit click may write or export
+a payload that excludes drafts from authorization.
 
 Reset controls clear only the current view's browser local state back to MISSING and do not delete authorization already
 written to `flow-confirmation.md` or `ui-confirmation.md`.

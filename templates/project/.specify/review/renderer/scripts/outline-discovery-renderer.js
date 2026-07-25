@@ -36,13 +36,19 @@ function saveOutlineDiscoveryState(message = "探索草稿已保存在当前浏�
     outlineDiscoveryState.meta.active_map_id = outlineDiscoveryActiveMapId;
     outlineDiscoveryState.meta.active_node_id = outlineDiscoveryActiveNodeId;
     if (options.downloaded === true) outlineDiscoveryState.meta.downloaded_at = savedAt;
+    if (options.written === true) outlineDiscoveryState.meta.written_at = savedAt;
     localStorage.setItem(outlineDiscoveryStorageKey(), JSON.stringify(outlineDiscoveryState));
     setStatus(`${message} 这不是授权，下一步仍是 /sp.prd。`);
     return true;
   } catch {
-    setStatus("浏览器未能保存探索草稿；请尽快下载响应文件。此页面不会授权 /sp.specify。", true);
+    setStatus("浏览器未能保存探索草稿；请尽快写入项目或使用降级下载。此页面不会授权 /sp.specify。", true);
     return false;
   }
+}
+
+function invalidateOutlineDiscoveryWriteback() {
+  resetExportButtonLabels();
+  $("copy-summary")?.classList.add("hidden");
 }
 
 function outlineDiscoveryMaps(data = reviewData) {
@@ -199,7 +205,12 @@ function hasUnexportedOutlineDiscoveryWork() {
   if (!Object.values(outlineDiscoveryState.responses || {}).some(hasOutlineDiscoveryDraft)) return false;
   const updatedAt = Date.parse(outlineDiscoveryState.meta?.updated_at || "");
   const downloadedAt = Date.parse(outlineDiscoveryState.meta?.downloaded_at || "");
-  return !Number.isFinite(downloadedAt) || (Number.isFinite(updatedAt) && updatedAt > downloadedAt);
+  const writtenAt = Date.parse(outlineDiscoveryState.meta?.written_at || "");
+  const persistedAt = Math.max(
+    Number.isFinite(downloadedAt) ? downloadedAt : 0,
+    Number.isFinite(writtenAt) ? writtenAt : 0
+  );
+  return persistedAt === 0 || (Number.isFinite(updatedAt) && updatedAt > persistedAt);
 }
 
 function normalizeOutlineDiscoveryDraftForOperation(response) {
@@ -226,18 +237,15 @@ function updateOutlineDiscoveryProgress() {
 
 function leaveOutlineDiscoveryMode() {
   document.body.classList.remove("outline-discovery-mode");
-  if (typeof clearPackageDownloadLinks === "function") {
-    clearPackageDownloadLinks();
-  }
+  resetExportButtonLabels();
   $("priority-filters")?.classList.remove("hidden");
   document.querySelector(".rail-actions")?.classList.remove("hidden");
-  $("copy-summary")?.classList.remove("hidden");
-  $("download-package").textContent = "下载确认包";
   $("page-note").textContent = "统一确认页只展示结构化 review data；正式授权需要写回 confirmation 文档。";
 }
 
 function renderOutlineDiscovery(data = reviewData) {
   document.body.classList.add("outline-discovery-mode");
+  resetExportButtonLabels();
   loadOutlineDiscoveryState();
   outlineDiscoveryConstitutionOpen = false;
   const maps = outlineDiscoveryMaps(data);
@@ -252,7 +260,7 @@ function renderOutlineDiscovery(data = reviewData) {
   $("page-note").textContent = "先核对产品实际处理的业务，再进入分支补充；保存结果只回到 /sp.prd，不会授权 /sp.specify。";
   $("project-overview").textContent = outlineDiscoveryBusinessSummary(data);
   $("data-warnings").classList.add("hidden");
-  $("download-package").textContent = "保存并继续完善";
+  $("download-package").textContent = "写入项目并继续";
   $("copy-summary").classList.add("hidden");
   $("priority-filters").classList.add("hidden");
   document.querySelector(".rail-actions")?.classList.add("hidden");
@@ -261,12 +269,29 @@ function renderOutlineDiscovery(data = reviewData) {
   for (const text of [
     "先核对业务闭环和能力分支，再点击节点查看与该业务有关的问题。",
     "一级、二级需要你确认或补充；更细内容只能依据已确认业务事实继续展开。",
-    "保存后下载结构化探索响应，再交回 /sp.prd；本页没有授权能力。"
+    "保存后把结构化探索响应写入项目，再回到 /sp.prd；本页没有授权能力。"
   ]) appendText(steps, "li", text);
   renderOutlineDiscoveryMaps();
   renderOutlineDiscoveryCurrentMap();
   renderOutlineDiscoveryRail();
   updateOutlineDiscoveryProgress();
+}
+
+function renderOutlineDiscoveryDownloadLink(response) {
+  const container = $("download-package-links");
+  if (!container || !response || typeof Blob === "undefined" || typeof URL === "undefined") return;
+  clearPackageDownloadLinks();
+  const filename = window.SpecCompassDiscoveryResponsePackage.discoveryResponseFilename(response);
+  const url = URL.createObjectURL(new Blob([`${JSON.stringify(response, null, 2)}\n`], { type: "application/json;charset=utf-8" }));
+  packageDownloadUrls.push(url);
+  appendText(container, "strong", "探索响应降级下载链接");
+  appendText(container, "p", "仅在本地写回持续不可用时下载；此文件不构成授权。");
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.textContent = filename;
+  container.appendChild(link);
+  container.classList.remove("hidden");
 }
 
 function renderOutlineDiscoveryMaps() {
@@ -1059,6 +1084,7 @@ function renderOutlineDiscoveryQuestion(question, questionOrdinal = "") {
     input.type = "radio"; input.name = `discovery-${question.id}`; input.value = candidate.id; input.checked = response.candidate_id === candidate.id;
     input.addEventListener("change", () => {
       if (!input.checked) return;
+      invalidateOutlineDiscoveryWriteback();
       response.operation = "confirm_candidate"; response.candidate_id = candidate.id; response.target_id = null; response.value = ""; response.none_of_the_above = false;
       saveOutlineDiscoveryState("候选方向已保存为探索草稿。"); renderOutlineDiscoveryMaps(); renderOutlineDiscoveryCurrentMap(); renderOutlineDiscoveryRail();
     });
@@ -1085,31 +1111,66 @@ function renderOutlineDiscoveryQuestion(question, questionOrdinal = "") {
     const option = document.createElement("option"); option.value = value; option.textContent = OUTLINE_DISCOVERY_OPERATION_LABELS[value]; option.disabled = !(question.free_input?.allowed_operations || []).includes(value); operation.appendChild(option);
   }
   operation.value = response.operation || "";
-  operation.addEventListener("change", () => { response.operation = operation.value; normalizeOutlineDiscoveryDraftForOperation(response); saveOutlineDiscoveryState("操作类型已保存为探索草稿。"); renderOutlineDiscoveryRail(); });
+  operation.addEventListener("change", () => { invalidateOutlineDiscoveryWriteback(); response.operation = operation.value; normalizeOutlineDiscoveryDraftForOperation(response); saveOutlineDiscoveryState("操作类型已保存为探索草稿。"); renderOutlineDiscoveryRail(); });
   operationLabel.appendChild(operation); fields.appendChild(operationLabel);
   const targetLabel = create("label", "discovery-field"); appendText(targetLabel, "span", "要替换或排除的已有条目 ID（需要时填写）");
   const target = document.createElement("input"); target.type = "text"; target.value = response.target_id || ""; target.placeholder = "例如 goal-primary";
-  target.addEventListener("change", () => { response.target_id = target.value.trim() || null; if (response.target_id && response.operation === "exclude") response.candidate_id = null; saveOutlineDiscoveryState(); updateOutlineDiscoveryProgress(); });
+  target.addEventListener("change", () => { invalidateOutlineDiscoveryWriteback(); response.target_id = target.value.trim() || null; if (response.target_id && response.operation === "exclude") response.candidate_id = null; saveOutlineDiscoveryState(); updateOutlineDiscoveryProgress(); });
   targetLabel.appendChild(target); fields.appendChild(targetLabel); direct.appendChild(fields);
   const valueLabel = create("label", "discovery-field discovery-value-field"); appendText(valueLabel, "span", "直接输入真实业务信息");
   const value = document.createElement("textarea"); value.rows = 4; value.value = response.value || ""; value.placeholder = "写下候选没有覆盖的目标、用户、问题、范围或背景。";
-  value.addEventListener("change", () => { response.value = value.value.trim(); if (response.value && (!response.operation || response.operation === "confirm_candidate")) { response.operation = "add"; normalizeOutlineDiscoveryDraftForOperation(response); } saveOutlineDiscoveryState("直接输入已保存为探索草稿。"); renderOutlineDiscoveryRail(); });
+  value.addEventListener("change", () => { invalidateOutlineDiscoveryWriteback(); response.value = value.value.trim(); if (response.value && (!response.operation || response.operation === "confirm_candidate")) { response.operation = "add"; normalizeOutlineDiscoveryDraftForOperation(response); } saveOutlineDiscoveryState("直接输入已保存为探索草稿。"); renderOutlineDiscoveryRail(); });
   valueLabel.appendChild(value); direct.appendChild(valueLabel);
   const noneLabel = create("label", "discovery-none-option"); const none = document.createElement("input"); none.type = "checkbox"; none.checked = response.none_of_the_above === true;
-  none.addEventListener("change", () => { response.none_of_the_above = none.checked; if (none.checked) { response.candidate_id = null; response.target_id = null; if (response.operation !== "context_note") response.operation = "add"; } saveOutlineDiscoveryState("“以上都不符合”状态已保存。"); renderOutlineDiscoveryRail(); });
+  none.addEventListener("change", () => { invalidateOutlineDiscoveryWriteback(); response.none_of_the_above = none.checked; if (none.checked) { response.candidate_id = null; response.target_id = null; if (response.operation !== "context_note") response.operation = "add"; } saveOutlineDiscoveryState("“以上都不符合”状态已保存。"); renderOutlineDiscoveryRail(); });
   noneLabel.appendChild(none); appendText(noneLabel, "span", "以上候选都不符合，我会直接输入真实需求"); direct.appendChild(noneLabel); card.appendChild(direct);
   return card;
 }
 
-function downloadOutlineDiscoveryResponse() {
+async function writeOutlineDiscoveryResponse() {
   if (!window.SpecCompassDiscoveryResponsePackage) { setStatus("探索响应模块未加载，请刷新页面后重试。", true); return; }
+  const pendingFallback = writebackFallback?.kind === "outline_discovery" ? writebackFallback : null;
   const responses = outlineDiscoveryQuestions().map((question) => outlineDiscoveryState.responses[question.id]).filter(isMeaningfulOutlineDiscoveryResponse);
   if (!responses.length) { setStatus("至少回应一个探索问题后再保存。你可以选择候选，也可以直接输入业务信息。", true); return; }
+  let response = pendingFallback?.response;
+  let payload = pendingFallback?.payload;
+  if (!response || !payload) {
+    try { response = window.SpecCompassDiscoveryResponsePackage.buildDiscoveryResponse({ review_data: reviewData, responses }); }
+    catch (error) { setStatus(`探索响应生成失败：${error.message || error}`, true); return; }
+    payload = {
+      kind: "outline_discovery",
+      review_data_id: reviewDataIdentifier(),
+      response
+    };
+  }
+  if (!beginWriteback()) return;
   let result;
-  try { result = window.SpecCompassDiscoveryResponsePackage.downloadDiscoveryResponse({ review_data: reviewData, responses }); }
-  catch (error) { setStatus(`探索响应生成失败：${error.message || error}`, true); return; }
-  outlineDiscoveryState.meta.downloaded_filename = result.filename;
-  saveOutlineDiscoveryState(`已保存 ${responses.length} 条探索回应并下载 ${result.filename}。请交回 /sp.prd 继续完善。`, { downloaded: true });
-  $("download-package-links").classList.remove("hidden");
-  $("download-package-links").textContent = `已下载：${result.filename}；authorization_effect = none`;
+  try {
+    if (!window.SpecCompassWriteback) {
+      const unavailable = new Error("本地写回客户端未加载");
+      unavailable.allowFallback = true;
+      unavailable.recoveryAction = "retry_then_download";
+      throw unavailable;
+    }
+    result = await window.SpecCompassWriteback.submit(payload);
+  } catch (error) {
+    clearPackageDownloadLinks();
+    if (error?.allowFallback === true) {
+      writebackFallback = { kind: "outline_discovery", response, payload };
+      renderOutlineDiscoveryDownloadLink(response);
+      setStatus(`项目写入失败：${error.message || error}。可重试写入，或使用下方降级下载链接；此文件不构成授权。`, true);
+    } else {
+      writebackFallback = null;
+      setStatus(`项目写入被拒绝：${error.message || error}。${writebackRecoveryGuidance(error)}`, true);
+    }
+    return;
+  } finally {
+    finishWriteback();
+  }
+  outlineDiscoveryState.meta.written_target_path = result.target_path;
+  saveOutlineDiscoveryState(`已写入 ${result.target_path}。回到 Codex 重新执行 ${result.next_command}；本页没有授权能力。`, { written: true });
+  clearPackageDownloadLinks();
+  writebackFallback = null;
+  $("download-package").textContent = "写入项目并继续";
+  $("copy-summary").classList.add("hidden");
 }
