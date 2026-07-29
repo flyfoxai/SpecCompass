@@ -247,6 +247,174 @@ def test_missing_boundary_gate_routes_to_explicit_adoption(tmp_path: Path):
     assert not Path(paths["boundaries"]).exists()
 
 
+def test_adoption_normalizes_only_unconfirmed_flat_child_sibling_order(tmp_path: Path):
+    specs = tmp_path / "specs"
+    root = specs / "000-root"
+    child = specs / "001-child"
+    root.mkdir(parents=True)
+    child.mkdir(parents=True)
+    (root / "prd.md").write_text("# Root PRD\n\n## Adoption\n", encoding="utf-8")
+    (root / "spec-outline.md").write_text("# Root Outline\n\n- root-node\n- child-node\n", encoding="utf-8")
+    (child / "prd.md").write_text("# Child PRD\n\n## Handoff\n", encoding="utf-8")
+    index = {
+        "schema_version": 2,
+        "project": "Legacy flat project",
+        "updated_at": "2026-07-29",
+        "hierarchy": {"mode": "flat", "root_feature": None},
+        "features": [],
+    }
+    for order, code, feature, title in [
+        (1, "000", "000-root", "Root"),
+        (2, "001", "001-child", "Child"),
+    ]:
+        index["features"].append({
+            "order": order,
+            "feature_code": code,
+            "feature": feature,
+            "title": title,
+            "parent_feature": None,
+            "sibling_order": 0,
+            "boundary_source": {
+                "kind": "standalone",
+                "handoff_ref": None,
+                "rationale": "Migrated flat entry with no inferred hierarchy.",
+            },
+            "outline_alignment": {
+                "status": "not_mapped",
+                "outline_node_refs": [],
+                "rationale": "Legacy index did not record an Outline projection.",
+            },
+            "has_flow_review": False,
+            "has_ui_review": False,
+            "has_outline_review": True,
+            "has_outline_discovery": False,
+        })
+    index_path = specs / "review-index.json"
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    report_path = root / "outline-boundaries-adoption.json"
+    bootstrapped = _run(BOOTSTRAP, index_path, report_path, "--root", "000-root", cwd=tmp_path)
+    assert bootstrapped.returncode == 0, bootstrapped.stderr
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["candidates"][1]["sibling_order"] == 0
+    assert "parent_unconfirmed" in report["candidates"][1]["blocking_issues"]
+
+    proposal_id = "baseline-flat-adoption-001"
+    draft = root / "boundary-adjustments" / "drafts" / proposal_id
+    draft.mkdir(parents=True)
+    proposal_path = draft / "proposal.json"
+    preview_path = draft / "impact-preview.json"
+    proposal = {
+        "schema_version": 1,
+        "base_baseline_id": None,
+        "base_baseline_digest": None,
+        "baseline_id": proposal_id,
+        "created_at": _now(),
+        "created_by": "model:adoption-review",
+        "decision_ref": f"specs/000-root/boundary-adjustments/drafts/{proposal_id}/decision.json",
+        "change_reason": "Confirm the hierarchy missing from the legacy flat index.",
+        "rollback_ref": "specs/000-root/prd.md#adoption",
+        "project_boundaries": [
+            {
+                "order": 1,
+                "feature_code": "000",
+                "feature": "000-root",
+                "title": "Root",
+                "parent_feature_code": None,
+                "sibling_order": 0,
+                "outline_node_id": "root-node",
+                "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Confirmed root."},
+                "lifecycle": "active",
+                "predecessor_codes": [],
+            },
+            {
+                "order": 2,
+                "feature_code": "001",
+                "feature": "001-child",
+                "title": "Child",
+                "parent_feature_code": "000",
+                "sibling_order": 1,
+                "outline_node_id": "child-node",
+                "boundary_source": {
+                    "kind": "subproject_handoff",
+                    "handoff_ref": "specs/001-child/prd.md#handoff",
+                    "rationale": "Confirmed current child handoff.",
+                },
+                "lifecycle": "active",
+                "predecessor_codes": [],
+            },
+        ],
+        "tombstones": [],
+    }
+    proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+    boundaries_path = root / "outline-boundaries.json"
+    prepared = _run(
+        PREPARE, index_path, report_path, boundaries_path, proposal_path, preview_path, cwd=tmp_path
+    )
+    assert prepared.returncode == 0, prepared.stderr
+    assert preview_path.exists()
+
+    unmarked_report = json.loads(json.dumps(report))
+    unmarked_report["candidates"][1]["blocking_issues"].remove("parent_unconfirmed")
+    report_payload = {
+        key: value for key, value in unmarked_report.items()
+        if key not in {"generated_at", "candidate_digest"}
+    }
+    unmarked_report["candidate_digest"] = _digest(report_payload)
+    report_path.write_text(json.dumps(unmarked_report), encoding="utf-8")
+    missing_marker = _run(
+        PREPARE, index_path, report_path, boundaries_path, proposal_path, preview_path, cwd=tmp_path
+    )
+    assert missing_marker.returncode != 0
+    assert "cannot rewrite existing 001-child.sibling_order" in missing_marker.stderr
+    report_path.write_text(json.dumps(report), encoding="utf-8")
+
+    proposal["project_boundaries"][1]["sibling_order"] = 0
+    proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+    zero_sibling = _run(
+        PREPARE, index_path, report_path, boundaries_path, proposal_path, preview_path, cwd=tmp_path
+    )
+    assert zero_sibling.returncode != 0
+    assert "child 001 must use sibling_order >= 1" in zero_sibling.stderr
+
+    proposal["project_boundaries"][1]["sibling_order"] = 1
+    proposal["project_boundaries"][1]["parent_feature_code"] = None
+    proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+    missing_parent = _run(
+        PREPARE, index_path, report_path, boundaries_path, proposal_path, preview_path, cwd=tmp_path
+    )
+    assert missing_parent.returncode != 0
+    assert "requires a confirmed subproject handoff" in missing_parent.stderr
+    proposal["project_boundaries"][1]["parent_feature_code"] = "000"
+
+    index["hierarchy"] = {"mode": "explicit", "root_feature": "000-root"}
+    index["features"][0]["boundary_source"] = {
+        "kind": "root", "handoff_ref": None, "rationale": "Confirmed root."
+    }
+    index["features"][0]["outline_alignment"] = {
+        "status": "one_to_one", "outline_node_refs": ["root-node"], "rationale": "Confirmed root mapping."
+    }
+    index["features"][1]["parent_feature"] = "000-root"
+    index["features"][1]["sibling_order"] = 1
+    index["features"][1]["boundary_source"] = {
+        "kind": "subproject_handoff",
+        "handoff_ref": "specs/001-child/prd.md#handoff",
+        "rationale": "Confirmed child handoff.",
+    }
+    index["features"][1]["outline_alignment"] = {
+        "status": "one_to_one", "outline_node_refs": ["child-node"], "rationale": "Confirmed child mapping."
+    }
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    bootstrapped = _run(BOOTSTRAP, index_path, report_path, "--root", "000-root", cwd=tmp_path)
+    assert bootstrapped.returncode == 0, bootstrapped.stderr
+    proposal["project_boundaries"][1]["sibling_order"] = 2
+    proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+    rejected = _run(
+        PREPARE, index_path, report_path, boundaries_path, proposal_path, preview_path, cwd=tmp_path
+    )
+    assert rejected.returncode != 0
+    assert "cannot rewrite existing 001-child.sibling_order" in rejected.stderr
+
+
 def test_adoption_requires_writer_ledger_then_activates_once_and_preserves_sources(tmp_path: Path):
     paths = _project(tmp_path)
     root = paths["root"]

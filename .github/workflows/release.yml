@@ -44,17 +44,16 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Existing-project adoption without fake pages
+          ## Legacy flat hierarchy adoption
 
-          This patch closes the v0.11.30 setup loop for existing projects that do not yet have an authoritative Outline boundary baseline:
+          This patch fixes the remaining v0.11.31 validation conflict for existing projects migrated from a flat review index:
 
-          - The boundary gate now routes missing baselines to one explicit \`/sp.prd <root> --adopt-outline-boundaries\` workflow instead of returning to bootstrap forever.
-          - The model reads the real PRD, Outline, project directories, handoffs, and candidate report to generate a genuine proposal and Outline review page.
-          - Only the user's bound loopback decision can establish authority; copied, downloaded, or model-authored decision JSON remains invalid.
-          - Activation rechecks live paths, Outline mappings, handoffs, artifact digests, writer evidence, and the one-time receipt before exclusively creating the first \`ALIGNED\` baseline.
-          - Concurrent calls and failures after the commit point recover forward without duplicating the receipt, baseline, code ledger, derived index, or activation log.
-          - Adoption records the current project shape only. It does not move, rename, delete, invent, or rewrite existing PRD, Outline, Flow, UI, or code artifacts.
-          - Flow and UI setup blocks route to the same PRD adoption page; normal aligned SP work keeps the existing lightweight path.
+          - Schema-v1 migration intentionally records unknown hierarchy as \`parent_feature: null\` and \`sibling_order: 0\` without inventing lineage.
+          - \`/sp.prd <root> --adopt-outline-boundaries\` now recognizes that placeholder for non-root candidates marked \`parent_unconfirmed\`.
+          - The model can confirm the real parent from current handoff and Outline evidence and assign the required positive child sibling order.
+          - Existing explicit parent and sibling-order facts remain immutable; adoption cannot be used as an unreviewed restructuring path.
+          - Missing markers, missing parents, zero child order, duplicate sibling slots, and attempted rewrites continue to fail closed.
+          - The fix changes only adoption validation and guidance; ordinary aligned PRD, Flow, and UI work remains unchanged.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install

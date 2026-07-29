@@ -189,7 +189,7 @@ specs/<root-feature>/outline-boundaries.json
 
 每个 root 的 active proposal 必须记录 `base_baseline_id`、`base_baseline_digest`、`proposal_digest`、`transition_id` 和 `transition_revision`。Git 分支或其他离线工作副本可以各自形成提案，但合并时只要 base digest 不再等于目标分支的 current digest，就不得自动合并或按字段拼接，必须 rebase 后重新运行影响评估并重新批准受影响决定。
 
-存量项目不能通过扫描目录直接晋升为权威 Outline。首次升级进入 `LEGACY_ADOPTION_REQUIRED`，普通门禁只返回 `/sp.prd <root> --adopt-outline-boundaries`。机械工具只读扫描现有 feature、handoff 和 review index，生成带来源 digest 的非权威候选清单；模型再读取真实 PRD、Outline、目录和候选，生成 proposal 与真实 Outline 审核页。页面必须把操作标为 `ADOPTION`，不能把首次接入伪装成已有 baseline 上的结构调整。
+存量项目不能通过扫描目录直接晋升为权威 Outline。首次升级进入 `LEGACY_ADOPTION_REQUIRED`，普通门禁只返回 `/sp.prd <root> --adopt-outline-boundaries`。机械工具只读扫描现有 feature、handoff 和 review index，生成带来源 digest 的非权威候选清单；模型再读取真实 PRD、Outline、目录和候选，生成 proposal 与真实 Outline 审核页。页面必须把操作标为 `ADOPTION`，不能把首次接入伪装成已有 baseline 上的结构调整。旧 flat index 中非根条目的 `parent_feature: null`、`sibling_order: 0` 只是层级未知占位；候选同时标记 `parent_unconfirmed` 时，proposal 必须按现有 handoff 和 Outline 证据确认真实 parent，并将 sibling 顺序规范化为大于等于 1。已经明确的 parent 和 sibling 顺序不得借采纳流程改写。
 
 最终确认只能由用户在绑定 loopback 页面完成。writer 只机械记录 decision、receipt 和追加式 ledger，不调用模型；缺 ledger、模型手写 decision、过期候选、目录或源文件变化、重复代码、错误 parent、悬空 Outline/handoff、符号链接或并发冲突一律 fail closed。激活器在固定短锁内重新验证全部身份和摘要，以 exclusive create 建立一个首个 `ALIGNED` baseline，初始化 feature-code ledger，派生 review index，并支持提交点后的幂等前滚恢复。Adoption 不移动、重命名、删除或新建业务项目，也不修改现有 PRD、Outline、Flow、UI 和代码；需要重构时，先接入当前事实，再另行发起人工确认的调整。
 

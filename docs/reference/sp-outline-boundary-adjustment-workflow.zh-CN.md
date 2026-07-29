@@ -197,7 +197,7 @@
 
 ### 7.2 存量项目首次接入
 
-存量接入不是日常调整，也不是结构迁移。缺少 `outline-boundaries.json` 时，普通命令统一返回 `LEGACY_ADOPTION_REQUIRED`，唯一入口是 `/sp.prd <root-feature> --adopt-outline-boundaries`。这个入口先机械扫描 `review-index.json`、feature 目录和现有映射，生成带来源摘要的候选报告；然后由模型读取真实 PRD、Outline、handoff 和目录内容，生成 proposal 与正式 Outline 审核页。模型可以分析和生成真实内容，但不能替用户写最终 decision、receipt 或 writer ledger。
+存量接入不是日常调整，也不是结构迁移。缺少 `outline-boundaries.json` 时，普通命令统一返回 `LEGACY_ADOPTION_REQUIRED`，唯一入口是 `/sp.prd <root-feature> --adopt-outline-boundaries`。这个入口先机械扫描 `review-index.json`、feature 目录和现有映射，生成带来源摘要的候选报告；然后由模型读取真实 PRD、Outline、handoff 和目录内容，生成 proposal 与正式 Outline 审核页。模型可以分析和生成真实内容，但不能替用户写最终 decision、receipt 或 writer ledger。schema-v1 flat index 迁移出的非根条目会暂用 `parent_feature: null`、`sibling_order: 0` 表示“层级未知”；当候选报告同时标记 `parent_unconfirmed` 时，采纳 proposal 必须在用户审核前把真实 parent 和大于等于 1 的 sibling 顺序补齐。这是对缺失事实的确认，不是改写已经确认的结构；已有显式 parent 或 sibling 顺序仍必须原样保留。
 
 审核页中的 `boundary_adjustment` 显式写 `operation: ADOPTION`、空 base identity 和 `change_class: ADOPTION`，不能伪装成 `METADATA` 或 `STRUCTURAL`。`prepare-outline-boundary-adoption.mjs` 会验证候选报告未过期、项目代码和目录一一对应、parent 合法、Outline 节点存在、handoff 文件与锚点存在、无重复代码或符号链接，并对现有产物生成摘要；准备结束后仍不得出现权威 boundaries 文件。
 

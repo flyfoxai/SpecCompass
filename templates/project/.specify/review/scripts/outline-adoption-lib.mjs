@@ -186,7 +186,18 @@ export async function validateAdoptionInputs({ boundariesPath, reviewIndexPath, 
     if (!candidate || !boundary) throw new Error(`Adoption is missing current feature ${feature}.`);
     for (const field of ["order", "feature_code", "feature", "title", "sibling_order"]) {
       if (candidate[field] !== indexEntry[field]) throw new Error(`Candidate report drifted from review-index at ${feature}.${field}.`);
-      if (boundary[field] !== indexEntry[field]) throw new Error(`Adoption cannot rewrite existing ${feature}.${field}.`);
+      if (field !== "sibling_order" && boundary[field] !== indexEntry[field]) {
+        throw new Error(`Adoption cannot rewrite existing ${feature}.${field}.`);
+      }
+    }
+    const normalizesUnknownLegacySibling = feature !== report.root_feature
+      && indexEntry.parent_feature === null
+      && candidate.parent_feature_code === null
+      && candidate.sibling_order === 0
+      && candidate.blocking_issues.includes("parent_unconfirmed")
+      && boundary.parent_feature_code !== null;
+    if (!normalizesUnknownLegacySibling && boundary.sibling_order !== indexEntry.sibling_order) {
+      throw new Error(`Adoption cannot rewrite existing ${feature}.sibling_order.`);
     }
     const indexedParentCode = indexEntry.parent_feature === null ? null : indexCodeByFeature.get(indexEntry.parent_feature);
     if (indexEntry.parent_feature !== null && boundary.parent_feature_code !== indexedParentCode) {

@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.32] - 2026-07-29
+
+### Fixed
+
+- Fixed legacy flat-index adoption when migrated non-root entries carry the intentional `parent_feature: null`, `sibling_order: 0` unknown-hierarchy placeholder.
+- Allowed only candidates explicitly marked `parent_unconfirmed` to confirm a real parent and normalize the child sibling order to `1` or greater.
+- Preserved fail-closed immutability for every already explicit parent and sibling order, with regression coverage for missing markers, missing parents, zero child order, and attempted rewrites.
+
 ## [0.11.31] - 2026-07-29
 
 ### Added

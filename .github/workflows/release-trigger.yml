@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added reviewed legacy Outline-boundary adoption with genuine model-generated pages, human-only authority, and recovery-safe first-baseline activation." \
+              "- Fixed flat-index Outline adoption by normalizing only parent-unconfirmed child placeholders while preserving explicit hierarchy immutability." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

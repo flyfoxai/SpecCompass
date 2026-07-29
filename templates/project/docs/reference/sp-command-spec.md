@@ -295,6 +295,11 @@ handoffs, index, and candidate to generate a genuine null-base proposal and
 Outline review page. Its `boundary_adjustment` identity explicitly uses
 `operation: ADOPTION` and `change_class: ADOPTION`; ordinary adjustment objects
 without `operation` remain backward-compatible and mean `ADJUSTMENT`.
+For a migrated flat non-root entry, `parent_feature: null`, `sibling_order: 0`,
+and candidate issue `parent_unconfirmed` are an unknown-hierarchy placeholder,
+not confirmed lineage. Adoption must confirm the real parent from current
+handoff/Outline evidence and normalize the child to `sibling_order >= 1`, while
+an already explicit parent and sibling order remain immutable.
 `prepare-outline-boundary-adoption.mjs` validates and hashes the current shape
 without creating authority. Only the loopback writer can record the human
 decision and one-time receipt. `activate-outline-boundary-adoption.mjs`

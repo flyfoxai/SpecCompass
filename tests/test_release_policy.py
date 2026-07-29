@@ -31,17 +31,18 @@ def test_project_version_matches_latest_changelog_entry():
 
 
 def test_release_notes_publish_user_facing_release_theme():
-    """GitHub Release notes should describe the legacy-adoption patch."""
+    """GitHub Release notes should describe the flat-hierarchy adoption patch."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Existing-project adoption without fake pages" in release_workflow
+    assert "## Legacy flat hierarchy adoption" in release_workflow
     assert "/sp.prd <root> --adopt-outline-boundaries" in release_workflow
-    assert "genuine proposal and Outline review page" in release_workflow
-    assert "Only the user's bound loopback decision" in release_workflow
-    assert "exclusively creating the first" in release_workflow
-    assert "recover forward without duplicating" in release_workflow
-    assert "does not move, rename, delete, invent, or rewrite" in release_workflow
-    assert "Flow and UI setup blocks route to the same PRD adoption page" in release_workflow
+    assert "parent_feature: null" in release_workflow
+    assert "sibling_order: 0" in release_workflow
+    assert "parent_unconfirmed" in release_workflow
+    assert "confirm the real parent" in release_workflow
+    assert "explicit parent and sibling-order facts remain immutable" in release_workflow
+    assert "continue to fail closed" in release_workflow
+    assert "ordinary aligned PRD, Flow, and UI work remains unchanged" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
@@ -50,15 +51,14 @@ def test_release_notes_publish_user_facing_release_theme():
 
 
 def test_release_changelog_summary_matches_outline_alignment_focus():
-    """The generated changelog should lead with reviewed legacy adoption."""
+    """The generated changelog should lead with flat-index adoption repair."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "reviewed legacy Outline-boundary adoption" in trigger_workflow
-    assert "genuine model-generated pages" in trigger_workflow
-    assert "human-only authority" in trigger_workflow
-    assert "recovery-safe first-baseline activation" in trigger_workflow
+    assert "Fixed flat-index Outline adoption" in trigger_workflow
+    assert "parent-unconfirmed child placeholders" in trigger_workflow
+    assert "explicit hierarchy immutability" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

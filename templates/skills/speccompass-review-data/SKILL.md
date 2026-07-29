@@ -138,6 +138,11 @@ same explicit `transition_id` handed off by `/sp.prd`.
 real PRD/Outline, current feature directories, handoffs, and review index and to
 generate a genuine Outline review page. The page identity uses
 `operation: ADOPTION`, null base baseline fields, and `change_class: ADOPTION`.
+A migrated flat non-root entry with `parent_feature: null`, `sibling_order: 0`,
+and candidate issue `parent_unconfirmed` records unknown hierarchy, not an
+authoritative root position. The proposal must confirm its real parent from
+current handoff/Outline evidence and assign `sibling_order >= 1`; an already
+explicit parent and sibling order remain immutable during adoption.
 Run `prepare-outline-boundary-adoption.mjs` before serving it; the helper must
 leave `outline-boundaries.json` absent. Only the loopback writer may record the
 human decision and receipt. After confirmation, `/sp.prd` runs
