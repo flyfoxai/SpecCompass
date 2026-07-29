@@ -31,17 +31,18 @@ def test_project_version_matches_latest_changelog_entry():
 
 
 def test_release_notes_publish_user_facing_release_theme():
-    """GitHub Release notes should describe the flat-hierarchy adoption patch."""
+    """GitHub Release notes should describe rejected-Outline regeneration."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Legacy flat hierarchy adoption" in release_workflow
-    assert "/sp.prd <root> --adopt-outline-boundaries" in release_workflow
-    assert "parent_feature: null" in release_workflow
-    assert "sibling_order: 0" in release_workflow
-    assert "parent_unconfirmed" in release_workflow
-    assert "confirm the real parent" in release_workflow
-    assert "explicit parent and sibling-order facts remain immutable" in release_workflow
-    assert "continue to fail closed" in release_workflow
+    assert "## Regenerate rejected Outline drafts" in release_workflow
+    assert "/sp.prd <root> --discard-outline-draft" in release_workflow
+    assert "digest-bound plan" in release_workflow
+    assert "Every PRD, spec, Flow, UI, plan, task, implementation file, test, data file, and migration remains in place" in release_workflow
+    assert "outline-draft-reset.json" in release_workflow
+    assert "/sp.prd <root> --regenerate-outline-draft --reset <reset-id>" in release_workflow
+    assert "draft-project-*" in release_workflow
+    assert "human confirmation and separate reconciliation" in release_workflow
+    assert "symlink/hard-link rejection" in release_workflow
     assert "ordinary aligned PRD, Flow, and UI work remains unchanged" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
@@ -51,14 +52,14 @@ def test_release_notes_publish_user_facing_release_theme():
 
 
 def test_release_changelog_summary_matches_outline_alignment_focus():
-    """The generated changelog should lead with flat-index adoption repair."""
+    """The generated changelog should lead with draft discard/regeneration."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Fixed flat-index Outline adoption" in trigger_workflow
-    assert "parent-unconfirmed child placeholders" in trigger_workflow
-    assert "explicit hierarchy immutability" in trigger_workflow
+    assert "digest-bound discard and model regeneration" in trigger_workflow
+    assert "rejected pre-baseline Outline drafts" in trigger_workflow
+    assert "preserving PRDs, implementation artifacts, and ordinary aligned work" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

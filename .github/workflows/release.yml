@@ -44,16 +44,18 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Legacy flat hierarchy adoption
+          ## Regenerate rejected Outline drafts
 
-          This patch fixes the remaining v0.11.31 validation conflict for existing projects migrated from a flat review index:
+          This patch adds a safe way to reject an unconfirmed pre-baseline Outline and generate a new one from the real requirement sources:
 
-          - Schema-v1 migration intentionally records unknown hierarchy as \`parent_feature: null\` and \`sibling_order: 0\` without inventing lineage.
-          - \`/sp.prd <root> --adopt-outline-boundaries\` now recognizes that placeholder for non-root candidates marked \`parent_unconfirmed\`.
-          - The model can confirm the real parent from current handoff and Outline evidence and assign the required positive child sibling order.
-          - Existing explicit parent and sibling-order facts remain immutable; adoption cannot be used as an unreviewed restructuring path.
-          - Missing markers, missing parents, zero child order, duplicate sibling slots, and attempted rewrites continue to fail closed.
-          - The fix changes only adoption validation and guidance; ordinary aligned PRD, Flow, and UI work remains unchanged.
+          - \`/sp.prd <root> --discard-outline-draft\` creates a digest-bound plan before moving any draft-owned artifact.
+          - The reset archives only the rejected Outline, its review/discovery records, and unactivated boundary proposals into auditable history.
+          - Every PRD, spec, Flow, UI, plan, task, implementation file, test, data file, and migration remains in place.
+          - \`outline-draft-reset.json\` binds the immutable plan, preserved PRD digests, archived files, and transitional review index before regeneration can start.
+          - \`/sp.prd <root> --regenerate-outline-draft --reset <reset-id>\` uses model capability to generate a genuinely new Outline rather than restoring or renaming the rejected draft.
+          - Candidate projects use temporary \`draft-project-*\` identities; stable project codes are considered only after human confirmation and separate reconciliation.
+          - Fixed paths, canonical digests, short leases, idempotent recovery, locale-independent ordering, and symlink/hard-link rejection keep the reset fail closed across supported systems.
+          - The ordinary aligned PRD, Flow, and UI work remains unchanged when no reset receipt exists.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install

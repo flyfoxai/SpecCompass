@@ -12,7 +12,7 @@ The current workflow is documentation-first, not documentation-only. Implementat
 ## Core Ideas
 
 - Two layers: business clarification first, delivery design second.
-- Mandatory PRD intake: `sp.prd` grows product intent into a draft and records outline readiness, but `prd.md` is not a stable fact source.
+- Mandatory PRD intake: `sp.prd` records requirement sources and product intent. Confirmed or formally sourced PRD content is a requirement fact that Outline must preserve; explicitly marked model candidates are not facts.
 - Unified clarify: `sp.clarify` handles high-impact spec, flow, and UI decisions.
 - Query-first memory: check project-level and feature-level memory before expanding source docs.
 - Worksets: split large features into local work areas.

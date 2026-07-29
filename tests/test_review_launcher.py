@@ -77,6 +77,7 @@ DISCOVERY_DISTRIBUTION_ASSETS = (
     Path("schemas/outline-intent-ledger.schema.json"),
     Path("schemas/outline-boundaries.schema.json"),
     Path("schemas/outline-boundaries-adoption.schema.json"),
+    Path("schemas/outline-draft-reset.schema.json"),
     Path("schemas/outline-adjustment-impact-preview.schema.json"),
     Path("schemas/outline-boundary-consumption-event.schema.json"),
     Path("schemas/outline-boundary-decision.schema.json"),
@@ -97,9 +98,11 @@ DISCOVERY_DISTRIBUTION_ASSETS = (
     Path("scripts/advance-outline-transition.mjs"),
     Path("scripts/bootstrap-outline-boundaries.mjs"),
     Path("scripts/check-outline-boundary-gate.mjs"),
+    Path("scripts/discard-outline-draft.mjs"),
     Path("scripts/migrate-review-index.mjs"),
     Path("scripts/outline-adoption-lib.mjs"),
     Path("scripts/outline-boundaries-lib.mjs"),
+    Path("scripts/outline-draft-reset-lib.mjs"),
     Path("scripts/outline-adjustment-lib.mjs"),
     Path("scripts/outline-transition-artifact-lib.mjs"),
     Path("scripts/outline-transition-lock-lib.mjs"),
@@ -115,6 +118,7 @@ DISCOVERY_DISTRIBUTION_ASSETS = (
     Path("scripts/start-outline-transition.mjs"),
     Path("scripts/sync-review-index.mjs"),
     Path("scripts/validate-outline-boundaries.mjs"),
+    Path("scripts/validate-outline-draft-reset.mjs"),
     Path("scripts/validate-review-index.mjs"),
 )
 

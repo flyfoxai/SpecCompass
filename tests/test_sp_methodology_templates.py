@@ -30,6 +30,7 @@ OUTLINE_INTENT_LEDGER_SCHEMA = REVIEW_ROOT / "schemas" / "outline-intent-ledger.
 REVIEW_INDEX_SCHEMA = REVIEW_ROOT / "schemas" / "review-index.schema.json"
 OUTLINE_BOUNDARIES_SCHEMA = REVIEW_ROOT / "schemas" / "outline-boundaries.schema.json"
 OUTLINE_BOUNDARIES_ADOPTION_SCHEMA = REVIEW_ROOT / "schemas" / "outline-boundaries-adoption.schema.json"
+OUTLINE_DRAFT_RESET_SCHEMA = REVIEW_ROOT / "schemas" / "outline-draft-reset.schema.json"
 FEATURE_CODE_LEDGER_SCHEMA = REVIEW_ROOT / "schemas" / "feature-code-ledger.schema.json"
 REVIEW_DATA_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-review-data.mjs"
 REVIEW_INDEX_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-review-index.mjs"
@@ -43,6 +44,8 @@ FEATURE_CODE_MANAGER = REVIEW_ROOT / "scripts" / "manage-feature-codes.mjs"
 OUTLINE_TRANSITION_LOCK = REVIEW_ROOT / "scripts" / "outline-transition-lock.mjs"
 OUTLINE_BASELINE_ACTIVATOR = REVIEW_ROOT / "scripts" / "activate-outline-baseline.mjs"
 OUTLINE_BOUNDARY_GATE = REVIEW_ROOT / "scripts" / "check-outline-boundary-gate.mjs"
+OUTLINE_DRAFT_RESET = REVIEW_ROOT / "scripts" / "discard-outline-draft.mjs"
+OUTLINE_DRAFT_RESET_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-outline-draft-reset.mjs"
 OUTLINE_TRANSITION_START = REVIEW_ROOT / "scripts" / "start-outline-transition.mjs"
 OUTLINE_ADJUSTMENT_PREPARE = REVIEW_ROOT / "scripts" / "prepare-outline-adjustment.mjs"
 OUTLINE_TRANSITION_SCAN = REVIEW_ROOT / "scripts" / "scan-outline-transition-impact.mjs"
@@ -1761,8 +1764,8 @@ def test_gate_complexity_only_covers_pre_planning_business_signals():
     assert "delivery-level split signals remain owned by `sp.plan`, `sp.tasks`, and `sp.analyze`" in command_spec
 
 
-def test_prd_is_mandatory_upstream_intake_but_not_stable_spec_entry():
-    """Mandatory /sp.prd intake must not replace /sp.specify as the stable spec entry."""
+def test_prd_is_requirement_source_container_but_specify_remains_stable_spec_entry():
+    """Confirmed PRD facts must survive Outline work without replacing /sp.specify."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     constitution = (PROJECT_MEMORY_DIR / "constitution.md").read_text(encoding="utf-8")
     prd = _command("prd")
@@ -1777,7 +1780,10 @@ def test_prd_is_mandatory_upstream_intake_but_not_stable_spec_entry():
     assert "Lean PRD 也不能只剩目录" in methodology
     assert "至少要有一个清晰战略目标、一个目标用户或角色、一个有边界的核心场景" in methodology
     assert "0 到 1 想法、范围不清、多能力方向、治理影响、高风险或 source 冲突必须走完整 PRD" in methodology
-    assert "不是稳定事实源" in methodology
+    assert "`prd.md` 是需求来源容器" in methodology
+    assert "是 Outline 不得丢失的需求事实" in methodology
+    assert "`[src:ai-proposed]`、`[uncertain:*]` 等明确候选不是事实" in methodology
+    assert "`/sp.specify` 仍是稳定规格入口" in methodology
     assert "自上而下的需求生长" in methodology
     assert "战略目标、产品定位、业务目标、目标用户和能力版图" in methodology
     assert "足够交给 `/sp.specify` 提炼稳定规格" in methodology
@@ -1836,7 +1842,7 @@ def test_prd_is_mandatory_upstream_intake_but_not_stable_spec_entry():
     assert "Candidate strength threshold" in constitution
     assert "Status values are fixed" in constitution
     assert "Keep the active candidate table concise" in constitution
-    assert "stable requirement intake and baseline specification point" in specify
+    assert "stable implementation-facing specification compiler and baseline specification point" in specify
     assert "`/sp.prd` is the mandatory upstream requirement intake" in specify
     assert "Treat work as new feature work when `spec.md` is missing" in specify
     assert "`spec.md` still contains `SP_STAGE_SEED: spec`" in specify
@@ -1851,7 +1857,9 @@ def test_prd_is_mandatory_upstream_intake_but_not_stable_spec_entry():
     assert "references stale PRD intent, missing/rebased sources, unresolved decisions" in specify
     assert "SP_STATUS: NEEDS_PRD" in specify
     assert "requires owner review" in specify
-    assert "`prd.md` is only an upstream draft" in specify
+    assert "`prd.md` is the requirement-source container" in specify
+    assert "User-confirmed, formally sourced, and consumed-decision content is requirement fact" in specify
+    assert "`/sp.specify` carries only eligible facts into `spec.md`" in specify
     assert "Do not stabilize `[src:ai-proposed]`" in specify
     assert "Do not treat `[src:ai-proposed]`" in specify
     assert "without user confirmation" in specify
@@ -1859,7 +1867,8 @@ def test_prd_is_mandatory_upstream_intake_but_not_stable_spec_entry():
     assert "hooks.before_prd" in prd
     assert "sp.constitution" in prd
     assert "mandatory upstream requirement intake" in prd
-    assert "not a stable fact source" in prd
+    assert "`prd.md` is the requirement-source container" in prd
+    assert "User-confirmed, formally sourced, or consumed-decision content is a requirement fact" in prd
     assert "top-down requirement growth" in prd
     assert "Choose the PRD depth before writing" in prd
     assert "Lean PRD" in prd

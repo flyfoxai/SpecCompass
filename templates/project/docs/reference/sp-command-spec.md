@@ -288,8 +288,8 @@ change only their owned flag, then run `sync-review-index.mjs`,
 `validate-review-index.mjs`, and the shared gate check. Legacy migration creates
 a reviewed adoption candidate, never authoritative lineage.
 
-When the boundary file is absent, the gate returns only
-`/sp.prd <root-feature> --adopt-outline-boundaries`. This setup route runs the
+When the boundary file is absent and no valid draft-reset receipt exists, the
+gate returns only `/sp.prd <root-feature> --adopt-outline-boundaries`. This setup route runs the
 mechanical bootstrap, then the model reads the real PRD, Outline, directories,
 handoffs, index, and candidate to generate a genuine null-base proposal and
 Outline review page. Its `boundary_adjustment` identity explicitly uses
@@ -312,6 +312,29 @@ invocation. That route must reuse the immutable adoption inputs and must not
 rerun bootstrap or model generation before activation. Once the authoritative
 baseline commit exists, retries may ignore later review-page churn only to
 finish derived ledger/index/journal recovery for that exact committed baseline.
+
+Before the first authoritative baseline only, an explicit
+`/sp.prd <root-feature> --discard-outline-draft` may replace this route. The
+fixed `discard-outline-draft.mjs` creates a digest-bound plan and applies only
+its closed Outline-draft allowlist under a short lease. It archives rather than
+recursively deletes draft Outline, review/discovery, confirmation, and
+unactivated proposal files. Every PRD, spec, Flow/UI artifact, plan, task, code,
+test, data file, and migration is outside that allowlist and remains bound in
+the preserved source inventory. An existing baseline, active transition,
+symlink, repository escape, normalized path collision, or digest drift fails
+closed. The receipt is the last commit point and an interrupted run resumes the
+same immutable plan.
+
+After a valid reset receipt, the gate returns its exact
+`--regenerate-outline-draft --reset <reset-id>` command instead of current-shape
+adoption. Former feature directories are source containers, not authoritative
+projects. The model rereads every preserved PRD and relevant implementation
+evidence and generates a new root Outline whose candidate projects use
+temporary `draft-project-*` identities without stable codes. The reset ID and
+receipt digest participate in source authority identity. Human confirmation
+freezes that proposed shape; stable candidate codes and artifact dispositions
+belong to a later reviewed reconciliation proposal. Neither reset, Outline
+confirmation, nor reconciliation may automatically delete implementation code.
 
 Project codes reuse the native SP sequential feature prefix. `000` is the root;
 new authoritative boundaries receive repository-global `001`, `002`, and later

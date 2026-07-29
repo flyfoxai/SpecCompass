@@ -2,6 +2,24 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.33] - 2026-07-29
+
+### Added
+
+- Added an explicit `/sp.prd <root> --discard-outline-draft` route for rejecting a pre-baseline Outline draft without deleting its PRD or implementation sources.
+- Added digest-bound reset plans and receipts, repository-state validation, auditable draft history, and a model-driven `/sp.prd <root> --regenerate-outline-draft --reset <reset-id>` continuation.
+
+### Changed
+
+- Treat confirmed, formally sourced, and consumed-decision PRD content as requirement facts while keeping `/sp.specify` as the stable implementation-facing specification compiler.
+- Treat former feature directories as preserved source containers after reset, and require temporary `draft-project-*` identities until the regenerated Outline is confirmed by a human.
+
+### Fixed
+
+- Prevented a rejected legacy Outline from forcing users back into adoption of a draft shape they no longer accept.
+- Hardened reset execution against archive-list expansion, path escape, symlink and hard-link aliases, cross-platform ordering drift, concurrent execution, partial moves, and mismatched plans or receipts.
+- Preserved ordinary aligned PRD, Flow, and UI behavior when no reset receipt exists.
+
 ## [0.11.32] - 2026-07-29
 
 ### Fixed

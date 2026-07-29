@@ -12,7 +12,7 @@
 ## 最核心的东西
 
 - 两层推进：先业务澄清，再交付设计。
-- 强制 PRD 入口：`sp.prd` 把产品意图整理成草稿并记录 outline readiness，但 `prd.md` 不是稳定事实源。
+- 强制 PRD 入口：`sp.prd` 记录需求来源和产品意图；其中已确认或正式来源支持的内容是 Outline 必须保留的需求事实，明确标记的模型候选仍不是事实。
 - 统一澄清：`sp.clarify` 统一处理 spec、flow、ui 的高影响问题。
 - Query-First Memory：先查项目级和 feature 级 memory，再决定读哪些正文。
 - Workset：把大 feature 拆成局部工作面，减少上下文压力。

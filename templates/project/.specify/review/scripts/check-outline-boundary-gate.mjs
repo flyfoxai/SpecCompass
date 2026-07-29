@@ -5,6 +5,10 @@ import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 import { readJson, validateOutlineBoundaries } from "./outline-boundaries-lib.mjs";
+import {
+  validateOutlineDraftResetPlan,
+  validateOutlineDraftResetReceipt
+} from "./outline-draft-reset-lib.mjs";
 
 const args = process.argv.slice(2);
 const featureIndex = args.indexOf("--feature");
@@ -53,6 +57,62 @@ try {
     await access(boundariesPath);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
+    const rootDirectory = dirname(boundariesPath);
+    const resetReceiptPath = resolve(rootDirectory, "prd", "review", "outline-draft-reset.json");
+    const resetPlanPath = resolve(rootDirectory, "prd", "review", "outline-draft-reset-plan.json");
+    try {
+      const receipt = await readJson(resetReceiptPath);
+      validateOutlineDraftResetReceipt(receipt);
+      if (receipt.root_feature !== rootFromPath) {
+        throw new Error("reset receipt root_feature does not match its fixed root directory");
+      }
+      const validation = spawnSync(process.execPath, [resolve(scriptDir, "validate-outline-draft-reset.mjs"), resetReceiptPath], { encoding: "utf8" });
+      if (validation.status !== 0) {
+        throw new Error((validation.stderr || validation.stdout).trim() || "reset receipt repository validation failed");
+      }
+      block(
+        { root_feature: receipt.root_feature, updated_at: receipt.applied_at, transition_state: "LEGACY_ADOPTION_REQUIRED" },
+        "OUTLINE_DRAFT_REGENERATION_REQUIRED",
+        [resetReceiptPath, ...receipt.source_containers.map((source) => source.prd_ref)],
+        receipt.next_command,
+        "The prior Outline was a non-authoritative draft and has been archived. Regenerate a real Outline from the preserved PRDs and implementation evidence; temporary draft node IDs are not stable project codes."
+      );
+    } catch (resetError) {
+      if (resetError.code !== "ENOENT") {
+        block(
+          null,
+          "OUTLINE_DRAFT_RESET_INVALID",
+          [resetReceiptPath, resetError.message],
+          `node .specify/review/scripts/discard-outline-draft.mjs apply ${commandReviewIndexPath} ${commandBoundariesPath} ${commandBoundariesPath.slice(0, commandBoundariesPath.lastIndexOf("/") + 1)}prd/review/outline-draft-reset-plan.json --plan-digest <plan-digest>`,
+          "The draft reset receipt is incomplete or invalid. Preserve the archive and resume only from its digest-bound plan."
+        );
+      }
+    }
+    try {
+      const plan = await readJson(resetPlanPath);
+      validateOutlineDraftResetPlan(plan);
+      const validation = spawnSync(process.execPath, [resolve(scriptDir, "validate-outline-draft-reset.mjs"), resetPlanPath], { encoding: "utf8" });
+      if (validation.status !== 0) {
+        throw new Error((validation.stderr || validation.stdout).trim() || "reset plan repository validation failed");
+      }
+      block(
+        { root_feature: plan.root_feature, updated_at: plan.created_at, transition_state: "LEGACY_ADOPTION_REQUIRED" },
+        "OUTLINE_DRAFT_RESET_PENDING",
+        [resetPlanPath, ...plan.archive_entries.map((entry) => entry.source_ref)],
+        `node .specify/review/scripts/discard-outline-draft.mjs apply ${plan.source_review_index} ${plan.authoritative_boundaries} ${plan.source_review_index.replace(/specs\/review-index\.json$/, `specs/${plan.root_feature}/prd/review/outline-draft-reset-plan.json`)} --plan-digest ${plan.plan_digest}`,
+        "A digest-bound draft reset plan exists but has not reached its receipt commit point. Resume the same plan; do not bootstrap legacy adoption from the old draft index."
+      );
+    } catch (planError) {
+      if (planError.code !== "ENOENT") {
+        block(
+          null,
+          "OUTLINE_DRAFT_RESET_PLAN_INVALID",
+          [resetPlanPath, planError.message],
+          `/sp.prd ${rootFromPath} --discard-outline-draft`,
+          "The unapplied reset plan is invalid. Preserve it for diagnosis and explicitly create a fresh plan before any adoption attempt."
+        );
+      }
+    }
     const adoptionPath = `${commandBoundariesPath.slice(0, commandBoundariesPath.lastIndexOf("/") + 1)}outline-boundaries-adoption.json`;
     block(
       null,

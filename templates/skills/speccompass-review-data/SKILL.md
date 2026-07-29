@@ -35,6 +35,7 @@ or UI confirmation runs.
 - Outline discovery data: `specs/<feature>/prd/review/outline-discovery-data.json`
 - Outline source: `specs/<feature>/spec-outline.md`
 - Authoritative project boundaries: `specs/<root-feature>/outline-boundaries.json`
+- Draft reset plan/receipt: `specs/<root-feature>/prd/review/outline-draft-reset-plan.json` and `outline-draft-reset.json`
 - Repository feature-code ledger: `specs/feature-code-ledger.json`
 - Feature review index: `specs/review-index.json`
 - Flow schema: `.specify/review/schemas/flow-review-data.schema.json`
@@ -43,11 +44,13 @@ or UI confirmation runs.
 - Outline discovery schema: `.specify/review/schemas/outline-discovery-data.schema.json`
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
 - Boundary gate: `.specify/review/scripts/check-outline-boundary-gate.mjs`
+- Draft reset: `.specify/review/scripts/discard-outline-draft.mjs`
 - Feature-code manager: `.specify/review/scripts/manage-feature-codes.mjs`
 - Transition proposal: `.specify/review/scripts/start-outline-transition.mjs`
 - Draft impact preview: `.specify/review/scripts/prepare-outline-adjustment.mjs`
 - Legacy adoption preview: `.specify/review/scripts/prepare-outline-boundary-adoption.mjs`
 - Legacy adoption activation: `.specify/review/scripts/activate-outline-boundary-adoption.mjs`
+- Draft reset schema: `.specify/review/schemas/outline-draft-reset.schema.json`
 - Transition inventory: `.specify/review/scripts/scan-outline-transition-impact.mjs`
 - Artifact staging: `.specify/review/scripts/prepare-outline-transition-artifacts.mjs`
 - Artifact publication: `.specify/review/scripts/publish-outline-transition-artifacts.mjs`
@@ -151,6 +154,38 @@ digests, writer evidence, and the one-time receipt under a lease before creating
 the first `ALIGNED` baseline and derived index. Adoption records the existing
 shape only: it never moves, renames, deletes, or invents a project. A desired
 restructure is a later, separate adjustment.
+
+A missing boundary file with a valid
+`specs/<root-feature>/prd/review/outline-draft-reset.json` is a different state.
+The gate returns `OUTLINE_DRAFT_REGENERATION_REQUIRED` and the exact
+`--regenerate-outline-draft --reset <reset-id>` command. Do not run legacy
+bootstrap and do not treat `review-index.features` as the current project shape
+in this state. Those directories are preserved requirement/implementation
+source containers only.
+
+The reset itself is allowed only for an explicitly invoked
+`/sp.prd <root-feature> --discard-outline-draft` before any authoritative
+baseline exists. Use `discard-outline-draft.mjs plan` and then apply only that
+plan's returned digest. The mechanical tool archives a closed allowlist of
+Outline draft/review/decision files, writes the receipt last, and preserves all
+PRDs, specs, Flow/UI, plans, tasks, code, tests, data, and migrations. It rejects
+active transitions, symlinks, repository escapes, live-source drift, and an
+existing boundary baseline. Resume an interrupted immutable plan; never widen
+its archive list or convert it to a recursive feature-directory deletion.
+
+For regeneration, validate the reset receipt and every preserved PRD digest,
+then use model capability to read all listed PRDs and relevant preserved
+implementation evidence. Generate a new root `spec-outline.md` and
+`outline-review-data.json`; do not restore the archived Outline. Project
+candidates use temporary `draft-project-*` identities with no stable project
+code or active feature claim. Bind the reset ID and receipt digest into a
+`source_authority_id` and the source snapshot so a confirmation from another
+reset cannot be consumed. Show concrete project/code/Flow/UI impacts in review
+choices without changing implementation artifacts. Normal loopback writeback
+records the user's Outline decision. Only after a matching human confirmation
+may `/sp.prd` create the separate project-reconciliation proposal, assign
+candidate SP codes, and route every preserved artifact through impact analysis.
+No confirmation or regeneration step may automatically delete code.
 
 The writer's next command includes `--consume-outline-decision <proposal-id>`.
 On that second invocation, reuse the immutable report, proposal, preview,

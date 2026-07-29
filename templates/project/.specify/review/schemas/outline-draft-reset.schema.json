@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-draft-reset.schema.json",
+  "title": "SpecCompass Draft Outline Reset",
+  "oneOf": [
+    {"$ref": "#/$defs/plan"},
+    {"$ref": "#/$defs/receipt"}
+  ],
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "safeId": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "repoRef": {
+      "type": "string",
+      "pattern": "^(?!/)(?!~)(?![A-Za-z]:)(?!.*\\\\)(?!.*//)(?!\\.{1,2}(?:/|$))(?!.*?/\\.{1,2}(?:/|$))[^#\\r\\n]+$"
+    },
+    "sourceContainer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_container_id", "legacy_feature_code", "feature", "prd_ref", "prd_digest", "preserved_artifact_count", "preserved_artifacts_digest"],
+      "properties": {
+        "source_container_id": {"$ref": "#/$defs/safeId"},
+        "legacy_feature_code": {"type": "string", "pattern": "^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$"},
+        "feature": {"$ref": "#/$defs/safeId"},
+        "prd_ref": {"$ref": "#/$defs/repoRef"},
+        "prd_digest": {"$ref": "#/$defs/digest"},
+        "preserved_artifact_count": {"type": "integer", "minimum": 1},
+        "preserved_artifacts_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "archiveEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_ref", "source_digest", "archive_ref"],
+      "properties": {
+        "source_ref": {"$ref": "#/$defs/repoRef"},
+        "source_digest": {"$ref": "#/$defs/digest"},
+        "archive_ref": {"$ref": "#/$defs/repoRef"}
+      }
+    },
+    "plan": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "operation", "reset_id", "root_feature", "created_at", "source_review_index", "source_review_index_digest", "review_index_after_digest", "authoritative_boundaries", "receipt_ref", "archive_root", "source_containers", "archive_entries", "void_proposal_ids", "plan_digest"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "operation": {"const": "DISCARD_OUTLINE_DRAFT"},
+        "reset_id": {"$ref": "#/$defs/safeId"},
+        "root_feature": {"$ref": "#/$defs/safeId"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "source_review_index": {"$ref": "#/$defs/repoRef"},
+        "source_review_index_digest": {"$ref": "#/$defs/digest"},
+        "review_index_after_digest": {"$ref": "#/$defs/digest"},
+        "authoritative_boundaries": {"$ref": "#/$defs/repoRef"},
+        "receipt_ref": {"$ref": "#/$defs/repoRef"},
+        "archive_root": {"$ref": "#/$defs/repoRef"},
+        "source_containers": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sourceContainer"}},
+        "archive_entries": {"type": "array", "items": {"$ref": "#/$defs/archiveEntry"}},
+        "void_proposal_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/safeId"}},
+        "plan_digest": {"$ref": "#/$defs/digest"}
+      }
+    },
+    "receipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "operation", "state", "reset_id", "root_feature", "planned_at", "applied_at", "plan_ref", "plan_digest", "source_review_index", "review_index_before_digest", "review_index_after_digest", "archive_root", "source_containers", "archived_entries", "void_proposal_ids", "next_command", "receipt_digest"],
+      "properties": {
+        "schema_version": {"const": 1},
+        "operation": {"const": "DISCARD_OUTLINE_DRAFT"},
+        "state": {"const": "APPLIED_AWAITING_REGENERATION"},
+        "reset_id": {"$ref": "#/$defs/safeId"},
+        "root_feature": {"$ref": "#/$defs/safeId"},
+        "planned_at": {"type": "string", "format": "date-time"},
+        "applied_at": {"type": "string", "format": "date-time"},
+        "plan_ref": {"$ref": "#/$defs/repoRef"},
+        "plan_digest": {"$ref": "#/$defs/digest"},
+        "source_review_index": {"$ref": "#/$defs/repoRef"},
+        "review_index_before_digest": {"$ref": "#/$defs/digest"},
+        "review_index_after_digest": {"$ref": "#/$defs/digest"},
+        "archive_root": {"$ref": "#/$defs/repoRef"},
+        "source_containers": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/sourceContainer"}},
+        "archived_entries": {"type": "array", "items": {"$ref": "#/$defs/archiveEntry"}},
+        "void_proposal_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/safeId"}},
+        "next_command": {"type": "string", "minLength": 1},
+        "receipt_digest": {"$ref": "#/$defs/digest"}
+      }
+    }
+  }
+}

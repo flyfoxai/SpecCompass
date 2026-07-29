@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Fixed flat-index Outline adoption by normalizing only parent-unconfirmed child placeholders while preserving explicit hierarchy immutability." \
+              "- Added digest-bound discard and model regeneration for rejected pre-baseline Outline drafts while preserving PRDs, implementation artifacts, and ordinary aligned work." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

@@ -3,7 +3,7 @@
 ## 文档状态
 
 - 文档类型：项目边界调整的详细设计与实施约束
-- 当前版本：2026-07-28
+- 当前版本：2026-07-29
 - 审核状态：Claude Opus 4.8 与 Gemini 3.1 Pro 于 2026-07-28 给出 `CONDITIONAL_PASS`；本文已补齐人工确认来源、状态映射、锁生命周期、轻量调整白名单、root 冻结、stale 检查和非破坏性恢复约束
 - 适用范围：Outline 项目边界、真实子项目、稳定 `feature_code` 以及相关 PRD、Spec、Flow、UI、Plan、Tasks、代码和测试
 - 上位需求：[SpecCompass 产品需求文档](speccompass-product-requirements.zh-CN.md)
@@ -207,6 +207,46 @@
 
 Adoption 只记录当前事实，不移动、重命名、删除或新建业务项目，也不改写现有 PRD、Outline、Flow、UI 或代码。若当前结构确实需要调整，先按现状完成 adoption，再另行进入人工确认的调整流程。激活后必须重新运行边界门禁；普通 `/sp.prd` 只能在新门禁通过后重新生成新版 PRD/Outline 页面。仅升级 CLI 不会刷新已复制到项目里的命令和脚本，存量项目还要在提交本地修改后执行 `specify init . --integration <agent> --force`。
 
+### 7.3 未确认 Outline 的整体废弃与重生成
+
+这个入口只处理一种特殊情况：项目还没有 `outline-boundaries.json`，现有 Outline 明确是未确认草稿，而用户不愿把这份草稿先采纳成“当前事实”。它不是日常命令，也不是已有 baseline 上的结构迁移。
+
+核心关系是：
+
+```text
+PRD / 用户需求 / 正式业务来源（保留）
+                 ↓
+旧 Outline 草稿与伴生决定（失效并归档）
+                 ↓
+模型重新读取全部 PRD + 相关现有实现
+                 ↓
+新 Outline 草稿（临时项目身份）
+                 ↓
+用户审核确认
+                 ↓
+项目 reconciliation + 影响迁移
+                 ↓
+首个权威 baseline
+```
+
+`/sp.prd <root> --discard-outline-draft` 先运行只生成清单的 `plan`，再按返回的 `plan_digest` 运行 `apply`。plan 不移动文件。apply 使用短租约，先检查全部写集，再把以下文件移动到 `prd/review/history/outline-draft-resets/<reset-id>/`：
+
+- 每个来源容器的 `spec-outline.md`；
+- `outline-review-data.json`、`outline-confirmation.md`；
+- Outline Discovery 数据、pending response、intent ledger 和相关 consumed response；
+- root 下未激活的 `outline-boundaries-adoption.json`；
+- root 下 `boundary-adjustments/drafts/` 的 proposal、preview、decision 等文件。
+
+白名单不包含任何 `prd.md`、`spec.md`、Flow、UI、Plan、Tasks、代码、测试、数据或 migration。脚本不是按目录“看起来像 Outline”就递归删除，而是逐个固定模式收集 regular file、记录 SHA-256，并拒绝符号链接、大小写归一化重复、绝对路径、`..` 越界和 archive 逃逸。已有权威 baseline、active transition、staging、transition sidecar 或来源摘要变化都会阻断。
+
+apply 的提交点是 `outline-draft-reset.json`。它在所有归档、未确认代码预留作废和 transitional review index 更新完成后最后写入。若进程中途退出，同一 plan 可以识别“源文件已不在、同摘要 archive 已存在”并继续；源和 archive 同时存在、两者都不存在或摘要不一致时保留现场并停止。重复执行已完成 plan 只返回同一 receipt，不再移动文件。
+
+reset 后 `review-index.json` 暂时保留旧目录作为来源导航，但把层级改为 flat、Outline mapping 改为 `not_mapped`，并只清空 Outline Review/Discovery availability；Flow/UI availability 保留。此时 index 不是新项目结构的事实源。门禁读取 receipt 后返回 `OUTLINE_DRAFT_REGENERATION_REQUIRED`，不能再把旧条目送进普通 legacy adoption。
+
+`--regenerate-outline-draft --reset <reset-id>` 必须验证 receipt、归档和所有 PRD digest。模型读取每个来源容器的 PRD，以及与项目边界判断相关的 spec、Flow、UI、task、代码、测试、数据和 migration；旧 Outline 只能作为“已失效历史”留在 archive，不能偷偷恢复。新 Outline 的项目候选使用 `draft-project-*` 临时身份，不携带稳定 code、active feature 或既定 parent。reset ID 和 receipt digest 要进入 Outline review 的 source authority identity，防止另一轮 reset 的确认被误消费。
+
+用户确认新 Outline 后，才进入单独的 reconciliation proposal。此时可以根据语义延续、拆分、合并和新建情况分配候选 SP code，逐项列出所有保留产物的 `UNCHANGED_WITH_EVIDENCE / MIGRATE / REGENERATE / RETIRE / BLOCKED` 以及 successor/shared/retire/blocked 归属。代码和数据默认保留；没有独立清理确认时，即使新 Outline 不再引用旧实现，也只能标为 legacy 或 blocked，不能自动删除。
+
 ## 8. 状态和锁的简化
 
 schema v1 继续使用 PRD 定义的内部机器状态；本文件不另建第二套 `transition_state` 枚举。普通用户只看到由内部状态派生的显示状态：
@@ -236,6 +276,10 @@ specs/
 ├── feature-code-ledger.json
 └── <root-feature>/
     ├── outline-boundaries.json
+    ├── prd/review/
+    │   ├── outline-draft-reset-plan.json
+    │   ├── outline-draft-reset.json
+    │   └── history/outline-draft-resets/<reset-id>/...
     └── boundary-adjustments/
         ├── writeback-ledger.jsonl
         ├── consumed-decisions.jsonl
@@ -313,9 +357,12 @@ Git 提供版本历史和内容摘要，但不能代替业务上的 code 退役�
 15. 新项目只有使用与 proposal 绑定的预留代码才能启动迁移；受 Outline 管理的 feature 创建必须显式消费该代码，不使用时间戳或自动猜号。
 16. 两个恢复者并发处理同一过期 start、ledger 或 finalization 锁时，只有固定 recovery claim 的 owner 可以接管；另一个恢复者不能移走新的有效锁。
 17. 主锁或 recovery claim 删除失败不会被静默吞掉；有限重试仍失败时，命令保留现场、返回非成功状态并给出明确恢复路径。
+18. 无权威 baseline 的显式 reset 只归档 Outline 草稿白名单；PRD、代码、Flow/UI、spec、task、测试、数据和 migration 均由 plan 摘要证明保留。
+19. reset 的部分归档可以按同一 digest 幂等前滚；任一来源漂移、路径越界、symlink、双份源/archive 或权威 baseline 出现都 fail closed。
+20. reset 后的新 Outline 不继承旧 `review-index` 项目划分，候选节点先用临时身份；人工确认后才进入 code 分配和项目 reconciliation。
 
 ## 12. 实施状态
 
-已经实现并纳入回归：公共边界门禁（含 `/sp.implement`）、feature code 账本、draft/active 分离、loopback writer 人工凭证、`NONE / METADATA / STRUCTURAL` 分类、按 inventory 动态跳过 Flow/UI、固定 recovery sidecar 与 owner fencing、Windows 锁删除重试、单命令短锁、manifest staging、可重放 artifact publish、baseline commit 和提交后前滚收尾。
+已经实现并纳入回归：公共边界门禁（含 `/sp.implement`）、feature code 账本、draft/active 分离、loopback writer 人工凭证、`NONE / METADATA / STRUCTURAL` 分类、按 inventory 动态跳过 Flow/UI、固定 recovery sidecar 与 owner fencing、Windows 锁删除重试、单命令短锁、manifest staging、可重放 artifact publish、baseline commit、提交后前滚收尾，以及无首个 baseline 时的 Outline 草稿 plan/apply reset、精确归档、receipt 路由与 PRD/代码保护。
 
 当前有意保留的边界：不建设永久 artifact registry；不支持多人同时改写同一 active proposal；不自动推断 successor 或目标路径；不自动删除 staging 审计与恢复副本；不做 feature 级并发冻结。需要改变 proposal 内容时必须生成新的 proposal ID 并重新人工确认。
