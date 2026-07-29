@@ -141,7 +141,7 @@ const allowedTopLevelKeys = new Set([
   "schema_notes"
 ]);
 const allowedBoundaryAdjustmentKeys = new Set([
-  "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
+  "operation", "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
   "impact_preview_digest", "initiated_by", "change_class", "affected_feature_codes",
   "proposal_path", "impact_preview_path", "decision_path", "writer_ledger_path",
   "decision_target_ref"
@@ -1317,15 +1317,24 @@ function validateBoundaryAdjustment(data) {
     return;
   }
   validateKnownKeys("boundary_adjustment", value, allowedBoundaryAdjustmentKeys);
-  for (const key of allowedBoundaryAdjustmentKeys) {
+  for (const key of [...allowedBoundaryAdjustmentKeys].filter((field) => field !== "operation")) {
     if (!(key in value)) fail(`boundary_adjustment is missing ${key}`);
   }
+  const operation = value.operation || "ADJUSTMENT";
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.proposal_id || "")) fail("boundary_adjustment proposal_id is invalid");
-  for (const key of ["proposal_digest", "base_baseline_digest", "impact_preview_digest"]) {
+  for (const key of ["proposal_digest", "impact_preview_digest"]) {
     if (!/^[a-f0-9]{64}$/.test(value[key] || "")) fail(`boundary_adjustment ${key} must be a SHA-256 digest`);
   }
+  if (operation === "ADOPTION") {
+    if (value.base_baseline_id !== null || value.base_baseline_digest !== null || value.change_class !== "ADOPTION") {
+      fail("boundary_adjustment adoption must use null base identity and ADOPTION change class");
+    }
+  } else if (operation !== "ADJUSTMENT" || typeof value.base_baseline_id !== "string" || !value.base_baseline_id
+    || !/^[a-f0-9]{64}$/.test(value.base_baseline_digest || "")
+    || !new Set(["METADATA", "STRUCTURAL"]).has(value.change_class)) {
+    fail("boundary_adjustment adjustment identity or classification is invalid");
+  }
   if (!new Set(["model", "user"]).has(value.initiated_by)) fail("boundary_adjustment initiated_by is invalid");
-  if (!new Set(["METADATA", "STRUCTURAL"]).has(value.change_class)) fail("boundary_adjustment change_class is invalid");
   if (!Array.isArray(value.affected_feature_codes)
     || new Set(value.affected_feature_codes).size !== value.affected_feature_codes.length
     || value.affected_feature_codes.some((code) => !/^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$/.test(code))) {
@@ -1345,9 +1354,8 @@ function validateBoundaryAdjustment(data) {
       fail(`boundary_adjustment ${field} must use the fixed proposal-scoped path`);
     }
   }
-  if (typeof value.base_baseline_id !== "string" || !value.base_baseline_id
-    || typeof value.decision_target_ref !== "string" || !value.decision_target_ref) {
-    fail("boundary_adjustment baseline identity and decision_target_ref are required");
+  if (typeof value.decision_target_ref !== "string" || !value.decision_target_ref) {
+    fail("boundary_adjustment decision_target_ref is required");
   }
 }
 

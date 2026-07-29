@@ -195,6 +195,18 @@
 
 `outline-boundaries.json` 仍是权威基线的唯一提交点，但它不能让跨文件系统操作凭空变成原子事务。迁移日志和 manifest 必须能识别上述三个阶段。普通命令在 active transition、产物已发布未提交或派生不一致时全部 fail closed。
 
+### 7.2 存量项目首次接入
+
+存量接入不是日常调整，也不是结构迁移。缺少 `outline-boundaries.json` 时，普通命令统一返回 `LEGACY_ADOPTION_REQUIRED`，唯一入口是 `/sp.prd <root-feature> --adopt-outline-boundaries`。这个入口先机械扫描 `review-index.json`、feature 目录和现有映射，生成带来源摘要的候选报告；然后由模型读取真实 PRD、Outline、handoff 和目录内容，生成 proposal 与正式 Outline 审核页。模型可以分析和生成真实内容，但不能替用户写最终 decision、receipt 或 writer ledger。
+
+审核页中的 `boundary_adjustment` 显式写 `operation: ADOPTION`、空 base identity 和 `change_class: ADOPTION`，不能伪装成 `METADATA` 或 `STRUCTURAL`。`prepare-outline-boundary-adoption.mjs` 会验证候选报告未过期、项目代码和目录一一对应、parent 合法、Outline 节点存在、handoff 文件与锚点存在、无重复代码或符号链接，并对现有产物生成摘要；准备结束后仍不得出现权威 boundaries 文件。
+
+用户只能在绑定的本地页面上最终确认。loopback writer 机械写入 decision、一次性 receipt 和追加式 writer ledger，不调用模型。`activate-outline-boundary-adoption.mjs` 在短租约内重新验证当前目录、候选、proposal、审核摘要、writer ledger 和 receipt；确认全部一致后，先消费一次 receipt，再建立 feature-code ledger，最后以 exclusive create 建立首个 `ALIGNED` baseline，并前滚重建 `review-index.json` 和激活日志。并发调用、提交点后崩溃或派生文件写入失败都只允许幂等前滚，不能覆盖另一个 boundaries 文件。
+
+页面写回返回的第二次命令带 `--consume-outline-decision <proposal-id>`。这次只能消费同一份不可变 report、proposal、preview、decision 和 ledger，禁止重新运行 bootstrap、重新生成页面或改写 preview，否则会让用户刚确认的身份失效。若权威 boundaries 已经完成提交，后续即使普通 PRD 更新了审核页，旧激活命令也只能按已提交 baseline 幂等补齐 code ledger、review index 和日志，不能倒退或覆盖权威状态。
+
+Adoption 只记录当前事实，不移动、重命名、删除或新建业务项目，也不改写现有 PRD、Outline、Flow、UI 或代码。若当前结构确实需要调整，先按现状完成 adoption，再另行进入人工确认的调整流程。激活后必须重新运行边界门禁；普通 `/sp.prd` 只能在新门禁通过后重新生成新版 PRD/Outline 页面。仅升级 CLI 不会刷新已复制到项目里的命令和脚本，存量项目还要在提交本地修改后执行 `specify init . --integration <agent> --force`。
+
 ## 8. 状态和锁的简化
 
 schema v1 继续使用 PRD 定义的内部机器状态；本文件不另建第二套 `transition_state` 枚举。普通用户只看到由内部状态派生的显示状态：

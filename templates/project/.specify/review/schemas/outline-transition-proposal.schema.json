@@ -11,8 +11,8 @@
   ],
   "properties": {
     "schema_version": {"const": 1},
-    "base_baseline_id": {"type": "string", "minLength": 1},
-    "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "base_baseline_id": {"type": ["string", "null"], "minLength": 1},
+    "base_baseline_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
     "baseline_id": {"type": "string", "minLength": 1},
     "created_at": {"type": "string", "format": "date-time"},
     "created_by": {"type": "string", "minLength": 1},
@@ -28,5 +28,11 @@
       "type": "array",
       "items": {"$ref": "outline-boundaries.schema.json#/$defs/tombstone"}
     }
-  }
+  },
+  "allOf": [{
+    "oneOf": [
+      {"properties": {"base_baseline_id": {"type": "null"}, "base_baseline_digest": {"type": "null"}}},
+      {"properties": {"base_baseline_id": {"type": "string", "minLength": 1}, "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}}}
+    ]
+  }]
 }

@@ -303,6 +303,10 @@ def test_product_prd_is_authoritative_and_matches_current_review_baseline():
         assert "derived" in content and "review-index.json" in content, command_name
 
     assert "start-outline-transition.mjs" in _command("prd")
+    assert "prepare-outline-boundary-adoption.mjs" in _command("prd")
+    assert "activate-outline-boundary-adoption.mjs" in _command("prd")
+    assert "--consume-outline-decision" in _command("prd")
+    assert "Do not rerun bootstrap" in _command("prd")
     assert "manage-feature-codes.mjs reserve" in _command("prd")
     assert "create-new-feature.sh --number" in _command("specify")
     assert "rollback-outline-transition.mjs" in _command("prd")
@@ -319,6 +323,8 @@ def test_product_prd_is_authoritative_and_matches_current_review_baseline():
         "advance-outline-transition.mjs",
         "rollback-outline-transition.mjs",
         "manage-feature-codes.mjs",
+        "prepare-outline-boundary-adoption.mjs",
+        "activate-outline-boundary-adoption.mjs",
         "do not call a model",
     ):
         assert token in review_skill
@@ -6946,6 +6952,34 @@ def test_outline_review_schema_and_validator_enforce_three_view_contract(tmp_pat
         result = _run_review_validator(invalid, tmp_path / f"outline-{label}.json")
         assert result.returncode != 0, label
         assert "exactly once" in _review_validator_output(result)
+
+
+def test_outline_review_validator_accepts_explicit_legacy_adoption_identity(tmp_path):
+    sample = _outline_review_validator_sample()
+    sample["boundary_adjustment"] = {
+        "operation": "ADOPTION",
+        "proposal_id": "baseline-adoption-001",
+        "proposal_digest": "a" * 64,
+        "base_baseline_id": None,
+        "base_baseline_digest": None,
+        "impact_preview_digest": "b" * 64,
+        "initiated_by": "model",
+        "change_class": "ADOPTION",
+        "affected_feature_codes": ["001"],
+        "proposal_path": "specs/001-outline/boundary-adjustments/drafts/baseline-adoption-001/proposal.json",
+        "impact_preview_path": "specs/001-outline/boundary-adjustments/drafts/baseline-adoption-001/impact-preview.json",
+        "decision_path": "specs/001-outline/boundary-adjustments/drafts/baseline-adoption-001/decision.json",
+        "writer_ledger_path": "specs/001-outline/boundary-adjustments/writeback-ledger.jsonl",
+        "decision_target_ref": "feature-outline:intent:OUTLINE-INTENT",
+    }
+    accepted = _run_review_validator(sample, tmp_path / "outline-adoption-valid.json")
+    assert accepted.returncode == 0, _review_validator_output(accepted)
+
+    invalid = json.loads(json.dumps(sample))
+    invalid["boundary_adjustment"]["base_baseline_id"] = "baseline-existing"
+    rejected = _run_review_validator(invalid, tmp_path / "outline-adoption-invalid.json")
+    assert rejected.returncode != 0
+    assert "null base identity" in _review_validator_output(rejected)
 
 
 def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured(tmp_path):

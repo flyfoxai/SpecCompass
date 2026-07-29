@@ -36,6 +36,7 @@
       "additionalProperties": false,
       "required": ["name", "feature", "business_overview", "review_goal"],
       "properties": {
+        "operation": {"enum": ["ADJUSTMENT", "ADOPTION"]},
         "name": {"type": "string", "minLength": 1},
         "feature": {"type": "string", "minLength": 1},
         "business_overview": {"type": "string", "minLength": 18},
@@ -77,18 +78,23 @@
       "properties": {
         "proposal_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
         "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-        "base_baseline_id": {"type": "string", "minLength": 1},
-        "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "base_baseline_id": {"type": ["string", "null"], "minLength": 1},
+        "base_baseline_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
         "impact_preview_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
         "initiated_by": {"enum": ["model", "user"]},
-        "change_class": {"enum": ["METADATA", "STRUCTURAL"]},
+        "change_class": {"enum": ["METADATA", "STRUCTURAL", "ADOPTION"]},
         "affected_feature_codes": {"type": "array", "uniqueItems": true, "items": {"pattern": "^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$"}},
         "proposal_path": {"type": "string", "pattern": "^specs/[^/]+/boundary-adjustments/drafts/[^/]+/proposal\\.json$"},
         "impact_preview_path": {"type": "string", "pattern": "^specs/[^/]+/boundary-adjustments/drafts/[^/]+/impact-preview\\.json$"},
         "decision_path": {"type": "string", "pattern": "^specs/[^/]+/boundary-adjustments/drafts/[^/]+/decision\\.json$"},
         "writer_ledger_path": {"type": "string", "pattern": "^specs/[^/]+/boundary-adjustments/writeback-ledger\\.jsonl$"},
         "decision_target_ref": {"type": "string", "minLength": 1}
-      }
+      },
+      "allOf": [{
+        "if": {"required": ["operation"], "properties": {"operation": {"const": "ADOPTION"}}},
+        "then": {"properties": {"base_baseline_id": {"type": "null"}, "base_baseline_digest": {"type": "null"}, "change_class": {"const": "ADOPTION"}}},
+        "else": {"properties": {"base_baseline_id": {"type": "string", "minLength": 1}, "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "change_class": {"enum": ["METADATA", "STRUCTURAL"]}}}
+      }]
     },
     "module": {
       "type": "object",

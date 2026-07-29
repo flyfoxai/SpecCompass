@@ -15,6 +15,12 @@ import {
   validateWriterEvent
 } from "./outline-adjustment-lib.mjs";
 import { readJson as readOutlineJson, validateOutlineBoundaries } from "./outline-boundaries-lib.mjs";
+import {
+  adoptionPreviewMatches,
+  assertBoundariesAbsent,
+  buildFreshAdoptionPreview,
+  validateAdoptionInputs
+} from "./outline-adoption-lib.mjs";
 
 const LOOPBACK_HOST = "127.0.0.1";
 const MINIMUM_NODE_MAJOR = 18;
@@ -299,10 +305,13 @@ async function validateBoundaryReviewBinding(reviewData, context) {
     "proposal_path", "impact_preview_path", "decision_path", "writer_ledger_path",
     "decision_target_ref"
   ];
+  const optionalKeys = ["operation"];
   const actualKeys = Object.keys(identity);
-  if (actualKeys.some((key) => !requiredKeys.includes(key)) || requiredKeys.some((key) => !(key in identity))) {
+  if (actualKeys.some((key) => !requiredKeys.includes(key) && !optionalKeys.includes(key))
+    || requiredKeys.some((key) => !(key in identity))) {
     throw new Error("boundary_adjustment fields are invalid.");
   }
+  const operation = identity.operation || "ADJUSTMENT";
   if (!FEATURE_PATTERN.test(identity.proposal_id || "") || identity.proposal_id.includes("..")) {
     throw new Error("boundary_adjustment proposal_id is unsafe.");
   }
@@ -316,20 +325,19 @@ async function validateBoundaryReviewBinding(reviewData, context) {
     throw new Error("boundary_adjustment decision_target_ref must name one critical must_confirm node.");
   }
   const exits = new Set((sourceNode.options || []).map((option) => option.next_exit));
-  if (!exits.has("confirm-outline-boundary-adjustment")
-    || !exits.has("reject-outline-boundary-adjustment")
+  const confirmExit = operation === "ADOPTION" ? "confirm-outline-boundary-adoption" : "confirm-outline-boundary-adjustment";
+  const rejectExit = operation === "ADOPTION" ? "reject-outline-boundary-adoption" : "reject-outline-boundary-adjustment";
+  if (!exits.has(confirmExit)
+    || !exits.has(rejectExit)
     || ![...exits].some((value) => String(value).startsWith("needs-decision"))) {
-    throw new Error("Boundary adjustment decision node must expose confirm, reject, and revision routes.");
+    throw new Error(`Boundary ${operation.toLowerCase()} decision node must expose confirm, reject, and revision routes.`);
   }
-  const proposal = proposalFromInput(await readJsonFile(resolve(context.projectRoot, identity.proposal_path)));
+  const proposalPath = resolve(context.projectRoot, identity.proposal_path);
+  const proposal = proposalFromInput(await readJsonFile(proposalPath));
   const preview = await readJsonFile(resolve(context.projectRoot, identity.impact_preview_path));
   validateImpactPreview(preview);
-  const boundaries = await readOutlineJson(resolve(context.projectRoot, expectedPaths.boundaries_path));
-  const boundaryErrors = validateOutlineBoundaries(boundaries);
-  if (boundaryErrors.length || boundaries.transition_state !== "ALIGNED") {
-    throw new Error("The authoritative Outline baseline is no longer ALIGNED for this review.");
-  }
   const expectedIdentity = {
+    operation,
     proposal_id: proposal.baseline_id,
     proposal_digest: proposal.proposal_digest,
     base_baseline_id: proposal.base_baseline_id,
@@ -338,13 +346,36 @@ async function validateBoundaryReviewBinding(reviewData, context) {
     change_class: preview.change_class,
     affected_feature_codes: preview.affected_feature_codes
   };
-  for (const field of ["proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest", "impact_preview_digest", "change_class"]) {
-    if (identity[field] !== expectedIdentity[field]) throw new Error(`boundary_adjustment ${field} is stale or mismatched.`);
+  for (const field of ["operation", "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest", "impact_preview_digest", "change_class"]) {
+    const actual = field === "operation" ? operation : identity[field];
+    if (actual !== expectedIdentity[field]) throw new Error(`boundary_adjustment ${field} is stale or mismatched.`);
   }
-  if (!sameJson(identity.affected_feature_codes, expectedIdentity.affected_feature_codes)
-    || boundaries.current_baseline.baseline_id !== identity.base_baseline_id
-    || boundaries.current_baseline.baseline_digest !== identity.base_baseline_digest
-    || preview.change_class === "NONE") throw new Error("Boundary adjustment review identity is stale or has no effective change.");
+  if (!sameJson(identity.affected_feature_codes, expectedIdentity.affected_feature_codes)) {
+    throw new Error("Boundary adjustment affected feature identity is stale or mismatched.");
+  }
+  if (operation === "ADOPTION") {
+    const boundariesPath = resolve(context.projectRoot, expectedPaths.boundaries_path);
+    await assertBoundariesAbsent(boundariesPath);
+    await validateAdoptionInputs({
+      boundariesPath,
+      reviewIndexPath: resolve(context.projectRoot, "specs/review-index.json"),
+      reportPath: resolve(context.projectRoot, `specs/${context.feature}/outline-boundaries-adoption.json`),
+      proposalPath
+    });
+    const refreshed = await buildFreshAdoptionPreview(boundariesPath, proposal, preview.generated_at);
+    if (!adoptionPreviewMatches(preview, refreshed) || preview.impact_preview_digest !== refreshed.impact_preview_digest) {
+      throw new Error("Outline adoption sources changed after the review preview was prepared.");
+    }
+  } else {
+    const boundaries = await readOutlineJson(resolve(context.projectRoot, expectedPaths.boundaries_path));
+    const boundaryErrors = validateOutlineBoundaries(boundaries);
+    if (boundaryErrors.length || boundaries.transition_state !== "ALIGNED"
+      || boundaries.current_baseline.baseline_id !== identity.base_baseline_id
+      || boundaries.current_baseline.baseline_digest !== identity.base_baseline_digest
+      || preview.change_class === "NONE") {
+      throw new Error("The authoritative Outline baseline is no longer ALIGNED for this review.");
+    }
+  }
   return { identity, sourceNode, expectedPaths };
 }
 
@@ -829,6 +860,8 @@ async function executeIdempotentWrite(payload, context) {
 function boundaryDecisionFromExit(nextExit) {
   if (nextExit === "confirm-outline-boundary-adjustment") return "CONFIRMED";
   if (nextExit === "reject-outline-boundary-adjustment") return "REJECTED";
+  if (nextExit === "confirm-outline-boundary-adoption") return "CONFIRMED";
+  if (nextExit === "reject-outline-boundary-adoption") return "REJECTED";
   if (String(nextExit || "").startsWith("needs-decision")) return "NEEDS_REVISION";
   throw new Error("Selected boundary adjustment option has no supported decision route.");
 }
@@ -861,6 +894,7 @@ async function processBoundaryDecision(payload, merged, reviewData, context, bin
   ].join("\0"));
   const decision = {
     schema_version: 1,
+    ...(binding.identity.operation === "ADOPTION" ? { operation: "ADOPTION" } : {}),
     decision: decisionValue,
     proposal_id: binding.identity.proposal_id,
     proposal_digest: binding.identity.proposal_digest,
@@ -886,6 +920,7 @@ async function processBoundaryDecision(payload, merged, reviewData, context, bin
   validateBoundaryDecision(decision);
   const event = {
     schema_version: 1,
+    ...(binding.identity.operation === "ADOPTION" ? { operation: "ADOPTION" } : {}),
     event_type: "HUMAN_DECISION_RECORDED",
     writeback_request_id: requestId,
     review_session_id: decision.source.review_session_id,
@@ -923,7 +958,9 @@ async function processBoundaryDecision(payload, merged, reviewData, context, bin
     receipt_id: receiptId,
     target_path: context.targetPath,
     target_version: context.targetVersion,
-    next_command: `/sp.prd ${context.feature} --consume-outline-decision ${binding.identity.proposal_id}`,
+    next_command: binding.identity.operation === "ADOPTION"
+      ? `/sp.prd ${context.feature} --adopt-outline-boundaries --consume-outline-decision ${binding.identity.proposal_id}`
+      : `/sp.prd ${context.feature} --consume-outline-decision ${binding.identity.proposal_id}`,
     review_data_id: context.reviewDataId,
     revision_request_count: decisionValue === "NEEDS_REVISION" ? 1 : 0,
     fallback_authorizes_transition: false

@@ -14,6 +14,7 @@ import subprocess
 import threading
 import time
 from contextlib import contextmanager
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -35,6 +36,8 @@ REVIEW_LAUNCHER = (
     / "scripts"
     / "serve-review.mjs"
 )
+ADOPTION_BOOTSTRAP = REVIEW_LAUNCHER.parent / "bootstrap-outline-boundaries.mjs"
+ADOPTION_PREPARE = REVIEW_LAUNCHER.parent / "prepare-outline-boundary-adoption.mjs"
 CONFIRMATION_PACKAGE = (
     PROJECT_ROOT
     / "templates"
@@ -90,10 +93,12 @@ DISCOVERY_DISTRIBUTION_ASSETS = (
     Path("schemas/review-index.schema.json"),
     Path("scripts/apply-outline-discovery.mjs"),
     Path("scripts/activate-outline-baseline.mjs"),
+    Path("scripts/activate-outline-boundary-adoption.mjs"),
     Path("scripts/advance-outline-transition.mjs"),
     Path("scripts/bootstrap-outline-boundaries.mjs"),
     Path("scripts/check-outline-boundary-gate.mjs"),
     Path("scripts/migrate-review-index.mjs"),
+    Path("scripts/outline-adoption-lib.mjs"),
     Path("scripts/outline-boundaries-lib.mjs"),
     Path("scripts/outline-adjustment-lib.mjs"),
     Path("scripts/outline-transition-artifact-lib.mjs"),
@@ -101,9 +106,11 @@ DISCOVERY_DISTRIBUTION_ASSETS = (
     Path("scripts/outline-transition-lock.mjs"),
     Path("scripts/outline-transition-workflow-lib.mjs"),
     Path("scripts/prepare-outline-adjustment.mjs"),
+    Path("scripts/prepare-outline-boundary-adoption.mjs"),
     Path("scripts/prepare-outline-transition-artifacts.mjs"),
     Path("scripts/publish-outline-transition-artifacts.mjs"),
     Path("scripts/rollback-outline-transition.mjs"),
+    Path("scripts/review-data-id.mjs"),
     Path("scripts/scan-outline-transition-impact.mjs"),
     Path("scripts/start-outline-transition.mjs"),
     Path("scripts/sync-review-index.mjs"),
@@ -138,9 +145,11 @@ def review_project(tmp_path: Path) -> ReviewProject:
     if REVIEW_LAUNCHER.exists():
         shutil.copy2(REVIEW_LAUNCHER, launcher)
     for dependency in (
+        "outline-adoption-lib.mjs",
         "outline-adjustment-lib.mjs",
         "outline-boundaries-lib.mjs",
         "outline-transition-workflow-lib.mjs",
+        "validate-review-index.mjs",
     ):
         shutil.copy2(REVIEW_LAUNCHER.parent / dependency, launcher.parent / dependency)
 
@@ -1062,6 +1071,158 @@ def test_outline_boundary_writer_injects_identity_receipt_and_append_only_ledger
     event = json.loads(ledger[0])
     assert event["receipt_id"] == decision["receipt"]["receipt_id"]
     assert event["decision_digest"] == decision["decision_digest"]
+
+
+def test_outline_boundary_adoption_uses_same_human_loopback_writer(review_project: ReviewProject):
+    feature = review_project.feature
+    feature_root = review_project.root / "specs" / feature
+    (feature_root / "prd.md").write_text("# Existing PRD\n", encoding="utf-8")
+    (feature_root / "spec-outline.md").write_text("# Existing Outline\n\n- boundary-root\n", encoding="utf-8")
+    index = {
+        "schema_version": 2,
+        "project": "Review fixture",
+        "updated_at": "2026-07-29",
+        "hierarchy": {"mode": "explicit", "root_feature": feature},
+        "features": [
+            {
+                "order": 1,
+                "feature_code": "001",
+                "feature": feature,
+                "title": "Review fixture",
+                "parent_feature": None,
+                "sibling_order": 0,
+                "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Existing project root."},
+                "outline_alignment": {
+                    "status": "one_to_one",
+                    "outline_node_refs": ["boundary-root"],
+                    "rationale": "Existing Outline mapping.",
+                },
+                "has_flow_review": False,
+                "has_ui_review": False,
+                "has_outline_review": True,
+                "has_outline_discovery": False,
+            }
+        ],
+    }
+    index_path = review_project.root / "specs" / "review-index.json"
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    report_path = feature_root / "outline-boundaries-adoption.json"
+    bootstrap = subprocess.run(
+        ["node", str(ADOPTION_BOOTSTRAP), str(index_path), str(report_path), "--root", feature],
+        cwd=review_project.root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert bootstrap.returncode == 0, bootstrap.stderr
+
+    proposal_id = "baseline-adoption-review"
+    draft = feature_root / "boundary-adjustments" / "drafts" / proposal_id
+    draft.mkdir(parents=True)
+    decision_ref = f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/decision.json"
+    proposal_input = {
+        "schema_version": 1,
+        "base_baseline_id": None,
+        "base_baseline_digest": None,
+        "baseline_id": proposal_id,
+        "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "created_by": "model:adoption-review",
+        "decision_ref": decision_ref,
+        "change_reason": "Adopt the existing reviewed project shape.",
+        "rollback_ref": f"specs/{feature}/prd.md#adoption",
+        "project_boundaries": [
+            {
+                "order": 1,
+                "feature_code": "001",
+                "feature": feature,
+                "title": "Review fixture",
+                "parent_feature_code": None,
+                "sibling_order": 0,
+                "outline_node_id": "boundary-root",
+                "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Existing project root."},
+                "lifecycle": "active",
+                "predecessor_codes": [],
+            }
+        ],
+        "tombstones": [],
+    }
+    proposal_path = draft / "proposal.json"
+    preview_path = draft / "impact-preview.json"
+    proposal_path.write_text(json.dumps(proposal_input), encoding="utf-8")
+    prepared = subprocess.run(
+        [
+            "node", str(ADOPTION_PREPARE), str(index_path), str(report_path),
+            str(feature_root / "outline-boundaries.json"), str(proposal_path), str(preview_path),
+        ],
+        cwd=review_project.root,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert prepared.returncode == 0, prepared.stderr
+    preview = json.loads(preview_path.read_text(encoding="utf-8"))
+    proposal = {
+        "baseline_id": proposal_id,
+        "proposal_digest": "",
+        "base_baseline_id": None,
+        "base_baseline_digest": None,
+        "created_at": proposal_input["created_at"],
+        "created_by": proposal_input["created_by"],
+        "decision_ref": decision_ref,
+        "change_reason": proposal_input["change_reason"],
+        "project_boundaries": proposal_input["project_boundaries"],
+        "tombstones": [],
+    }
+    proposal["proposal_digest"] = _contract_digest(proposal, "proposal_digest")
+    review_data = json.loads(review_project.data_path("outline").read_text(encoding="utf-8"))
+    node = review_data["modules"][0]["views"][0]["nodes"][0]
+    node.update(
+        {
+            "review_level": "must_confirm",
+            "confirmation_priority": "critical",
+            "options": [
+                {"id": "OPTION_A", "label": "Confirm", "next_exit": "confirm-outline-boundary-adoption"},
+                {"id": "OPTION_B", "label": "Revise", "next_exit": "needs-decision:revise-outline-boundary-adoption"},
+                {"id": "OPTION_C", "label": "Reject", "next_exit": "reject-outline-boundary-adoption"},
+            ],
+        }
+    )
+    review_data["boundary_adjustment"] = {
+        "operation": "ADOPTION",
+        "proposal_id": proposal_id,
+        "proposal_digest": proposal["proposal_digest"],
+        "base_baseline_id": None,
+        "base_baseline_digest": None,
+        "impact_preview_digest": preview["impact_preview_digest"],
+        "initiated_by": "model",
+        "change_class": "ADOPTION",
+        "affected_feature_codes": ["001"],
+        "proposal_path": f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/proposal.json",
+        "impact_preview_path": f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/impact-preview.json",
+        "decision_path": decision_ref,
+        "writer_ledger_path": f"specs/{feature}/boundary-adjustments/writeback-ledger.jsonl",
+        "decision_target_ref": "module-1:outline-item-1:node-1",
+    }
+    review_project.data_path("outline").write_text(json.dumps(review_data), encoding="utf-8")
+
+    with _running_launcher(review_project, "outline") as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        assert config["authorization_mode"] == "outline_boundary_human_decision"
+        payload = _confirmation_payload(review_project, "outline")
+        payload["parts"][0]["target_path"] = decision_ref
+        status, body = _post_writeback(origin, config, payload)
+        assert status == 200, body.decode("utf-8")
+        result = json.loads(body)
+        assert result["next_command"] == f"/sp.prd {feature} --adopt-outline-boundaries --consume-outline-decision {proposal_id}"
+
+    decision = json.loads((draft / "decision.json").read_text(encoding="utf-8"))
+    assert decision["operation"] == "ADOPTION"
+    assert decision["base_baseline_id"] is None
+    assert decision["base_baseline_digest"] is None
+    assert decision["confirmed_by"]["type"] == "human"
+    event = json.loads((feature_root / "boundary-adjustments" / "writeback-ledger.jsonl").read_text(encoding="utf-8"))
+    assert event["operation"] == "ADOPTION"
+    assert event["receipt_id"] == decision["receipt"]["receipt_id"]
 
 
 def test_local_writer_config_exposes_version_and_runtime_limits(review_project: ReviewProject):

@@ -2,6 +2,24 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.31] - 2026-07-29
+
+### Added
+
+- Added an explicit `/sp.prd <root> --adopt-outline-boundaries` path for existing projects that do not yet have an authoritative Outline boundary baseline.
+- Added model-generated adoption proposals and real Outline review pages backed by human loopback decisions, one-time receipts, and recovery-safe activation.
+
+### Changed
+
+- Routed Flow and UI setup blocks to the single PRD adoption workflow while leaving ordinary `ALIGNED` SP work unchanged.
+- Documented that the decision-consumption run reuses the reviewed immutable inputs instead of regenerating and invalidating them.
+
+### Fixed
+
+- Fixed the v0.11.30 legacy-adoption loop that repeatedly returned users to a non-authoritative bootstrap report and never allowed a new PRD/Outline page to be generated.
+- Prevented model-authored decisions, stale reports, changed review pages, dangling Outline or handoff references, symlinks, duplicate consumption, and concurrent activation from creating a first baseline.
+- Made post-commit retries finish feature-code ledger, derived review index, and activation journal recovery without reverting or duplicating the committed baseline.
+
 ## [0.11.30] - 2026-07-29
 
 ### Added

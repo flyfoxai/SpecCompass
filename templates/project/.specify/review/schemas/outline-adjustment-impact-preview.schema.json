@@ -11,15 +11,21 @@
   ],
   "properties": {
     "schema_version": {"const": 1},
+    "operation": {"enum": ["ADJUSTMENT", "ADOPTION"]},
     "proposal_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
     "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "base_baseline_id": {"type": "string", "minLength": 1},
-    "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "base_baseline_id": {"type": ["string", "null"], "minLength": 1},
+    "base_baseline_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
     "generated_at": {"type": "string", "format": "date-time"},
-    "change_class": {"enum": ["NONE", "METADATA", "STRUCTURAL"]},
+    "change_class": {"enum": ["NONE", "METADATA", "STRUCTURAL", "ADOPTION"]},
     "affected_feature_codes": {"type": "array", "uniqueItems": true, "items": {"$ref": "outline-boundaries.schema.json#/$defs/featureCode"}},
     "artifact_inventory_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "artifacts": {"type": "array", "items": {"$ref": "outline-transition-inventory.schema.json#/properties/artifacts/items"}},
     "impact_preview_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
-  }
+  },
+  "allOf": [{
+    "if": {"required": ["operation"], "properties": {"operation": {"const": "ADOPTION"}}},
+    "then": {"properties": {"base_baseline_id": {"type": "null"}, "base_baseline_digest": {"type": "null"}, "change_class": {"const": "ADOPTION"}}},
+    "else": {"properties": {"base_baseline_id": {"type": "string", "minLength": 1}, "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "change_class": {"enum": ["NONE", "METADATA", "STRUCTURAL"]}}}
+  }]
 }

@@ -44,19 +44,18 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Outline-aligned project boundaries
+          ## Existing-project adoption without fake pages
 
-          This release keeps the product Outline, project boundaries, and implemented modules aligned without adding migration overhead to normal SP work:
+          This patch closes the v0.11.30 setup loop for existing projects that do not yet have an authoritative Outline boundary baseline:
 
-          - Root \`000\`, child project codes, parentage, handoffs, and retired identities are recorded in one authoritative boundary baseline and monotonic feature-code ledger.
-          - Models can propose project splits, merges, or reparenting while normal development remains \`ALIGNED\`; only explicit human confirmation starts structural migration.
-          - Confirmed structural changes use immutable proposals, one-time decision receipts, current artifact inventory, staged publication, validation, and compare-and-swap activation.
-          - Flow and UI checks run only when the transition inventory contains those artifacts; unaffected accepted decisions remain intact.
-          - Direct browser write-back remains mechanical persistence only. Codex applies reviewer feedback when the owning PRD, Flow, or UI command runs again.
-          - Fixed recovery claims, complete owner fencing, heartbeat-safe updates, bounded partial-write reads, and Windows deletion retries protect concurrent recovery.
-          - Ordinary \`ALIGNED\` commands use the lightweight shared boundary gate and do not create proposals, receipts, transition logs, or long-lived locks.
-          - Review navigation places analysis categories directly on the page and removes obsolete load controls.
-          - Existing projects must refresh their installed templates after upgrading the CLI.
+          - The boundary gate now routes missing baselines to one explicit \`/sp.prd <root> --adopt-outline-boundaries\` workflow instead of returning to bootstrap forever.
+          - The model reads the real PRD, Outline, project directories, handoffs, and candidate report to generate a genuine proposal and Outline review page.
+          - Only the user's bound loopback decision can establish authority; copied, downloaded, or model-authored decision JSON remains invalid.
+          - Activation rechecks live paths, Outline mappings, handoffs, artifact digests, writer evidence, and the one-time receipt before exclusively creating the first \`ALIGNED\` baseline.
+          - Concurrent calls and failures after the commit point recover forward without duplicating the receipt, baseline, code ledger, derived index, or activation log.
+          - Adoption records the current project shape only. It does not move, rename, delete, invent, or rewrite existing PRD, Outline, Flow, UI, or code artifacts.
+          - Flow and UI setup blocks route to the same PRD adoption page; normal aligned SP work keeps the existing lightweight path.
+          - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install
 

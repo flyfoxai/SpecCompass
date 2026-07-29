@@ -11,16 +11,22 @@
   ],
   "properties": {
     "schema_version": {"const": 1},
+    "operation": {"enum": ["ADJUSTMENT", "ADOPTION"]},
     "event_type": {"const": "DECISION_CONSUMED"},
     "receipt_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "decision_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "proposal_id": {"type": "string", "minLength": 1},
     "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
-    "base_baseline_id": {"type": "string", "minLength": 1},
-    "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "base_baseline_id": {"type": ["string", "null"], "minLength": 1},
+    "base_baseline_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
     "impact_preview_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "transition_id": {"type": "string", "minLength": 1},
-    "change_class": {"enum": ["METADATA", "STRUCTURAL"]},
+    "change_class": {"enum": ["METADATA", "STRUCTURAL", "ADOPTION"]},
     "consumed_at": {"type": "string", "format": "date-time"}
-  }
+  },
+  "allOf": [{
+    "if": {"required": ["operation"], "properties": {"operation": {"const": "ADOPTION"}}},
+    "then": {"properties": {"base_baseline_id": {"type": "null"}, "base_baseline_digest": {"type": "null"}, "change_class": {"const": "ADOPTION"}}},
+    "else": {"properties": {"base_baseline_id": {"type": "string", "minLength": 1}, "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "change_class": {"enum": ["METADATA", "STRUCTURAL"]}}}
+  }]
 }

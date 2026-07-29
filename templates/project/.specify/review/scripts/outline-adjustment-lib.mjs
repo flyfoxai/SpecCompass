@@ -61,16 +61,27 @@ function validateStringArray(value, label, pattern = null) {
   }
 }
 
+function exactObjectWithOptionalOperation(value, keys, label) {
+  const normalized = { ...value };
+  delete normalized.operation;
+  exactObject(normalized, keys, label);
+  if ("operation" in value && !["ADJUSTMENT", "ADOPTION"].includes(value.operation)) {
+    throw new Error(`${label} operation is invalid.`);
+  }
+}
+
 export function proposalFromInput(input) {
   exactObject(input, PROPOSAL_INPUT_KEYS, "outline-transition proposal input");
   if (input.schema_version !== 1 || !isTimestamp(input.created_at)) {
     throw new Error("Proposal input schema_version/created_at is invalid.");
   }
-  if (![input.base_baseline_id, input.baseline_id, input.created_by, input.change_reason].every((value) => typeof value === "string" && value.trim())) {
-    throw new Error("Proposal input identity, creator, and reason are required.");
+  if (!(input.base_baseline_id === null || (typeof input.base_baseline_id === "string" && input.base_baseline_id.trim()))
+    || !(input.base_baseline_digest === null || DIGEST_PATTERN.test(input.base_baseline_digest || ""))
+    || ((input.base_baseline_id === null) !== (input.base_baseline_digest === null))
+    || ![input.baseline_id, input.created_by, input.change_reason].every((value) => typeof value === "string" && value.trim())) {
+    throw new Error("Proposal input identity, optional base baseline, creator, and reason are required.");
   }
-  if (!DIGEST_PATTERN.test(input.base_baseline_digest || "") || !isRepositoryRef(input.decision_ref)
-    || !isRepositoryRef(input.rollback_ref) || !Array.isArray(input.project_boundaries)
+  if (!isRepositoryRef(input.decision_ref) || !isRepositoryRef(input.rollback_ref) || !Array.isArray(input.project_boundaries)
     || !input.project_boundaries.length || !Array.isArray(input.tombstones)) {
     throw new Error("Proposal input baseline, references, or boundary arrays are invalid.");
   }
@@ -140,7 +151,7 @@ async function walkArtifacts(directory, featureCode, repositoryRoot, artifacts) 
   const entries = await readdir(directory, { withFileTypes: true });
   for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
     if (entry.name.startsWith(".outline-boundaries.json") || EXCLUDED_ARTIFACT_NAMES.has(entry.name)
-      || entry.name === "boundary-adjustments") continue;
+      || entry.name === "boundary-adjustments" || entry.name === "review") continue;
     const path = resolve(directory, entry.name);
     const info = await lstat(path);
     if (info.isSymbolicLink()) throw new Error(`Symbolic links are not accepted in an impact inventory: ${path}`);
@@ -224,11 +235,36 @@ export function buildImpactPreview(document, proposal, artifacts, generatedAt = 
   return preview;
 }
 
+export function buildAdoptionImpactPreview(proposal, artifacts, generatedAt = new Date().toISOString()) {
+  const preview = {
+    schema_version: 1,
+    operation: "ADOPTION",
+    proposal_id: proposal.baseline_id,
+    proposal_digest: proposal.proposal_digest,
+    base_baseline_id: null,
+    base_baseline_digest: null,
+    generated_at: generatedAt,
+    change_class: "ADOPTION",
+    affected_feature_codes: proposal.project_boundaries.map((boundary) => boundary.feature_code).sort(),
+    artifact_inventory_digest: computeArtifactInventoryDigest(artifacts),
+    artifacts,
+    impact_preview_digest: ""
+  };
+  preview.impact_preview_digest = computeImpactPreviewDigest(preview);
+  return preview;
+}
+
 export function validateImpactPreview(preview) {
-  exactObject(preview, PREVIEW_KEYS, "outline adjustment impact preview");
-  if (preview.schema_version !== 1 || !SAFE_ID_PATTERN.test(preview.proposal_id || "")
-    || !DIGEST_PATTERN.test(preview.proposal_digest || "") || !DIGEST_PATTERN.test(preview.base_baseline_digest || "")
-    || !isTimestamp(preview.generated_at) || !new Set(["NONE", "METADATA", "STRUCTURAL"]).has(preview.change_class)
+  exactObjectWithOptionalOperation(preview, PREVIEW_KEYS, "outline adjustment impact preview");
+  const operation = preview.operation || "ADJUSTMENT";
+  const adoption = operation === "ADOPTION";
+  if (preview.schema_version !== 1 || !["ADJUSTMENT", "ADOPTION"].includes(operation)
+    || !SAFE_ID_PATTERN.test(preview.proposal_id || "") || !DIGEST_PATTERN.test(preview.proposal_digest || "")
+    || !(adoption
+      ? preview.base_baseline_id === null && preview.base_baseline_digest === null && preview.change_class === "ADOPTION"
+      : typeof preview.base_baseline_id === "string" && preview.base_baseline_id
+        && DIGEST_PATTERN.test(preview.base_baseline_digest || "") && preview.change_class !== "ADOPTION")
+    || !isTimestamp(preview.generated_at) || !new Set(["NONE", "METADATA", "STRUCTURAL", "ADOPTION"]).has(preview.change_class)
     || !DIGEST_PATTERN.test(preview.artifact_inventory_digest || "") || !Array.isArray(preview.artifacts)) {
     throw new Error("Outline adjustment impact preview header is invalid.");
   }
@@ -258,12 +294,16 @@ export function computeDecisionDigest(decision) {
 }
 
 export function validateBoundaryDecision(decision) {
-  exactObject(decision, DECISION_KEYS, "outline boundary decision");
+  exactObjectWithOptionalOperation(decision, DECISION_KEYS, "outline boundary decision");
+  const operation = decision.operation || "ADJUSTMENT";
+  const adoption = operation === "ADOPTION";
   if (decision.schema_version !== 1 || !new Set(["CONFIRMED", "REJECTED", "NEEDS_REVISION"]).has(decision.decision)
     || !SAFE_ID_PATTERN.test(decision.proposal_id || "") || !DIGEST_PATTERN.test(decision.proposal_digest || "")
-    || !DIGEST_PATTERN.test(decision.base_baseline_digest || "") || !DIGEST_PATTERN.test(decision.impact_preview_digest || "")
+    || !(adoption ? decision.base_baseline_id === null && decision.base_baseline_digest === null : typeof decision.base_baseline_id === "string" && decision.base_baseline_id && DIGEST_PATTERN.test(decision.base_baseline_digest || ""))
+    || !DIGEST_PATTERN.test(decision.impact_preview_digest || "")
     || !new Set(["model", "user"]).has(decision.initiated_by)
-    || !new Set(["METADATA", "STRUCTURAL"]).has(decision.change_class)
+    || !new Set(["METADATA", "STRUCTURAL", "ADOPTION"]).has(decision.change_class)
+    || (adoption ? decision.change_class !== "ADOPTION" : decision.change_class === "ADOPTION")
     || typeof decision.reviewer_note !== "string") throw new Error("Outline boundary decision header is invalid.");
   validateStringArray(decision.affected_feature_codes, "decision affected_feature_codes", CODE_PATTERN);
   exactObject(decision.confirmed_by, ["type", "display_name"], "decision.confirmed_by");
@@ -285,23 +325,33 @@ export function validateBoundaryDecision(decision) {
 }
 
 export function validateWriterEvent(event) {
-  exactObject(event, WRITER_EVENT_KEYS, "outline boundary writeback ledger event");
+  exactObjectWithOptionalOperation(event, WRITER_EVENT_KEYS, "outline boundary writeback ledger event");
+  const operation = event.operation || "ADJUSTMENT";
   if (event.schema_version !== 1 || event.event_type !== "HUMAN_DECISION_RECORDED"
-    || ![event.writeback_request_id, event.review_session_id, event.review_data_id, event.proposal_id, event.base_baseline_id]
+    || !["ADJUSTMENT", "ADOPTION"].includes(operation)
+    || ![event.writeback_request_id, event.review_session_id, event.review_data_id, event.proposal_id]
       .every((value) => typeof value === "string" && value)
-    || ![event.proposal_digest, event.base_baseline_digest, event.impact_preview_digest, event.receipt_id, event.decision_digest]
+    || !(operation === "ADOPTION" ? event.base_baseline_id === null : typeof event.base_baseline_id === "string" && event.base_baseline_id)
+    || !(operation === "ADOPTION" ? event.base_baseline_digest === null : DIGEST_PATTERN.test(event.base_baseline_digest || ""))
+    || ![event.proposal_digest, event.impact_preview_digest, event.receipt_id, event.decision_digest]
       .every((value) => DIGEST_PATTERN.test(value || ""))
     || !new Set(["CONFIRMED", "REJECTED", "NEEDS_REVISION"]).has(event.decision)
     || !isTimestamp(event.recorded_at)) throw new Error("Outline boundary writeback ledger event is invalid.");
 }
 
 export function validateConsumptionEvent(event) {
-  exactObject(event, CONSUMPTION_KEYS, "outline boundary decision consumption event");
+  exactObjectWithOptionalOperation(event, CONSUMPTION_KEYS, "outline boundary decision consumption event");
+  const operation = event.operation || "ADJUSTMENT";
   if (event.schema_version !== 1 || event.event_type !== "DECISION_CONSUMED"
-    || ![event.proposal_id, event.base_baseline_id, event.transition_id].every((value) => typeof value === "string" && value)
-    || ![event.receipt_id, event.decision_digest, event.proposal_digest, event.base_baseline_digest, event.impact_preview_digest]
+    || !["ADJUSTMENT", "ADOPTION"].includes(operation)
+    || ![event.proposal_id, event.transition_id].every((value) => typeof value === "string" && value)
+    || !(operation === "ADOPTION" ? event.base_baseline_id === null : typeof event.base_baseline_id === "string" && event.base_baseline_id)
+    || !(operation === "ADOPTION" ? event.base_baseline_digest === null : DIGEST_PATTERN.test(event.base_baseline_digest || ""))
+    || ![event.receipt_id, event.decision_digest, event.proposal_digest, event.impact_preview_digest]
       .every((value) => DIGEST_PATTERN.test(value || ""))
-    || !new Set(["METADATA", "STRUCTURAL"]).has(event.change_class) || !isTimestamp(event.consumed_at)) {
+    || !new Set(["METADATA", "STRUCTURAL", "ADOPTION"]).has(event.change_class)
+    || (operation === "ADOPTION" ? event.change_class !== "ADOPTION" : event.change_class === "ADOPTION")
+    || !isTimestamp(event.consumed_at)) {
     throw new Error("Outline boundary decision consumption event is invalid.");
   }
 }
@@ -355,8 +405,10 @@ export function adjustmentPaths(boundariesPath, proposalId) {
 export async function assertWriterAuthorization(decisionPath, writerLedgerPath, expected) {
   const decision = await readJson(decisionPath);
   validateBoundaryDecision(decision);
-  for (const field of ["proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest", "impact_preview_digest", "change_class"]) {
-    if (decision[field] !== expected[field]) throw new Error(`Decision ${field} does not match the reviewed proposal.`);
+  for (const field of ["operation", "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest", "impact_preview_digest", "change_class"]) {
+    const actual = field === "operation" ? (decision.operation || "ADJUSTMENT") : decision[field];
+    const expectedValue = field === "operation" ? (expected.operation || "ADJUSTMENT") : expected[field];
+    if (actual !== expectedValue) throw new Error(`Decision ${field} does not match the reviewed proposal.`);
   }
   if (stableStringify(decision.affected_feature_codes) !== stableStringify(expected.affected_feature_codes)) {
     throw new Error("Decision affected_feature_codes do not match the impact preview.");

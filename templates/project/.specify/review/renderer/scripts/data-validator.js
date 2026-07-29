@@ -13,19 +13,26 @@ function validateBoundaryAdjustmentRuntime(data) {
     return "boundary_adjustment 只能用于 Outline 审核。";
   }
   const keys = new Set([
-    "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
+    "operation", "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
     "impact_preview_digest", "initiated_by", "change_class", "affected_feature_codes",
     "proposal_path", "impact_preview_path", "decision_path", "writer_ledger_path",
     "decision_target_ref"
   ]);
-  if (Object.keys(value).some((key) => !keys.has(key)) || [...keys].some((key) => !(key in value))) {
+  const requiredKeys = [...keys].filter((key) => key !== "operation");
+  if (Object.keys(value).some((key) => !keys.has(key)) || requiredKeys.some((key) => !(key in value))) {
     return "boundary_adjustment 字段不完整或包含未知字段。";
   }
+  const operation = value.operation || "ADJUSTMENT";
+  const baseIdentityValid = operation === "ADOPTION"
+    ? value.base_baseline_id === null && value.base_baseline_digest === null && value.change_class === "ADOPTION"
+    : operation === "ADJUSTMENT" && typeof value.base_baseline_id === "string" && value.base_baseline_id
+      && /^[a-f0-9]{64}$/.test(value.base_baseline_digest || "")
+      && ["METADATA", "STRUCTURAL"].includes(value.change_class);
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.proposal_id || "")
-    || ![value.proposal_digest, value.base_baseline_digest, value.impact_preview_digest]
+    || ![value.proposal_digest, value.impact_preview_digest]
       .every((digest) => /^[a-f0-9]{64}$/.test(digest || ""))
     || !["model", "user"].includes(value.initiated_by)
-    || !["METADATA", "STRUCTURAL"].includes(value.change_class)) {
+    || !baseIdentityValid) {
     return "boundary_adjustment 身份或分类无效。";
   }
   if (!Array.isArray(value.affected_feature_codes)
@@ -45,9 +52,8 @@ function validateBoundaryAdjustmentRuntime(data) {
   for (const [field, path] of Object.entries(expected)) {
     if (!runtimeIsSafeRepoPath(value[field]) || value[field] !== path) return `boundary_adjustment ${field} 必须使用固定路径。`;
   }
-  if (typeof value.base_baseline_id !== "string" || !value.base_baseline_id
-    || typeof value.decision_target_ref !== "string" || !value.decision_target_ref) {
-    return "boundary_adjustment baseline 或 decision_target_ref 无效。";
+  if (typeof value.decision_target_ref !== "string" || !value.decision_target_ref) {
+    return "boundary_adjustment decision_target_ref 无效。";
   }
   return "";
 }

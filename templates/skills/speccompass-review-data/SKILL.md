@@ -46,6 +46,8 @@ or UI confirmation runs.
 - Feature-code manager: `.specify/review/scripts/manage-feature-codes.mjs`
 - Transition proposal: `.specify/review/scripts/start-outline-transition.mjs`
 - Draft impact preview: `.specify/review/scripts/prepare-outline-adjustment.mjs`
+- Legacy adoption preview: `.specify/review/scripts/prepare-outline-boundary-adoption.mjs`
+- Legacy adoption activation: `.specify/review/scripts/activate-outline-boundary-adoption.mjs`
 - Transition inventory: `.specify/review/scripts/scan-outline-transition-impact.mjs`
 - Artifact staging: `.specify/review/scripts/prepare-outline-transition-artifacts.mjs`
 - Artifact publication: `.specify/review/scripts/publish-outline-transition-artifacts.mjs`
@@ -130,7 +132,28 @@ invent lineage, silently adopt a legacy project, or generate against a proposed
 baseline. Transition-specific Flow/UI impact review is allowed only for the
 same explicit `transition_id` handed off by `/sp.prd`.
 
-This skill never hand-edits transition state. `/sp.prd` first creates a closed
+`LEGACY_ADOPTION_REQUIRED` has one explicit exception to ordinary generation:
+`/sp.prd <root-feature> --adopt-outline-boundaries`. That route first runs
+`bootstrap-outline-boundaries.mjs`, then uses the model to read the candidate,
+real PRD/Outline, current feature directories, handoffs, and review index and to
+generate a genuine Outline review page. The page identity uses
+`operation: ADOPTION`, null base baseline fields, and `change_class: ADOPTION`.
+Run `prepare-outline-boundary-adoption.mjs` before serving it; the helper must
+leave `outline-boundaries.json` absent. Only the loopback writer may record the
+human decision and receipt. After confirmation, `/sp.prd` runs
+`activate-outline-boundary-adoption.mjs`, which rechecks live paths, mappings,
+digests, writer evidence, and the one-time receipt under a lease before creating
+the first `ALIGNED` baseline and derived index. Adoption records the existing
+shape only: it never moves, renames, deletes, or invents a project. A desired
+restructure is a later, separate adjustment.
+
+The writer's next command includes `--consume-outline-decision <proposal-id>`.
+On that second invocation, reuse the immutable report, proposal, preview,
+decision, and ledgers. Never rerun bootstrap or model generation before
+activation, because doing so would stale the human decision that is being
+consumed.
+
+For an existing aligned baseline, this skill never hand-edits transition state. `/sp.prd` first creates a closed
 draft proposal and calls `prepare-outline-adjustment.mjs`; draft generation and
 discussion stay `ALIGNED`. The Outline page carries the exact
 `boundary_adjustment` identity. Only the bound loopback writer may create the

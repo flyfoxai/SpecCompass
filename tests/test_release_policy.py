@@ -31,35 +31,34 @@ def test_project_version_matches_latest_changelog_entry():
 
 
 def test_release_notes_publish_user_facing_release_theme():
-    """GitHub Release notes should not publish methodology as the default theme."""
+    """GitHub Release notes should describe the legacy-adoption patch."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Outline-aligned project boundaries" in release_workflow
-    assert "Root \\`000\\`, child project codes, parentage, handoffs" in release_workflow
-    assert "only explicit human confirmation starts structural migration" in release_workflow
-    assert "immutable proposals, one-time decision receipts" in release_workflow
-    assert "Flow and UI checks run only when" in release_workflow
-    assert "Direct browser write-back remains mechanical persistence only" in release_workflow
-    assert "heartbeat-safe updates, bounded partial-write reads" in release_workflow
-    assert "lightweight shared boundary gate" in release_workflow
-    assert "removes obsolete load controls" in release_workflow
+    assert "## Existing-project adoption without fake pages" in release_workflow
+    assert "/sp.prd <root> --adopt-outline-boundaries" in release_workflow
+    assert "genuine proposal and Outline review page" in release_workflow
+    assert "Only the user's bound loopback decision" in release_workflow
+    assert "exclusively creating the first" in release_workflow
+    assert "recover forward without duplicating" in release_workflow
+    assert "does not move, rename, delete, invent, or rewrite" in release_workflow
+    assert "Flow and UI setup blocks route to the same PRD adoption page" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- Models can propose project splits, merges, or reparenting" in release_workflow
+    assert "specify init . --integration <agent> --force" in release_workflow
 
 
 def test_release_changelog_summary_matches_outline_alignment_focus():
-    """The generated changelog should lead with human-confirmed Outline alignment."""
+    """The generated changelog should lead with reviewed legacy adoption."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "human-confirmed Outline/project boundary alignment" in trigger_workflow
-    assert "stable feature codes" in trigger_workflow
-    assert "impact-driven migration" in trigger_workflow
-    assert "recovery-safe persistence" in trigger_workflow
+    assert "reviewed legacy Outline-boundary adoption" in trigger_workflow
+    assert "genuine model-generated pages" in trigger_workflow
+    assert "human-only authority" in trigger_workflow
+    assert "recovery-safe first-baseline activation" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

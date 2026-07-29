@@ -4,7 +4,7 @@ import { spawnSync } from "node:child_process";
 import { access } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { atomicWriteJson, readJson } from "./outline-boundaries-lib.mjs";
+import { atomicWriteJson, readJson, sha256 } from "./outline-boundaries-lib.mjs";
 
 const args = process.argv.slice(2);
 const rootIndex = args.indexOf("--root");
@@ -71,10 +71,14 @@ try {
     status: "NEEDS_HUMAN_CONFIRMATION",
     generated_at: new Date().toISOString(),
     source_review_index: relative(process.cwd(), reviewIndexPath).split("\\").join("/"),
+    source_review_index_digest: sha256(index),
     root_feature: rootFeature,
     candidates,
-    issues
+    issues,
+    candidate_digest: ""
   };
+  const { generated_at: _generatedAt, candidate_digest: _candidateDigest, ...candidatePayload } = report;
+  report.candidate_digest = sha256(candidatePayload);
   await atomicWriteJson(outputPath, report, 0o600);
   console.log(`Legacy boundary candidate generated: ${candidates.length} feature(s), ${issues.length} issue(s). Human confirmation is still required.`);
 } catch (error) {

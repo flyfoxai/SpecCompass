@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added human-confirmed Outline/project boundary alignment with stable feature codes, impact-driven migration, and recovery-safe persistence." \
+              "- Added reviewed legacy Outline-boundary adoption with genuine model-generated pages, human-only authority, and recovery-safe first-baseline activation." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

@@ -58,8 +58,8 @@ try {
       null,
       "AUTHORITATIVE_BOUNDARIES_MISSING",
       [boundariesPath],
-      `node .specify/review/scripts/bootstrap-outline-boundaries.mjs ${commandReviewIndexPath} ${adoptionPath} --root ${rootFromPath}`,
-      `Run the legacy-adoption report, review every parent and Outline mapping, then resume /sp.prd for ${rootFromPath}.`
+      `/sp.prd ${rootFromPath} --adopt-outline-boundaries`,
+      `Run /sp.prd ${rootFromPath} --adopt-outline-boundaries to generate a real model-reviewed adoption page; only the user's loopback confirmation may establish the first baseline. Candidate report: ${adoptionPath}`
     );
   }
 
@@ -88,6 +88,8 @@ try {
   const commandClaims = [
     `.${boundaryName}.start.lock`,
     `.${boundaryName}.start.lock.recovery`,
+    `.${boundaryName}.adoption.lock`,
+    `.${boundaryName}.adoption.lock.recovery`,
     `.${boundaryName}.transition.lock`,
     `.${boundaryName}.transition.lock.recovery`,
     `.${boundaryName}.activation-finalize.lock`,

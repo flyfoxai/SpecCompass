@@ -288,6 +288,26 @@ change only their owned flag, then run `sync-review-index.mjs`,
 `validate-review-index.mjs`, and the shared gate check. Legacy migration creates
 a reviewed adoption candidate, never authoritative lineage.
 
+When the boundary file is absent, the gate returns only
+`/sp.prd <root-feature> --adopt-outline-boundaries`. This setup route runs the
+mechanical bootstrap, then the model reads the real PRD, Outline, directories,
+handoffs, index, and candidate to generate a genuine null-base proposal and
+Outline review page. Its `boundary_adjustment` identity explicitly uses
+`operation: ADOPTION` and `change_class: ADOPTION`; ordinary adjustment objects
+without `operation` remain backward-compatible and mean `ADJUSTMENT`.
+`prepare-outline-boundary-adoption.mjs` validates and hashes the current shape
+without creating authority. Only the loopback writer can record the human
+decision and one-time receipt. `activate-outline-boundary-adoption.mjs`
+revalidates live sources and writer evidence under a lease, consumes the receipt
+once, exclusively creates the first `ALIGNED` baseline, initializes the code
+ledger, derives the index, and records activation. It is retryable after each
+commit point and never restructures or rewrites existing product artifacts.
+The writer returns `--consume-outline-decision <proposal-id>` for the second
+invocation. That route must reuse the immutable adoption inputs and must not
+rerun bootstrap or model generation before activation. Once the authoritative
+baseline commit exists, retries may ignore later review-page churn only to
+finish derived ledger/index/journal recovery for that exact committed baseline.
+
 Project codes reuse the native SP sequential feature prefix. `000` is the root;
 new authoritative boundaries receive repository-global `001`, `002`, and later
 decimal codes, expanding beyond `999` without renumbering. Allocation history is

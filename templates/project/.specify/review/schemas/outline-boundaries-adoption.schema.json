@@ -5,14 +5,15 @@
   "type": "object",
   "additionalProperties": false,
   "required": [
-    "schema_version", "status", "generated_at", "source_review_index", "root_feature",
-    "candidates", "issues"
+    "schema_version", "status", "generated_at", "source_review_index",
+    "source_review_index_digest", "root_feature", "candidates", "issues", "candidate_digest"
   ],
   "properties": {
     "schema_version": {"const": 1},
     "status": {"const": "NEEDS_HUMAN_CONFIRMATION"},
     "generated_at": {"type": "string", "format": "date-time"},
     "source_review_index": {"type": "string", "minLength": 1},
+    "source_review_index_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
     "root_feature": {"type": ["string", "null"]},
     "candidates": {
       "type": "array",
@@ -48,6 +49,7 @@
           "message": {"type": "string", "minLength": 1}
         }
       }
-    }
+    },
+    "candidate_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
   }
 }
