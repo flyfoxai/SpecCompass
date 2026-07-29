@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-transition-evidence.schema.json",
+  "title": "SpecCompass Outline Transition Impact Decisions",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "transition_id", "transition_revision", "proposal_digest",
+    "inventory_digest", "artifact_reassignments", "impact_assessments"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "transition_id": {"type": "string", "minLength": 1},
+    "transition_revision": {"type": "integer", "minimum": 1},
+    "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "inventory_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "artifact_reassignments": {"type": "array", "items": {"$ref": "outline-boundaries.schema.json#/$defs/reassignment"}},
+    "impact_assessments": {"type": "array", "items": {"$ref": "outline-boundaries.schema.json#/$defs/impact"}}
+  }
+}

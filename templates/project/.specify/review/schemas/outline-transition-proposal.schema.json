@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-transition-proposal.schema.json",
+  "title": "SpecCompass Outline Transition Proposal Input",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "base_baseline_id", "base_baseline_digest", "baseline_id",
+    "created_at", "created_by", "decision_ref", "change_reason", "rollback_ref",
+    "project_boundaries", "tombstones"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "base_baseline_id": {"type": "string", "minLength": 1},
+    "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "baseline_id": {"type": "string", "minLength": 1},
+    "created_at": {"type": "string", "format": "date-time"},
+    "created_by": {"type": "string", "minLength": 1},
+    "decision_ref": {"$ref": "outline-boundaries.schema.json#/$defs/repoRef"},
+    "change_reason": {"type": "string", "minLength": 1},
+    "rollback_ref": {"$ref": "outline-boundaries.schema.json#/$defs/repoRef"},
+    "project_boundaries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "outline-boundaries.schema.json#/$defs/boundary"}
+    },
+    "tombstones": {
+      "type": "array",
+      "items": {"$ref": "outline-boundaries.schema.json#/$defs/tombstone"}
+    }
+  }
+}

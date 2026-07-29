@@ -61,9 +61,35 @@
       "minItems": 1,
       "items": {"$ref": "#/$defs/module"}
     },
+    "boundary_adjustment": {"$ref": "#/$defs/boundary_adjustment"},
     "schema_notes": {"type": "array", "items": {"type": "string"}}
   },
   "$defs": {
+    "boundary_adjustment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
+        "impact_preview_digest", "initiated_by", "change_class", "affected_feature_codes",
+        "proposal_path", "impact_preview_path", "decision_path", "writer_ledger_path",
+        "decision_target_ref"
+      ],
+      "properties": {
+        "proposal_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "base_baseline_id": {"type": "string", "minLength": 1},
+        "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "impact_preview_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+        "initiated_by": {"enum": ["model", "user"]},
+        "change_class": {"enum": ["METADATA", "STRUCTURAL"]},
+        "affected_feature_codes": {"type": "array", "uniqueItems": true, "items": {"pattern": "^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$"}},
+        "proposal_path": {"type": "string", "pattern": "^specs/[^/]+/boundary-adjustments/drafts/[^/]+/proposal\\.json$"},
+        "impact_preview_path": {"type": "string", "pattern": "^specs/[^/]+/boundary-adjustments/drafts/[^/]+/impact-preview\\.json$"},
+        "decision_path": {"type": "string", "pattern": "^specs/[^/]+/boundary-adjustments/drafts/[^/]+/decision\\.json$"},
+        "writer_ledger_path": {"type": "string", "pattern": "^specs/[^/]+/boundary-adjustments/writeback-ledger\\.jsonl$"},
+        "decision_target_ref": {"type": "string", "minLength": 1}
+      }
+    },
     "module": {
       "type": "object",
       "additionalProperties": false,

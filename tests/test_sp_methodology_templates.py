@@ -1,9 +1,12 @@
 """Regression tests for SP methodology rules embedded in command templates."""
 
+import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -16,6 +19,7 @@ FEATURE_MEMORY_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "temp
 FEATURE_TEMPLATE_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "templates" / "feature"
 PROJECT_MEMORY_DIR = PROJECT_ROOT / "templates" / "project" / ".specify" / "memory"
 METHODOLOGY_DOC = PROJECT_ROOT / "docs" / "reference" / "sp-project-methodology.md"
+PRODUCT_PRD = PROJECT_ROOT / "docs" / "reference" / "speccompass-product-requirements.zh-CN.md"
 REVIEW_ROOT = PROJECT_ROOT / "templates" / "project" / ".specify" / "review"
 FLOW_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "flow-review-data.schema.json"
 UI_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "ui-review-data.schema.json"
@@ -23,7 +27,29 @@ OUTLINE_REVIEW_SCHEMA = REVIEW_ROOT / "schemas" / "outline-review-data.schema.js
 OUTLINE_DISCOVERY_SCHEMA = REVIEW_ROOT / "schemas" / "outline-discovery-data.schema.json"
 OUTLINE_DISCOVERY_RESPONSE_SCHEMA = REVIEW_ROOT / "schemas" / "outline-discovery-response.schema.json"
 OUTLINE_INTENT_LEDGER_SCHEMA = REVIEW_ROOT / "schemas" / "outline-intent-ledger.schema.json"
+REVIEW_INDEX_SCHEMA = REVIEW_ROOT / "schemas" / "review-index.schema.json"
+OUTLINE_BOUNDARIES_SCHEMA = REVIEW_ROOT / "schemas" / "outline-boundaries.schema.json"
+OUTLINE_BOUNDARIES_ADOPTION_SCHEMA = REVIEW_ROOT / "schemas" / "outline-boundaries-adoption.schema.json"
+FEATURE_CODE_LEDGER_SCHEMA = REVIEW_ROOT / "schemas" / "feature-code-ledger.schema.json"
 REVIEW_DATA_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-review-data.mjs"
+REVIEW_INDEX_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-review-index.mjs"
+REVIEW_INDEX_MIGRATOR = REVIEW_ROOT / "scripts" / "migrate-review-index.mjs"
+OUTLINE_BOUNDARIES_VALIDATOR = REVIEW_ROOT / "scripts" / "validate-outline-boundaries.mjs"
+OUTLINE_BOUNDARIES_SYNC = REVIEW_ROOT / "scripts" / "sync-review-index.mjs"
+OUTLINE_BOUNDARIES_BOOTSTRAP = REVIEW_ROOT / "scripts" / "bootstrap-outline-boundaries.mjs"
+OUTLINE_BOUNDARIES_LIB = REVIEW_ROOT / "scripts" / "outline-boundaries-lib.mjs"
+FEATURE_CODE_LEDGER_LIB = REVIEW_ROOT / "scripts" / "feature-code-ledger-lib.mjs"
+FEATURE_CODE_MANAGER = REVIEW_ROOT / "scripts" / "manage-feature-codes.mjs"
+OUTLINE_TRANSITION_LOCK = REVIEW_ROOT / "scripts" / "outline-transition-lock.mjs"
+OUTLINE_BASELINE_ACTIVATOR = REVIEW_ROOT / "scripts" / "activate-outline-baseline.mjs"
+OUTLINE_BOUNDARY_GATE = REVIEW_ROOT / "scripts" / "check-outline-boundary-gate.mjs"
+OUTLINE_TRANSITION_START = REVIEW_ROOT / "scripts" / "start-outline-transition.mjs"
+OUTLINE_ADJUSTMENT_PREPARE = REVIEW_ROOT / "scripts" / "prepare-outline-adjustment.mjs"
+OUTLINE_TRANSITION_SCAN = REVIEW_ROOT / "scripts" / "scan-outline-transition-impact.mjs"
+OUTLINE_TRANSITION_ADVANCE = REVIEW_ROOT / "scripts" / "advance-outline-transition.mjs"
+OUTLINE_TRANSITION_ROLLBACK = REVIEW_ROOT / "scripts" / "rollback-outline-transition.mjs"
+OUTLINE_ARTIFACT_PREPARE = REVIEW_ROOT / "scripts" / "prepare-outline-transition-artifacts.mjs"
+OUTLINE_ARTIFACT_PUBLISH = REVIEW_ROOT / "scripts" / "publish-outline-transition-artifacts.mjs"
 OUTLINE_DIGEST = REVIEW_ROOT / "scripts" / "outline-digest.mjs"
 REVIEW_DATA_ID = REVIEW_ROOT / "scripts" / "review-data-id.mjs"
 REVIEW_PAGE_RENDERER = REVIEW_ROOT / "renderer" / "speccompass-review-renderer.html"
@@ -126,6 +152,176 @@ MULTI_AGENT_GLOBAL_REGISTRY_FILES = (
 
 def _command(name: str) -> str:
     return (COMMANDS_DIR / f"{name}.md").read_text(encoding="utf-8")
+
+
+def _contract_digest(value: dict, digest_field: str) -> str:
+    payload = {key: item for key, item in value.items() if key != digest_field}
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
+def _aligned_boundaries_document() -> dict:
+    baseline = {
+        "baseline_id": "baseline-001",
+        "baseline_digest": "",
+        "created_at": "2026-07-27T10:00:00.000Z",
+        "created_by": "test-suite",
+        "decision_ref": "specs/000-root/prd.md#decision-001",
+        "project_boundaries": [
+            {
+                "order": 1,
+                "feature_code": "000",
+                "feature": "000-root",
+                "title": "Root",
+                "parent_feature_code": None,
+                "sibling_order": 0,
+                "outline_node_id": "boundary-000",
+                "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Root boundary."},
+                "lifecycle": "active",
+                "predecessor_codes": [],
+            },
+            {
+                "order": 2,
+                "feature_code": "001",
+                "feature": "001-child",
+                "title": "Child",
+                "parent_feature_code": "000",
+                "sibling_order": 1,
+                "outline_node_id": "boundary-001",
+                "boundary_source": {
+                    "kind": "subproject_handoff",
+                    "handoff_ref": "specs/000-root/prd.md#handoff-001",
+                    "rationale": "Confirmed child boundary.",
+                },
+                "lifecycle": "active",
+                "predecessor_codes": [],
+            },
+        ],
+        "tombstones": [],
+    }
+    baseline["baseline_digest"] = _contract_digest(baseline, "baseline_digest")
+    return {
+        "schema_version": 1,
+        "root_feature": "000-root",
+        "updated_at": "2026-07-27T10:00:00.000Z",
+        "transition_state": "ALIGNED",
+        "current_baseline": baseline,
+        "proposed_baseline": None,
+        "transition": None,
+    }
+
+
+def _transitioning_boundaries_document() -> dict:
+    document = _aligned_boundaries_document()
+    current = document["current_baseline"]
+    proposal = {
+        "baseline_id": "baseline-002",
+        "proposal_digest": "",
+        "base_baseline_id": current["baseline_id"],
+        "base_baseline_digest": current["baseline_digest"],
+        "created_at": "2026-07-27T11:00:00.000Z",
+        "created_by": "test-suite",
+        "decision_ref": "specs/000-root/prd.md#decision-002",
+        "change_reason": "Confirm a reviewed boundary-title adjustment.",
+        "project_boundaries": json.loads(json.dumps(current["project_boundaries"])),
+        "tombstones": [],
+    }
+    proposal["project_boundaries"][1]["title"] = "Child v2"
+    proposal["proposal_digest"] = _contract_digest(proposal, "proposal_digest")
+    document.update(
+        {
+            "updated_at": "2026-07-27T11:00:00.000Z",
+            "transition_state": "CROSS_ARTIFACT_VALIDATED",
+            "proposed_baseline": proposal,
+            "transition": {
+                "transition_id": "transition-002",
+                "transition_revision": 1,
+                "base_baseline_id": current["baseline_id"],
+                "base_baseline_digest": current["baseline_digest"],
+                "proposal_digest": proposal["proposal_digest"],
+                "started_at": "2026-07-27T11:00:00.000Z",
+                "updated_at": "2026-07-27T11:00:00.000Z",
+                "lock": None,
+                "artifact_reassignments": [],
+                "impact_assessments": [],
+                "completed_steps": ["human-approved", "flow-ui-validated", "cross-artifact-validated"],
+                "next_action": "Activate the approved baseline.",
+                "rollback_ref": "specs/000-root/outline-transition.jsonl#transition-002",
+            },
+        }
+    )
+    return document
+
+
+def test_product_prd_is_authoritative_and_matches_current_review_baseline():
+    prd = PRODUCT_PRD.read_text(encoding="utf-8")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+    review_skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
+
+    for token in (
+        "current_baseline",
+        "proposed_baseline",
+        "ALIGNED_NEW_BASELINE",
+        "outline-boundaries.json",
+        "outline_node_id",
+        "UNCHANGED_WITH_EVIDENCE",
+        "artifact_reassignment",
+        "base_baseline_digest",
+        "LEGACY_ADOPTION_REQUIRED",
+        "repair_command_exec",
+        "追加式迁移日志",
+        "唯一写入事实源",
+        "写入项目",
+        "不调用模型",
+        "加载 Flow",
+        "运行分析",
+        "feature-code-ledger.json",
+        "reserved",
+        "void",
+        "1000",
+    ):
+        assert token in prd
+
+    for content, label in (
+        (methodology, "methodology"),
+        (_command("prd"), "prd command"),
+        (_command("flow"), "flow command"),
+        (_command("ui"), "ui command"),
+        (command_spec, "command spec"),
+        (review_skill, "review-data skill"),
+    ):
+        assert "one_to_one" in content, label
+        assert "transition" in content or "暂态" in content, label
+        assert "outline_node_id" in content, label
+
+    for command_name in ("prd", "specify", "flow", "ui", "plan", "tasks", "analyze", "gate", "implement"):
+        content = _command(command_name)
+        assert "check-outline-boundary-gate.mjs" in content, command_name
+        assert "speccompass.outline-boundary-gate.v1" in content, command_name
+        assert "repair_command_exec" in content, command_name
+        assert "derived" in content and "review-index.json" in content, command_name
+
+    assert "start-outline-transition.mjs" in _command("prd")
+    assert "manage-feature-codes.mjs reserve" in _command("prd")
+    assert "create-new-feature.sh --number" in _command("specify")
+    assert "rollback-outline-transition.mjs" in _command("prd")
+    assert "scan-outline-transition-impact.mjs" in _command("plan")
+    assert "prepare-outline-transition-artifacts.mjs" in _command("plan")
+    assert "shared evidence" in _command("flow")
+    assert "shared evidence" in _command("ui")
+    assert "advance-outline-transition.mjs validate" in _command("gate")
+    assert "publish-outline-transition-artifacts.mjs" in _command("prd")
+    assert "inventory digest" in _command("tasks")
+    for token in (
+        "start-outline-transition.mjs",
+        "scan-outline-transition-impact.mjs",
+        "advance-outline-transition.mjs",
+        "rollback-outline-transition.mjs",
+        "manage-feature-codes.mjs",
+        "do not call a model",
+    ):
+        assert token in review_skill
 
 
 def _review_renderer_bundle() -> str:
@@ -3740,10 +3936,23 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
         assert "has_ui_review" in content, label
     assert "上一需求" in renderer_readme and "下一需求" in renderer_readme
     assert "上一业务模块" in renderer_readme and "下一业务模块" in renderer_readme
-    assert review_index_template["schema_version"] == 1
+    assert review_index_template["schema_version"] == 2
     assert isinstance(review_index_template["features"], list)
     assert review_index_template["features"] == []
-    assert {"schema_version", "project", "updated_at", "features"} <= set(review_index_template)
+    assert review_index_template["hierarchy"] == {"mode": "flat", "root_feature": None}
+    assert {"schema_version", "project", "updated_at", "hierarchy", "features"} <= set(review_index_template)
+    assert REVIEW_INDEX_SCHEMA.is_file()
+    assert REVIEW_INDEX_VALIDATOR.is_file()
+    assert REVIEW_INDEX_MIGRATOR.is_file()
+    assert FEATURE_CODE_LEDGER_SCHEMA.is_file()
+    assert FEATURE_CODE_LEDGER_LIB.is_file()
+    assert FEATURE_CODE_MANAGER.is_file()
+    for content, label in ((flow, "flow"), (ui, "ui"), (skill, "skill"), (renderer_readme, "renderer README"), (methodology, "methodology")):
+        assert "migrate-review-index.mjs" in content, label
+        assert "validate-review-index.mjs" in content, label
+        assert "parent_feature" in content, label
+        assert "sibling_order" in content, label
+        assert "outline_alignment" in content, label
     assert "不要虚构" in flow or "do not invent" in flow
     assert "不要虚构" in ui or "do not invent" in ui
     assert "2-4\n  `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices" not in flow
@@ -3769,9 +3978,8 @@ def test_flow_ui_review_data_renderer_contract_is_fixed_and_schema_bound():
     assert "needs-decision" in skill
     assert "confirmed_items" in skill and "decision_recorded_items" in skill
     assert "最小完整 JSON" in skill or "Minimal complete JSON" in skill
-    assert "window.SPECCOMPASS_REVIEW_DATA" in renderer_readme
-    assert "file input" in renderer_readme or "本地 JSON 文件" in renderer_readme
-    assert "colocated `flow-review-data.json`" in renderer_readme or "同目录" in renderer_readme
+    assert "There is no manual JSON selector" in renderer_readme
+    assert "Loading is exclusively" in renderer_readme
     assert "flow-confirmation.md" in renderer_readme
     assert "ui-confirmation.md" in renderer_readme
     assert "DO NOT EDIT in normal /sp.flow or /sp.ui runs" in renderer_readme
@@ -4239,7 +4447,7 @@ if (JSON.stringify(ids) !== JSON.stringify(["b-1", "b-2", "b-3"])) {{
 
 
 def test_review_renderer_transport_gate_rejects_non_127_http_before_accepting_data():
-    """Inline review data and review controls must stay blocked outside the launcher origin."""
+    """Review controls stay blocked outside the launcher and inline data is never accepted."""
     if shutil.which("node") is None:
         pytest.skip("node is required for renderer transport tests")
 
@@ -4248,9 +4456,9 @@ def test_review_renderer_transport_gate_rejects_non_127_http_before_accepting_da
 const fs = require("fs");
 const vm = require("vm");
 const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
-const controlIds = ["load-flow", "load-ui", "load-outline", "file-input", "download-package", "copy-summary"];
+const controlIds = ["download-package", "copy-summary"];
 
-function evaluate(protocol, hostname, expectedAccepted) {{
+function evaluate(protocol, hostname, shouldBlock) {{
   const controls = Object.fromEntries(controlIds.map((id) => [id, {{
     disabled: false,
     addEventListener: () => undefined,
@@ -4275,7 +4483,6 @@ function evaluate(protocol, hostname, expectedAccepted) {{
     console,
     URL,
     URLSearchParams,
-    DEFAULT_DATA_FILES: {{ flow: "flow.json", ui: "ui.json", outline: "outline.json" }},
     reviewData: {{ review_type: "flow" }},
     $: (id) => controls[id],
     acceptReviewData: () => {{ accepted += 1; }},
@@ -4287,23 +4494,25 @@ function evaluate(protocol, hostname, expectedAccepted) {{
   }};
   vm.createContext(context);
   vm.runInContext(source, context);
-  if (accepted !== expectedAccepted) {{
+  if (accepted !== 0) {{
     throw new Error(`${{protocol}}//${{hostname}} accepted ${{accepted}} review payloads`);
   }}
-  if (expectedAccepted === 0) {{
+  if (shouldBlock) {{
     for (const id of controlIds) {{
       if (!controls[id].disabled) throw new Error(`${{id}} was not disabled for ${{protocol}}//${{hostname}}`);
     }}
     if (!controls["live-status"].textContent.includes("serve-review.mjs")) {{
       throw new Error("blocked transport did not identify the required launcher");
     }}
+  }} else if (!controls["live-status"].textContent.includes("SPECCOMPASS_REVIEW_URL")) {{
+    throw new Error("supported transport without a bound URL did not fail closed");
   }}
 }}
 
-evaluate("file:", "", 0);
-evaluate("http:", "localhost", 0);
-evaluate("https:", "127.0.0.1", 0);
-evaluate("http:", "127.0.0.1", 1);
+evaluate("file:", "", true);
+evaluate("http:", "localhost", true);
+evaluate("https:", "127.0.0.1", true);
+evaluate("http:", "127.0.0.1", false);
 """
     result = subprocess.run(
         ["node", "-e", node_program],
@@ -4611,7 +4820,7 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert "localStorage" in renderer
     assert "flow-review-data.json" in renderer
     assert "ui-review-data.json" in renderer
-    assert "window.SPECCOMPASS_REVIEW_DATA" in renderer
+    assert "window.SPECCOMPASS_REVIEW_DATA" not in renderer
     assert "SUPPORTED_SCHEMA_VERSION" in renderer
     assert "draft_excluded_items" in renderer
     assert "decision_records" in renderer
@@ -4793,6 +5002,1278 @@ def test_review_data_template_assets_exist_and_describe_reusable_renderer_contra
     assert re.search(r"without a valid recommendation\s+remain", renderer_readme)
     assert "only for explanation or preview" in renderer_readme or "只用于说明或预览" in renderer_readme
     assert "must not carry recommendation choices" in renderer_readme or "不得承载推荐/非推荐选择" in renderer_readme
+
+
+def test_review_index_v2_validates_explicit_lineage_and_outline_projection(tmp_path: Path):
+    """Feature codes never imply hierarchy; the explicit SP lineage must be coherent."""
+    valid_index = {
+        "schema_version": 2,
+        "project": "demo",
+        "updated_at": "2026-07-27",
+        "hierarchy": {"mode": "explicit", "root_feature": "000-product-root"},
+        "features": [
+            {
+                "order": 1,
+                "feature_code": "000",
+                "feature": "000-product-root",
+                "title": "Product root",
+                "parent_feature": None,
+                "sibling_order": 0,
+                "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Portfolio root."},
+                "outline_alignment": {"status": "not_mapped", "outline_node_refs": [], "rationale": "Owns the top Outline."},
+                "has_flow_review": False,
+                "has_ui_review": False,
+                "has_outline_review": False,
+                "has_outline_discovery": True,
+            },
+            {
+                "order": 2,
+                "feature_code": "001",
+                "feature": "001-first-child",
+                "title": "First child",
+                "parent_feature": "000-product-root",
+                "sibling_order": 1,
+                "boundary_source": {
+                    "kind": "subproject_handoff",
+                    "handoff_ref": "specs/000-product-root/prd.md#HANDOFF-001",
+                    "rationale": "Confirmed SP delivery boundary.",
+                },
+                "outline_alignment": {
+                    "status": "one_to_one",
+                    "outline_node_refs": ["specs/000-product-root/prd/review/outline-discovery-data.json#NODE-001"],
+                    "rationale": "The confirmed child matches one proposal node.",
+                },
+                "has_flow_review": True,
+                "has_ui_review": True,
+                "has_outline_review": True,
+                "has_outline_discovery": False,
+            },
+        ],
+    }
+
+    def validate(data: dict) -> subprocess.CompletedProcess[str]:
+        index_path = tmp_path / "review-index.json"
+        index_path.write_text(json.dumps(data), encoding="utf-8")
+        return subprocess.run(
+            ["node", str(REVIEW_INDEX_VALIDATOR), str(index_path)],
+            cwd=tmp_path,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    result = validate(valid_index)
+    assert result.returncode == 0, result.stderr
+    assert "hierarchy=explicit" in result.stdout
+
+    missing_parent = json.loads(json.dumps(valid_index))
+    missing_parent["features"][1]["parent_feature"] = "000-missing-root"
+    result = validate(missing_parent)
+    assert result.returncode != 0
+    assert "missing parent_feature" in result.stderr
+
+    inferred_only = json.loads(json.dumps(valid_index))
+    inferred_only["features"][1]["parent_feature"] = None
+    inferred_only["features"][1]["sibling_order"] = 0
+    inferred_only["features"][1]["boundary_source"] = {
+        "kind": "standalone",
+        "handoff_ref": None,
+        "rationale": "Number only.",
+    }
+    result = validate(inferred_only)
+    assert result.returncode != 0
+    assert "confirmed subproject_handoff" in result.stderr
+
+    duplicate_sibling = json.loads(json.dumps(valid_index))
+    duplicate_sibling["features"].append({
+        **json.loads(json.dumps(valid_index["features"][1])),
+        "order": 3,
+        "feature_code": "002",
+        "feature": "002-second-child",
+        "outline_alignment": {
+            "status": "one_to_one",
+            "outline_node_refs": ["specs/000-product-root/prd/review/outline-discovery-data.json#NODE-002"],
+            "rationale": "Second proposal node.",
+        },
+    })
+    result = validate(duplicate_sibling)
+    assert result.returncode != 0
+    assert "sibling_order 1 is duplicated" in result.stderr
+
+    invalid_split = json.loads(json.dumps(valid_index))
+    invalid_split["features"][1]["outline_alignment"]["status"] = "split"
+    result = validate(invalid_split)
+    assert result.returncode != 0
+    assert "marked split but maps to only one feature" in result.stderr
+
+    invalid_merged = json.loads(json.dumps(valid_index))
+    invalid_merged["features"][1]["outline_alignment"]["status"] = "merged"
+    result = validate(invalid_merged)
+    assert result.returncode != 0
+    assert "merged alignment requires at least two outline refs" in result.stderr
+
+    duplicate_one_to_one = json.loads(json.dumps(valid_index))
+    duplicate_one_to_one["features"].append({
+        **json.loads(json.dumps(valid_index["features"][1])),
+        "order": 3,
+        "feature_code": "002",
+        "feature": "002-second-child",
+        "sibling_order": 2,
+    })
+    result = validate(duplicate_one_to_one)
+    assert result.returncode != 0
+    assert "cannot be one_to_one because it maps to multiple features" in result.stderr
+
+    valid_split = json.loads(json.dumps(duplicate_one_to_one))
+    valid_split["features"][1]["outline_alignment"]["status"] = "split"
+    valid_split["features"][2]["outline_alignment"]["status"] = "split"
+    result = validate(valid_split)
+    assert result.returncode == 0, result.stderr
+
+
+def test_review_index_v1_migration_is_deterministic_and_fail_closed(tmp_path: Path):
+    """Legacy flat indexes migrate mechanically without inventing hierarchy."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review-index migration tests")
+
+    legacy = {
+        "schema_version": 1,
+        "project": "legacy-demo",
+        "updated_at": "2026-07-27",
+        "features": [
+            {
+                "order": 2,
+                "feature": "20260727-123456-second",
+                "title": "Second",
+                "has_flow_review": False,
+                "has_ui_review": True,
+                "has_outline_review": False,
+                "has_outline_discovery": False,
+            },
+            {
+                "order": 1,
+                "feature": "001-first",
+                "title": "First",
+                "has_flow_review": True,
+                "has_ui_review": False,
+                "has_outline_review": True,
+                "has_outline_discovery": True,
+            },
+        ],
+    }
+    index_path = tmp_path / "review-index.json"
+    source = json.dumps(legacy, ensure_ascii=False, indent=2) + "\n"
+    index_path.write_text(source, encoding="utf-8")
+    index_path.chmod(0o640)
+
+    result = subprocess.run(
+        ["node", str(REVIEW_INDEX_MIGRATOR), str(index_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    migrated = json.loads(index_path.read_text(encoding="utf-8"))
+    assert migrated["schema_version"] == 2
+    assert migrated["hierarchy"] == {"mode": "flat", "root_feature": None}
+    assert [entry["feature_code"] for entry in migrated["features"]] == ["20260727-123456", "001"]
+    assert all(entry["parent_feature"] is None for entry in migrated["features"])
+    assert all(entry["sibling_order"] == 0 for entry in migrated["features"])
+    assert all(entry["boundary_source"]["kind"] == "standalone" for entry in migrated["features"])
+    assert all(entry["outline_alignment"]["status"] == "not_mapped" for entry in migrated["features"])
+    assert (tmp_path / "review-index.json.v1.backup.json").read_text(encoding="utf-8") == source
+    if os.name != "nt":
+        assert index_path.stat().st_mode & 0o777 == 0o640
+
+    validation = subprocess.run(
+        ["node", str(REVIEW_INDEX_VALIDATOR), str(index_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert validation.returncode == 0, validation.stderr
+    migrated_source = index_path.read_text(encoding="utf-8")
+    second_run = subprocess.run(
+        ["node", str(REVIEW_INDEX_MIGRATOR), str(index_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert second_run.returncode == 0
+    assert "already uses schema v2" in second_run.stdout
+    assert index_path.read_text(encoding="utf-8") == migrated_source
+
+    invalid_path = tmp_path / "invalid-review-index.json"
+    invalid_legacy = json.loads(json.dumps(legacy))
+    invalid_legacy["features"][0]["feature"] = "missing-code"
+    invalid_source = json.dumps(invalid_legacy, indent=2) + "\n"
+    invalid_path.write_text(invalid_source, encoding="utf-8")
+    rejected = subprocess.run(
+        ["node", str(REVIEW_INDEX_MIGRATOR), str(invalid_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert rejected.returncode != 0
+    assert "will not invent one" in rejected.stderr
+    assert invalid_path.read_text(encoding="utf-8") == invalid_source
+    assert not (tmp_path / "invalid-review-index.json.v1.backup.json").exists()
+
+
+def test_review_index_validator_rejects_additional_properties_at_every_object_level(tmp_path: Path):
+    """The hand-written validator must enforce the same closed objects as the JSON schema."""
+    valid = {
+        "schema_version": 2,
+        "project": "Demo",
+        "updated_at": "2026-07-27",
+        "hierarchy": {"mode": "explicit", "root_feature": "000-root"},
+        "features": [
+            {
+                "order": 1,
+                "feature_code": "000",
+                "feature": "000-root",
+                "title": "Root",
+                "parent_feature": None,
+                "sibling_order": 0,
+                "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Root."},
+                "outline_alignment": {"status": "one_to_one", "outline_node_refs": ["boundary-000"], "rationale": "Aligned."},
+                "has_flow_review": False,
+                "has_ui_review": False,
+                "has_outline_review": True,
+                "has_outline_discovery": False,
+            }
+        ],
+    }
+
+    def validate(data: dict) -> subprocess.CompletedProcess[str]:
+        path = tmp_path / "review-index.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return subprocess.run(["node", str(REVIEW_INDEX_VALIDATOR), str(path)], text=True, capture_output=True, check=False)
+
+    for mutate, label in (
+        (lambda data: data.update({"unexpected": True}), "review-index"),
+        (lambda data: data["hierarchy"].update({"unexpected": True}), "hierarchy"),
+        (lambda data: data["features"][0].update({"unexpected": True}), "features[0]"),
+        (lambda data: data["features"][0]["boundary_source"].update({"unexpected": True}), "boundary_source"),
+        (lambda data: data["features"][0]["outline_alignment"].update({"unexpected": True}), "outline_alignment"),
+    ):
+        candidate = json.loads(json.dumps(valid))
+        mutate(candidate)
+        result = validate(candidate)
+        assert result.returncode != 0, label
+        assert "unsupported fields" in result.stderr, label
+
+
+def test_outline_boundaries_contract_validates_digest_state_and_closed_fields(tmp_path: Path):
+    document = _aligned_boundaries_document()
+    path = tmp_path / "outline-boundaries.json"
+
+    def validate(data: dict) -> subprocess.CompletedProcess[str]:
+        path.write_text(json.dumps(data), encoding="utf-8")
+        return subprocess.run(["node", str(OUTLINE_BOUNDARIES_VALIDATOR), str(path)], text=True, capture_output=True, check=False)
+
+    result = validate(document)
+    assert result.returncode == 0, result.stderr
+    assert "state=ALIGNED" in result.stdout
+
+    bad_digest = json.loads(json.dumps(document))
+    bad_digest["current_baseline"]["project_boundaries"][1]["title"] = "Changed without digest"
+    result = validate(bad_digest)
+    assert result.returncode != 0
+    assert "baseline_digest does not match" in result.stderr
+
+    event_as_state = json.loads(json.dumps(document))
+    event_as_state["transition_state"] = "ALIGNED_NEW_BASELINE"
+    result = validate(event_as_state)
+    assert result.returncode != 0
+    assert "event, not a state" in result.stderr
+
+    unexpected = json.loads(json.dumps(document))
+    unexpected["current_baseline"]["project_boundaries"][0]["unexpected"] = True
+    result = validate(unexpected)
+    assert result.returncode != 0
+    assert "unsupported fields" in result.stderr
+
+    unsafe_ref = json.loads(json.dumps(document))
+    unsafe_ref["current_baseline"]["decision_ref"] = "C:\\outside\\decision.md"
+    unsafe_ref["current_baseline"]["baseline_digest"] = _contract_digest(
+        unsafe_ref["current_baseline"], "baseline_digest"
+    )
+    result = validate(unsafe_ref)
+    assert result.returncode != 0
+    assert "decision_ref is unsafe" in result.stderr
+
+    duplicate_refs = _transitioning_boundaries_document()
+    duplicate_refs["transition"]["artifact_reassignments"] = [
+        {
+            "artifact_type": "spec",
+            "artifact_ref": ref,
+            "disposition": "shared",
+            "target_feature_code": None,
+            "reason": "Test normalized duplicate rejection.",
+        }
+        for ref in ("specs/001-child/spec.md", "SPECS/001-CHILD/SPEC.MD")
+    ]
+    result = validate(duplicate_refs)
+    assert result.returncode != 0
+    assert "duplicates another reassignment after path normalization" in result.stderr
+
+    stale_evidence = _transitioning_boundaries_document()
+    stale_evidence["transition"]["impact_assessments"] = [
+        {
+            "artifact_type": "flow",
+            "artifact_ref": "specs/001-child/flows/main.md",
+            "outcome": "UNCHANGED_WITH_EVIDENCE",
+            "evidence": [
+                {
+                    "evidence_type": "hash_match",
+                    "ref": "specs/001-child/flows/main.md",
+                    "source_digest": "0" * 64,
+                    "verified_at": "2026-07-27T10:59:59.000Z",
+                    "verifier": "test-suite",
+                    "result": "matched",
+                }
+            ],
+        }
+    ]
+    result = validate(stale_evidence)
+    assert result.returncode != 0
+    assert "predates the proposed baseline" in result.stderr
+
+
+def test_review_index_is_derived_from_aligned_outline_boundaries(tmp_path: Path):
+    boundaries_path = tmp_path / "outline-boundaries.json"
+    index_path = tmp_path / "review-index.json"
+    boundaries_path.write_text(json.dumps(_aligned_boundaries_document()), encoding="utf-8")
+    index_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "project": "Old title",
+                "updated_at": "2026-07-26",
+                "hierarchy": {"mode": "flat", "root_feature": None},
+                "features": [
+                    {
+                        "order": 9,
+                        "feature_code": "001",
+                        "feature": "001-child",
+                        "title": "Old child",
+                        "parent_feature": None,
+                        "sibling_order": 0,
+                        "boundary_source": {"kind": "standalone", "handoff_ref": None, "rationale": "Old."},
+                        "outline_alignment": {"status": "not_mapped", "outline_node_refs": [], "rationale": "Old."},
+                        "has_flow_review": True,
+                        "has_ui_review": False,
+                        "has_outline_review": False,
+                        "has_outline_discovery": True,
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    index_path.chmod(0o640)
+
+    result = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_SYNC), str(boundaries_path), str(index_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    synced = json.loads(index_path.read_text(encoding="utf-8"))
+    assert synced["project"] == "Root"
+    assert synced["hierarchy"] == {"mode": "explicit", "root_feature": "000-root"}
+    assert [entry["feature_code"] for entry in synced["features"]] == ["000", "001"]
+    assert synced["features"][1]["parent_feature"] == "000-root"
+    assert synced["features"][1]["has_flow_review"] is True
+    assert synced["features"][1]["has_outline_discovery"] is True
+    assert synced["features"][0]["has_flow_review"] is False
+    if os.name != "nt":
+        assert index_path.stat().st_mode & 0o777 == 0o640
+
+    check = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_SYNC), str(boundaries_path), str(index_path), "--check"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert check.returncode == 0, check.stderr
+    synced["features"][1]["parent_feature"] = None
+    index_path.write_text(json.dumps(synced), encoding="utf-8")
+    rejected = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_SYNC), str(boundaries_path), str(index_path), "--check"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert rejected.returncode != 0
+    assert "do not match outline-boundaries" in rejected.stderr
+
+
+def test_legacy_boundary_bootstrap_produces_non_authoritative_candidate(tmp_path: Path):
+    specs = tmp_path / "specs"
+    specs.mkdir()
+    for feature in ("000-root", "001-child"):
+        (specs / feature).mkdir()
+    index_path = specs / "review-index.json"
+    output_path = specs / "outline-boundaries-adoption.json"
+    index_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 2,
+                "project": "Legacy",
+                "updated_at": "2026-07-27",
+                "hierarchy": {"mode": "flat", "root_feature": None},
+                "features": [
+                    {
+                        "order": order,
+                        "feature_code": code,
+                        "feature": feature,
+                        "title": title,
+                        "parent_feature": None,
+                        "sibling_order": 0,
+                        "boundary_source": {"kind": "standalone", "handoff_ref": None, "rationale": "Legacy."},
+                        "outline_alignment": {"status": "not_mapped", "outline_node_refs": [], "rationale": "Legacy."},
+                        "has_flow_review": False,
+                        "has_ui_review": False,
+                        "has_outline_review": False,
+                        "has_outline_discovery": False,
+                    }
+                    for order, code, feature, title in (
+                        (1, "000", "000-root", "Root"),
+                        (2, "001", "001-child", "Child"),
+                    )
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_BOOTSTRAP), str(index_path), str(output_path), "--root", "000-root"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    candidate = json.loads(output_path.read_text(encoding="utf-8"))
+    assert candidate["status"] == "NEEDS_HUMAN_CONFIRMATION"
+    assert candidate["root_feature"] == "000-root"
+    assert {issue["code"] for issue in candidate["issues"]} == {"parent_unconfirmed", "outline_alignment_unconfirmed"}
+    assert all(item["source_status"] == "unmapped" for item in candidate["candidates"])
+
+
+def _run_transition_lock(boundaries_path: Path, action: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["node", str(OUTLINE_TRANSITION_LOCK), action, str(boundaries_path)],
+        text=True, capture_output=True, check=False,
+    )
+
+
+def test_outline_transition_lock_enforces_ownership_and_lease_recovery(tmp_path: Path):
+    boundaries_path = tmp_path / "outline-boundaries.json"
+    boundaries_path.write_text(json.dumps(_transitioning_boundaries_document()), encoding="utf-8")
+    lock_path = tmp_path / ".outline-boundaries.json.transition.lock"
+
+    module_uri = (REVIEW_ROOT / "scripts" / "outline-transition-lock-lib.mjs").as_uri()
+    exercised = subprocess.run(
+        [
+            "node", "--input-type=module", "--eval",
+            (
+                f'import {{ acquireTransitionCommandLock, heartbeatTransitionCommandLock, '
+                f'releaseTransitionCommandLock }} from "{module_uri}"; '
+                f'const lock = await acquireTransitionCommandLock({json.dumps(str(boundaries_path))}); '
+                'const renewed = await heartbeatTransitionCommandLock(lock); '
+                'console.log(JSON.stringify({owner_id: lock.ownerId, renewed_owner: renewed.owner_id})); '
+                'await releaseTransitionCommandLock(lock);'
+            ),
+        ],
+        text=True, capture_output=True, check=False,
+    )
+    assert exercised.returncode == 0, exercised.stderr
+    result = json.loads(exercised.stdout)
+    assert result["owner_id"] == result["renewed_owner"]
+    assert not lock_path.exists()
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition"]["lock"] is None
+
+    owner = "expired-owner"
+    renewed = {
+        "owner_id": owner,
+        "transition_id": "transition-002",
+        "transition_revision": 1,
+        "baseline_digest": json.loads(boundaries_path.read_text(encoding="utf-8"))["current_baseline"]["baseline_digest"],
+        "pid": 999999,
+        "created_at": "2000-01-01T00:00:00.000Z",
+        "heartbeat_at": "2000-01-01T00:00:00.000Z",
+        "lease_expires_at": "2000-01-01T00:05:00.000Z",
+        "lease_seconds": 300,
+        "heartbeat_seconds": 30,
+    }
+
+    lock_path.write_text(json.dumps(renewed), encoding="utf-8")
+    document = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    document["transition"]["lock"] = renewed
+    boundaries_path.write_text(json.dumps(document), encoding="utf-8")
+
+    recovered = _run_transition_lock(boundaries_path, "recover")
+    assert recovered.returncode == 0, recovered.stderr
+    assert "released the maintenance command lock" in recovered.stdout
+    assert not lock_path.exists()
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition"]["lock"] is None
+    assert not (tmp_path / ".outline-boundaries.json.transition.lock.recovery").exists()
+
+
+def test_outline_baseline_activation_uses_last_commit_point_and_is_retryable(tmp_path: Path):
+    boundaries_path, index_path, journal_path = _start_outline_transition(tmp_path)
+    inventory_path, report_path = _validate_unchanged_outline_transition(
+        tmp_path, boundaries_path, journal_path
+    )
+    root = boundaries_path.parent
+    transition_id = json.loads(boundaries_path.read_text(encoding="utf-8"))["transition"]["transition_id"]
+
+    command = [
+        "node",
+        str(OUTLINE_BASELINE_ACTIVATOR),
+        str(boundaries_path),
+        str(index_path),
+        str(journal_path),
+        "--inventory",
+        str(inventory_path),
+        "--report",
+        str(report_path),
+    ]
+    failed = subprocess.run(
+        command,
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "SPECCOMPASS_FAULT_AFTER_INDEX_SYNC": "1"},
+    )
+    assert failed.returncode != 0
+    assert "Injected failure" in failed.stderr
+    before_commit = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    assert before_commit["transition_state"] == "CROSS_ARTIFACT_VALIDATED"
+    assert before_commit["current_baseline"]["baseline_id"] == "baseline-001"
+    assert before_commit["proposed_baseline"]["baseline_id"] == "baseline-002"
+    staged_path = root / f".outline-boundaries.json.{transition_id}.staged.json"
+    assert staged_path.exists()
+    assert not (root / ".outline-boundaries.json.transition.lock").exists()
+
+    committed_not_finalized = subprocess.run(
+        command,
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "SPECCOMPASS_FAULT_AFTER_BOUNDARY_COMMIT": "1"},
+    )
+    assert committed_not_finalized.returncode != 0
+    assert "after the authoritative commit point" in committed_not_finalized.stderr
+    committed = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    assert committed["transition_state"] == "ALIGNED"
+    assert any(
+        json.loads(line)["event_type"] == "BASELINE_ACTIVATION_PREPARED"
+        for line in journal_path.read_text(encoding="utf-8").splitlines()
+    )
+    assert not (root / ".outline-boundaries.json.transition.lock").exists()
+
+    succeeded = subprocess.run(command, text=True, capture_output=True, check=False)
+    assert succeeded.returncode == 0, succeeded.stderr
+    assert "Finalized committed" in succeeded.stdout
+    activated = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    assert activated["transition_state"] == "ALIGNED"
+    assert activated["current_baseline"]["baseline_id"] == "baseline-002"
+    assert activated["current_baseline"]["project_boundaries"][1]["boundary_source"]["rationale"] == (
+        "Reviewed child responsibility remains explicit."
+    )
+    assert activated["proposed_baseline"] is None
+    assert activated["transition"] is None
+    validation = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_VALIDATOR), str(boundaries_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert validation.returncode == 0, validation.stderr
+    synced = json.loads(index_path.read_text(encoding="utf-8"))
+    assert [feature["feature_code"] for feature in synced["features"]] == ["000", "001"]
+    assert synced["features"][1]["title"] == "Child"
+    events = [json.loads(line) for line in journal_path.read_text(encoding="utf-8").splitlines()]
+    assert [event["event_type"] for event in events][-2:] == ["BASELINE_ACTIVATION_PREPARED", "ALIGNED_NEW_BASELINE"]
+    assert not staged_path.exists()
+    assert not (root / ".outline-boundaries.json.transition.lock").exists()
+
+
+def test_outline_boundary_gate_returns_one_shared_machine_contract(tmp_path: Path):
+    root = tmp_path / "specs" / "000-root"
+    root.mkdir(parents=True)
+    boundaries_path = root / "outline-boundaries.json"
+    index_path = tmp_path / "specs" / "review-index.json"
+    boundaries_path.write_text(json.dumps(_aligned_boundaries_document()), encoding="utf-8")
+    synced = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_SYNC), str(boundaries_path), str(index_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert synced.returncode == 0, synced.stderr
+
+    command = ["node", str(OUTLINE_BOUNDARY_GATE), str(boundaries_path), str(index_path), "--feature", "001-child"]
+    allowed = subprocess.run(command, text=True, capture_output=True, check=False)
+    assert allowed.returncode == 0, allowed.stderr
+    payload = json.loads(allowed.stdout)
+    assert payload["schema"] == "speccompass.outline-boundary-gate.v1"
+    assert payload["allowed"] is True
+    assert payload["current_baseline_id"] == "baseline-001"
+    without_feature = subprocess.run(command[:-2], text=True, capture_output=True, check=False)
+    assert without_feature.returncode == 0, without_feature.stderr
+    assert json.loads(without_feature.stdout)["feature"] is None
+
+    recovery_claim = root / ".outline-boundaries.json.start.lock.recovery"
+    recovery_claim.write_text("{}", encoding="utf-8")
+    recovering = subprocess.run(command, text=True, capture_output=True, check=False)
+    assert recovering.returncode == 1
+    recovery_payload = json.loads(recovering.stdout)
+    assert recovery_payload["block_reason"] == "OUTLINE_BOUNDARY_COMMAND_ACTIVE"
+    assert str(recovery_claim.resolve()) in recovery_payload["evidence_refs"]
+    recovery_claim.unlink()
+
+    index = json.loads(index_path.read_text(encoding="utf-8"))
+    index["features"][1]["title"] = "Drifted"
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    mismatched = subprocess.run(command, text=True, capture_output=True, check=False)
+    assert mismatched.returncode == 1
+    mismatch_payload = json.loads(mismatched.stdout)
+    assert mismatch_payload["block_reason"] == "DERIVED_REVIEW_INDEX_MISMATCH"
+    assert mismatch_payload["repair_command_exec"].startswith("node .specify/review/scripts/sync-review-index.mjs")
+
+    boundaries_path.write_text(json.dumps(_transitioning_boundaries_document()), encoding="utf-8")
+    transitioning = subprocess.run(command, text=True, capture_output=True, check=False)
+    assert transitioning.returncode == 1
+    transition_payload = json.loads(transitioning.stdout)
+    assert transition_payload["transition_state"] == "CROSS_ARTIFACT_VALIDATED"
+    assert transition_payload["repair_command_exec"] == "/sp.prd 000-root --resume-outline-transition --transition transition-002"
+
+    boundaries_path.unlink()
+    missing = subprocess.run(command, text=True, capture_output=True, check=False)
+    assert missing.returncode == 1
+    missing_payload = json.loads(missing.stdout)
+    assert missing_payload["block_reason"] == "AUTHORITATIVE_BOUNDARIES_MISSING"
+    assert missing_payload["transition_state"] == "LEGACY_ADOPTION_REQUIRED"
+
+
+def _write_reviewed_outline_adjustment(
+    tmp_path: Path,
+    boundaries_path: Path,
+    proposal: dict,
+) -> tuple[Path, Path, Path]:
+    proposal_id = proposal["baseline_id"]
+    draft = boundaries_path.parent / "boundary-adjustments" / "drafts" / proposal_id
+    draft.mkdir(parents=True, exist_ok=True)
+    proposal_path = draft / "proposal.json"
+    preview_path = draft / "impact-preview.json"
+    decision_path = draft / "decision.json"
+    proposal = {**proposal, "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")}
+    proposal["decision_ref"] = str(decision_path.relative_to(tmp_path)).replace("\\", "/")
+    proposal_path.write_text(json.dumps(proposal), encoding="utf-8")
+    prepared = subprocess.run(
+        ["node", str(OUTLINE_ADJUSTMENT_PREPARE), str(boundaries_path), str(proposal_path), str(preview_path)],
+        cwd=tmp_path, text=True, capture_output=True, check=False,
+    )
+    assert prepared.returncode == 0, prepared.stderr
+    preview = json.loads(preview_path.read_text(encoding="utf-8"))
+    recorded_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    receipt_id = hashlib.sha256(f"{preview['proposal_digest']}:{recorded_at}".encode()).hexdigest()
+    decision = {
+        "schema_version": 1,
+        "decision": "CONFIRMED",
+        "proposal_id": proposal_id,
+        "proposal_digest": preview["proposal_digest"],
+        "base_baseline_id": preview["base_baseline_id"],
+        "base_baseline_digest": preview["base_baseline_digest"],
+        "impact_preview_digest": preview["impact_preview_digest"],
+        "initiated_by": "model",
+        "change_class": preview["change_class"],
+        "affected_feature_codes": preview["affected_feature_codes"],
+        "reviewer_note": "Confirmed through the bound local review page.",
+        "confirmed_by": {"type": "human", "display_name": "test-reviewer"},
+        "source": {
+            "kind": "speccompass_loopback_writer",
+            "writeback_request_id": f"request-{receipt_id[:12]}",
+            "review_session_id": f"session-{proposal_id}",
+            "review_data_id": f"review-{proposal_id}",
+            "recorded_at": recorded_at,
+        },
+        "receipt": {"receipt_id": receipt_id, "status": "ISSUED_ONCE"},
+        "decision_digest": "",
+    }
+    decision["decision_digest"] = _contract_digest(decision, "decision_digest")
+    decision_path.write_text(json.dumps(decision), encoding="utf-8")
+    event = {
+        "schema_version": 1,
+        "event_type": "HUMAN_DECISION_RECORDED",
+        "writeback_request_id": decision["source"]["writeback_request_id"],
+        "review_session_id": decision["source"]["review_session_id"],
+        "review_data_id": decision["source"]["review_data_id"],
+        "proposal_id": proposal_id,
+        "proposal_digest": decision["proposal_digest"],
+        "base_baseline_id": decision["base_baseline_id"],
+        "base_baseline_digest": decision["base_baseline_digest"],
+        "impact_preview_digest": decision["impact_preview_digest"],
+        "receipt_id": receipt_id,
+        "decision": decision["decision"],
+        "decision_digest": decision["decision_digest"],
+        "recorded_at": recorded_at,
+    }
+    ledger = boundaries_path.parent / "boundary-adjustments" / "writeback-ledger.jsonl"
+    with ledger.open("a", encoding="utf-8") as handle:
+        handle.write(json.dumps(event) + "\n")
+    return proposal_path, preview_path, decision_path
+
+
+def _write_outline_transition_project(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path, Path]:
+    specs = tmp_path / "specs"
+    root = specs / "000-root"
+    child = specs / "001-child"
+    (root / "ui").mkdir(parents=True)
+    (child / "flows").mkdir(parents=True)
+    (root / "prd.md").write_text("# Root PRD\n", encoding="utf-8")
+    (root / "ui" / "main.md").write_text("# Root UI\n", encoding="utf-8")
+    (child / "spec.md").write_text("# Child Spec\n", encoding="utf-8")
+    (child / "flows" / "main.md").write_text("# Child Flow\n", encoding="utf-8")
+    boundaries_path = root / "outline-boundaries.json"
+    index_path = specs / "review-index.json"
+    journal_path = root / "outline-transition.jsonl"
+    document = _aligned_boundaries_document()
+    boundaries_path.write_text(json.dumps(document), encoding="utf-8")
+    synced = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_SYNC), str(boundaries_path), str(index_path)],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert synced.returncode == 0, synced.stderr
+    proposed_boundaries = json.loads(json.dumps(document["current_baseline"]["project_boundaries"]))
+    proposed_boundaries[1]["boundary_source"]["rationale"] = "Reviewed child responsibility remains explicit."
+    proposal = {
+        "schema_version": 1,
+        "base_baseline_id": document["current_baseline"]["baseline_id"],
+        "base_baseline_digest": document["current_baseline"]["baseline_digest"],
+        "baseline_id": "baseline-002",
+        "created_by": "test-suite",
+        "change_reason": "Reviewed structural boundary responsibility change.",
+        "rollback_ref": "specs/000-root/prd.md#rollback-002",
+        "project_boundaries": proposed_boundaries,
+        "tombstones": [],
+    }
+    proposal_path, preview_path, decision_path = _write_reviewed_outline_adjustment(
+        tmp_path, boundaries_path, proposal
+    )
+    return boundaries_path, index_path, journal_path, proposal_path, preview_path, decision_path
+
+
+def _start_outline_transition(tmp_path: Path) -> tuple[Path, Path, Path]:
+    boundaries_path, index_path, journal_path, proposal_path, preview_path, decision_path = _write_outline_transition_project(tmp_path)
+    started = subprocess.run(
+        [
+            "node", str(OUTLINE_TRANSITION_START), str(boundaries_path), str(proposal_path),
+            str(preview_path), str(decision_path), str(journal_path),
+        ],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert started.returncode == 0, started.stderr
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition_state"] == "OUTLINE_CHANGE_APPROVED"
+    return boundaries_path, index_path, journal_path
+
+
+def _validate_unchanged_outline_transition(
+    tmp_path: Path,
+    boundaries_path: Path,
+    journal_path: Path,
+) -> tuple[Path, Path]:
+    inventory_path = tmp_path / "activation-inventory.json"
+    evidence_path = tmp_path / "activation-evidence.json"
+    report_path = tmp_path / "activation-report.json"
+    scanned = subprocess.run(
+        ["node", str(OUTLINE_TRANSITION_SCAN), str(boundaries_path), str(inventory_path)],
+        cwd=tmp_path, text=True, capture_output=True, check=False,
+    )
+    assert scanned.returncode == 0, scanned.stderr
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    active = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    verified_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    evidence = {
+        "schema_version": 1,
+        "transition_id": active["transition"]["transition_id"],
+        "transition_revision": active["transition"]["transition_revision"],
+        "proposal_digest": active["proposed_baseline"]["proposal_digest"],
+        "inventory_digest": inventory["inventory_digest"],
+        "artifact_reassignments": [
+            {
+                "artifact_type": item["artifact_type"], "artifact_ref": item["artifact_ref"],
+                "disposition": "shared", "target_feature_code": None,
+                "reason": "Artifact ownership and content remain unchanged.",
+            }
+            for item in inventory["artifacts"]
+        ],
+        "impact_assessments": [
+            {
+                "artifact_type": item["artifact_type"], "artifact_ref": item["artifact_ref"],
+                "outcome": "UNCHANGED_WITH_EVIDENCE",
+                "evidence": [{
+                    "evidence_type": "hash_match", "ref": item["artifact_ref"],
+                    "source_digest": item["source_digest"], "verified_at": verified_at,
+                    "verifier": "test-suite", "result": "matched",
+                }],
+            }
+            for item in inventory["artifacts"]
+        ],
+    }
+    evidence_path.write_text(json.dumps(evidence), encoding="utf-8")
+    validated = subprocess.run(
+        [
+            "node", str(OUTLINE_TRANSITION_ADVANCE), "validate", str(boundaries_path), str(journal_path),
+            "--inventory", str(inventory_path), "--evidence", str(evidence_path),
+            "--report", str(report_path),
+        ],
+        cwd=tmp_path, text=True, capture_output=True, check=False,
+    )
+    assert validated.returncode == 0, validated.stderr
+    return inventory_path, report_path
+
+
+def test_outline_transition_workflow_scans_advances_and_activates(tmp_path: Path):
+    boundaries_path, index_path, journal_path = _start_outline_transition(tmp_path)
+    blocked = subprocess.run(
+        [
+            "node", str(OUTLINE_TRANSITION_ADVANCE), "block", str(boundaries_path), str(journal_path),
+            "--reason", "Temporary evidence service outage.",
+        ],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert blocked.returncode == 0, blocked.stderr
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition_state"] == "MIGRATION_BLOCKED"
+    resumed = subprocess.run(
+        ["node", str(OUTLINE_TRANSITION_ADVANCE), "resume", str(boundaries_path), str(journal_path)],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert resumed.returncode == 0, resumed.stderr
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition_state"] == "OUTLINE_CHANGE_APPROVED"
+
+    inventory_path = tmp_path / "inventory.json"
+    if os.name != "nt":
+        unsafe_link = tmp_path / "specs" / "000-root" / "ui" / "linked.md"
+        unsafe_link.symlink_to(tmp_path / "specs" / "000-root" / "prd.md")
+        unsafe_scan = subprocess.run(
+            ["node", str(OUTLINE_TRANSITION_SCAN), str(boundaries_path), str(inventory_path)],
+            cwd=tmp_path,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        assert unsafe_scan.returncode != 0
+        assert "Symbolic links are not accepted" in unsafe_scan.stderr
+        unsafe_link.unlink()
+    scanned = subprocess.run(
+        ["node", str(OUTLINE_TRANSITION_SCAN), str(boundaries_path), str(inventory_path)],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert scanned.returncode == 0, scanned.stderr
+    inventory = json.loads(inventory_path.read_text(encoding="utf-8"))
+    assert {item["artifact_type"] for item in inventory["artifacts"]} >= {"prd", "spec", "flow", "ui"}
+    assert len(inventory["artifacts"]) == 4
+
+    active = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    verified_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    evidence_path = tmp_path / "evidence.json"
+    evidence_path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "transition_id": active["transition"]["transition_id"],
+                "transition_revision": active["transition"]["transition_revision"],
+                "proposal_digest": active["proposed_baseline"]["proposal_digest"],
+                "inventory_digest": inventory["inventory_digest"],
+                "artifact_reassignments": [
+                    {
+                        "artifact_type": item["artifact_type"],
+                        "artifact_ref": item["artifact_ref"],
+                        "disposition": "shared",
+                        "target_feature_code": None,
+                        "reason": "The reviewed title adjustment preserves artifact ownership.",
+                    }
+                    for item in inventory["artifacts"]
+                ],
+                "impact_assessments": [
+                    {
+                        "artifact_type": item["artifact_type"],
+                        "artifact_ref": item["artifact_ref"],
+                        "outcome": "UNCHANGED_WITH_EVIDENCE",
+                        "evidence": [
+                            {
+                                "evidence_type": "hash_match",
+                                "ref": item["artifact_ref"],
+                                "source_digest": item["source_digest"],
+                                "verified_at": verified_at,
+                                "verifier": "test-suite",
+                                "result": "matched",
+                            }
+                        ],
+                    }
+                    for item in inventory["artifacts"]
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    incomplete = json.loads(evidence_path.read_text(encoding="utf-8"))
+    incomplete["artifact_reassignments"].pop()
+    incomplete_path = tmp_path / "incomplete-evidence.json"
+    incomplete_path.write_text(json.dumps(incomplete), encoding="utf-8")
+    report_path = tmp_path / "validation-report.json"
+    rejected_validation = subprocess.run(
+        [
+            "node", str(OUTLINE_TRANSITION_ADVANCE), "validate", str(boundaries_path), str(journal_path),
+            "--inventory", str(inventory_path), "--evidence", str(incomplete_path),
+            "--report", str(report_path),
+        ],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert rejected_validation.returncode != 0
+    assert "missing 1 inventoried artifact" in rejected_validation.stderr
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition_state"] == "OUTLINE_CHANGE_APPROVED"
+
+    def validate() -> subprocess.CompletedProcess[str]:
+        return subprocess.run(
+            [
+                "node", str(OUTLINE_TRANSITION_ADVANCE), "validate", str(boundaries_path), str(journal_path),
+                "--inventory", str(inventory_path), "--evidence", str(evidence_path),
+                "--report", str(report_path),
+            ],
+            cwd=tmp_path,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    child_spec = tmp_path / "specs" / "001-child" / "spec.md"
+    original_spec = child_spec.read_text(encoding="utf-8")
+    child_spec.write_text("# Changed after inventory\n", encoding="utf-8")
+    stale_validation = validate()
+    assert stale_validation.returncode != 0
+    assert "changed after inventory creation" in stale_validation.stderr
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition_state"] == "OUTLINE_CHANGE_APPROVED"
+    child_spec.write_text(original_spec, encoding="utf-8")
+    cross = validate()
+    assert cross.returncode == 0, cross.stderr
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition_state"] == "CROSS_ARTIFACT_VALIDATED"
+
+    activated = subprocess.run(
+        [
+            "node", str(OUTLINE_BASELINE_ACTIVATOR), str(boundaries_path), str(index_path), str(journal_path),
+            "--inventory", str(inventory_path), "--report", str(report_path),
+        ],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert activated.returncode == 0, activated.stderr
+    final = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    assert final["transition_state"] == "ALIGNED"
+    assert final["current_baseline"]["baseline_id"] == "baseline-002"
+    event_steps = [json.loads(line)["step"] for line in journal_path.read_text(encoding="utf-8").splitlines()]
+    for required_step in (
+        "proposal-created", "decision-consumed", "outline-change-approved", "migration-blocked",
+        "migration-resumed-for-fresh-validation", "inventory-driven-validation-completed",
+        "derived-files-before-commit", "outline-boundaries-commit-point",
+    ):
+        assert required_step in event_steps
+
+
+def test_outline_activation_records_stale_base_as_migration_blocked(tmp_path: Path):
+    root = tmp_path / "specs" / "000-root"
+    root.mkdir(parents=True)
+    boundaries_path = root / "outline-boundaries.json"
+    index_path = tmp_path / "specs" / "review-index.json"
+    journal_path = root / "outline-transition.jsonl"
+    boundaries_path.write_text(json.dumps(_transitioning_boundaries_document()), encoding="utf-8")
+    document = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    document["current_baseline"]["baseline_id"] = "baseline-concurrent"
+    document["current_baseline"]["decision_ref"] = "specs/000-root/prd.md#concurrent-baseline"
+    document["current_baseline"]["baseline_digest"] = _contract_digest(
+        document["current_baseline"], "baseline_digest"
+    )
+    boundaries_path.write_text(json.dumps(document), encoding="utf-8")
+    result = subprocess.run(
+        [
+            "node", str(OUTLINE_BASELINE_ACTIVATOR), str(boundaries_path), str(index_path), str(journal_path),
+            "--inventory", str(tmp_path / "unused-inventory.json"),
+            "--report", str(tmp_path / "unused-report.json"),
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "entered MIGRATION_BLOCKED" in result.stderr
+    blocked = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    assert blocked["transition_state"] == "MIGRATION_BLOCKED"
+    assert "cas-conflict" in blocked["transition"]["completed_steps"]
+    validation = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_VALIDATOR), str(boundaries_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert validation.returncode == 0, validation.stderr
+    assert json.loads(journal_path.read_text(encoding="utf-8"))["event_type"] == "MIGRATION_BLOCKED"
+    lock_path = root / ".outline-boundaries.json.transition.lock"
+    expired_lock = {
+        "owner_id": "expired-stale-base-owner",
+        "transition_id": blocked["transition"]["transition_id"],
+        "transition_revision": blocked["transition"]["transition_revision"],
+        "baseline_digest": blocked["transition"]["base_baseline_digest"],
+        "pid": 999999,
+        "created_at": "2000-01-01T00:00:00.000Z",
+        "heartbeat_at": "2000-01-01T00:00:00.000Z",
+        "lease_expires_at": "2000-01-01T00:05:00.000Z",
+        "lease_seconds": 300,
+        "heartbeat_seconds": 30,
+    }
+    lock_path.write_text(json.dumps(expired_lock), encoding="utf-8")
+    blocked["transition"]["lock"] = expired_lock
+    boundaries_path.write_text(json.dumps(blocked), encoding="utf-8")
+    recovered = _run_transition_lock(boundaries_path, "recover")
+    assert recovered.returncode == 0, recovered.stderr
+
+
+def test_outline_transition_start_is_cas_bound_idempotent_and_single_proposal(tmp_path: Path):
+    boundaries_path, _, journal_path, proposal_path, preview_path, decision_path = _write_outline_transition_project(tmp_path)
+    current = json.loads(boundaries_path.read_text(encoding="utf-8"))["current_baseline"]
+    competing_boundaries = json.loads(json.dumps(current["project_boundaries"]))
+    competing_boundaries[1]["boundary_source"]["rationale"] = "A different reviewed structural proposal."
+    competing_path, competing_preview, competing_decision = _write_reviewed_outline_adjustment(
+        tmp_path,
+        boundaries_path,
+        {
+            "schema_version": 1,
+            "base_baseline_id": current["baseline_id"],
+            "base_baseline_digest": current["baseline_digest"],
+            "baseline_id": "baseline-003",
+            "created_by": "test-suite",
+            "change_reason": "Competing reviewed structural change.",
+            "rollback_ref": "specs/000-root/prd.md#rollback-003",
+            "project_boundaries": competing_boundaries,
+            "tombstones": [],
+        },
+    )
+    command = [
+        "node", str(OUTLINE_TRANSITION_START), str(boundaries_path), str(proposal_path),
+        str(preview_path), str(decision_path), str(journal_path),
+    ]
+    first = subprocess.run(command, cwd=tmp_path, text=True, capture_output=True, check=False)
+    assert first.returncode == 0, first.stderr
+    transition_id = json.loads(first.stdout)["transition_id"]
+    second = subprocess.run(command, cwd=tmp_path, text=True, capture_output=True, check=False)
+    assert second.returncode == 0, second.stderr
+    assert transition_id in second.stdout
+    events = [json.loads(line) for line in journal_path.read_text(encoding="utf-8").splitlines()]
+    assert len([event for event in events if event["event_type"] == "TRANSITION_STARTED"]) == 1
+    assert not (boundaries_path.parent / ".outline-boundaries.json.start.lock").exists()
+
+    rejected = subprocess.run(
+        [
+            "node", str(OUTLINE_TRANSITION_START), str(boundaries_path), str(competing_path),
+            str(competing_preview), str(competing_decision), str(journal_path),
+        ],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert rejected.returncode != 0
+    assert "Only one active proposal is allowed" in rejected.stderr
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["proposed_baseline"]["baseline_id"] == "baseline-002"
+
+
+def test_outline_transition_rollback_requires_proof_and_recovers_after_commit_fault(tmp_path: Path):
+    boundaries_path, index_path, journal_path = _start_outline_transition(tmp_path)
+    active = json.loads(boundaries_path.read_text(encoding="utf-8"))
+    proof_path = tmp_path / "rollback.json"
+    proof = {
+        "schema_version": 1,
+        "transition_id": active["transition"]["transition_id"],
+        "transition_revision": active["transition"]["transition_revision"],
+        "proposal_digest": active["proposed_baseline"]["proposal_digest"],
+        "rollback_ref": active["transition"]["rollback_ref"],
+        "generated_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "staging_disposition": "preserved_isolated",
+        "live_writes": ["must-block"],
+        "verification_refs": ["specs/000-root/prd.md"],
+        "reason": "Withdraw the unactivated proposal.",
+    }
+    proof_path.write_text(json.dumps(proof), encoding="utf-8")
+    command = [
+        "node", str(OUTLINE_TRANSITION_ROLLBACK), str(boundaries_path), str(index_path),
+        str(journal_path), str(proof_path),
+    ]
+    rejected = subprocess.run(command, cwd=tmp_path, text=True, capture_output=True, check=False)
+    assert rejected.returncode != 0
+    assert "reports live writes" in rejected.stderr
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition_state"] == "OUTLINE_CHANGE_APPROVED"
+
+    proof["live_writes"] = []
+    proof_path.write_text(json.dumps(proof), encoding="utf-8")
+    interrupted = subprocess.run(
+        command,
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+        check=False,
+        env={**os.environ, "SPECCOMPASS_FAULT_AFTER_ROLLBACK_COMMIT": "1"},
+    )
+    assert interrupted.returncode != 0
+    assert json.loads(boundaries_path.read_text(encoding="utf-8"))["transition_state"] == "ALIGNED"
+    assert [json.loads(line)["step"] for line in journal_path.read_text(encoding="utf-8").splitlines()][-1] == "rollback-prepared"
+
+    recovered = subprocess.run(command, cwd=tmp_path, text=True, capture_output=True, check=False)
+    assert recovered.returncode == 0, recovered.stderr
+    assert "Finalized pre-commit rollback" in recovered.stdout
+    assert [json.loads(line)["step"] for line in journal_path.read_text(encoding="utf-8").splitlines()][-1] == "rollback-completed"
+    assert not (boundaries_path.parent / ".outline-boundaries.json.transition.lock").exists()
+
+
+def test_review_renderer_has_no_manual_data_import_controls():
+    """The bound launcher URL is the only review-data loading path."""
+    entry = REVIEW_PAGE_RENDERER.read_text(encoding="utf-8")
+    loader = (REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js").read_text(encoding="utf-8")
+    overlays = (REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js").read_text(encoding="utf-8")
+
+    for obsolete_id in ("load-flow", "load-ui", "load-outline", "load-outline-discovery", "file-input"):
+        assert f'id="{obsolete_id}"' not in entry
+        assert f'"{obsolete_id}"' not in loader
+    assert "loadDefault" not in loader
+    assert "DEFAULT_DATA_FILES" not in overlays
+    assert "SPECCOMPASS_REVIEW_DATA" not in overlays
+    assert "手动选择 JSON" not in loader
+    assert "SPECCOMPASS_REVIEW_URL" in loader
+
+
+def test_ui_command_flattens_short_analysis_action_categories():
+    """Small action sets share one page; tabs remain reserved for real views."""
+    ui = _command("ui")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+
+    assert "运行分析" in ui and "category tab layer" in ui
+    assert "responsive, scannable page region" in ui
+    assert "Three analysis types that only start jobs are flat actions" in ui
+    assert re.search(r"five filters that\s+share one result table are also flat controls", ui)
+    assert re.search(r"persistent chart, table, and export state may use tabs", ui)
+    assert "短分类动作直接平铺" in methodology
+    assert "5 个共享同一结果表的过滤维度也不使用标签页" in methodology
+    assert "few analysis types must expose those types as one responsive" in command_spec
+    assert "tabs are reserved for categories" in command_spec
+
+
+def test_feature_navigation_uses_explicit_tree_order_and_code_path(tmp_path: Path):
+    """Renderer navigation must follow parent/sibling order instead of numeric inference."""
+    script_path = tmp_path / "feature-nav-contract.cjs"
+    script_path.write_text(
+        f"""
+const fs = require("fs");
+const elements = new Map();
+function element(id) {{
+  if (!elements.has(id)) elements.set(id, {{ id, dataset: {{}}, disabled: false, textContent: "", addEventListener() {{}}, removeAttribute() {{}} }});
+  return elements.get(id);
+}}
+global.window = {{ location: {{ search: "", href: "http://127.0.0.1/review.html" }} }};
+global.document = {{ getElementById: element }};
+eval(fs.readFileSync({json.dumps(str(REVIEW_ROOT / "renderer" / "scripts" / "feature-nav.js"))}, "utf8"));
+const index = {{
+  schema_version: 2,
+  project: "Demo",
+  updated_at: "2026-07-27",
+  hierarchy: {{ mode: "explicit", root_feature: "000-root" }},
+  features: [
+    {{ order: 1, feature_code: "000", feature: "000-root", title: "Root", parent_feature: null, sibling_order: 0,
+       boundary_source: {{ kind: "root", handoff_ref: null, rationale: "Root" }},
+       outline_alignment: {{ status: "one_to_one", outline_node_refs: ["boundary-000"], rationale: "Aligned" }},
+       has_flow_review: false, has_ui_review: false, has_outline_review: true, has_outline_discovery: false }},
+    {{ order: 2, feature_code: "001", feature: "001-later", title: "Later", parent_feature: "000-root", sibling_order: 2,
+       boundary_source: {{ kind: "subproject_handoff", handoff_ref: "prd.md#001", rationale: "Confirmed" }},
+       outline_alignment: {{ status: "one_to_one", outline_node_refs: ["boundary-001"], rationale: "Aligned" }},
+       has_flow_review: false, has_ui_review: false, has_outline_review: true, has_outline_discovery: false }},
+    {{ order: 3, feature_code: "002", feature: "002-first", title: "First", parent_feature: "000-root", sibling_order: 1,
+       boundary_source: {{ kind: "subproject_handoff", handoff_ref: "prd.md#002", rationale: "Confirmed" }},
+       outline_alignment: {{ status: "one_to_one", outline_node_refs: ["boundary-002"], rationale: "Aligned" }},
+       has_flow_review: false, has_ui_review: false, has_outline_review: true, has_outline_discovery: false }}
+  ]
+}};
+const normalized = window.SpecCompassFeatureNav.normalizeFeatureIndex(index);
+const order = normalized.features.map((entry) => entry.feature).join(",");
+if (order !== "000-root,002-first,001-later") throw new Error(`wrong tree order: ${{order}}`);
+const path = window.SpecCompassFeatureNav.featurePath(normalized.byFeature.get("001-later"), normalized.byFeature);
+if (path !== "000 › 001") throw new Error(`wrong code path: ${{path}}`);
+index.features[2].sibling_order = 2;
+let rejected = false;
+try {{ window.SpecCompassFeatureNav.normalizeFeatureIndex(index); }} catch (error) {{ rejected = error.message.includes("重复 sibling_order"); }}
+if (!rejected) throw new Error("duplicate sibling order was not rejected");
+
+index.features[2].sibling_order = 1;
+const multipleRoots = JSON.parse(JSON.stringify(index));
+multipleRoots.features[1].parent_feature = null;
+multipleRoots.features[1].sibling_order = 0;
+rejected = false;
+try {{ window.SpecCompassFeatureNav.normalizeFeatureIndex(multipleRoots); }} catch (error) {{ rejected = error.message.includes("没有继承到根需求") || error.message.includes("Subproject Handoff"); }}
+if (!rejected) throw new Error("an undeclared second root was not rejected");
+
+const cycle = JSON.parse(JSON.stringify(index));
+cycle.features[1].parent_feature = "002-first";
+cycle.features[1].sibling_order = 1;
+cycle.features[2].parent_feature = "001-later";
+cycle.features[2].sibling_order = 1;
+rejected = false;
+try {{ window.SpecCompassFeatureNav.normalizeFeatureIndex(cycle); }} catch (error) {{ rejected = error.message.includes("循环"); }}
+if (!rejected) throw new Error("a parent cycle was not rejected");
+
+const legacy = window.SpecCompassFeatureNav.normalizeFeatureIndex({{
+  schema_version: 1,
+  project: "Legacy",
+  updated_at: "2026-07-27",
+  features: [
+    {{ order: 2, feature: "20260727-123456-second", title: "Second", has_flow_review: false, has_ui_review: false, has_outline_review: false, has_outline_discovery: false }},
+    {{ order: 1, feature: "001-first", title: "First", has_flow_review: false, has_ui_review: false, has_outline_review: false, has_outline_discovery: false }}
+  ]
+}});
+if (!legacy.isLegacy || legacy.features.map((entry) => entry.feature).join(",") !== "001-first,20260727-123456-second") {{
+  throw new Error("schema-v1 flat navigation fallback failed");
+}}
+if (legacy.features[1].feature_code !== "20260727-123456") throw new Error("legacy timestamp code was truncated");
+console.log("feature navigation hierarchy valid");
+""",
+        encoding="utf-8",
+    )
+    result = subprocess.run(["node", str(script_path)], text=True, capture_output=True, check=False)
+    assert result.returncode == 0, result.stderr
+    assert "feature navigation hierarchy valid" in result.stdout
 
 
 def test_ui_review_data_has_independent_screen_contract():
@@ -7100,7 +8581,7 @@ const legacyKey = context.legacyStorageKey(legacy);
 storage.set(legacyKey, JSON.stringify(stored));
 const loaderContext = {{ ...context, acceptReviewData: () => true }};
 vm.createContext(loaderContext);
-vm.runInContext(loaderSource.split('$("load-flow")')[0], loaderContext);
+vm.runInContext(loaderSource.split('$("review-mode-switch")')[0], loaderContext);
 context.reviewData = loaderContext.normalizeLegacyReviewData(legacy);
 context.loadState();
 if (context.state.N1?.note !== "保留旧草稿") {{

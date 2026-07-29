@@ -233,6 +233,32 @@ if ($ShortName) {
     $branchSuffix = Get-BranchName -Description $featureDesc
 }
 
+# Outline-managed repositories allocate identity through the authoritative
+# feature-code ledger. The creation script may consume only an active code.
+$featureCodeLedger = Join-Path $specsDir 'feature-code-ledger.json'
+if (Test-Path $featureCodeLedger) {
+    if ($Timestamp) {
+        Write-Error "Timestamp numbering is not allowed when specs/feature-code-ledger.json exists."
+        exit 1
+    }
+    if ($Number -eq 0) {
+        Write-Error "-Number is required when specs/feature-code-ledger.json exists; reserve and activate the code through /sp.prd first."
+        exit 1
+    }
+    $managedFeatureNum = ('{0:000}' -f $Number)
+    $managedFeatureName = "$managedFeatureNum-$branchSuffix"
+    $featureCodeManager = Join-Path $repoRoot '.specify/review/scripts/manage-feature-codes.mjs'
+    if (-not (Get-Command node -ErrorAction SilentlyContinue) -or -not (Test-Path $featureCodeManager)) {
+        Write-Error "The installed feature-code manager and Node.js are required for Outline-managed feature creation."
+        exit 1
+    }
+    & node $featureCodeManager authorize-create $featureCodeLedger --number $managedFeatureNum --feature $managedFeatureName | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Feature code $managedFeatureNum is not authorized for $managedFeatureName."
+        exit 1
+    }
+}
+
 # Warn if -Number and -Timestamp are both specified
 if ($Timestamp -and $Number -ne 0) {
     Write-Warning "[specify] Warning: -Number is ignored when -Timestamp is used"

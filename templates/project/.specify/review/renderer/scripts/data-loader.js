@@ -1,10 +1,5 @@
 /* Fixed SpecCompass review renderer infrastructure. Normal /sp.flow and /sp.ui only fill JSON review data. */
 const REVIEW_TRANSPORT_CONTROL_IDS = [
-  "load-flow",
-  "load-ui",
-  "load-outline",
-  "load-outline-discovery",
-  "file-input",
   "download-package",
   "copy-summary"
 ];
@@ -108,7 +103,7 @@ async function loadFromUrlConfig(config) {
     if (!response.ok) throw new Error(response.statusText);
     acceptSupportedReviewData(await response.json());
   } catch (error) {
-    setStatus(`无法自动加载 ${config.type} review data（${config.feature}）：${error.message}。请确认对应 feature 已生成 review data。`, true);
+    setStatus(`无法自动加载 ${config.type} review data（${config.feature}）：${error.message}。请回到 Codex 重新运行所属命令，并打开新输出的 SPECCOMPASS_REVIEW_URL。`, true);
   }
 }
 
@@ -117,7 +112,7 @@ async function autoLoadFromUrl() {
   try {
     const config = autoLoadConfigFromUrl();
     if (!config) {
-      setStatus("未指定自动加载参数。复核页使用 ?flow=<feature>、?ui=<feature>、?outline=<feature> 或 ?outline-discovery=<feature>。");
+      setStatus("复核 URL 缺少唯一的数据类型和 feature。请回到 Codex 重新运行所属命令，并打开新输出的 SPECCOMPASS_REVIEW_URL。", true);
       return;
     }
     await loadFromUrlConfig(config);
@@ -126,36 +121,10 @@ async function autoLoadFromUrl() {
   }
 }
 
-async function loadDefault(type) {
-  if (!requireSupportedReviewTransport()) return;
-  try {
-    const response = await fetch(DEFAULT_DATA_FILES[type], { cache: "no-store" });
-    if (!response.ok) throw new Error(response.statusText);
-    acceptSupportedReviewData(await response.json());
-  } catch (error) {
-    setStatus(`无法自动加载 ${DEFAULT_DATA_FILES[type]}，请手动选择 JSON 文件。`, true);
-    $("file-input").click();
-  }
-}
-
-$("load-flow").addEventListener("click", () => loadDefault("flow"));
-$("load-ui").addEventListener("click", () => loadDefault("ui"));
-$("load-outline").addEventListener("click", () => loadDefault("outline"));
-$("load-outline-discovery")?.addEventListener("click", () => loadDefault("outline-discovery"));
 $("review-mode-switch")?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-review-mode]");
   if (!button) return;
   setReviewMode(button.dataset.reviewMode);
-});
-$("file-input").addEventListener("change", async (event) => {
-  if (!requireSupportedReviewTransport()) return;
-  const file = event.target.files?.[0];
-  if (!file) return;
-  try {
-    acceptSupportedReviewData(JSON.parse(await file.text()));
-  } catch (error) {
-    setStatus(`JSON 文件解析失败：${error.message}`, true);
-  }
 });
 $("show-all").addEventListener("click", () => {
   selectedNodeId = null;
@@ -248,8 +217,6 @@ window.addEventListener("beforeunload", (event) => {
 
 if (!requireSupportedReviewTransport()) {
   reviewData = null;
-} else if (reviewData) {
-  acceptSupportedReviewData(reviewData);
 } else {
   autoLoadFromUrl();
 }

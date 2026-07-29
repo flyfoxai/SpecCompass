@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import http.client
+import hashlib
 import json
 import os
 import queue
@@ -71,7 +72,43 @@ DISCOVERY_DISTRIBUTION_ASSETS = (
     Path("schemas/outline-discovery-data.schema.json"),
     Path("schemas/outline-discovery-response.schema.json"),
     Path("schemas/outline-intent-ledger.schema.json"),
+    Path("schemas/outline-boundaries.schema.json"),
+    Path("schemas/outline-boundaries-adoption.schema.json"),
+    Path("schemas/outline-adjustment-impact-preview.schema.json"),
+    Path("schemas/outline-boundary-consumption-event.schema.json"),
+    Path("schemas/outline-boundary-decision.schema.json"),
+    Path("schemas/outline-boundary-writeback-event.schema.json"),
+    Path("schemas/outline-transition-event.schema.json"),
+    Path("schemas/outline-transition-evidence.schema.json"),
+    Path("schemas/outline-transition-inventory.schema.json"),
+    Path("schemas/outline-transition-proposal.schema.json"),
+    Path("schemas/outline-transition-rollback.schema.json"),
+    Path("schemas/outline-transition-staging-manifest.schema.json"),
+    Path("schemas/outline-transition-staging-plan.schema.json"),
+    Path("schemas/outline-transition-publication.schema.json"),
+    Path("schemas/outline-transition-validation-report.schema.json"),
+    Path("schemas/review-index.schema.json"),
     Path("scripts/apply-outline-discovery.mjs"),
+    Path("scripts/activate-outline-baseline.mjs"),
+    Path("scripts/advance-outline-transition.mjs"),
+    Path("scripts/bootstrap-outline-boundaries.mjs"),
+    Path("scripts/check-outline-boundary-gate.mjs"),
+    Path("scripts/migrate-review-index.mjs"),
+    Path("scripts/outline-boundaries-lib.mjs"),
+    Path("scripts/outline-adjustment-lib.mjs"),
+    Path("scripts/outline-transition-artifact-lib.mjs"),
+    Path("scripts/outline-transition-lock-lib.mjs"),
+    Path("scripts/outline-transition-lock.mjs"),
+    Path("scripts/outline-transition-workflow-lib.mjs"),
+    Path("scripts/prepare-outline-adjustment.mjs"),
+    Path("scripts/prepare-outline-transition-artifacts.mjs"),
+    Path("scripts/publish-outline-transition-artifacts.mjs"),
+    Path("scripts/rollback-outline-transition.mjs"),
+    Path("scripts/scan-outline-transition-impact.mjs"),
+    Path("scripts/start-outline-transition.mjs"),
+    Path("scripts/sync-review-index.mjs"),
+    Path("scripts/validate-outline-boundaries.mjs"),
+    Path("scripts/validate-review-index.mjs"),
 )
 
 
@@ -100,6 +137,12 @@ def review_project(tmp_path: Path) -> ReviewProject:
     launcher.parent.mkdir(parents=True)
     if REVIEW_LAUNCHER.exists():
         shutil.copy2(REVIEW_LAUNCHER, launcher)
+    for dependency in (
+        "outline-adjustment-lib.mjs",
+        "outline-boundaries-lib.mjs",
+        "outline-transition-workflow-lib.mjs",
+    ):
+        shutil.copy2(REVIEW_LAUNCHER.parent / dependency, launcher.parent / dependency)
 
     renderer = (
         tmp_path
@@ -334,6 +377,12 @@ def _review_data_id(value: object) -> str:
         hash_value, remainder = divmod(hash_value, 36)
         encoded = alphabet[remainder] + encoded
     return encoded
+
+
+def _contract_digest(value: dict[str, object], digest_field: str) -> str:
+    payload = {key: item for key, item in value.items() if key != digest_field}
+    canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def _browser_normalized_review_data(value: dict[str, object]) -> dict[str, object]:
@@ -864,6 +913,155 @@ def test_local_writer_records_confirmation_at_fixed_target(
         assert frontmatter["decision_records"][0]["selected_option"] == "OPTION_A"
         assert not list(target.parent.glob(f"{target.name}.tmp-*"))
         assert not target.with_name(f"{target.name}.speccompass-writeback.lock").exists()
+
+
+def test_outline_boundary_writer_injects_identity_receipt_and_append_only_ledger(review_project: ReviewProject):
+    feature = review_project.feature
+    feature_root = review_project.root / "specs" / feature
+    proposal_id = "baseline-002"
+    draft = feature_root / "boundary-adjustments" / "drafts" / proposal_id
+    draft.mkdir(parents=True)
+    boundary = {
+        "order": 1,
+        "feature_code": "001",
+        "feature": feature,
+        "title": "Review fixture",
+        "parent_feature_code": None,
+        "sibling_order": 0,
+        "outline_node_id": "boundary-001",
+        "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Fixture root."},
+        "lifecycle": "active",
+        "predecessor_codes": [],
+    }
+    baseline = {
+        "baseline_id": "baseline-001",
+        "baseline_digest": "",
+        "created_at": "2026-07-28T00:00:00.000Z",
+        "created_by": "test-suite",
+        "decision_ref": f"specs/{feature}/prd.md#decision-001",
+        "project_boundaries": [boundary],
+        "tombstones": [],
+    }
+    baseline["baseline_digest"] = _contract_digest(baseline, "baseline_digest")
+    boundaries = {
+        "schema_version": 1,
+        "root_feature": feature,
+        "updated_at": "2026-07-28T00:00:00.000Z",
+        "transition_state": "ALIGNED",
+        "current_baseline": baseline,
+        "proposed_baseline": None,
+        "transition": None,
+    }
+    (feature_root / "outline-boundaries.json").write_text(json.dumps(boundaries), encoding="utf-8")
+    decision_ref = f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/decision.json"
+    proposed_boundary = json.loads(json.dumps(boundary))
+    proposed_boundary["title"] = "Review fixture renamed"
+    proposal_input = {
+        "schema_version": 1,
+        "base_baseline_id": baseline["baseline_id"],
+        "base_baseline_digest": baseline["baseline_digest"],
+        "baseline_id": proposal_id,
+        "created_at": "2026-07-28T01:00:00.000Z",
+        "created_by": "test-suite",
+        "decision_ref": decision_ref,
+        "change_reason": "Confirm a reviewed metadata adjustment.",
+        "rollback_ref": f"specs/{feature}/prd.md#rollback-002",
+        "project_boundaries": [proposed_boundary],
+        "tombstones": [],
+    }
+    (draft / "proposal.json").write_text(json.dumps(proposal_input), encoding="utf-8")
+    proposal = {
+        "baseline_id": proposal_id,
+        "proposal_digest": "",
+        "base_baseline_id": baseline["baseline_id"],
+        "base_baseline_digest": baseline["baseline_digest"],
+        "created_at": proposal_input["created_at"],
+        "created_by": proposal_input["created_by"],
+        "decision_ref": decision_ref,
+        "change_reason": proposal_input["change_reason"],
+        "project_boundaries": [proposed_boundary],
+        "tombstones": [],
+    }
+    proposal["proposal_digest"] = _contract_digest(proposal, "proposal_digest")
+    preview = {
+        "schema_version": 1,
+        "proposal_id": proposal_id,
+        "proposal_digest": proposal["proposal_digest"],
+        "base_baseline_id": baseline["baseline_id"],
+        "base_baseline_digest": baseline["baseline_digest"],
+        "generated_at": "2026-07-28T01:01:00.000Z",
+        "change_class": "METADATA",
+        "affected_feature_codes": ["001"],
+        "artifact_inventory_digest": _contract_digest({"artifacts": [], "digest": ""}, "digest"),
+        "artifacts": [],
+        "impact_preview_digest": "",
+    }
+    preview["impact_preview_digest"] = _contract_digest(preview, "impact_preview_digest")
+    (draft / "impact-preview.json").write_text(json.dumps(preview), encoding="utf-8")
+
+    review_data = json.loads(review_project.data_path("outline").read_text(encoding="utf-8"))
+    node = review_data["modules"][0]["views"][0]["nodes"][0]
+    node.update(
+        {
+            "review_level": "must_confirm",
+            "confirmation_priority": "critical",
+            "options": [
+                {"id": "OPTION_A", "label": "Confirm", "next_exit": "confirm-outline-boundary-adjustment"},
+                {"id": "OPTION_B", "label": "Revise", "next_exit": "needs-decision:revise-outline-boundary-adjustment"},
+                {"id": "OPTION_C", "label": "Reject", "next_exit": "reject-outline-boundary-adjustment"},
+            ],
+        }
+    )
+    target_ref = "module-1:outline-item-1:node-1"
+    review_data["boundary_adjustment"] = {
+        "proposal_id": proposal_id,
+        "proposal_digest": proposal["proposal_digest"],
+        "base_baseline_id": baseline["baseline_id"],
+        "base_baseline_digest": baseline["baseline_digest"],
+        "impact_preview_digest": preview["impact_preview_digest"],
+        "initiated_by": "model",
+        "change_class": "METADATA",
+        "affected_feature_codes": ["001"],
+        "proposal_path": f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/proposal.json",
+        "impact_preview_path": f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/impact-preview.json",
+        "decision_path": decision_ref,
+        "writer_ledger_path": f"specs/{feature}/boundary-adjustments/writeback-ledger.jsonl",
+        "decision_target_ref": target_ref,
+    }
+    review_project.data_path("outline").write_text(json.dumps(review_data), encoding="utf-8")
+
+    with _running_launcher(review_project, "outline") as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        assert config["authorization_mode"] == "outline_boundary_human_decision"
+        assert config["target_path"] == decision_ref
+        assert config["fallback_authorizes_transition"] is False
+        payload = _confirmation_payload(review_project, "outline")
+        payload["parts"][0]["target_path"] = decision_ref
+        status, body = _post_writeback(origin, config, payload)
+        assert status == 200, body.decode("utf-8")
+        result = json.loads(body)
+        assert result["decision"] == "CONFIRMED"
+        assert result["fallback_authorizes_transition"] is False
+        replay_status, replay_body = _post_writeback(origin, config, payload)
+        assert replay_status == 200, replay_body.decode("utf-8")
+        assert json.loads(replay_body)["idempotent_replay"] is True
+        conflicting = json.loads(json.dumps(payload))
+        conflicting["parts"][0]["modules"][0]["records"][0]["revision_request"] = "conflicting replay"
+        conflict_status, conflict_body = _post_writeback(origin, config, conflicting)
+        assert conflict_status == 409
+        assert json.loads(conflict_body)["error"]["code"] == "REQUEST_ID_REUSED"
+
+    decision = json.loads((draft / "decision.json").read_text(encoding="utf-8"))
+    assert decision["confirmed_by"]["type"] == "human"
+    assert decision["source"]["kind"] == "speccompass_loopback_writer"
+    assert decision["source"]["review_data_id"] == _review_data_id(review_data)
+    assert len(decision["receipt"]["receipt_id"]) == 64
+    assert decision["decision_digest"] == _contract_digest(decision, "decision_digest")
+    ledger = (feature_root / "boundary-adjustments" / "writeback-ledger.jsonl").read_text(encoding="utf-8").splitlines()
+    assert len(ledger) == 1
+    event = json.loads(ledger[0])
+    assert event["receipt_id"] == decision["receipt"]["receipt_id"]
+    assert event["decision_digest"] == decision["decision_digest"]
 
 
 def test_local_writer_config_exposes_version_and_runtime_limits(review_project: ReviewProject):

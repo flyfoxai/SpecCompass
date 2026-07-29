@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-transition-rollback.schema.json",
+  "title": "SpecCompass Pre-Commit Outline Transition Rollback Proof",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "transition_id", "transition_revision", "proposal_digest",
+    "rollback_ref", "generated_at", "staging_disposition", "live_writes",
+    "verification_refs", "reason"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "transition_id": {"type": "string", "minLength": 1},
+    "transition_revision": {"type": "integer", "minimum": 1},
+    "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "rollback_ref": {"$ref": "outline-boundaries.schema.json#/$defs/repoRef"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "staging_disposition": {"enum": ["discarded", "preserved_isolated"]},
+    "live_writes": {"type": "array", "maxItems": 0},
+    "verification_refs": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"$ref": "outline-boundaries.schema.json#/$defs/repoRef"}
+    },
+    "reason": {"type": "string", "minLength": 1}
+  }
+}

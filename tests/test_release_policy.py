@@ -34,32 +34,32 @@ def test_release_notes_publish_user_facing_release_theme():
     """GitHub Release notes should not publish methodology as the default theme."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Direct browser review write-back" in release_workflow
-    assert "Flow, UI, PRD Outline, and Outline Discovery reviews can write" in release_workflow
-    assert "Write-back is mechanical persistence only" in release_workflow
-    assert "stable request IDs, idempotent replay, cross-process locking" in release_workflow
-    assert "across macOS, Linux, and Windows" in release_workflow
-    assert "fail closed instead of offering an unsafe fallback package" in release_workflow
-    assert "Fallback downloads appear only for explicitly recoverable" in release_workflow
-    assert "revision_requests.target_ref" in release_workflow
-    assert "all four write-back routes, conflicts, retries" in release_workflow
+    assert "## Outline-aligned project boundaries" in release_workflow
+    assert "Root \\`000\\`, child project codes, parentage, handoffs" in release_workflow
+    assert "only explicit human confirmation starts structural migration" in release_workflow
+    assert "immutable proposals, one-time decision receipts" in release_workflow
+    assert "Flow and UI checks run only when" in release_workflow
+    assert "Direct browser write-back remains mechanical persistence only" in release_workflow
+    assert "heartbeat-safe updates, bounded partial-write reads" in release_workflow
+    assert "lightweight shared boundary gate" in release_workflow
+    assert "removes obsolete load controls" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
     assert "COMMITS=$(git log" not in release_workflow
-    assert r"- Flow, UI, PRD Outline, and Outline Discovery reviews" in release_workflow
+    assert r"- Models can propose project splits, merges, or reparenting" in release_workflow
 
 
-def test_release_changelog_summary_matches_direct_writeback_focus():
-    """The generated changelog should lead with direct browser write-back."""
+def test_release_changelog_summary_matches_outline_alignment_focus():
+    """The generated changelog should lead with human-confirmed Outline alignment."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "Added direct browser write-back" in trigger_workflow
-    assert "Flow, UI, PRD Outline, and Outline Discovery" in trigger_workflow
-    assert "conflict-safe persistence" in trigger_workflow
-    assert "targeted follow-up regeneration" in trigger_workflow
+    assert "human-confirmed Outline/project boundary alignment" in trigger_workflow
+    assert "stable feature codes" in trigger_workflow
+    assert "impact-driven migration" in trigger_workflow
+    assert "recovery-safe persistence" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

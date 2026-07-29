@@ -21,6 +21,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Authoritative Outline Boundary Gate
+
+Before ordinary planning, resolve the one root feature from the explicit target and `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>`. Accept only schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+For `allowed: false`, stop ordinary planning and reproduce the returned machine contract unchanged: `block_reason`, `root_feature`, `current_baseline_id`, `proposed_baseline_id`, `transition_state`, `transition_id`, `blocked_since`, `evidence_refs`, `repair_command_exec`, and `repair_command`. `repair_command_exec` is the sole next action. A migration plan is allowed only from an explicit `/sp.prd` handoff for the same `transition_id`; label every workset as structural migration, bind it to the proposed baseline digest, cover spec/Flow/UI/code/test/trace/memory impacts, and do not treat proposed boundaries as active implementation targets. Never edit derived `review-index.json` boundary fields.
+
+For that explicit migration handoff, run `scan-outline-transition-impact.mjs` from the repository root. Add code/test artifacts only through its `--extra` input; every path is rehashed and symbolic links are rejected. Fill one explicit `artifact_reassignment` and impact result for every inventoried artifact without inferring a successor from names or paths. When every result is `UNCHANGED_WITH_EVIDENCE`, no staging manifest is needed. For `MIGRATE`, `REGENERATE`, or `RETIRE`, create changed outputs only below the canonical transition staging root, write the closed staging plan, and run `prepare-outline-transition-artifacts.mjs <boundaries> <inventory> <evidence> <plan> <journal>`. The helper generates the digest-bound manifest and receipt, verifies exact operation coverage and staged hashes, and releases its short lock before returning. Do not write live target paths from `/sp.plan`.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or

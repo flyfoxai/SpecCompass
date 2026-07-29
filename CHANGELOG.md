@@ -2,6 +2,25 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.30] - 2026-07-29
+
+### Added
+
+- Added an authoritative Outline boundary baseline and monotonic feature-code ledger so root `000`, child project codes, parentage, handoffs, and retired identities remain traceable.
+- Added a human-confirmed Outline adjustment workflow with immutable proposals, impact previews, one-time decision receipts, inventory-driven validation, staged publication, activation, and pre-publication rollback.
+- Added shared boundary gates for normal SP write commands while keeping unconfirmed adjustment drafts on the normal `ALIGNED` path.
+
+### Changed
+
+- Made Outline lead project restructuring: models may propose a split or merge, but only explicit human confirmation starts the migration and freezes ordinary writes.
+- Made Flow and UI migration checks depend on the artifacts actually present, and updated PRD, command, methodology, and Review Data Skill guidance for targeted regeneration.
+- Simplified review navigation by placing analysis categories directly on the page and removing obsolete load controls.
+
+### Fixed
+
+- Hardened concurrent code allocation and Outline transition recovery with fixed recovery claims, complete owner fencing, bounded partial-write reads, heartbeat-safe claim updates, and Windows file-removal retries.
+- Prevented duplicate feature codes, transition IDs, and consumption of the same human decision receipt during concurrent stale-lock recovery.
+
 ## [0.11.29] - 2026-07-26
 
 ### Added

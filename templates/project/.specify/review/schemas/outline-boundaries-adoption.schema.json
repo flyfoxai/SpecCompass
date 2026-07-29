@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-boundaries-adoption.schema.json",
+  "title": "SpecCompass Legacy Boundary Adoption Candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "status", "generated_at", "source_review_index", "root_feature",
+    "candidates", "issues"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "status": {"const": "NEEDS_HUMAN_CONFIRMATION"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "source_review_index": {"type": "string", "minLength": 1},
+    "root_feature": {"type": ["string", "null"]},
+    "candidates": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "order", "feature_code", "feature", "title", "parent_feature_code",
+          "sibling_order", "outline_node_refs", "source_status", "blocking_issues"
+        ],
+        "properties": {
+          "order": {"type": "integer", "minimum": 1},
+          "feature_code": {"type": "string", "minLength": 1},
+          "feature": {"type": "string", "minLength": 1},
+          "title": {"type": "string", "minLength": 1},
+          "parent_feature_code": {"type": ["string", "null"]},
+          "sibling_order": {"type": "integer", "minimum": 0},
+          "outline_node_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+          "source_status": {"enum": ["one_to_one", "transition_only", "unmapped"]},
+          "blocking_issues": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+        }
+      }
+    },
+    "issues": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["code", "feature", "message"],
+        "properties": {
+          "code": {"enum": ["root_unconfirmed", "parent_unconfirmed", "outline_alignment_unconfirmed", "feature_directory_missing"]},
+          "feature": {"type": ["string", "null"]},
+          "message": {"type": "string", "minLength": 1}
+        }
+      }
+    }
+  }
+}

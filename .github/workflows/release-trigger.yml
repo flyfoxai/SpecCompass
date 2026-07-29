@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added direct browser write-back for Flow, UI, PRD Outline, and Outline Discovery with conflict-safe persistence and targeted follow-up regeneration." \
+              "- Added human-confirmed Outline/project boundary alignment with stable feature codes, impact-driven migration, and recovery-safe persistence." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

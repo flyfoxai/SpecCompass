@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-adjustment-impact-preview.schema.json",
+  "title": "SpecCompass Outline Adjustment Impact Preview",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "proposal_id", "proposal_digest", "base_baseline_id",
+    "base_baseline_digest", "generated_at", "change_class", "affected_feature_codes",
+    "artifact_inventory_digest", "artifacts", "impact_preview_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "proposal_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "base_baseline_id": {"type": "string", "minLength": 1},
+    "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "change_class": {"enum": ["NONE", "METADATA", "STRUCTURAL"]},
+    "affected_feature_codes": {"type": "array", "uniqueItems": true, "items": {"$ref": "outline-boundaries.schema.json#/$defs/featureCode"}},
+    "artifact_inventory_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "artifacts": {"type": "array", "items": {"$ref": "outline-transition-inventory.schema.json#/properties/artifacts/items"}},
+    "impact_preview_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

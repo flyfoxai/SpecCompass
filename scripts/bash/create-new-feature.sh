@@ -265,6 +265,35 @@ else
     BRANCH_SUFFIX=$(generate_branch_name "$FEATURE_DESCRIPTION")
 fi
 
+# Outline-managed repositories allocate identity through the authoritative
+# feature-code ledger. The creation script may consume only an active code.
+FEATURE_CODE_LEDGER="$SPECS_DIR/feature-code-ledger.json"
+if [ -f "$FEATURE_CODE_LEDGER" ]; then
+    if [ "$USE_TIMESTAMP" = true ]; then
+        >&2 echo "Error: Timestamp numbering is not allowed when specs/feature-code-ledger.json exists."
+        exit 1
+    fi
+    if [ -z "$BRANCH_NUMBER" ]; then
+        >&2 echo "Error: --number is required when specs/feature-code-ledger.json exists; reserve and activate the code through /sp.prd first."
+        exit 1
+    fi
+    if ! echo "$BRANCH_NUMBER" | grep -Eq '^[0-9]+$'; then
+        >&2 echo "Error: --number must be a decimal integer."
+        exit 1
+    fi
+    MANAGED_FEATURE_NUM=$(printf "%03d" "$((10#$BRANCH_NUMBER))")
+    MANAGED_FEATURE_NAME="${MANAGED_FEATURE_NUM}-${BRANCH_SUFFIX}"
+    FEATURE_CODE_MANAGER="$REPO_ROOT/.specify/review/scripts/manage-feature-codes.mjs"
+    if ! command -v node >/dev/null 2>&1 || [ ! -f "$FEATURE_CODE_MANAGER" ]; then
+        >&2 echo "Error: The installed feature-code manager and Node.js are required for Outline-managed feature creation."
+        exit 1
+    fi
+    if ! node "$FEATURE_CODE_MANAGER" authorize-create "$FEATURE_CODE_LEDGER" --number "$MANAGED_FEATURE_NUM" --feature "$MANAGED_FEATURE_NAME" >/dev/null; then
+        >&2 echo "Error: Feature code $MANAGED_FEATURE_NUM is not authorized for $MANAGED_FEATURE_NAME."
+        exit 1
+    fi
+fi
+
 # Warn if --number and --timestamp are both specified
 if [ "$USE_TIMESTAMP" = true ] && [ -n "$BRANCH_NUMBER" ]; then
     >&2 echo "[specify] Warning: --number is ignored when --timestamp is used"

@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-transition-event.schema.json",
+  "title": "SpecCompass Outline Transition Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "event_id", "event_type", "transition_id", "transition_revision",
+    "occurred_at", "baseline_id", "baseline_digest", "step", "details_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "event_id": {"type": "string", "minLength": 1},
+    "event_type": {
+      "enum": [
+        "TRANSITION_STARTED",
+        "STEP_COMPLETED",
+        "BASELINE_ACTIVATION_PREPARED",
+        "ARTIFACTS_STAGED",
+        "ARTIFACTS_PUBLISHED",
+        "MIGRATION_BLOCKED",
+        "ROLLBACK_REQUIRED",
+        "ALIGNED_NEW_BASELINE"
+      ]
+    },
+    "transition_id": {"type": "string", "minLength": 1},
+    "transition_revision": {"type": "integer", "minimum": 1},
+    "occurred_at": {"type": "string", "format": "date-time"},
+    "baseline_id": {"type": ["string", "null"]},
+    "baseline_digest": {"type": ["string", "null"], "pattern": "^[a-f0-9]{64}$"},
+    "step": {"type": "string", "minLength": 1},
+    "details_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

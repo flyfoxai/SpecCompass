@@ -44,18 +44,18 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Direct browser review write-back
+          ## Outline-aligned project boundaries
 
-          This release removes the copy-and-download step from browser review completion:
+          This release keeps the product Outline, project boundaries, and implemented modules aligned without adding migration overhead to normal SP work:
 
-          - Flow, UI, PRD Outline, and Outline Discovery reviews can write their final decisions directly from the browser.
-          - Write-back is mechanical persistence only; model reasoning and regeneration happen when the relevant Codex command is run again.
-          - Target-version checks, stable request IDs, idempotent replay, cross-process locking, and atomic replacement protect review artifacts.
-          - Bounded retries cover transient file and network failures across macOS, Linux, and Windows.
-          - Stale pages, target conflicts, and invalid requests fail closed instead of offering an unsafe fallback package.
-          - Fallback downloads appear only for explicitly recoverable transport failures.
-          - Follow-up Flow, UI, and PRD runs use \`revision_requests.target_ref\` to limit regeneration to reviewed targets and directly affected neighbors.
-          - Automated and browser checks cover all four write-back routes, conflicts, retries, fallback policy, and concurrent launchers.
+          - Root \`000\`, child project codes, parentage, handoffs, and retired identities are recorded in one authoritative boundary baseline and monotonic feature-code ledger.
+          - Models can propose project splits, merges, or reparenting while normal development remains \`ALIGNED\`; only explicit human confirmation starts structural migration.
+          - Confirmed structural changes use immutable proposals, one-time decision receipts, current artifact inventory, staged publication, validation, and compare-and-swap activation.
+          - Flow and UI checks run only when the transition inventory contains those artifacts; unaffected accepted decisions remain intact.
+          - Direct browser write-back remains mechanical persistence only. Codex applies reviewer feedback when the owning PRD, Flow, or UI command runs again.
+          - Fixed recovery claims, complete owner fencing, heartbeat-safe updates, bounded partial-write reads, and Windows deletion retries protect concurrent recovery.
+          - Ordinary \`ALIGNED\` commands use the lightweight shared boundary gate and do not create proposals, receipts, transition logs, or long-lived locks.
+          - Review navigation places analysis categories directly on the page and removes obsolete load controls.
           - Existing projects must refresh their installed templates after upgrading the CLI.
 
           ## Install

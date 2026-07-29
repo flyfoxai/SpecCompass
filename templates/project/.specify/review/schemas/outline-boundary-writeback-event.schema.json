@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-boundary-writeback-event.schema.json",
+  "title": "SpecCompass Outline Boundary Writeback Ledger Event",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "event_type", "writeback_request_id", "review_session_id", "review_data_id",
+    "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
+    "impact_preview_digest", "receipt_id", "decision", "decision_digest", "recorded_at"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "event_type": {"const": "HUMAN_DECISION_RECORDED"},
+    "writeback_request_id": {"type": "string", "minLength": 1},
+    "review_session_id": {"type": "string", "minLength": 1},
+    "review_data_id": {"type": "string", "minLength": 1},
+    "proposal_id": {"type": "string", "minLength": 1},
+    "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "base_baseline_id": {"type": "string", "minLength": 1},
+    "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "impact_preview_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "receipt_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "decision": {"enum": ["CONFIRMED", "REJECTED", "NEEDS_REVISION"]},
+    "decision_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "recorded_at": {"type": "string", "format": "date-time"}
+  }
+}

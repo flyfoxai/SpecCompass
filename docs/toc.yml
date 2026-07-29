@@ -31,6 +31,10 @@
       href: reference/speckit-command-usage.md
     - name: SP Project Methodology
       href: reference/sp-project-methodology.md
+    - name: SpecCompass Product Requirements
+      href: reference/speccompass-product-requirements.zh-CN.md
+    - name: SP Outline Boundary Adjustment Workflow
+      href: reference/sp-outline-boundary-adjustment-workflow.zh-CN.md
 
 # Development workflows
 - name: Development

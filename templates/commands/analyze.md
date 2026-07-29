@@ -13,6 +13,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Authoritative Outline Boundary Gate
+
+Before ordinary analysis, resolve the one root feature from the explicit target and `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>`. Accept only schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+For `allowed: false`, ordinary stage analysis is blocked and the returned machine contract must be reproduced unchanged: `block_reason`, `root_feature`, `current_baseline_id`, `proposed_baseline_id`, `transition_state`, `transition_id`, `blocked_since`, `evidence_refs`, `repair_command_exec`, and `repair_command`. `repair_command_exec` is the sole next action. A transition audit may inspect the same `transition_id` only to verify base/proposal digests, tombstones, successor/predecessor links, duplicate owners, artifact reassignment, closed evidence, Flow/UI impact, and cross-artifact closure; it cannot report ordinary PASS or activate the baseline. Never edit derived `review-index.json` boundary fields.
+
+For a transition audit, validate the inventory and evidence identity, require one reassignment and one impact for every inventoried artifact, rehash live repository files, and reject stale evidence, symbolic links, case-normalized duplicate paths, unknown evidence types, missing tombstone reciprocity, or any `BLOCKED` result. Treat `scan-outline-transition-impact.mjs` output as a mechanical inventory, not proof of semantic correctness and not a successor recommendation.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or

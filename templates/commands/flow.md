@@ -13,6 +13,14 @@ $ARGUMENTS
 
 You MUST consider the user input before proceeding.
 
+## Authoritative Outline Boundary Gate
+
+Before ordinary Flow work, resolve the one root feature from the explicit target and `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>`. Accept only schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+For `allowed: false`, stop ordinary generation and reproduce the returned machine contract unchanged: `block_reason`, `root_feature`, `current_baseline_id`, `proposed_baseline_id`, `transition_state`, `transition_id`, `blocked_since`, `evidence_refs`, `repair_command_exec`, and `repair_command`. `repair_command_exec` is the sole next action. A transition-specific Flow impact pass is allowed only when `/sp.prd` explicitly hands off the same `transition_id`; it may record `UNCHANGED_WITH_EVIDENCE`, `REGENERATE`, `MIGRATE`, `RETIRE`, or `BLOCKED` with closed evidence types, but cannot activate the baseline or perform unrelated Flow work. Never edit derived `review-index.json` boundary fields.
+
+In that transition-specific pass, update only inventoried `artifact_type: flow` decisions in the shared evidence file while preserving all other decisions. Every Flow artifact needs one impact outcome; `UNCHANGED_WITH_EVIDENCE` must include a current evidence record matching its inventory source digest. Return control to `/sp.prd`; only the coordinator runs the single `advance-outline-transition.mjs validate` after all inventory categories are complete. A project with no Flow artifacts records a mechanical `skipped` check instead of generating placeholder evidence.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or
@@ -456,14 +464,27 @@ vocabulary instead.
   gap explicitly. Review data fields are plain structured data: do not put
   HTML, CSS, JavaScript, SVG, class names, event handlers, or page layout
   instructions in any field, including `schema_notes` and `trace_notes`.
-- Create or update the lightweight feature review index at
-  `specs/review-index.json` when flow review data is created or repaired. Keep
-  this index about feature navigation only: preserve existing real entries and
-  order, add the current real feature only if missing, set the current entry's
-  `has_flow_review` to `true`, preserve `has_ui_review`, refresh `updated_at`,
-  and do not invent future 002/003 feature slugs. Required entry fields are
-  `order`, `feature`, `title`, `has_flow_review`, and `has_ui_review`; root
-  fields are `schema_version`, `project`, `updated_at`, and `features`.
+- When flow review data is created or repaired, change only the current real
+  feature's `has_flow_review` flag and `updated_at` in `specs/review-index.json`.
+  Preserve `has_ui_review`, `has_outline_review`, and
+  `has_outline_discovery`. Rebuild derived `feature_code`, `order`,
+  `parent_feature`, `sibling_order`, `boundary_source`, `outline_alignment`,
+  title, and identity fields from the current `ALIGNED`
+  `outline-boundaries.json` with `sync-review-index.mjs`, then run
+  `validate-review-index.mjs` and `check-outline-boundary-gate.mjs`. Legacy
+  migration output is an adoption candidate, not authority. Any failure blocks
+  command completion. `migrate-review-index.mjs` remains only the legacy input
+  migrator and cannot establish an authoritative baseline.
+- Derive flow `modules[]` inside the current feature's confirmed project boundary
+  from its PRD, `Subproject Handoff`, responsibilities, business objects, and
+  business chains. Analytical Outline nodes use `outline_node_id` and do not
+  dictate Flow module count,
+  but every confirmed Outline project-boundary node must share one immutable
+  `feature_code` with exactly one active feature. Ordinary `/sp.flow` work
+  requires `outline_alignment: one_to_one`; `merged`, `split`, `diverged`, or
+  `not_mapped` means a structure migration is incomplete and must block normal
+  generation. During an approved migration, classify each affected Flow object
+  as `UNCHANGED_WITH_EVIDENCE`, `REGENERATE`, `MIGRATE`, `RETIRE`, or `BLOCKED`.
 - At the start of every run, read
   `specs/<feature>/flows/review/flow-confirmation.md` when it exists and verify
   its feature, review type, batch, Review Data ID, and current source identity

@@ -13,6 +13,14 @@ $ARGUMENTS
 
 You MUST consider the user input before proceeding.
 
+## Authoritative Outline Boundary Gate
+
+Before ordinary UI work, resolve the one root feature from the explicit target and `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>`. Accept only schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+For `allowed: false`, stop ordinary generation and reproduce the returned machine contract unchanged: `block_reason`, `root_feature`, `current_baseline_id`, `proposed_baseline_id`, `transition_state`, `transition_id`, `blocked_since`, `evidence_refs`, `repair_command_exec`, and `repair_command`. `repair_command_exec` is the sole next action. A transition-specific UI impact pass is allowed only when `/sp.prd` explicitly hands off the same `transition_id`; it may record `UNCHANGED_WITH_EVIDENCE`, `REGENERATE`, `MIGRATE`, `RETIRE`, or `BLOCKED` with closed evidence types, but cannot activate the baseline or perform unrelated UI work. Never edit derived `review-index.json` boundary fields.
+
+In that transition-specific pass, update only inventoried `artifact_type: ui` decisions in the shared evidence file while preserving all other decisions. Every UI artifact needs one impact outcome; `UNCHANGED_WITH_EVIDENCE` must include a current evidence record matching its inventory source digest. Return control to `/sp.prd`; only the coordinator runs the single `advance-outline-transition.mjs validate` after all inventory categories are complete. A project with no UI artifacts records a mechanical `skipped` check instead of generating placeholder evidence.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or
@@ -513,14 +521,35 @@ instead.
   option card must lead with `背景信息`, `决策摘要`, `收益`, `代价`, and, for the
   recommended option, `推荐理由`. `consequence` and `next_exit` are execution
   fields for writeback/routing, not the primary visible decision explanation.
-- Create or update the lightweight feature review index at
-  `specs/review-index.json` when UI review data is created or repaired. Keep
-  this index about feature navigation only: preserve existing real entries and
-  order, add the current real feature only if missing, set the current entry's
-  `has_ui_review` to `true`, preserve `has_flow_review`, refresh `updated_at`,
-  and do not invent future 002/003 feature slugs. Required entry fields are
-  `order`, `feature`, `title`, `has_flow_review`, and `has_ui_review`; root
-  fields are `schema_version`, `project`, `updated_at`, and `features`.
+- When UI review data is created or repaired, change only the current real
+  feature's `has_ui_review` flag and `updated_at` in `specs/review-index.json`.
+  Preserve `has_flow_review`, `has_outline_review`, and
+  `has_outline_discovery`. Rebuild derived `feature_code`, `order`,
+  `parent_feature`, `sibling_order`, `boundary_source`, `outline_alignment`,
+  title, and identity fields from the current `ALIGNED`
+  `outline-boundaries.json` with `sync-review-index.mjs`, then run
+  `validate-review-index.mjs` and `check-outline-boundary-gate.mjs`. Legacy
+  migration output is an adoption candidate, not authority. Any failure blocks
+  command completion. `migrate-review-index.mjs` remains only the legacy input
+  migrator and cannot establish an authoritative baseline.
+- Derive UI `modules[]` and screens inside the current feature's confirmed
+  project boundary from its PRD, handoff, Flow responsibilities, and business
+  chains. Analytical Outline nodes use `outline_node_id` and do not dictate UI
+  module count, but every
+  confirmed Outline project-boundary node must share one immutable `feature_code`
+  with exactly one active feature. Ordinary `/sp.ui` work requires
+  `outline_alignment: one_to_one`; `merged`, `split`, `diverged`, or `not_mapped`
+  means a structure migration is incomplete and must block normal generation.
+  During an approved migration, classify each affected UI object as
+  `UNCHANGED_WITH_EVIDENCE`, `REGENERATE`, `MIGRATE`, `RETIRE`, or `BLOCKED`.
+- When one screen exposes a primary action such as `运行分析` followed by a small
+  fixed set of analysis categories, do not add a category tab layer and then
+  repeat category buttons inside it. Place all category action buttons together
+  in one responsive, scannable page region. Use tabs only when categories own
+  materially different persistent views, not merely to hide a short action set.
+  Three analysis types that only start jobs are flat actions; five filters that
+  share one result table are also flat controls; three report types with their
+  own persistent chart, table, and export state may use tabs.
 - At the start of every run, read
   `specs/<feature>/ui/review/ui-confirmation.md` when it exists and verify its
   feature, review type, batch, Review Data ID, and current source identity

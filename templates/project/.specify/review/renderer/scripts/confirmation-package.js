@@ -61,7 +61,7 @@
     return value;
   }
 
-  function assertConfirmationTargetPath(path, reviewType) {
+  function assertConfirmationTargetPath(path, reviewType, boundaryAdjustment = null) {
     const value = assertSafeRepoPath(path);
     const targetPatterns = {
       flow: /^specs\/([^/]+)\/flows\/review\/flow-confirmation\.md$/,
@@ -74,6 +74,15 @@
       outline: "specs/<feature>/prd/review/outline-confirmation.md"
     };
     const normalizedReviewType = assertReviewType(reviewType);
+    if (normalizedReviewType === "outline" && boundaryAdjustment) {
+      const proposalId = safeToken(boundaryAdjustment.proposal_id, "");
+      const boundaryPattern = new RegExp(`^specs/([^/]+)/boundary-adjustments/drafts/${proposalId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/decision\\.json$`);
+      const boundaryMatch = value.match(boundaryPattern);
+      if (!proposalId || !boundaryMatch || !isSafeFeatureId(boundaryMatch[1])) {
+        throw new Error("target_path must point to the fixed Outline boundary decision.json");
+      }
+      return value;
+    }
     const match = value.match(targetPatterns[normalizedReviewType]);
     if (!match || !isSafeFeatureId(match[1])) {
       throw new Error(`target_path must point to ${expectedPaths[normalizedReviewType]}`);
@@ -83,6 +92,13 @@
 
   function safeWritebackTarget(data = {}) {
     const reviewType = assertReviewType(data.review_type);
+    if (reviewType === "outline" && data.boundary_adjustment) {
+      return assertConfirmationTargetPath(
+        data.boundary_adjustment.decision_path,
+        reviewType,
+        data.boundary_adjustment
+      );
+    }
     if (data.target_path) {
       return assertConfirmationTargetPath(data.target_path, reviewType);
     }

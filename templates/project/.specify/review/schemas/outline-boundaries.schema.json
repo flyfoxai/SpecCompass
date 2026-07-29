@@ -1,0 +1,212 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-boundaries.schema.json",
+  "title": "SpecCompass Authoritative Outline Boundaries",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "root_feature",
+    "updated_at",
+    "transition_state",
+    "current_baseline",
+    "proposed_baseline",
+    "transition"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "root_feature": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "transition_state": {
+      "enum": [
+        "ALIGNED",
+        "OUTLINE_CHANGE_PROPOSED",
+        "OUTLINE_CHANGE_APPROVED",
+        "PROJECT_RESTRUCTURE_STAGED",
+        "FLOW_UI_IMPACT_VALIDATED",
+        "CROSS_ARTIFACT_VALIDATED",
+        "LEGACY_ADOPTION_REQUIRED",
+        "MIGRATION_BLOCKED",
+        "ROLLBACK_REQUIRED"
+      ]
+    },
+    "current_baseline": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/baseline"}]
+    },
+    "proposed_baseline": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/proposal"}]
+    },
+    "transition": {
+      "oneOf": [{"type": "null"}, {"$ref": "#/$defs/transition"}]
+    }
+  },
+  "$defs": {
+    "digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "repoRef": {
+      "type": "string",
+      "pattern": "^(?!/)(?!~)(?![A-Za-z]:)(?!.*\\\\)(?!.*//)(?!\\.{1,2}(?:/|#|$))(?!.*?/\\.{1,2}(?:/|#|$))[^#\\r\\n]+(?:#[^#\\r\\n]+)?$"
+    },
+    "featureCode": {"type": "string", "pattern": "^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$"},
+    "feature": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "baseline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_id", "baseline_digest", "created_at", "created_by", "decision_ref",
+        "project_boundaries", "tombstones"
+      ],
+      "properties": {
+        "baseline_id": {"type": "string", "minLength": 1},
+        "baseline_digest": {"$ref": "#/$defs/digest"},
+        "created_at": {"type": "string", "format": "date-time"},
+        "created_by": {"type": "string", "minLength": 1},
+        "decision_ref": {"$ref": "#/$defs/repoRef"},
+        "project_boundaries": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/boundary"}},
+        "tombstones": {"type": "array", "items": {"$ref": "#/$defs/tombstone"}}
+      }
+    },
+    "proposal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseline_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
+        "created_at", "created_by", "decision_ref", "change_reason", "project_boundaries", "tombstones"
+      ],
+      "properties": {
+        "baseline_id": {"type": "string", "minLength": 1},
+        "proposal_digest": {"$ref": "#/$defs/digest"},
+        "base_baseline_id": {"type": ["string", "null"]},
+        "base_baseline_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+        "created_at": {"type": "string", "format": "date-time"},
+        "created_by": {"type": "string", "minLength": 1},
+        "decision_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/repoRef"}]},
+        "change_reason": {"type": "string", "minLength": 1},
+        "project_boundaries": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/boundary"}},
+        "tombstones": {"type": "array", "items": {"$ref": "#/$defs/tombstone"}}
+      }
+    },
+    "boundary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "order", "feature_code", "feature", "title", "parent_feature_code", "sibling_order",
+        "outline_node_id", "boundary_source", "lifecycle", "predecessor_codes"
+      ],
+      "properties": {
+        "order": {"type": "integer", "minimum": 1},
+        "feature_code": {"$ref": "#/$defs/featureCode"},
+        "feature": {"$ref": "#/$defs/feature"},
+        "title": {"type": "string", "minLength": 1},
+        "parent_feature_code": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/featureCode"}]},
+        "sibling_order": {"type": "integer", "minimum": 0},
+        "outline_node_id": {"type": "string", "minLength": 1},
+        "boundary_source": {"$ref": "#/$defs/boundarySource"},
+        "lifecycle": {"const": "active"},
+        "predecessor_codes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/featureCode"}}
+      }
+    },
+    "boundarySource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "handoff_ref", "rationale"],
+      "properties": {
+        "kind": {"enum": ["root", "standalone", "subproject_handoff"]},
+        "handoff_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/repoRef"}]},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "tombstone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["feature_code", "feature", "title", "retired_at", "reason", "successor_codes"],
+      "properties": {
+        "feature_code": {"$ref": "#/$defs/featureCode"},
+        "feature": {"$ref": "#/$defs/feature"},
+        "title": {"type": "string", "minLength": 1},
+        "retired_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string", "minLength": 1},
+        "successor_codes": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/featureCode"}}
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "transition_id", "transition_revision", "base_baseline_id", "base_baseline_digest",
+        "proposal_digest", "started_at", "updated_at", "lock", "artifact_reassignments",
+        "impact_assessments", "completed_steps", "next_action", "rollback_ref"
+      ],
+      "properties": {
+        "transition_id": {"type": "string", "minLength": 1},
+        "transition_revision": {"type": "integer", "minimum": 1},
+        "base_baseline_id": {"type": ["string", "null"]},
+        "base_baseline_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+        "proposal_digest": {"$ref": "#/$defs/digest"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"},
+        "lock": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/lock"}]},
+        "artifact_reassignments": {"type": "array", "items": {"$ref": "#/$defs/reassignment"}},
+        "impact_assessments": {"type": "array", "items": {"$ref": "#/$defs/impact"}},
+        "completed_steps": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "next_action": {"type": "string", "minLength": 1},
+        "rollback_ref": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/repoRef"}]}
+      }
+    },
+    "lock": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "owner_id", "transition_id", "transition_revision", "baseline_digest", "pid",
+        "created_at", "heartbeat_at", "lease_expires_at", "lease_seconds", "heartbeat_seconds"
+      ],
+      "properties": {
+        "owner_id": {"type": "string", "minLength": 1},
+        "transition_id": {"type": "string", "minLength": 1},
+        "transition_revision": {"type": "integer", "minimum": 1},
+        "baseline_digest": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/digest"}]},
+        "pid": {"type": ["integer", "null"], "minimum": 1},
+        "created_at": {"type": "string", "format": "date-time"},
+        "heartbeat_at": {"type": "string", "format": "date-time"},
+        "lease_expires_at": {"type": "string", "format": "date-time"},
+        "lease_seconds": {"const": 300},
+        "heartbeat_seconds": {"const": 30}
+      }
+    },
+    "reassignment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "artifact_ref", "disposition", "target_feature_code", "reason"],
+      "properties": {
+        "artifact_type": {"enum": ["prd", "outline", "spec", "flow", "ui", "plan", "tasks", "implementation", "test", "trace", "memory", "open_item"]},
+        "artifact_ref": {"$ref": "#/$defs/repoRef"},
+        "disposition": {"enum": ["successor", "shared", "retire", "blocked"]},
+        "target_feature_code": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/featureCode"}]},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    },
+    "impact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_type", "artifact_ref", "outcome", "evidence"],
+      "properties": {
+        "artifact_type": {"enum": ["prd", "outline", "spec", "flow", "ui", "plan", "tasks", "implementation", "test", "trace", "memory", "open_item"]},
+        "artifact_ref": {"$ref": "#/$defs/repoRef"},
+        "outcome": {"enum": ["UNCHANGED_WITH_EVIDENCE", "REGENERATE", "MIGRATE", "RETIRE", "BLOCKED"]},
+        "evidence": {"type": "array", "items": {"$ref": "#/$defs/evidence"}}
+      }
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_type", "ref", "source_digest", "verified_at", "verifier", "result"],
+      "properties": {
+        "evidence_type": {"enum": ["test_pass", "contract_check", "hash_match", "source_trace", "human_approval"]},
+        "ref": {"$ref": "#/$defs/repoRef"},
+        "source_digest": {"$ref": "#/$defs/digest"},
+        "verified_at": {"type": "string", "format": "date-time"},
+        "verifier": {"type": "string", "minLength": 1},
+        "result": {"enum": ["passed", "approved", "matched"]}
+      }
+    }
+  }
+}

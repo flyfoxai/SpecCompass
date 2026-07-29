@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-boundary-decision.schema.json",
+  "title": "SpecCompass Human Outline Boundary Decision",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "decision", "proposal_id", "proposal_digest", "base_baseline_id",
+    "base_baseline_digest", "impact_preview_digest", "initiated_by", "change_class",
+    "affected_feature_codes", "reviewer_note", "confirmed_by", "source", "receipt", "decision_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "decision": {"enum": ["CONFIRMED", "REJECTED", "NEEDS_REVISION"]},
+    "proposal_id": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+    "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "base_baseline_id": {"type": "string", "minLength": 1},
+    "base_baseline_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "impact_preview_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "initiated_by": {"enum": ["model", "user"]},
+    "change_class": {"enum": ["METADATA", "STRUCTURAL"]},
+    "affected_feature_codes": {"type": "array", "uniqueItems": true, "items": {"$ref": "outline-boundaries.schema.json#/$defs/featureCode"}},
+    "reviewer_note": {"type": "string"},
+    "confirmed_by": {
+      "type": "object", "additionalProperties": false, "required": ["type", "display_name"],
+      "properties": {"type": {"const": "human"}, "display_name": {"type": "string", "minLength": 1}}
+    },
+    "source": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kind", "writeback_request_id", "review_session_id", "review_data_id", "recorded_at"],
+      "properties": {
+        "kind": {"const": "speccompass_loopback_writer"},
+        "writeback_request_id": {"type": "string", "minLength": 1},
+        "review_session_id": {"type": "string", "minLength": 1},
+        "review_data_id": {"type": "string", "minLength": 1},
+        "recorded_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "receipt": {
+      "type": "object", "additionalProperties": false, "required": ["receipt_id", "status"],
+      "properties": {"receipt_id": {"type": "string", "pattern": "^[a-f0-9]{64}$"}, "status": {"const": "ISSUED_ONCE"}}
+    },
+    "decision_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  }
+}

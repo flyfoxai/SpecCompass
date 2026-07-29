@@ -69,6 +69,7 @@ instead. Renderer changes require a separate implementation task with tests.
 - Outline intent ledger path:
   `specs/<feature>/prd/review/outline-intent-ledger.json`
 - Outline source path: `specs/<feature>/spec-outline.md`
+- Authoritative boundary path: `specs/<root-feature>/outline-boundaries.json`
 - Review index path: `specs/review-index.json`
 - Renderer directory: `.specify/review/renderer/`
 - Renderer path: `.specify/review/renderer/speccompass-review-renderer.html`
@@ -85,6 +86,15 @@ instead. Renderer changes require a separate implementation task with tests.
   `.specify/review/schemas/ui-review-data.schema.json`, and
   `.specify/review/schemas/outline-review-data.schema.json`, plus the separate
   Outline discovery data, response, and intent-ledger schemas.
+
+The installed review package also distributes the authoritative Outline
+transition schemas and mechanical helpers: proposal start, owner lease, impact
+inventory, fixed state advance, activation, and pre-commit rollback. They are
+command-side controls only. The renderer and loopback writer never invoke them,
+never change `outline-boundaries.json`, and never interpret a review click as
+transition approval. `scan-outline-transition-impact.mjs` lists and hashes
+artifacts without inferring successors; `rollback-outline-transition.mjs`
+requires an empty live-write proof and never deletes working-tree content.
 
 Outline has two explicit modes. Level 1 `outline_maturity: explore` and Level 2
 `outline_maturity: frame` use `interaction_mode: discovery`; Level 3
@@ -142,14 +152,11 @@ explicit port is supplied, and emits `SPECCOMPASS_REVIEW_URL=` only after the
 renderer 和 review data 均返回 HTTP 200. The agent must return that exact emitted
 URL and must not guess a port. 交互复核禁止使用 `file://`，并且 `localhost` 不接受;
 HTTPS, `::1`, and other hostnames are also unsupported. On any unsupported
-origin, the renderer rejects inline data and disables load, file, download, and
-copy controls. The local JSON selector remains a recovery control only after the
-fixed renderer has been opened from a supported `http://127.0.0.1:<port>` URL.
-On that supported origin, the renderer may accept
-`window.SPECCOMPASS_REVIEW_DATA`, a selected local JSON file input / 本地 JSON 文件,
-or a colocated `flow-review-data.json`, `ui-review-data.json`, or
-`outline-review-data.json`/`outline-discovery-data.json`; none of these data
-sources bypasses the transport gate or changes the authorization rules.
+origin, the renderer rejects inline data and disables writeback and fallback
+controls. There is no manual JSON selector or colocated-file load button: a
+manually selected artifact can disagree with the launcher's bound feature,
+review type, capability token, and target identity. Loading is exclusively
+derived from the launcher's short URL.
 
 The primary reviewer-facing entry uses short URL parameters / 短参数. Opening
 `speccompass-review-renderer.html?flow=<feature>` auto-loads
@@ -164,9 +171,9 @@ locations with browser URL paths and `new URL(..., window.location.href)`, not
 operating-system file separators, so the same contract applies on macOS,
 Windows, and Linux. The feature parameter must be a simple feature directory
 name only: letters, numbers, dot, underscore, and dash are allowed; path
-separators and `..` are rejected. When no short parameter is present on the
-supported origin, the page shows a visible prompt and keeps the manual load
-buttons. This does not create a fallback for unsupported transports.
+separators and `..` are rejected. When the short parameter is missing or the
+bound artifact cannot be loaded, the page fails closed and directs the user to
+rerun the owning command and open its newly emitted URL.
 
 New projects receive the launcher and renderer through `specify init`. Projects
 that were already initialized do not receive new templates automatically.
@@ -175,32 +182,69 @@ Existing projects refresh this fixed `.specify/review/` infrastructure with
 confirmation documents under `specs/` remain project-owned artifacts and are
 outside that fixed directory.
 
-The fixed renderer also reads `specs/review-index.json` for demand-level
-navigation / 需求级导航. The top navigation text is `上一需求 / 需求 X/Y / 下一需求`;
-it follows the feature order recorded in `features[].order` and the feature slug
-in `features[].feature`. This is different from the current feature's business
-module navigation, which must be labeled `上一业务模块 / 业务模块 X/Y / 下一业务模块`.
-Each index entry uses `has_flow_review`, `has_ui_review`,
-`has_outline_review`, and `has_outline_discovery`. Formal Outline confirmation
-and Outline Discovery are separate navigation targets: the renderer consults
-only the flag for the selected review type, disables an unavailable target, and
-marks it `待生成`. Do not infer one Outline flag from the other. Do not invent
-future slugs in the index: if only
-`001-phase-one-core-loop` exists, the index contains only that feature and the
-page shows `需求 1/1` with previous/next disabled.
+The fixed renderer also reads schema-v2 `specs/review-index.json` for
+demand-level navigation / 需求级导航. `feature_code` is the immutable global code;
+`order` is the mutable global navigation order; `sibling_order` is only the
+local order under one explicit `parent_feature`. None of those fields substitutes
+for another, and a numeric prefix never implies parentage. When a real `000-*`
+feature exists it is the explicit root. A `001-*` feature becomes its first child
+only when `parent_feature` points to that root, `sibling_order` is `1`, and
+`boundary_source` points to a confirmed `Subproject Handoff`.
+
+`boundary_source` records the SP-authorized delivery boundary. Analytical
+Outline nodes use independent stable IDs and never create feature entries. Once
+a project-boundary node is confirmed, it shares one immutable `feature_code`
+with exactly one active feature. A stable baseline requires
+`outline_alignment: one_to_one`; `merged`, `split`, `diverged`, and `not_mapped`
+are legacy-migration or approved structure-change transition states only and
+must block ordinary downstream development. Flow/UI modules are still local
+responsibility and business-chain decompositions inside the confirmed feature
+boundary, so analytical node count and titles do not dictate module layout.
+
+Repository-wide allocation history lives in `specs/feature-code-ledger.json`.
+`manage-feature-codes.mjs` reserves sequential codes only when a final boundary
+candidate is ready for human review. Reserved, active, retired, and void codes
+are never reused. Transition start verifies every new boundary reservation;
+activation reconciles it to active/retired, and pre-commit rollback makes unused
+reservations void. This ledger does not replace `outline-boundaries.json` as the
+authority for current project boundaries.
+
+The top navigation text remains `上一需求 / 需求 X/Y / 下一需求`, but explicit
+hierarchies also display the code path such as `000 › 001`. This is different
+from current-feature business module navigation, which remains
+`上一业务模块 / 业务模块 X/Y / 下一业务模块`. Formal Outline confirmation and Outline
+Discovery use separate availability flags. The renderer reads schema v1 only as
+a legacy flat index and visibly warns that it cannot express inheritance.
 
 Minimum `specs/review-index.json` shape:
 
 ```json
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "project": "<project-name>",
   "updated_at": "YYYY-MM-DD",
+  "hierarchy": {
+    "mode": "explicit",
+    "root_feature": "000-product-root"
+  },
   "features": [
     {
       "order": 1,
-      "feature": "<feature-slug>",
-      "title": "<human title>",
+      "feature_code": "000",
+      "feature": "000-product-root",
+      "title": "<root title>",
+      "parent_feature": null,
+      "sibling_order": 0,
+      "boundary_source": {
+        "kind": "root",
+        "handoff_ref": null,
+        "rationale": "Project-level product root."
+      },
+      "outline_alignment": {
+        "status": "one_to_one",
+        "outline_node_refs": ["specs/000-product-root/spec-outline.md#boundary-000"],
+        "rationale": "The confirmed root boundary and active root feature share code 000."
+      },
       "has_flow_review": true,
       "has_ui_review": false,
       "has_outline_review": true,
@@ -210,10 +254,17 @@ Minimum `specs/review-index.json` shape:
 }
 ```
 
-Normal `/sp.flow`, `/sp.ui`, and `/sp.prd` runs create or update this index when
-they create review data. They preserve existing real feature entries, keep
-their order, add only the current real feature when missing, and update only
-the relevant review flag plus `updated_at`. A PRD discovery run sets
+`specs/<root-feature>/outline-boundaries.json` is the sole writable source for
+project-boundary identity, title, code, order, parentage, lifecycle, and Outline
+mapping. The renderer never writes it. `specs/review-index.json` derives those
+fields one way and directly owns only `updated_at` plus the four review
+availability flags. Normal `/sp.flow`, `/sp.ui`, and `/sp.prd` runs first require
+an `ALIGNED` result from `check-outline-boundary-gate.mjs`. After changing only
+the owned availability flag they run `sync-review-index.mjs`, which rebuilds all
+derived fields while preserving all four flags, followed by
+`validate-review-index.mjs` and the gate's `--check` path. The legacy
+`migrate-review-index.mjs` creates a backup and a non-authoritative projection;
+it never establishes project parentage or Outline authority. A PRD discovery run sets
 `has_outline_discovery`; a formal Outline confirmation run sets
 `has_outline_review`. Neither operation clears or derives the other flag.
 

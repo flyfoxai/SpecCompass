@@ -22,6 +22,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Authoritative Outline Boundary Gate
+
+Before ordinary specification work, resolve the one root feature from the explicit target and `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>`. Accept only schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+When the confirmed current baseline introduces a new feature, its `feature_code` must already be `active` in `specs/feature-code-ledger.json`. Create the SP branch/directory with that exact code by passing it explicitly to the platform script (`create-new-feature.sh --number <feature_code> --short-name <slug> ...` or `create-new-feature.ps1 -Number <feature_code> -ShortName <slug> ...`). Do not use automatic numbering or `--timestamp` for an Outline-managed feature, and do not create a feature that is only reserved in an unactivated proposal.
+
+For `allowed: false`, stop before writes and reproduce the returned machine contract unchanged: `block_reason`, `root_feature`, `current_baseline_id`, `proposed_baseline_id`, `transition_state`, `transition_id`, `blocked_since`, `evidence_refs`, `repair_command_exec`, and `repair_command`. `repair_command_exec` is the sole next action. `/sp.specify` never creates, renumbers, reparents, splits, merges, or retires project boundaries and never edits derived `review-index.json` boundary fields.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or

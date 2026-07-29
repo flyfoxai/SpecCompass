@@ -5,6 +5,16 @@ import { createHash, randomBytes } from "node:crypto";
 import { open, readFile, realpath, rename, stat, unlink } from "node:fs/promises";
 import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  appendJsonLine,
+  computeDecisionDigest,
+  proposalFromInput,
+  readJsonLines,
+  validateBoundaryDecision,
+  validateImpactPreview,
+  validateWriterEvent
+} from "./outline-adjustment-lib.mjs";
+import { readJson as readOutlineJson, validateOutlineBoundaries } from "./outline-boundaries-lib.mjs";
 
 const LOOPBACK_HOST = "127.0.0.1";
 const MINIMUM_NODE_MAJOR = 18;
@@ -263,6 +273,79 @@ function currentReviewTargets(reviewData) {
     }
   }
   return targets;
+}
+
+function boundaryAdjustmentPaths(feature, proposalId) {
+  const base = `specs/${feature}/boundary-adjustments`;
+  const draft = `${base}/drafts/${proposalId}`;
+  return {
+    proposal_path: `${draft}/proposal.json`,
+    impact_preview_path: `${draft}/impact-preview.json`,
+    decision_path: `${draft}/decision.json`,
+    writer_ledger_path: `${base}/writeback-ledger.jsonl`,
+    boundaries_path: `specs/${feature}/outline-boundaries.json`
+  };
+}
+
+async function validateBoundaryReviewBinding(reviewData, context) {
+  const identity = reviewData.boundary_adjustment;
+  if (!identity) return null;
+  if (context.reviewType !== "outline" || reviewData.project?.feature !== context.feature) {
+    throw new Error("Outline boundary adjustment must be bound to the root Outline review server.");
+  }
+  const requiredKeys = [
+    "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
+    "impact_preview_digest", "initiated_by", "change_class", "affected_feature_codes",
+    "proposal_path", "impact_preview_path", "decision_path", "writer_ledger_path",
+    "decision_target_ref"
+  ];
+  const actualKeys = Object.keys(identity);
+  if (actualKeys.some((key) => !requiredKeys.includes(key)) || requiredKeys.some((key) => !(key in identity))) {
+    throw new Error("boundary_adjustment fields are invalid.");
+  }
+  if (!FEATURE_PATTERN.test(identity.proposal_id || "") || identity.proposal_id.includes("..")) {
+    throw new Error("boundary_adjustment proposal_id is unsafe.");
+  }
+  const expectedPaths = boundaryAdjustmentPaths(context.feature, identity.proposal_id);
+  for (const field of ["proposal_path", "impact_preview_path", "decision_path", "writer_ledger_path"]) {
+    if (identity[field] !== expectedPaths[field]) throw new Error(`boundary_adjustment ${field} is not the fixed path.`);
+  }
+  const targets = currentReviewTargets(reviewData);
+  const sourceNode = targets.get(identity.decision_target_ref);
+  if (!sourceNode || sourceNode.review_level !== "must_confirm" || sourceNode.confirmation_priority !== "critical") {
+    throw new Error("boundary_adjustment decision_target_ref must name one critical must_confirm node.");
+  }
+  const exits = new Set((sourceNode.options || []).map((option) => option.next_exit));
+  if (!exits.has("confirm-outline-boundary-adjustment")
+    || !exits.has("reject-outline-boundary-adjustment")
+    || ![...exits].some((value) => String(value).startsWith("needs-decision"))) {
+    throw new Error("Boundary adjustment decision node must expose confirm, reject, and revision routes.");
+  }
+  const proposal = proposalFromInput(await readJsonFile(resolve(context.projectRoot, identity.proposal_path)));
+  const preview = await readJsonFile(resolve(context.projectRoot, identity.impact_preview_path));
+  validateImpactPreview(preview);
+  const boundaries = await readOutlineJson(resolve(context.projectRoot, expectedPaths.boundaries_path));
+  const boundaryErrors = validateOutlineBoundaries(boundaries);
+  if (boundaryErrors.length || boundaries.transition_state !== "ALIGNED") {
+    throw new Error("The authoritative Outline baseline is no longer ALIGNED for this review.");
+  }
+  const expectedIdentity = {
+    proposal_id: proposal.baseline_id,
+    proposal_digest: proposal.proposal_digest,
+    base_baseline_id: proposal.base_baseline_id,
+    base_baseline_digest: proposal.base_baseline_digest,
+    impact_preview_digest: preview.impact_preview_digest,
+    change_class: preview.change_class,
+    affected_feature_codes: preview.affected_feature_codes
+  };
+  for (const field of ["proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest", "impact_preview_digest", "change_class"]) {
+    if (identity[field] !== expectedIdentity[field]) throw new Error(`boundary_adjustment ${field} is stale or mismatched.`);
+  }
+  if (!sameJson(identity.affected_feature_codes, expectedIdentity.affected_feature_codes)
+    || boundaries.current_baseline.baseline_id !== identity.base_baseline_id
+    || boundaries.current_baseline.baseline_digest !== identity.base_baseline_digest
+    || preview.change_class === "NONE") throw new Error("Boundary adjustment review identity is stale or has no effective change.");
+  return { identity, sourceNode, expectedPaths };
 }
 
 function sameJson(left, right) {
@@ -743,6 +826,110 @@ async function executeIdempotentWrite(payload, context) {
   }
 }
 
+function boundaryDecisionFromExit(nextExit) {
+  if (nextExit === "confirm-outline-boundary-adjustment") return "CONFIRMED";
+  if (nextExit === "reject-outline-boundary-adjustment") return "REJECTED";
+  if (String(nextExit || "").startsWith("needs-decision")) return "NEEDS_REVISION";
+  throw new Error("Selected boundary adjustment option has no supported decision route.");
+}
+
+async function processBoundaryDecision(payload, merged, reviewData, context, binding) {
+  const targetRecord = merged.records.find((record) => recordReference(record) === binding.identity.decision_target_ref);
+  if (!targetRecord || targetRecord.authorization_state !== "AUTHORIZED" || targetRecord.is_authorized_decision === false
+    || !new Set(["SAVED_RECOMMENDED", "SAVED_SUBMITTED"]).has(targetRecord.status)) {
+    throw new Error("The critical boundary adjustment decision was not explicitly saved by the reviewer.");
+  }
+  const selectedOption = (binding.sourceNode.options || []).find((option) => option.id === targetRecord.selected_option);
+  if (!selectedOption) throw new Error("The selected boundary adjustment option is not present in current review data.");
+  const decisionValue = boundaryDecisionFromExit(selectedOption.next_exit);
+  const requestId = writebackRequestId(payload, context);
+  const events = await readJsonLines(context.absoluteWriterLedgerPath, validateWriterEvent);
+  const requestEvents = events.filter((event) => event.writeback_request_id === requestId);
+  if (requestEvents.length > 1) throw new Error("The writeback ledger contains duplicate request IDs.");
+  const existing = requestEvents[0] || null;
+  if (existing && (existing.proposal_digest !== binding.identity.proposal_digest
+    || existing.impact_preview_digest !== binding.identity.impact_preview_digest
+    || existing.decision !== decisionValue)) {
+    throw new WritebackError(409, "REQUEST_ID_REUSED", "The boundary decision request ID was reused with different content.", {
+      recoveryAction: "reload_review"
+    });
+  }
+  const recordedAt = existing?.recorded_at || new Date().toISOString();
+  const receiptId = existing?.receipt_id || sha256([
+    "speccompass-outline-boundary-receipt-v1", requestId, context.reviewSessionId,
+    binding.identity.proposal_digest, binding.identity.impact_preview_digest
+  ].join("\0"));
+  const decision = {
+    schema_version: 1,
+    decision: decisionValue,
+    proposal_id: binding.identity.proposal_id,
+    proposal_digest: binding.identity.proposal_digest,
+    base_baseline_id: binding.identity.base_baseline_id,
+    base_baseline_digest: binding.identity.base_baseline_digest,
+    impact_preview_digest: binding.identity.impact_preview_digest,
+    initiated_by: binding.identity.initiated_by,
+    change_class: binding.identity.change_class,
+    affected_feature_codes: binding.identity.affected_feature_codes,
+    reviewer_note: cleanText(targetRecord.reviewer_note),
+    confirmed_by: { type: "human", display_name: "local-reviewer" },
+    source: {
+      kind: "speccompass_loopback_writer",
+      writeback_request_id: requestId,
+      review_session_id: existing?.review_session_id || context.reviewSessionId,
+      review_data_id: context.reviewDataId,
+      recorded_at: recordedAt
+    },
+    receipt: { receipt_id: receiptId, status: "ISSUED_ONCE" },
+    decision_digest: ""
+  };
+  decision.decision_digest = computeDecisionDigest(decision);
+  validateBoundaryDecision(decision);
+  const event = {
+    schema_version: 1,
+    event_type: "HUMAN_DECISION_RECORDED",
+    writeback_request_id: requestId,
+    review_session_id: decision.source.review_session_id,
+    review_data_id: decision.source.review_data_id,
+    proposal_id: decision.proposal_id,
+    proposal_digest: decision.proposal_digest,
+    base_baseline_id: decision.base_baseline_id,
+    base_baseline_digest: decision.base_baseline_digest,
+    impact_preview_digest: decision.impact_preview_digest,
+    receipt_id: receiptId,
+    decision: decisionValue,
+    decision_digest: decision.decision_digest,
+    recorded_at: recordedAt
+  };
+  validateWriterEvent(event);
+  if (existing) {
+    if (JSON.stringify(existing) !== JSON.stringify(event)) throw new Error("Existing writer-ledger event does not match the recovered decision.");
+  } else {
+    await withWriteLock(context.absoluteWriterLedgerPath, async () => {
+      const latest = await readJsonLines(context.absoluteWriterLedgerPath, validateWriterEvent);
+      const conflict = latest.find((item) => item.writeback_request_id === requestId || item.receipt_id === receiptId);
+      if (conflict) throw new WritebackError(409, "DECISION_RECEIPT_CONFLICT", "The boundary decision receipt was already recorded.", {
+        recoveryAction: "reload_review"
+      });
+      await appendJsonLine(context.absoluteWriterLedgerPath, event, validateWriterEvent);
+    });
+  }
+  const content = `${JSON.stringify(decision, null, 2)}\n`;
+  await atomicWrite(context.absoluteTargetPath, content);
+  context.targetVersion = targetVersion(content);
+  return {
+    ok: true,
+    kind: "outline_boundary_decision",
+    decision: decisionValue,
+    receipt_id: receiptId,
+    target_path: context.targetPath,
+    target_version: context.targetVersion,
+    next_command: `/sp.prd ${context.feature} --consume-outline-decision ${binding.identity.proposal_id}`,
+    review_data_id: context.reviewDataId,
+    revision_request_count: decisionValue === "NEEDS_REVISION" ? 1 : 0,
+    fallback_authorizes_transition: false
+  };
+}
+
 async function processWriteback(payload, context) {
   const reviewData = normalizeLegacyReviewData(await readJsonFile(context.absoluteDataPath));
   const currentReviewDataId = reviewDataIdentifier(reviewData);
@@ -754,6 +941,14 @@ async function processWriteback(payload, context) {
   }
   if (payload?.review_data_id !== currentReviewDataId) {
     throw new WritebackError(409, "REVIEW_DATA_STALE", "Review data changed after the page was loaded. Reload before writing.", {
+      recoveryAction: "reload_review"
+    });
+  }
+  let boundaryBinding = null;
+  try {
+    boundaryBinding = await validateBoundaryReviewBinding(reviewData, context);
+  } catch (error) {
+    throw new WritebackError(409, "BOUNDARY_REVIEW_STALE", error.message || "Boundary adjustment review identity is stale.", {
       recoveryAction: "reload_review"
     });
   }
@@ -826,6 +1021,19 @@ async function processWriteback(payload, context) {
     merged = mergeConfirmationParts(payload.parts, { ...context, reviewDataId: currentReviewDataId }, reviewData);
   } catch (error) {
     throw new WritebackError(400, "INVALID_CONFIRMATION_PACKAGE", error.message || "Invalid confirmation package.");
+  }
+  if (boundaryBinding) {
+    try {
+      return await processBoundaryDecision(payload, merged, reviewData, {
+        ...context,
+        reviewDataId: currentReviewDataId
+      }, boundaryBinding);
+    } catch (error) {
+      if (error instanceof WritebackError) throw error;
+      throw new WritebackError(400, "INVALID_BOUNDARY_DECISION", error.message || "Invalid Outline boundary decision.", {
+        recoveryAction: "reload_review"
+      });
+    }
   }
   const content = confirmationMarkdown(merged, reviewData, context);
   await atomicWrite(context.absoluteTargetPath, content);
@@ -901,6 +1109,8 @@ function createRequestHandler(context) {
         feature: context.feature,
         target_path: context.targetPath,
         target_version: context.targetVersion,
+        authorization_mode: context.boundaryAdjustment ? "outline_boundary_human_decision" : "review_confirmation",
+        fallback_authorizes_transition: false,
         request_timeout_ms: REQUEST_TIMEOUT_MS,
         minimum_node_major: MINIMUM_NODE_MAJOR
       });
@@ -992,12 +1202,15 @@ async function main() {
   const realProjectRoot = await realpath(projectRoot);
   const rendererPath = ".specify/review/renderer/speccompass-review-renderer.html";
   const dataPath = REVIEW_DATA_PATHS[reviewType](feature);
-  const targetPath = WRITEBACK_PATHS[reviewType](feature);
 
   await Promise.all([
     requireRegularFile(projectRoot, realProjectRoot, rendererPath),
     requireRegularFile(projectRoot, realProjectRoot, dataPath)
   ]);
+  const initialReviewData = normalizeLegacyReviewData(await readJsonFile(resolve(projectRoot, dataPath)));
+  const initialContext = { projectRoot, reviewType, feature };
+  const boundaryAdjustment = await validateBoundaryReviewBinding(initialReviewData, initialContext);
+  const targetPath = boundaryAdjustment?.identity.decision_path || WRITEBACK_PATHS[reviewType](feature);
 
   server = createServer();
   server.requestTimeout = REQUEST_TIMEOUT_MS;
@@ -1031,6 +1244,11 @@ async function main() {
     targetPath,
     absoluteDataPath,
     absoluteTargetPath,
+    boundaryAdjustment,
+    absoluteWriterLedgerPath: boundaryAdjustment
+      ? resolve(projectRoot, boundaryAdjustment.identity.writer_ledger_path)
+      : null,
+    reviewSessionId: randomBytes(32).toString("hex"),
     targetVersion: await currentTargetVersion(absoluteTargetPath)
   };
   const requestHandler = createRequestHandler(context);

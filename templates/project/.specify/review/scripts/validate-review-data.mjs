@@ -137,7 +137,14 @@ const allowedTopLevelKeys = new Set([
   "project",
   "source_snapshot",
   "modules",
+  "boundary_adjustment",
   "schema_notes"
+]);
+const allowedBoundaryAdjustmentKeys = new Set([
+  "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
+  "impact_preview_digest", "initiated_by", "change_class", "affected_feature_codes",
+  "proposal_path", "impact_preview_path", "decision_path", "writer_ledger_path",
+  "decision_target_ref"
 ]);
 const allowedProjectKeys = new Set(["name", "feature", "business_overview", "review_goal"]);
 const allowedSourceSnapshotKeys = new Set(["path", "anchors", "semantic_scope"]);
@@ -1299,6 +1306,48 @@ function validateKnownKeys(scope, value, allowedKeys) {
     if (!allowedKeys.has(key)) {
       fail(`${scope}: unknown review-data key ${key}; use the schema fields only`);
     }
+  }
+}
+
+function validateBoundaryAdjustment(data) {
+  const value = data.boundary_adjustment;
+  if (value === undefined) return;
+  if (data.review_type !== "outline" || !value || typeof value !== "object" || Array.isArray(value)) {
+    fail("boundary_adjustment is allowed only on outline review data");
+    return;
+  }
+  validateKnownKeys("boundary_adjustment", value, allowedBoundaryAdjustmentKeys);
+  for (const key of allowedBoundaryAdjustmentKeys) {
+    if (!(key in value)) fail(`boundary_adjustment is missing ${key}`);
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.proposal_id || "")) fail("boundary_adjustment proposal_id is invalid");
+  for (const key of ["proposal_digest", "base_baseline_digest", "impact_preview_digest"]) {
+    if (!/^[a-f0-9]{64}$/.test(value[key] || "")) fail(`boundary_adjustment ${key} must be a SHA-256 digest`);
+  }
+  if (!new Set(["model", "user"]).has(value.initiated_by)) fail("boundary_adjustment initiated_by is invalid");
+  if (!new Set(["METADATA", "STRUCTURAL"]).has(value.change_class)) fail("boundary_adjustment change_class is invalid");
+  if (!Array.isArray(value.affected_feature_codes)
+    || new Set(value.affected_feature_codes).size !== value.affected_feature_codes.length
+    || value.affected_feature_codes.some((code) => !/^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$/.test(code))) {
+    fail("boundary_adjustment affected_feature_codes is invalid");
+  }
+  const feature = String(data.project?.feature || "");
+  const base = `specs/${feature}/boundary-adjustments`;
+  const draft = `${base}/drafts/${value.proposal_id}`;
+  const expected = {
+    proposal_path: `${draft}/proposal.json`,
+    impact_preview_path: `${draft}/impact-preview.json`,
+    decision_path: `${draft}/decision.json`,
+    writer_ledger_path: `${base}/writeback-ledger.jsonl`
+  };
+  for (const [field, path] of Object.entries(expected)) {
+    if (!isSafeRepositoryRelativePath(value[field]) || value[field] !== path) {
+      fail(`boundary_adjustment ${field} must use the fixed proposal-scoped path`);
+    }
+  }
+  if (typeof value.base_baseline_id !== "string" || !value.base_baseline_id
+    || typeof value.decision_target_ref !== "string" || !value.decision_target_ref) {
+    fail("boundary_adjustment baseline identity and decision_target_ref are required");
   }
 }
 
@@ -2802,6 +2851,7 @@ function validate(data) {
     if (new Set(authorityIds).size !== authorityIds.length) {
       fail("source_authority_ids must not contain duplicates");
     }
+    validateBoundaryAdjustment(data);
   }
 
   if (!allowedConfirmStrategies.has(data.confirm_strategy)) {

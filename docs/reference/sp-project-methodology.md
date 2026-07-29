@@ -1,6 +1,6 @@
 # SP 项目的方法论
 
-本文记录 SP 项目的核心方法论。它不是命令手册，也不是对 Spec Kit、Superpowers、Kiro 的功能复述，而是说明 SP 想用什么工程方法来管理大模型协作、规格设计、上下文窗口、验证和自动化开发。
+本文记录 SP 项目的核心方法论。它不是命令手册，也不是对 Spec Kit、Superpowers、Kiro 的功能复述，而是说明 SP 想用什么工程方法来管理大模型协作、规格设计、上下文窗口、验证和自动化开发。产品需求及实现优先级以 [`speccompass-product-requirements.zh-CN.md`](speccompass-product-requirements.zh-CN.md) 为准；方法论不得覆盖其中的权威关系和产品边界合同。
 
 ## 一句话定义
 
@@ -100,6 +100,7 @@ SP 当前项目本身的改造过程，也沉淀出一套方法论。
 - **Debug Evidence Loop**：调试先复现或定位失败证据，再提出可证伪假设和最小反证检查。第二次尝试必须引用第一次的反证证据；连续两次没有新证据、没有更小单元或没有改变 owner route 时，应停止本层修补并向上兜底。
 - **Review Feedback Handling**：重要评审意见要先归类为 `valid`、`invalid`、`needs-info` 或 `accepted-risk`。`accepted-risk` 必须有 owner、影响和回看条件；`needs-info` 不能被当作通过。
 - **轻量 UI 三维规划**：`/sp.ui` 只做对当前功能有用的轻量规划，默认风格是简洁清爽、分类明确、操作人性化。规划分为视觉风格、布局/展示效率、流程操作人性化三个维度；可以问 2-3 个短问题，但不要默认引入完整设计系统、Figma/MCP、媒体生成、爬虫或重型审计。
+- **短分类动作直接平铺**：同一页面若只有一个主动作（例如“运行分析”）和少量固定分析分类，不要先用标签页选择分类、再在标签内重复分类按钮。所有分类动作直接放在一个响应式区域中，只有不同分类确实拥有长期独立视图和大量内容时才使用标签页。例如，3 种只触发任务的分析类型直接平铺；5 个共享同一结果表的过滤维度也不使用标签页；3 种各自保有图表、表格和导出状态的报告视图才可以使用标签页。
 - **轻量 Flow 设计原则**：`/sp.flow` 的第一约束是满足业务真实，其次才是图形整洁。能满足业务要求时选择最小充分 flow；规则保持功能单一、松散耦合，按角色、状态、权限、异常和验证边界拆分。不要为了 diagram elegance 牺牲业务顺序、权限约束或异常路径。
 - **扩展命令质量约束**：扩展命令也应说明触发条件、输入输出、读写范围、当前证据来源、检查命令来源、人类决策路由和 stage-scoped 指令，避免把大型方法论全文塞进每个命令。
 
@@ -321,6 +322,12 @@ Lean PRD 也不能只剩目录。它至少要有一个清晰战略目标、一�
 用户第一次进入 `/sp.prd` 时，材料可能还不足以直接形成稳定框架。此时用独立的 `outline_maturity` 表达 Outline 成熟度，而不是把缺口伪装成完整 PRD，也不能把它和确认点的 `review_level`、`confirmation_priority` 或整体 `Outline Decision` 混为一谈。固定三级是：`explore`（一级：项目组合边界）、`frame`（二级：单项目业务框架）、`specify_ready`（三级：正式 Outline 编译）。一级只负责项目组合拆分：判断父产品应保留为一个产品，还是拆为若干有独立业务结果、内聚责任和明确业务交接的子项目；不能仅凭“目标、用户、问题”三句套话过关。进入一级拆分前至少要有真实产品主语、一名执行领域动作的角色，以及正在失败或变化的业务对象、动作或结果。离开一级前，每个有来源的能力都必须有唯一归属或明确处置，每个候选边界都必须由有效用户响应确认、合并、再拆、延期、排除、保留在父产品或标为证据缺口。
 
 二级只负责单个已确认子项目的业务闭环，也负责一级确认保留为单产品后的这个产品，但不重新做全局分组。保留单产品时，二级读取已确认父 PRD、指向该产品已确认范围的账本事件、继承约束及其来源；一级拆分事件只保留为边界历史，不能被重释为子项目范围事实。已拆分时，只读取一份已确认 `Subproject Handoff`、该交接引用的来源、继承约束和子项目局部变更。二级必须把首个切片写成具体业务链：触发者或输入、业务对象及起始状态、动作或控制、结果状态或可观察结果、异常路径、来源和命名交接。三级只负责保留来源身份的正式编译：把已确认 PRD、已消费账本事件、二级框架和来源权威编译为 `spec-outline.md` 与 `outline-review-data.json`，不能新建、合并、拆分或重新解释业务事实，也不能提升未确认模型建议。Constitution 在三级仍只读展示；正式治理判断由 `/sp.constitution` 负责。成熟度只回退到受影响的最窄层级：单个交接或两个已确认子项目之间的能力归属冲突只重开受影响的命名边界，其余子项目保持稳定，二级不能静默合并子项目；只有保留单产品的决定被推翻，或整个产品组合身份、所有权模型被否定，才重开完整一级拆分。
+
+顶级 Outline 与真实项目必须区分“候选生成”和“确认后基线”，不能把两套结构长期并存。模型可以先生成分析节点和候选项目边界；分析节点使用独立 `outline_node_id`，不创建 feature。候选边界经过 SP 业务边界检查和人工确认后，才成为权威 Outline 的项目边界节点，并与真实 active feature 共用稳定 `feature_code`、保持一一对应。稳定态的 `outline_alignment` 只能是 `one_to_one`；`merged`、`split`、`diverged` 和 `not_mapped` 只允许表示旧数据迁移或尚未完成的结构变更暂态，存在这些状态时普通开发必须阻断。项目侧提出拆分、合并、移动或退役时也必须先上推 Outline，通过重大调整门禁后再同步迁移项目。不得为了视觉整齐重构既有项目，也不得把未经确认的模型分支标题直接复制成实际模块。
+
+需求代码、全局顺序和本地层级顺序是三个不同概念。`feature_code` 是发布后不得重排的全局稳定身份，并由确认后的 Outline 项目边界节点和真实 feature 共用；`order` 是全局导航顺序，`sibling_order` 只表示同一 `parent_feature` 下的本地位置。数字不携带父子语义：即使 `000-*` 被明确登记为根需求，`001-*` 也只有在 `parent_feature` 指向该根、`sibling_order: 1` 且 `boundary_source` 引用已确认子项目交接时，才是它的第一个子需求。合并、拆分或调整显示顺序都不能复用、交换或重编号既有 `feature_code`；退役代码保留为 tombstone，分析节点使用独立 `outline_node_id`。
+
+项目代码沿用 SP 的连续 feature 前缀：`000` 为根，从 `001` 起按仓库全局递增，超过 `999` 后继续使用 `1000`。`specs/feature-code-ledger.json` 记录 reserved、active、retired 和 void；四种状态都永久占号。代码只在完整候选进入最终人工审核前预留，并绑定 proposed baseline ID 和 slug；讨论中的模型建议不占号。受 Outline 管理的 feature 创建必须把已激活代码显式传给 SP 创建脚本，不能使用时间戳或再次自动取号。离线副本发生同号或 base/ledger 冲突时停止并重新分配，不自动拼接。
 
 Level 1 采用三阶段生成。第一阶段从用户输入、当前 PRD、已接受意图账本和正式业务来源中提取 `business_context` 与内部能力原子：真实业务主语 `product_subject`、业务对象 `business_objects`、业务动作 `operations`、可观察结果 `outcomes`、端到端 `business_chains` 和证据缺口。能力原子是“产品对哪个业务对象执行什么动作或控制，并产生什么可观察结果”的最小有来源陈述；每个原子明确拥有一个触发或输入、一个业务状态、一个可独立验收结果和一个下游交接，所属业务链必须逐字段保持一致。用户明确给出的业务根节点和已确认结构优先；未确认的拆分建议必须同时通过业务边界质量门。若用户给的是技术分层或不能独立核验的拆分，模型不能悄悄改写，也不能直接定案，而应保留原建议、提供一份有来源的业务拆分候选并请用户判断。能力覆盖表、阶段名、检查清单和模型自检只用于内部编译，不进入导图、问题、推荐或面向用户的说明。
 
@@ -1601,7 +1608,9 @@ Flow/UI 确认页由可复用的 `speccompass-review-data` 工具链驱动：普
 
 确认栏提供三个互不混淆的范围按钮：`当前视图按推荐保存` 始终处理当前 flow/UI 项的全部节点，即使当前已聚焦单个节点；`当前模块按推荐保存` 处理当前业务模块内的所有 flow/UI 项；`当前需求按推荐保存` 处理当前加载 feature 的所有模块和项目，不跨到 `specs/review-index.json` 中的其他需求。三者都只能填写带有效推荐的 `MISSING` 节点，不能覆盖草稿或已有选择；执行前必须询问当前范围还有多少未完成、是否按推荐保存。“写入项目”和下载降级前都必须对当前需求执行同样的未完成项检查；缺少有效推荐的节点仍需人工处理并阻止写回或导出。
 
-Flow/UI 复核页还必须维护轻量需求索引 `specs/review-index.json`。这个文件只服务确认页导航，不是业务流程或 UI 内容。`/sp.flow` 生成或修复 flow review data 时设置当前真实 feature 的 `has_flow_review: true`，保留 `has_ui_review`；`/sp.ui` 生成或修复 UI review data 时设置 `has_ui_review: true`，保留 `has_flow_review`。两者都必须保留已有真实 feature 条目和顺序，只在当前真实 feature 缺失时补入，不能为了导航效果虚构未来的 002/003 slug。固定 renderer 顶部用该索引展示 `上一需求 / 需求 X/Y / 下一需求`；当前 feature 内部导航写成 `上一业务模块 / 业务模块 X/Y / 下一业务模块`。目标 review data 尚未生成时禁用导航并提示 `待生成`；当前页有未写回的本地选择或草稿时，跨需求前必须提醒先“写入项目”，而不是要求先下载。
+Flow/UI 复核页还必须维护 schema v2 轻量需求索引 `specs/review-index.json`。这个文件只保存导航、显式继承、Outline 投影身份和四个 review availability flag，不承载业务流程或 UI 内容。根需求下的 `outline-boundaries.json` 是项目身份、标题、代码、顺序、父子关系、生命周期和 Outline 映射的唯一可写事实源；`review-index.json` 中对应字段只能从当前 `ALIGNED` 基线单向派生。`/sp.flow`、`/sp.ui`、`/sp.prd` 只直接变更当前命令拥有的 flag 与 `updated_at`：Flow 设置 `has_flow_review`，UI 设置 `has_ui_review`，正式 Outline 设置 `has_outline_review`，Discovery 设置 `has_outline_discovery`，并保留另外三个 flag。之后必须运行 `sync-review-index.mjs` 重建派生字段、运行 `validate-review-index.mjs` 校验索引，再运行 `check-outline-boundary-gate.mjs` 检查权威基线和派生一致性；任一失败都不能收尾。旧 v1 索引只能通过 `migrate-review-index.mjs` 生成待审核接入材料，不能自动建立父子或 Outline 权威映射。固定 renderer 用树的前序顺序导航并显示 `000 › 001` 一类代码路径；当前 feature 内部仍写成 `上一业务模块 / 业务模块 X/Y / 下一业务模块`。目标 review data 尚未生成时禁用导航并提示 `待生成`；当前页有未写回选择或草稿时，跨需求前必须提醒先“写入项目”。
+
+重大边界迁移不得由模型直接改状态 JSON。`/sp.prd` 先用 `prepare-outline-adjustment.mjs` 生成不冻结日常工作的 draft impact preview；最终确认只能由绑定 Outline 审核页的 loopback writer 写入 `decision.json`、一次性 receipt 和 writer ledger。验证后，五输入 `start-outline-transition.mjs` 才建立唯一 active proposal；`METADATA` 直接激活，`STRUCTURAL` 进入严格迁移。`/sp.plan` 用 `scan-outline-transition-impact.mjs` 扫描当前 feature 文件和显式补充的代码/测试引用，生成 SHA-256 绑定的 inventory，但不能猜 successor。Flow/UI 只填写各自 inventoried impact，没有对应产物时 validation report 明确 `skipped`。物理 `MIGRATE`、`REGENERATE`、`RETIRE` 先在 transition staging 中产生输出，再由 `prepare-outline-transition-artifacts.mjs` 生成 manifest；`advance-outline-transition.mjs validate` 校验完整覆盖和 live/staged digest，`publish-outline-transition-artifacts.mjs` 用恢复副本和逐操作 receipt 可重放发布。`activate-outline-baseline.mjs` 是唯一基线提交点，并在提交前再次校验 inventory 或 publication receipt。每条机械命令自行获取、刷新和释放短锁，不跨人工等待传递 owner。发布前撤销必须提供 `live_writes: []` 的封闭 rollback proof；一旦产物发布，只能按 manifest 前滚，提交后只能再发起前向 proposal。
 
 example data must not replace generation rules / 实验数据不能替代生成规则。`docs/examples/review/*`、实验 JSON 和一次性 preview HTML 只能作为 few-shot、视觉冒烟测试或人工观察样例，不能替代 `/sp.flow`、`/sp.ui`、`speccompass-review-data` skill 或 `validate-review-data.mjs` 的生成规则修复。正式验收必须看当前 feature 的 `flow-review-data.json` 或 `ui-review-data.json` 是否由 PRD/spec/flow/UI 来源重新生成或修复、是否通过 `validate-review-data.mjs`、是否能被固定 renderer 正确展示。手工把示例文件改得好看，不代表 SP 机制已经能稳定生成合格确认内容。
 

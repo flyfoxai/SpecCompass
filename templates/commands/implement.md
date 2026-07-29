@@ -15,6 +15,12 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Authoritative Outline Boundary Gate
+
+Before any implementation or repair write, resolve the single root feature from the explicit target and the derived `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>`. Continue only for schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+For `allowed: false`, stop before editing code, tests, tasks, or generated files and reproduce the complete machine contract unchanged. Run only its `repair_command_exec`; do not implement against the proposed baseline and do not treat a draft adjustment as active. Transition-specific artifact publication is owned by `/sp.prd` and the installed migration helpers, never by ordinary `/sp.implement`.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or

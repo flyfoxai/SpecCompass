@@ -34,12 +34,24 @@ or UI confirmation runs.
 - Outline data: `specs/<feature>/prd/review/outline-review-data.json`
 - Outline discovery data: `specs/<feature>/prd/review/outline-discovery-data.json`
 - Outline source: `specs/<feature>/spec-outline.md`
+- Authoritative project boundaries: `specs/<root-feature>/outline-boundaries.json`
+- Repository feature-code ledger: `specs/feature-code-ledger.json`
 - Feature review index: `specs/review-index.json`
 - Flow schema: `.specify/review/schemas/flow-review-data.schema.json`
 - UI schema: `.specify/review/schemas/ui-review-data.schema.json`
 - Outline schema: `.specify/review/schemas/outline-review-data.schema.json`
 - Outline discovery schema: `.specify/review/schemas/outline-discovery-data.schema.json`
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
+- Boundary gate: `.specify/review/scripts/check-outline-boundary-gate.mjs`
+- Feature-code manager: `.specify/review/scripts/manage-feature-codes.mjs`
+- Transition proposal: `.specify/review/scripts/start-outline-transition.mjs`
+- Draft impact preview: `.specify/review/scripts/prepare-outline-adjustment.mjs`
+- Transition inventory: `.specify/review/scripts/scan-outline-transition-impact.mjs`
+- Artifact staging: `.specify/review/scripts/prepare-outline-transition-artifacts.mjs`
+- Artifact publication: `.specify/review/scripts/publish-outline-transition-artifacts.mjs`
+- Transition state advance: `.specify/review/scripts/advance-outline-transition.mjs`
+- Baseline activation: `.specify/review/scripts/activate-outline-baseline.mjs`
+- Transition rollback: `.specify/review/scripts/rollback-outline-transition.mjs`
 
 ## Interactive Review Launcher
 
@@ -104,25 +116,103 @@ If validation fails, do not finish the command and do not promote readiness.
 Fix model-fixable data issues first. If the remaining gap requires human
 information, mark the item blocked with a short reason and owner route.
 
-Maintain the lightweight feature review index whenever `/sp.flow`, `/sp.ui`, or
-`/sp.prd`
-creates or repairs review data. The file path is `specs/review-index.json`; it
-is for renderer navigation only, not business flow/UI content. Preserve existing
-real feature entries and their order. Add the current feature only if it is
-missing, using the real feature directory name and a human title from the
-current PRD/spec. Do not invent future 002/003 feature slugs. A flow run sets
-the current entry's `has_flow_review` to `true` and preserves
-`has_ui_review`, `has_outline_review`, and `has_outline_discovery`; a UI run
-sets `has_ui_review` to `true` and preserves the other flags; a formal
-Outline-producing PRD run sets `has_outline_review` to `true`; a Discovery-
-producing PRD run sets `has_outline_discovery` to `true`. Both PRD modes preserve
-all other flags and must not infer one Outline flag from the other. Required
-entry fields are `order`, `feature`, `title`, `has_flow_review`,
-`has_ui_review`, `has_outline_review`, and `has_outline_discovery`; root fields
-are `schema_version`,
-`project`, `updated_at`, and `features`. The renderer uses this index to show
-`上一需求 / 需求 X/Y / 下一需求`; current-feature navigation still says
-`上一业务模块 / 业务模块 X/Y / 下一业务模块`.
+Before generating or repairing any review data, run the authoritative boundary
+gate for the requested feature:
+
+```bash
+node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>
+```
+
+Continue ordinary review generation only for
+`speccompass.outline-boundary-gate.v1` with `allowed: true`. On a block, return
+the gate's complete machine contract and its sole `repair_command_exec`; do not
+invent lineage, silently adopt a legacy project, or generate against a proposed
+baseline. Transition-specific Flow/UI impact review is allowed only for the
+same explicit `transition_id` handed off by `/sp.prd`.
+
+This skill never hand-edits transition state. `/sp.prd` first creates a closed
+draft proposal and calls `prepare-outline-adjustment.mjs`; draft generation and
+discussion stay `ALIGNED`. The Outline page carries the exact
+`boundary_adjustment` identity. Only the bound loopback writer may create the
+final `decision.json`, one-time receipt, and append-only writer-ledger event.
+A download, copied package, chat confirmation, or model-written JSON cannot
+authorize migration. After that human record exists, `/sp.prd` invokes the
+five-input `start-outline-transition.mjs`. `METADATA` activates directly;
+`STRUCTURAL` enters the active migration path.
+
+For structural work, `/sp.plan` creates the digest-bound inventory with
+`scan-outline-transition-impact.mjs`. Transition-specific Flow/UI work changes
+only its inventoried decisions in the shared evidence file. When those decisions
+require physical `MIGRATE`, `REGENERATE`, or `RETIRE` operations, changed output
+must be built under `boundary-adjustments/staging/<transition-id>/`; the
+coordinator calls `prepare-outline-transition-artifacts.mjs` to generate a
+closed manifest and `STAGED` publication receipt. It then runs one
+`advance-outline-transition.mjs validate`, publishes only after validation with
+`publish-outline-transition-artifacts.mjs`, and activates with the canonical
+manifest/receipt pair. Without physical operations it omits staging and publish.
+Every helper owns one short lock and releases it before returning; never pass an
+owner ID between commands. `rollback-outline-transition.mjs` is allowed only
+before live publication with an empty `live_writes` proof. These helpers do not
+call a model, infer successors, or run destructive Git commands. Mechanical
+writeback helpers do not call a model or generate new product decisions.
+
+Structural command locks use a 300-second lease; the feature-code ledger uses a
+60-second lease and a bounded Git scan. Recover an expired lease only after one
+process wins the fixed `<lock>.recovery` claim by exclusive creation and then
+rechecks the complete observed main-claim identity. A `wx` file can be visible
+briefly before its JSON is complete, so readers retry for a bounded interval and
+then fail closed on a persistently empty, truncated, or malformed claim.
+Heartbeats update the already opened and identity-checked claim file, so a
+resumed stale owner cannot replace a successor's path. Never recursively
+recover a leftover recovery claim. Before deleting a main or
+recovery claim, recheck its owner; retry Windows `EPERM`, `EACCES`, and `EBUSY`,
+and report failure with the preserved recovery route if deletion still fails.
+Failed exclusive creation also reports any claim-cleanup failure. Only an
+already isolated unique `.stale` file may be left behind with a warning.
+
+Do not reserve a feature code while a split/merge idea is still being discussed.
+When one complete candidate is ready to enter final human review, reserve each
+new boundary with
+`node .specify/review/scripts/manage-feature-codes.mjs reserve specs/feature-code-ledger.json specs/<root-feature>/outline-boundaries.json --slug <slug> --proposal <proposed-baseline-id> --reason <reason>`.
+Use the returned `feature_code` and `feature` unchanged in the reviewed proposal.
+`start-outline-transition.mjs` rejects missing, timestamp, mismatched, reused, or
+other-proposal reservations. Activation reconciles codes to `active`/`retired`;
+pre-commit rollback changes unused reservations to `void`. Rejected or expired
+drafts must explicitly run the manager's `void` action. Never edit the ledger or
+fill a numeric gap by hand.
+
+`specs/<root-feature>/outline-boundaries.json` is the only writable source for
+project identity, title, `order`, parentage, `feature_code`, `boundary_source`,
+and `outline_node_id`. Schema-v2 `specs/review-index.json` derives
+`parent_feature`, `sibling_order`, and `outline_alignment` from that source and is a navigation and
+availability projection. A review command may preserve and change only its
+owned availability flag plus `updated_at`; it must never directly change a
+derived boundary field. After the owned flag is updated, run
+`node .specify/review/scripts/sync-review-index.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json`
+and then rerun the boundary gate. For legacy v1 input, first run
+`migrate-review-index.mjs`; the backup and migration candidate are not an
+authoritative boundary baseline and still require reviewed adoption through
+`/sp.prd`.
+
+Separate model candidate generation from the confirmed authority baseline.
+Analytical Outline nodes use stable `outline_node_id` values and never create a
+feature. After SP boundary checks and human confirmation, every authoritative
+Outline project-boundary node shares one immutable `feature_code` with exactly
+one active feature. A stable baseline requires `outline_alignment: one_to_one`.
+`merged`, `split`, `diverged`, and `not_mapped` are legacy-migration or approved
+structure-change transition states only; when any is present, ordinary Flow/UI/
+PRD review generation must stop and route to structure migration. Flow/UI
+`modules[]` are still derived within the confirmed feature boundary from its
+responsibilities and business chains, not copied from analytical branch titles.
+
+Add only an existing real feature directory. Do not invent future slugs. A flow
+run changes only `has_flow_review`; a UI run changes only `has_ui_review`; formal
+Outline and Discovery runs change only `has_outline_review` and
+`has_outline_discovery` respectively. Preserve the other flags. After every
+index update run `sync-review-index.mjs`, `validate-review-index.mjs`, and the
+shared boundary gate; any failure blocks command completion. The renderer displays explicit
+paths such as `000 › 001` for demand navigation, while current-feature navigation
+still says `上一业务模块 / 业务模块 X/Y / 下一业务模块`.
 
 review data 是待审内容 / review data is draft review content. The renderer is not
 an editor / 不是编辑器 and does not directly edit flow or UI design /

@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/feature-code-ledger.schema.json",
+  "title": "SpecCompass Feature Code Allocation Ledger",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "scope",
+    "numbering_strategy",
+    "minimum_width",
+    "ledger_revision",
+    "ledger_digest",
+    "next_sequence",
+    "updated_at",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "scope": {"const": "repository"},
+    "numbering_strategy": {"const": "sequential"},
+    "minimum_width": {"const": 3},
+    "ledger_revision": {"type": "integer", "minimum": 1},
+    "ledger_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "next_sequence": {"type": "integer", "minimum": 1},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "entries": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/entry"}
+    }
+  },
+  "$defs": {
+    "featureCode": {
+      "type": "string",
+      "pattern": "^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$"
+    },
+    "feature": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "allocation_id",
+        "feature_code",
+        "feature",
+        "previous_features",
+        "status",
+        "proposal_id",
+        "transition_id",
+        "created_at",
+        "updated_at",
+        "reason"
+      ],
+      "properties": {
+        "allocation_id": {"type": "string", "minLength": 1},
+        "feature_code": {"$ref": "#/$defs/featureCode"},
+        "feature": {"$ref": "#/$defs/feature"},
+        "previous_features": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/feature"}
+        },
+        "status": {"enum": ["reserved", "active", "retired", "void"]},
+        "proposal_id": {"type": ["string", "null"]},
+        "transition_id": {"type": ["string", "null"]},
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

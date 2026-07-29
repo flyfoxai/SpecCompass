@@ -265,6 +265,84 @@ continue to `sp.specify` as one product; each child starts its own feature-local
 `sp.prd` and Outline confirmation. A confirmed single project records its
 independence rationale instead of fabricating child handoffs.
 
+Model candidate generation and the confirmed authority baseline are separate
+phases, not two permanent project structures. Analytical Outline nodes use
+stable `outline_node_id` values and never create features. After SP boundary
+checks and human confirmation, every authoritative Outline project-boundary node
+must share one immutable `feature_code` with exactly one active feature. A
+stable baseline therefore requires `outline_alignment: one_to_one`; `merged`,
+`split`, `diverged`, and `not_mapped` are legacy-migration or approved
+structure-change transition states that block ordinary downstream development.
+Flow/UI modules remain local responsibility and business-chain decompositions
+inside that confirmed feature boundary. The root's
+`specs/<root-feature>/outline-boundaries.json` is the only writable source for
+boundary identity, code, title, order, parentage, lifecycle, and Outline
+mapping. Schema-v2 `specs/review-index.json` derives those fields one way and
+directly owns only `updated_at` plus four review availability flags. Numeric
+codes do not imply inheritance: `001-*` is the first child of a `000-*` root
+only through an explicit parent, `sibling_order: 1`, and a confirmed
+`Subproject Handoff`. Ordinary commands must receive `allowed: true` and
+`transition_state: ALIGNED` from `check-outline-boundary-gate.mjs`; otherwise
+they return its shared block contract and sole repair command. Review commands
+change only their owned flag, then run `sync-review-index.mjs`,
+`validate-review-index.mjs`, and the shared gate check. Legacy migration creates
+a reviewed adoption candidate, never authoritative lineage.
+
+Project codes reuse the native SP sequential feature prefix. `000` is the root;
+new authoritative boundaries receive repository-global `001`, `002`, and later
+decimal codes, expanding beyond `999` without renumbering. Allocation history is
+stored in `specs/feature-code-ledger.json`, with reserved, active, retired, and
+void codes all permanently occupied. `manage-feature-codes.mjs` reserves codes
+only for a complete candidate entering final human review and binds each
+reservation to the proposed baseline ID and feature slug. Transition start
+rejects a new boundary without the matching reservation. Activation reconciles
+new and retired codes; pre-commit rollback voids unused reservations. The ledger
+is not a second boundary source, and parent/order changes never change identity.
+Outline-managed feature creation passes the allocated code explicitly through
+`--number`/`-Number`; automatic or timestamp numbering is not allowed there.
+
+Boundary adjustment uses only installed mechanical helpers. A candidate first
+runs through `prepare-outline-adjustment.mjs`; it creates an immutable impact
+preview while the current baseline remains `ALIGNED`. The final decision can be
+written only by the bound Outline review loopback writer, which injects session
+identity, creates a one-time receipt, and appends the writer ledger. Downloaded,
+copied, chat-derived, or model-authored JSON has no migration authority.
+
+The five-input `start-outline-transition.mjs` verifies that human record and
+compares proposal/base/impact identities with fresh repository hashes.
+`METADATA` activates immediately; `STRUCTURAL` creates the single active
+transition. `scan-outline-transition-impact.mjs` inventories current feature
+files plus explicit code/test additions, hashes every artifact, rejects symbolic
+links, and never selects a successor. Complete shared evidence drives one
+`advance-outline-transition.mjs validate`; Flow/UI checks are skipped when their
+artifact category is absent. Physical `MIGRATE`, `REGENERATE`, and `RETIRE`
+decisions first use `prepare-outline-transition-artifacts.mjs` to bind staged
+outputs and source digests in a canonical manifest. After cross validation,
+`publish-outline-transition-artifacts.mjs` applies operations one at a time with
+recoverable source backups and a replayable publication receipt.
+`activate-outline-baseline.mjs` revalidates unchanged sources or published
+targets immediately before the atomic baseline commit. It then marks the receipt
+`BASELINE_COMMITTED`, reconciles feature codes, and rebuilds the derived index.
+Every helper acquires, heartbeats, and releases its own short lock; owner IDs are
+never passed across commands. `rollback-outline-transition.mjs` can withdraw only
+before live publication with an empty live-write proof. After publication or
+activation, recovery/reversal is forward-only and manifest-bound.
+
+Structural command locks use a 300-second lease; the feature-code ledger uses a
+60-second lease and a bounded Git scan. Every expired-lease takeover must first
+win one fixed `<lock>.recovery` claim with exclusive creation, then re-read and
+compare the complete observed main claim before isolating it. Because a `wx`
+file is briefly visible before its JSON write completes, readers retry boundedly
+and treat a persistently empty, truncated, or malformed claim as a fail-closed
+operator condition. Heartbeats update the already opened and identity-checked
+claim file, so a resumed stale owner cannot replace a successor's path. A
+leftover recovery claim is never recursively recovered.
+Main and recovery claim removal retries Windows `EPERM`, `EACCES`, and `EBUSY`;
+if removal still fails, the command reports failure and preserves the recovery
+route. Failed exclusive creation also reports any claim-cleanup failure instead
+of hiding it. Only cleanup of an already isolated unique `.stale` file may
+degrade to a warning.
+
 Level 1 and Level 2 use `interaction_mode: discovery`; Level 3 uses
 `interaction_mode: confirmation`. Discovery writes
 `specs/<feature>/prd/review/outline-discovery-data.json` and offers 2-4 candidates
@@ -688,6 +766,11 @@ Not every file is seeded up front by the template root. Some are created or expa
   Inferred UI cannot support `READY_FOR_PLAN`, stable trace, risk closure,
   gate PASS, or implementation readiness until confirmed or checked.
 - bind screens, fields, and actions to flow steps, business events, data objects, permissions, API contracts, acceptance paths, or open items
+- keep short category action sets on one screen. A primary action such as
+  `运行分析` plus a few analysis types must expose those types as one responsive
+  group of buttons, not as category tabs that reveal the same buttons again.
+  Shared-result filters also stay together; tabs are reserved for categories
+  with materially different persistent views, such as separate chart/table/export state.
 - prefer structured UI documents, JSON Forms, HTML/CSS prototypes, or Storybook
   stories over bitmap images, and make rendered/exported UI visuals reviewable
   with visible labels such as `SCREEN S1`, `SECTION S1.2`, `FIELD F3`,

@@ -13,6 +13,14 @@ $ARGUMENTS
 
 You MUST consider the user input before proceeding.
 
+## Authoritative Outline Boundary Gate
+
+Before an ordinary gate decision, resolve the one root feature from the explicit target and `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>`. Accept only schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+For `allowed: false`, an ordinary stage cannot PASS. Reproduce the returned machine contract unchanged: `block_reason`, `root_feature`, `current_baseline_id`, `proposed_baseline_id`, `transition_state`, `transition_id`, `blocked_since`, `evidence_refs`, `repair_command_exec`, and `repair_command`; `repair_command_exec` is the sole next action. A transition gate may decide only the named `transition_id`, and may advance toward `CROSS_ARTIFACT_VALIDATED` only with explicit human approval, current base/proposal digests, complete reassignment, closed evidence, Flow/UI impact closure, and no `BLOCKED` outcome. It cannot replace `outline-boundaries.json`; activation remains the final locked commit-point operation. Never edit derived `review-index.json` boundary fields.
+
+The transition gate uses `advance-outline-transition.mjs validate` with the exact inventory, shared evidence, output report, and canonical staging manifest when physical operations exist. That helper rehashes every live/staged input, refuses incomplete coverage or post-inventory changes, and records `executed`, `skipped`, or `blocked` for project restructure, Flow, UI, and cross-artifact closure. It acquires and releases its own short lock; no owner value crosses commands. Only after it returns `CROSS_ARTIFACT_VALIDATED` may `/sp.prd` publish staged artifacts and invoke `activate-outline-baseline.mjs`; the gate itself never publishes or activates. A requested withdrawal after live publication cannot PASS as rollback-ready and must use manifest-bound forward recovery.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or

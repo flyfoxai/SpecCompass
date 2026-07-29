@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/review-index.schema.json",
+  "title": "SpecCompass Feature Review Index",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "project", "updated_at", "hierarchy", "features"],
+  "properties": {
+    "schema_version": {"const": 2},
+    "project": {"type": "string"},
+    "updated_at": {"type": "string"},
+    "hierarchy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "root_feature"],
+      "properties": {
+        "mode": {"enum": ["flat", "explicit"]},
+        "root_feature": {"type": ["string", "null"]}
+      }
+    },
+    "features": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/feature"}
+    }
+  },
+  "$defs": {
+    "feature": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "order",
+        "feature_code",
+        "feature",
+        "title",
+        "parent_feature",
+        "sibling_order",
+        "boundary_source",
+        "outline_alignment",
+        "has_flow_review",
+        "has_ui_review",
+        "has_outline_review",
+        "has_outline_discovery"
+      ],
+      "properties": {
+        "order": {"type": "integer", "minimum": 1},
+        "feature_code": {"type": "string", "pattern": "^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$"},
+        "feature": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"},
+        "title": {"type": "string", "minLength": 1},
+        "parent_feature": {"type": ["string", "null"]},
+        "sibling_order": {"type": "integer", "minimum": 0},
+        "boundary_source": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "handoff_ref", "rationale"],
+          "properties": {
+            "kind": {"enum": ["root", "standalone", "subproject_handoff"]},
+            "handoff_ref": {"type": ["string", "null"]},
+            "rationale": {"type": "string", "minLength": 1}
+          }
+        },
+        "outline_alignment": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "outline_node_refs", "rationale"],
+          "properties": {
+            "status": {"enum": ["not_mapped", "one_to_one", "merged", "split", "diverged"]},
+            "outline_node_refs": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "minLength": 1}
+            },
+            "rationale": {"type": "string", "minLength": 1}
+          }
+        },
+        "has_flow_review": {"type": "boolean"},
+        "has_ui_review": {"type": "boolean"},
+        "has_outline_review": {"type": "boolean"},
+        "has_outline_discovery": {"type": "boolean"}
+      }
+    }
+  }
+}

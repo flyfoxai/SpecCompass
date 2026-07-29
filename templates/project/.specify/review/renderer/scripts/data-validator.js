@@ -6,6 +6,52 @@ const OUTLINE_DISCOVERY_DENSITY_BUDGET = Object.freeze({
   max_layer_share: 0.6,
 });
 
+function validateBoundaryAdjustmentRuntime(data) {
+  const value = data.boundary_adjustment;
+  if (value === undefined) return "";
+  if (data.review_type !== "outline" || !value || typeof value !== "object" || Array.isArray(value)) {
+    return "boundary_adjustment 只能用于 Outline 审核。";
+  }
+  const keys = new Set([
+    "proposal_id", "proposal_digest", "base_baseline_id", "base_baseline_digest",
+    "impact_preview_digest", "initiated_by", "change_class", "affected_feature_codes",
+    "proposal_path", "impact_preview_path", "decision_path", "writer_ledger_path",
+    "decision_target_ref"
+  ]);
+  if (Object.keys(value).some((key) => !keys.has(key)) || [...keys].some((key) => !(key in value))) {
+    return "boundary_adjustment 字段不完整或包含未知字段。";
+  }
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(value.proposal_id || "")
+    || ![value.proposal_digest, value.base_baseline_digest, value.impact_preview_digest]
+      .every((digest) => /^[a-f0-9]{64}$/.test(digest || ""))
+    || !["model", "user"].includes(value.initiated_by)
+    || !["METADATA", "STRUCTURAL"].includes(value.change_class)) {
+    return "boundary_adjustment 身份或分类无效。";
+  }
+  if (!Array.isArray(value.affected_feature_codes)
+    || new Set(value.affected_feature_codes).size !== value.affected_feature_codes.length
+    || value.affected_feature_codes.some((code) => !/^(?:[0-9]{3,}|[0-9]{8}-[0-9]{6})$/.test(code))) {
+    return "boundary_adjustment affected_feature_codes 无效。";
+  }
+  const feature = String(data.project?.feature || "");
+  const base = `specs/${feature}/boundary-adjustments`;
+  const draft = `${base}/drafts/${value.proposal_id}`;
+  const expected = {
+    proposal_path: `${draft}/proposal.json`,
+    impact_preview_path: `${draft}/impact-preview.json`,
+    decision_path: `${draft}/decision.json`,
+    writer_ledger_path: `${base}/writeback-ledger.jsonl`
+  };
+  for (const [field, path] of Object.entries(expected)) {
+    if (!runtimeIsSafeRepoPath(value[field]) || value[field] !== path) return `boundary_adjustment ${field} 必须使用固定路径。`;
+  }
+  if (typeof value.base_baseline_id !== "string" || !value.base_baseline_id
+    || typeof value.decision_target_ref !== "string" || !value.decision_target_ref) {
+    return "boundary_adjustment baseline 或 decision_target_ref 无效。";
+  }
+  return "";
+}
+
 function validateOutlineDiscoveryTopologyRuntime(data) {
   const budget = data.density_budget;
   if (!budget || typeof budget !== "object" || Array.isArray(budget)) return "Outline 探索缺少密度预算。";
@@ -468,6 +514,8 @@ function validateReviewData(data) {
     if (!Array.isArray(data.source_authority_ids) || data.source_authority_ids.length === 0) {
       return "source_authority_ids 必须是非空数组。";
     }
+    const boundaryError = validateBoundaryAdjustmentRuntime(data);
+    if (boundaryError) return boundaryError;
   }
   return "";
 }

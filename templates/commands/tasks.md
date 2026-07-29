@@ -18,6 +18,14 @@ $ARGUMENTS
 
 You **MUST** consider the user input before proceeding (if not empty).
 
+## Authoritative Outline Boundary Gate
+
+Before ordinary task generation, resolve the one root feature from the explicit target and `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>`. Accept only schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+For `allowed: false`, stop ordinary task generation and reproduce the returned machine contract unchanged: `block_reason`, `root_feature`, `current_baseline_id`, `proposed_baseline_id`, `transition_state`, `transition_id`, `blocked_since`, `evidence_refs`, `repair_command_exec`, and `repair_command`. `repair_command_exec` is the sole next action. Migration tasks are allowed only from an explicit `/sp.prd` migration plan for the same `transition_id` and proposal digest; mark them as migration tasks with bounded write sets and checks, and never schedule ordinary implementation against a proposed boundary. Never edit derived `review-index.json` boundary fields.
+
+Each migration task must cite the exact inventory digest and one or more inventoried `artifact_ref` values. Its write set must not include an artifact absent from the inventory; first regenerate the inventory through `/sp.plan` when scope expands. Task completion supplies evidence or staged output to the shared transition files but cannot run `advance-outline-transition.mjs`, publish artifacts, activate a baseline, or rewrite artifact ownership. The `/sp.prd` coordinator invokes the mechanical helpers; each helper serializes only its own short write and releases its lock before returning.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or

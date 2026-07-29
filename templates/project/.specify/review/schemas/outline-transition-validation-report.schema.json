@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-transition-validation-report.schema.json",
+  "title": "SpecCompass Outline Transition Validation Report",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "transition_id", "transition_revision", "proposal_digest",
+    "inventory_digest", "generated_at", "checks", "report_digest"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "transition_id": {"type": "string", "minLength": 1},
+    "transition_revision": {"type": "integer", "minimum": 1},
+    "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "inventory_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "checks": {
+      "type": "array",
+      "prefixItems": [
+        {"$ref": "#/$defs/check", "properties": {"check_id": {"const": "project_restructure"}}},
+        {"$ref": "#/$defs/check", "properties": {"check_id": {"const": "flow"}}},
+        {"$ref": "#/$defs/check", "properties": {"check_id": {"const": "ui"}}},
+        {"$ref": "#/$defs/check", "properties": {"check_id": {"const": "cross_artifact"}}}
+      ],
+      "items": false,
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "report_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"}
+  },
+  "$defs": {
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["check_id", "status", "artifact_count", "reason"],
+      "properties": {
+        "check_id": {"enum": ["project_restructure", "flow", "ui", "cross_artifact"]},
+        "status": {"enum": ["executed", "skipped", "blocked"]},
+        "artifact_count": {"type": "integer", "minimum": 0},
+        "reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

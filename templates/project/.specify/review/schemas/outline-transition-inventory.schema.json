@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://speccompass.dev/schemas/outline-transition-inventory.schema.json",
+  "title": "SpecCompass Outline Transition Artifact Inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version", "transition_id", "transition_revision", "proposal_digest",
+    "generated_at", "inventory_digest", "artifacts"
+  ],
+  "properties": {
+    "schema_version": {"const": 1},
+    "transition_id": {"type": "string", "minLength": 1},
+    "transition_revision": {"type": "integer", "minimum": 1},
+    "proposal_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "inventory_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+    "artifacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["artifact_type", "artifact_ref", "source_digest", "source_feature_code"],
+        "properties": {
+          "artifact_type": {"enum": ["prd", "outline", "spec", "flow", "ui", "plan", "tasks", "implementation", "test", "trace", "memory", "open_item"]},
+          "artifact_ref": {"$ref": "outline-boundaries.schema.json#/$defs/repoRef"},
+          "source_digest": {"type": "string", "pattern": "^[a-f0-9]{64}$"},
+          "source_feature_code": {"$ref": "outline-boundaries.schema.json#/$defs/featureCode"}
+        }
+      }
+    }
+  }
+}
