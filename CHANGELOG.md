@@ -2,6 +2,25 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.34] - 2026-07-30
+
+### Added
+
+- Added one digest-bound reset helper for ordinary PRD, Flow, and UI regeneration, including confirmation-aware preserve/clear choices and interruption recovery.
+- Added an explicit `--consume-review-confirmation` closeout route so a fully confirmed active review can advance readiness without being regenerated again.
+
+### Changed
+
+- Made direct `/sp.prd`, `/sp.flow`, and `/sp.ui` calls regenerate their own complete active output from current source facts instead of routing ordinary work through project-boundary adoption.
+- Made missing legacy Outline boundary registration a non-blocking advisory while preserving strict blocking for approved transitions, damaged established authority, interrupted publication, and confirmed-baseline exclusions.
+- Updated PRD, methodology, command reference, and the Review Data skill to distinguish direct full-stage regeneration from confirmation consumption, transition work, and Lite-scoped passes.
+
+### Fixed
+
+- Preserved `prd.md`, stable specs, other command output, code, tests, data, and migrations during command-level regeneration.
+- Hardened reset recovery against inventory drift, path escape, tampered plans, symlinks, hard links, partial moves, and common Windows file-operation contention.
+- Fixed writeback routing so revision or open-item records return to full regeneration while complete confirmation uses the non-regenerating consumption route.
+
 ## [0.11.33] - 2026-07-29
 
 ### Added

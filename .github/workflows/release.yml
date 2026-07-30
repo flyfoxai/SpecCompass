@@ -44,18 +44,17 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Regenerate rejected Outline drafts
+          ## Regenerate PRD, Flow, and UI outputs directly
 
-          This patch adds a safe way to reject an unconfirmed pre-baseline Outline and generate a new one from the real requirement sources:
+          This patch makes a direct stage command regenerate its own active output instead of replacing the requested work with project-boundary adoption:
 
-          - \`/sp.prd <root> --discard-outline-draft\` creates a digest-bound plan before moving any draft-owned artifact.
-          - The reset archives only the rejected Outline, its review/discovery records, and unactivated boundary proposals into auditable history.
-          - Every PRD, spec, Flow, UI, plan, task, implementation file, test, data file, and migration remains in place.
-          - \`outline-draft-reset.json\` binds the immutable plan, preserved PRD digests, archived files, and transitional review index before regeneration can start.
-          - \`/sp.prd <root> --regenerate-outline-draft --reset <reset-id>\` uses model capability to generate a genuinely new Outline rather than restoring or renaming the rejected draft.
-          - Candidate projects use temporary \`draft-project-*\` identities; stable project codes are considered only after human confirmation and separate reconciliation.
-          - Fixed paths, canonical digests, short leases, idempotent recovery, locale-independent ordering, and symlink/hard-link rejection keep the reset fail closed across supported systems.
-          - The ordinary aligned PRD, Flow, and UI work remains unchanged when no reset receipt exists.
+          - Ordinary \`/sp.prd <feature>\` preserves \`prd.md\` and regenerates the complete Outline and its review artifacts from current requirement facts.
+          - Ordinary \`/sp.flow <feature>\` and \`/sp.ui <feature>\` regenerate their complete active Flow or UI output from current upstream facts.
+          - When confirmed or recorded human input exists, the command asks whether to preserve those records as non-authoritative fresh-review input or clear all active generated output and start clean.
+          - Missing legacy \`000\`/\`001\` boundary registration is a non-blocking advisory; approved structural transitions and damaged established authority still fail closed before deletion.
+          - A fully confirmed writeback returns \`--consume-review-confirmation\` and advances readiness without regeneration; revision or open-item results return to the ordinary full-regeneration path.
+          - Digest-bound inventories, interruption recovery, path confinement, tampered-plan detection, bounded Windows retries, and symlink/hard-link rejection keep resets safe across supported systems.
+          - PRDs, stable specs, other command output, plans, tasks, code, tests, data, and migrations remain outside the command reset scope.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install

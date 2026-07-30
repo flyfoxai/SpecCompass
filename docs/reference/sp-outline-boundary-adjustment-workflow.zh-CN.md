@@ -3,7 +3,7 @@
 ## 文档状态
 
 - 文档类型：项目边界调整的详细设计与实施约束
-- 当前版本：2026-07-29
+- 当前版本：2026-07-30
 - 审核状态：Claude Opus 4.8 与 Gemini 3.1 Pro 于 2026-07-28 给出 `CONDITIONAL_PASS`；本文已补齐人工确认来源、状态映射、锁生命周期、轻量调整白名单、root 冻结、stale 检查和非破坏性恢复约束
 - 适用范围：Outline 项目边界、真实子项目、稳定 `feature_code` 以及相关 PRD、Spec、Flow、UI、Plan、Tasks、代码和测试
 - 上位需求：[SpecCompass 产品需求文档](speccompass-product-requirements.zh-CN.md)
@@ -197,55 +197,44 @@
 
 ### 7.2 存量项目首次接入
 
-存量接入不是日常调整，也不是结构迁移。缺少 `outline-boundaries.json` 时，普通命令统一返回 `LEGACY_ADOPTION_REQUIRED`，唯一入口是 `/sp.prd <root-feature> --adopt-outline-boundaries`。这个入口先机械扫描 `review-index.json`、feature 目录和现有映射，生成带来源摘要的候选报告；然后由模型读取真实 PRD、Outline、handoff 和目录内容，生成 proposal 与正式 Outline 审核页。模型可以分析和生成真实内容，但不能替用户写最终 decision、receipt 或 writer ledger。schema-v1 flat index 迁移出的非根条目会暂用 `parent_feature: null`、`sibling_order: 0` 表示“层级未知”；当候选报告同时标记 `parent_unconfirmed` 时，采纳 proposal 必须在用户审核前把真实 parent 和大于等于 1 的 sibling 顺序补齐。这是对缺失事实的确认，不是改写已经确认的结构；已有显式 parent 或 sibling 顺序仍必须原样保留。
+存量接入不是日常生成的前置阶段。缺少 `outline-boundaries.json` 时，普通 `/sp.prd`、`/sp.flow`、`/sp.ui` 使用 `--intent regenerate` 调用共享门禁；门禁返回 `allowed: true`、`authority_status: UNREGISTERED` 和 `blocks_regeneration: false` 的提示。命令先完成自己的 Outline、Flow 或 UI，不得自动打开“根级边界采纳”页面，也不得把 `000`、`001` 的关系确认伪装成主任务。
 
-审核页中的 `boundary_adjustment` 显式写 `operation: ADOPTION`、空 base identity 和 `change_class: ADOPTION`，不能伪装成 `METADATA` 或 `STRUCTURAL`。`prepare-outline-boundary-adoption.mjs` 会验证候选报告未过期、项目代码和目录一一对应、parent 合法、Outline 节点存在、handoff 文件与锚点存在、无重复代码或符号链接，并对现有产物生成摘要；准备结束后仍不得出现权威 boundaries 文件。
+旧的 `--adopt-outline-boundaries`、candidate report、ADOPTION 页面和 activator 仍作为显式兼容维护入口存在，但只在用户主动要求登记现有形状或恢复已有 adoption receipt 时使用。它们不能再成为普通命令唯一出口。旧 flat index 的 `parent_feature: null`、`sibling_order: 0` 只表示未知；模型可以从 PRD 提出 `model_derived` 候选，但不能写成“用户已确认”。简单关系以后可以单独做轻量或自动登记，真实 split/merge/reparent/retire 仍走完整结构调整。
 
-用户只能在绑定的本地页面上最终确认。loopback writer 机械写入 decision、一次性 receipt 和追加式 writer ledger，不调用模型。`activate-outline-boundary-adoption.mjs` 在短租约内重新验证当前目录、候选、proposal、审核摘要、writer ledger 和 receipt；确认全部一致后，先消费一次 receipt，再建立 feature-code ledger，最后以 exclusive create 建立首个 `ALIGNED` baseline，并前滚重建 `review-index.json` 和激活日志。并发调用、提交点后崩溃或派生文件写入失败都只允许幂等前滚，不能覆盖另一个 boundaries 文件。
+缺登记时，命令不得修改 index 的 parent、顺序、代码或映射；已有目标 entry 时只更新本命令 availability flag，不存在时只报告提示。旧 `outline-boundaries-adoption.json` 可以在主产物生成后用一句话询问是否清除并重建，但它不是本轮审核项。已经存在且可解析的正式 active transition、损坏的已建立权威文件、发布未提交状态或目标被 confirmed baseline 排除，仍必须在清除命令产物之前阻断。
 
-页面写回返回的第二次命令带 `--consume-outline-decision <proposal-id>`。这次只能消费同一份不可变 report、proposal、preview、decision 和 ledger，禁止重新运行 bootstrap、重新生成页面或改写 preview，否则会让用户刚确认的身份失效。若权威 boundaries 已经完成提交，后续即使普通 PRD 更新了审核页，旧激活命令也只能按已提交 baseline 幂等补齐 code ledger、review index 和日志，不能倒退或覆盖权威状态。
-
-Adoption 只记录当前事实，不移动、重命名、删除或新建业务项目，也不改写现有 PRD、Outline、Flow、UI 或代码。若当前结构确实需要调整，先按现状完成 adoption，再另行进入人工确认的调整流程。激活后必须重新运行边界门禁；普通 `/sp.prd` 只能在新门禁通过后重新生成新版 PRD/Outline 页面。仅升级 CLI 不会刷新已复制到项目里的命令和脚本，存量项目还要在提交本地修改后执行 `specify init . --integration <agent> --force`。
+仅升级 CLI 不会刷新已复制到项目里的命令和脚本；存量项目仍需在提交本地修改后执行 `specify init . --integration <agent> --force`。
 
 ### 7.3 未确认 Outline 的整体废弃与重生成
 
-这个入口只处理一种特殊情况：项目还没有 `outline-boundaries.json`，现有 Outline 明确是未确认草稿，而用户不愿把这份草稿先采纳成“当前事实”。它不是日常命令，也不是已有 baseline 上的结构迁移。
+整体重生成现在是普通命令语义，不再是首个 baseline 前的特殊路线：
 
 核心关系是：
 
 ```text
 PRD / 用户需求 / 正式业务来源（保留）
                  ↓
-旧 Outline 草稿与伴生决定（失效并归档）
+检查旧命令产物与人工记录
                  ↓
-模型重新读取全部 PRD + 相关现有实现
+无人工记录：直接清除
+有人工记录：用户选“保留复审”或“全部清除”
                  ↓
-新 Outline 草稿（临时项目身份）
+模型从当前事实重新生成完整产物
                  ↓
-用户审核确认
+Fresh review / fresh confirmation
                  ↓
-项目 reconciliation + 影响迁移
-                 ↓
-首个权威 baseline
+只有真实项目结构改变时才进入 reconciliation / migration
 ```
 
-`/sp.prd <root> --discard-outline-draft` 先运行只生成清单的 `plan`，再按返回的 `plan_digest` 运行 `apply`。plan 不移动文件。apply 使用短租约，先检查全部写集，再把以下文件移动到 `prd/review/history/outline-draft-resets/<reset-id>/`：
+固定工具是 `reset-command-artifacts.mjs`。`inspect <prd|flow|ui> specs/<feature>` 只读扫描命令拥有的文件，拒绝符号链接、硬链接和越界路径，并返回每个文件的 SHA-256、`inventory_digest` 和人工记录。`apply` 重新扫描并要求 digest 完全相同；文件在检查后变化就停止，让调用者重新检查。中途只删掉一部分时可以重新 inspect 后继续，绝不扩大到新发现的路径。
 
-- 每个来源容器的 `spec-outline.md`；
-- `outline-review-data.json`、`outline-confirmation.md`；
-- Outline Discovery 数据、pending response、intent ledger 和相关 consumed response；
-- root 下未激活的 `outline-boundaries-adoption.json`；
-- root 下 `boundary-adjustments/drafts/` 的 proposal、preview、decision 等文件。
+先完成所有只读 prerequisite、Lite、hook、边界和路由检查，再执行 `apply`。确认消费、结构迁移影响/恢复、coordinator 授权的 Lite 小范围轮次都不是普通全量重生成；检查阻断或缩小范围时，active 产物保持原样。
 
-白名单不包含任何 `prd.md`、`spec.md`、Flow、UI、Plan、Tasks、代码、测试、数据或 migration。脚本不是按目录“看起来像 Outline”就递归删除，而是逐个固定模式收集 regular file、记录 SHA-256，并拒绝符号链接、大小写归一化重复、绝对路径、`..` 越界和 archive 逃逸。已有权威 baseline、active transition、staging、transition sidecar 或来源摘要变化都会阻断。
+PRD 只拥有 `spec-outline.md` 和 `prd/review/` 下以 `outline-` 开头的产物；旧 draft-reset plan/receipt 和其恢复归档留给兼容工具。Flow 拥有 `flows/`，UI 拥有 `ui/`，隐藏系统文件不按命令产物删除。三个命令都不得触碰 `prd.md`、`spec.md`、其他命令目录、Plan、Tasks、代码、测试、数据或 migration。
 
-apply 的提交点是 `outline-draft-reset.json`。它在所有归档、未确认代码预留作废和 transitional review index 更新完成后最后写入。若进程中途退出，同一 plan 可以识别“源文件已不在、同摘要 archive 已存在”并继续；源和 archive 同时存在、两者都不存在或摘要不一致时保留现场并停止。重复执行已完成 plan 只返回同一 receipt，不再移动文件。
+状态为 `CLEAR_AND_REGENERATE` 时普通命令直接 `--mode clear`。状态为 `CONFIRMED_RECORDS_REQUIRE_CHOICE` 时必须等用户选择：`preserve-confirmed` 先按固定 inventory ID 保存确认原件和 manifest，再清空 active 产物；`clear --ack-confirmed` 连确认记录一起清掉。保留的记录明确写 `NON_AUTHORITATIVE_REREVIEW_INPUT`，只能帮助模型准备新的候选，不能直接授权新产物。全部清除后，模型不得引用旧决定。
 
-reset 后 `review-index.json` 暂时保留旧目录作为来源导航，但把层级改为 flat、Outline mapping 改为 `not_mapped`，并只清空 Outline Review/Discovery availability；Flow/UI availability 保留。此时 index 不是新项目结构的事实源。门禁读取 receipt 后返回 `OUTLINE_DRAFT_REGENERATION_REQUIRED`，不能再把旧条目送进普通 legacy adoption。
-
-`--regenerate-outline-draft --reset <reset-id>` 必须验证 receipt、归档和所有 PRD digest。模型读取每个来源容器的 PRD，以及与项目边界判断相关的 spec、Flow、UI、task、代码、测试、数据和 migration；旧 Outline 只能作为“已失效历史”留在 archive，不能偷偷恢复。新 Outline 的项目候选使用 `draft-project-*` 临时身份，不携带稳定 code、active feature 或既定 parent。reset ID 和 receipt digest 要进入 Outline review 的 source authority identity，防止另一轮 reset 的确认被误消费。
-
-用户确认新 Outline 后，才进入单独的 reconciliation proposal。此时可以根据语义延续、拆分、合并和新建情况分配候选 SP code，逐项列出所有保留产物的 `UNCHANGED_WITH_EVIDENCE / MIGRATE / REGENERATE / RETIRE / BLOCKED` 以及 successor/shared/retire/blocked 归属。代码和数据默认保留；没有独立清理确认时，即使新 Outline 不再引用旧实现，也只能标为 legacy 或 blocked，不能自动删除。
+旧 `/sp.prd --discard-outline-draft` 和 `--regenerate-outline-draft --reset` 只用于已经创建的旧 plan/receipt 恢复。新普通命令不得主动推荐它们。新 Outline 如提出新的项目划分，使用临时候选身份；只有新 Outline 经过 fresh confirmation 且确实需要改变项目结构时，才建立单独 reconciliation proposal。代码和数据始终默认保留，没有独立迁移或清理确认不得删除。
 
 ## 8. 状态和锁的简化
 

@@ -45,6 +45,7 @@ or UI confirmation runs.
 - Validator: `.specify/review/scripts/validate-review-data.mjs`
 - Boundary gate: `.specify/review/scripts/check-outline-boundary-gate.mjs`
 - Draft reset: `.specify/review/scripts/discard-outline-draft.mjs`
+- Command artifact reset: `.specify/review/scripts/reset-command-artifacts.mjs`
 - Feature-code manager: `.specify/review/scripts/manage-feature-codes.mjs`
 - Transition proposal: `.specify/review/scripts/start-outline-transition.mjs`
 - Draft impact preview: `.specify/review/scripts/prepare-outline-adjustment.mjs`
@@ -121,77 +122,63 @@ If validation fails, do not finish the command and do not promote readiness.
 Fix model-fixable data issues first. If the remaining gap requires human
 information, mark the item blocked with a short reason and owner route.
 
-Before generating or repairing any review data, run the authoritative boundary
-gate for the requested feature:
+Before ordinary PRD, Flow, or UI review generation, run the boundary safety
+check with regeneration intent:
 
 ```bash
-node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature>
+node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature> --intent regenerate
 ```
 
-Continue ordinary review generation only for
-`speccompass.outline-boundary-gate.v1` with `allowed: true`. On a block, return
-the gate's complete machine contract and its sole `repair_command_exec`; do not
-invent lineage, silently adopt a legacy project, or generate against a proposed
-baseline. Transition-specific Flow/UI impact review is allowed only for the
-same explicit `transition_id` handed off by `/sp.prd`.
+Continue for schema `speccompass.outline-boundary-gate.v1` with `allowed: true`.
+`authority_status: UNREGISTERED` and a missing-boundary advisory do not block
+regeneration and must not open an adoption page. Do not infer lineage. A valid
+active structural transition, invalid established authority, interrupted
+publication, or target excluded by a confirmed baseline still blocks before
+any command output is cleared. Return that block's exact
+`repair_command_exec`. Transition-specific Flow/UI impact review remains
+limited to the same explicit `transition_id` handed off by `/sp.prd`.
 
-`LEGACY_ADOPTION_REQUIRED` has one explicit exception to ordinary generation:
-`/sp.prd <root-feature> --adopt-outline-boundaries`. That route first runs
-`bootstrap-outline-boundaries.mjs`, then uses the model to read the candidate,
-real PRD/Outline, current feature directories, handoffs, and review index and to
-generate a genuine Outline review page. The page identity uses
-`operation: ADOPTION`, null base baseline fields, and `change_class: ADOPTION`.
-A migrated flat non-root entry with `parent_feature: null`, `sibling_order: 0`,
-and candidate issue `parent_unconfirmed` records unknown hierarchy, not an
-authoritative root position. The proposal must confirm its real parent from
-current handoff/Outline evidence and assign `sibling_order >= 1`; an already
-explicit parent and sibling order remain immutable during adoption.
-Run `prepare-outline-boundary-adoption.mjs` before serving it; the helper must
-leave `outline-boundaries.json` absent. Only the loopback writer may record the
-human decision and receipt. After confirmation, `/sp.prd` runs
-`activate-outline-boundary-adoption.mjs`, which rechecks live paths, mappings,
-digests, writer evidence, and the one-time receipt under a lease before creating
-the first `ALIGNED` baseline and derived index. Adoption records the existing
-shape only: it never moves, renames, deletes, or invents a project. A desired
-restructure is a later, separate adjustment.
+Before using old review data, inspect the owning command's generated output:
 
-A missing boundary file with a valid
-`specs/<root-feature>/prd/review/outline-draft-reset.json` is a different state.
-The gate returns `OUTLINE_DRAFT_REGENERATION_REQUIRED` and the exact
-`--regenerate-outline-draft --reset <reset-id>` command. Do not run legacy
-bootstrap and do not treat `review-index.features` as the current project shape
-in this state. Those directories are preserved requirement/implementation
-source containers only.
+```bash
+node .specify/review/scripts/reset-command-artifacts.mjs inspect <prd|flow|ui> specs/<feature>
+```
 
-The reset itself is allowed only for an explicitly invoked
-`/sp.prd <root-feature> --discard-outline-draft` before any authoritative
-baseline exists. Use `discard-outline-draft.mjs plan` and then apply only that
-plan's returned digest. The mechanical tool archives a closed allowlist of
-Outline draft/review/decision files, writes the receipt last, and preserves all
-PRDs, specs, Flow/UI, plans, tasks, code, tests, data, and migrations. It rejects
-active transitions, symlinks, repository escapes, live-source drift, and an
-existing boundary baseline. Resume an interrupted immutable plan; never widen
-its archive list or convert it to a recursive feature-directory deletion.
+This default reset applies only to a direct full-stage invocation. Explicit
+confirmation consumption, transition impact/recovery, and
+coordinator-authorized Lite scoped passes keep their narrower contracts.
+Complete every read-only prerequisite, Lite, hook, boundary, and route check
+before reset apply. A blocked or narrowed run leaves active output untouched.
 
-For regeneration, validate the reset receipt and every preserved PRD digest,
-then use model capability to read all listed PRDs and relevant preserved
-implementation evidence. Generate a new root `spec-outline.md` and
-`outline-review-data.json`; do not restore the archived Outline. Project
-candidates use temporary `draft-project-*` identities with no stable project
-code or active feature claim. Bind the reset ID and receipt digest into a
-`source_authority_id` and the source snapshot so a confirmation from another
-reset cannot be consumed. Show concrete project/code/Flow/UI impacts in review
-choices without changing implementation artifacts. Normal loopback writeback
-records the user's Outline decision. Only after a matching human confirmation
-may `/sp.prd` create the separate project-reconciliation proposal, assign
-candidate SP codes, and route every preserved artifact through impact analysis.
-No confirmation or regeneration step may automatically delete code.
+For `CLEAR_AND_REGENERATE`, immediately apply `--mode clear` with the returned
+`inventory_digest`. For `CONFIRMED_RECORDS_REQUIRE_CHOICE`, stop before deletion
+and ask the user whether to preserve confirmed/recorded human input for fresh
+review or clear all prior generated information. Preserve uses
+`--mode preserve-confirmed`; clear uses `--mode clear --ack-confirmed`. Never
+make that choice for the user. Apply must use the exact inspection digest.
 
-The writer's next command includes `--consume-outline-decision <proposal-id>`.
-On that second invocation, reuse the immutable report, proposal, preview,
-decision, and ledgers. Never rerun bootstrap or model generation before
-activation, because doing so would stale the human decision that is being
-consumed.
+Preserved records live under
+`review/history/regeneration-preserved/<inventory>/` with authority
+`NON_AUTHORITATIVE_REREVIEW_INPUT`. They may inform new candidates but do not
+narrow or authorize the new review and cannot be consumed through the explicit
+confirmation-consumption route. Clear mode must not cite, reconstruct, or
+silently carry their decisions. In both modes, regenerate the full currently
+applicable Outline, Flow, or UI and require fresh confirmation.
+
+PRD owns only `spec-outline.md` plus its `prd/review/outline-*` artifacts and
+must preserve `prd.md`. Flow owns `flows/`; UI owns `ui/`. No reset may touch
+the stable spec, other command output, plans, tasks, code, tests, data, or
+migrations. The helper rejects path escape, symlinks, hard links, and inventory
+drift. Old `--discard-outline-draft`, `--regenerate-outline-draft`, and adoption
+commands are compatibility/recovery routes only; do not recommend them during
+ordinary generation. The existing `prepare-outline-boundary-adoption.mjs` and
+`activate-outline-boundary-adoption.mjs` checks still apply when a user
+explicitly invokes that legacy maintenance route.
+
+Fresh Outline generation uses temporary `draft-project-*` identities for newly
+proposed project nodes. They cannot become active features or stable codes until
+fresh confirmation and separate project reconciliation; no reset or
+reconciliation step authorizes automatic code deletion.
 
 For an existing aligned baseline, this skill never hand-edits transition state. `/sp.prd` first creates a closed
 draft proposal and calls `prepare-outline-adjustment.mjs`; draft generation and
@@ -244,18 +231,20 @@ pre-commit rollback changes unused reservations to `void`. Rejected or expired
 drafts must explicitly run the manager's `void` action. Never edit the ledger or
 fill a numeric gap by hand.
 
-`specs/<root-feature>/outline-boundaries.json` is the only writable source for
-project identity, title, `order`, parentage, `feature_code`, `boundary_source`,
-and `outline_node_id`. Schema-v2 `specs/review-index.json` derives
-`parent_feature`, `sibling_order`, and `outline_alignment` from that source and is a navigation and
-availability projection. A review command may preserve and change only its
-owned availability flag plus `updated_at`; it must never directly change a
-derived boundary field. After the owned flag is updated, run
-`node .specify/review/scripts/sync-review-index.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json`
-and then rerun the boundary gate. For legacy v1 input, first run
-`migrate-review-index.mjs`; the backup and migration candidate are not an
-authoritative boundary baseline and still require reviewed adoption through
-`/sp.prd`.
+When registered, `specs/<root-feature>/outline-boundaries.json` is the only
+writable source for project identity, title, `order`, parentage, `feature_code`,
+`boundary_source`, and `outline_node_id`. Schema-v2 `specs/review-index.json`
+derives `parent_feature`, `sibling_order`, and `outline_alignment` from that
+source and is a navigation and availability projection. A review command may
+change only its owned availability flag plus `updated_at`; it must never
+directly change a derived boundary field. With registered, aligned authority,
+run `sync-review-index.mjs`, `validate-review-index.mjs`, and the regeneration
+gate after updating the flag. With unregistered authority, preserve every
+identity field and update the flag only when an existing schema-v2 entry remains
+valid without identity changes. If a legacy index cannot validate, leave it
+unchanged and report a non-blocking navigation/index advisory. Do not run
+`migrate-review-index.mjs`, force adoption, or block primary artifact generation
+as part of ordinary regeneration; those remain explicit maintenance actions.
 
 Separate model candidate generation from the confirmed authority baseline.
 Analytical Outline nodes use stable `outline_node_id` values and never create a
@@ -271,9 +260,10 @@ responsibilities and business chains, not copied from analytical branch titles.
 Add only an existing real feature directory. Do not invent future slugs. A flow
 run changes only `has_flow_review`; a UI run changes only `has_ui_review`; formal
 Outline and Discovery runs change only `has_outline_review` and
-`has_outline_discovery` respectively. Preserve the other flags. After every
-index update run `sync-review-index.mjs`, `validate-review-index.mjs`, and the
-shared boundary gate; any failure blocks command completion. The renderer displays explicit
+`has_outline_discovery` respectively. Preserve the other flags. Apply the
+registered/unregistered index rules above. Registered index or boundary
+validation failure blocks completion; an unregistered legacy-index advisory
+does not block the primary PRD, Flow, or UI artifact. The renderer displays explicit
 paths such as `000 › 001` for demand navigation, while current-feature navigation
 still says `上一业务模块 / 业务模块 X/Y / 下一业务模块`.
 
@@ -360,8 +350,13 @@ pending path. It must not accept a client-selected repository path.
 
 Treat the writer as a mechanical recorder. It must not call a model, interpret
 `reviewer_note`, change PRD/Flow/UI artifacts, or generate a new review round.
-After a successful write, tell the reviewer the exact target and to return to
-Codex and rerun the owning `/sp.prd`, `/sp.flow`, or `/sp.ui` command. Keep the
+After a successful write, tell the reviewer the exact target and returned
+command. A fully confirmed package with no revision/open items returns the
+owning command with `--consume-review-confirmation`; that route validates the
+active current identity and advances readiness without regeneration. A package
+with revisions/open items returns the ordinary owning command, which asks
+preserve-or-clear and regenerates the complete current output. The writer itself
+never applies either route. Keep the
 fixed renderer's JSON package with `format:
 "speccompass-confirmation-package"` as the payload contract and download
 fallback. Outline package parts repeat `outline_digest` and
@@ -406,16 +401,15 @@ when the helper, JSON, or declared IDs are missing or disagree.
 
 When a reviewer chooses a non-recommended option, local writeback and every
 fallback confirmation package must preserve `revision_requests`. The next
-owning `/sp.prd`, `/sp.flow`, or `/sp.ui` run verifies feature, review type,
-batch, review-data identity, and source identity before using them. Treat each
-`revision_requests.target_ref` as the repair boundary: regenerate only the named
-item and any direct neighbor that is actually invalidated by a shared contract.
-List every invalidated neighbor explicitly, preserve unaffected accepted
-decisions, and include only changed or explicitly invalidated items in the next
-review round. A revision request is an instruction to revise, not authorization
-for the resulting artifact. Do not ask reviewers to directly add/delete flow
-nodes or UI elements inside the page; they provide a structured change type and
-plain-language instructions for the model to execute on the next command run.
+owning `/sp.prd`, `/sp.flow`, or `/sp.ui` first asks the preserve-or-clear choice
+described above. In preserve mode, verify feature, review type, batch,
+review-data identity, and source identity, then use `revision_requests` as
+non-authoritative candidate input while regenerating the full currently
+applicable command output. In clear mode, do not use them. A revision request is
+an instruction to reconsider, not authorization for the resulting artifact.
+Do not ask reviewers to directly add/delete flow nodes or UI elements inside
+the page; they provide structured change types and plain-language instructions
+for the model's next regeneration.
 
 Flow `change_type` values: `ADD_NODE`, `DELETE_NODE`, `MODIFY_NODE`,
 `MODIFY_BRANCH`, `ADD_EXCEPTION_PATH`, `SPLIT_SUBFLOW`, `MERGE_SIMPLIFY`,

@@ -281,60 +281,54 @@ mapping. Schema-v2 `specs/review-index.json` derives those fields one way and
 directly owns only `updated_at` plus four review availability flags. Numeric
 codes do not imply inheritance: `001-*` is the first child of a `000-*` root
 only through an explicit parent, `sibling_order: 1`, and a confirmed
-`Subproject Handoff`. Ordinary commands must receive `allowed: true` and
-`transition_state: ALIGNED` from `check-outline-boundary-gate.mjs`; otherwise
-they return its shared block contract and sole repair command. Review commands
-change only their owned flag, then run `sync-review-index.mjs`,
-`validate-review-index.mjs`, and the shared gate check. Legacy migration creates
-a reviewed adoption candidate, never authoritative lineage.
+`Subproject Handoff`. Ordinary PRD/Flow/UI regeneration calls
+`check-outline-boundary-gate.mjs --intent regenerate`. A registered baseline
+must be `ALIGNED`; an unregistered legacy project returns `allowed: true`,
+`authority_status: UNREGISTERED`, and a non-blocking advisory. Active approved
+transitions, invalid established authority, interrupted publication, and a
+target excluded by a confirmed baseline still return the shared block contract.
+Registered review commands change only their owned flag and rebuild the derived
+index. Unregistered commands preserve identity fields and update a flag only
+when the explicit feature already has a valid schema-v2 index entry that remains
+valid without identity changes. An invalid legacy index is left unchanged and
+reported as a non-blocking navigation advisory; ordinary generation must not
+sync, migrate, or adopt it as a prerequisite.
 
-When the boundary file is absent and no valid draft-reset receipt exists, the
-gate returns only `/sp.prd <root-feature> --adopt-outline-boundaries`. This setup route runs the
-mechanical bootstrap, then the model reads the real PRD, Outline, directories,
-handoffs, index, and candidate to generate a genuine null-base proposal and
-Outline review page. Its `boundary_adjustment` identity explicitly uses
-`operation: ADOPTION` and `change_class: ADOPTION`; ordinary adjustment objects
-without `operation` remain backward-compatible and mean `ADJUSTMENT`.
-For a migrated flat non-root entry, `parent_feature: null`, `sibling_order: 0`,
-and candidate issue `parent_unconfirmed` are an unknown-hierarchy placeholder,
-not confirmed lineage. Adoption must confirm the real parent from current
-handoff/Outline evidence and normalize the child to `sibling_order >= 1`, while
-an already explicit parent and sibling order remain immutable.
-`prepare-outline-boundary-adoption.mjs` validates and hashes the current shape
-without creating authority. Only the loopback writer can record the human
-decision and one-time receipt. `activate-outline-boundary-adoption.mjs`
-revalidates live sources and writer evidence under a lease, consumes the receipt
-once, exclusively creates the first `ALIGNED` baseline, initializes the code
-ledger, derives the index, and records activation. It is retryable after each
-commit point and never restructures or rewrites existing product artifacts.
-The writer returns `--consume-outline-decision <proposal-id>` for the second
-invocation. That route must reuse the immutable adoption inputs and must not
-rerun bootstrap or model generation before activation. Once the authoritative
-baseline commit exists, retries may ignore later review-page churn only to
-finish derived ledger/index/journal recovery for that exact committed baseline.
+Missing boundary registration never substitutes a root-boundary page for the
+requested PRD, Flow, or UI. The older `/sp.prd --adopt-outline-boundaries`
+bootstrap, ADOPTION review, writer decision, activator, and
+`--consume-outline-decision` routes remain explicit compatibility tools for a
+user who deliberately registers the existing shape or resumes an existing
+receipt. They are not the ordinary command's next action. Flat migrated parent
+and sibling placeholders remain unknown facts and must not be described as
+user-confirmed lineage.
 
-Before the first authoritative baseline only, an explicit
-`/sp.prd <root-feature> --discard-outline-draft` may replace this route. The
-fixed `discard-outline-draft.mjs` creates a digest-bound plan and applies only
-its closed Outline-draft allowlist under a short lease. It archives rather than
-recursively deletes draft Outline, review/discovery, confirmation, and
-unactivated proposal files. Every PRD, spec, Flow/UI artifact, plan, task, code,
-test, data file, and migration is outside that allowlist and remains bound in
-the preserved source inventory. An existing baseline, active transition,
-symlink, repository escape, normalized path collision, or digest drift fails
-closed. The receipt is the last commit point and an interrupted run resumes the
-same immutable plan.
+Every ordinary `/sp.prd`, `/sp.flow`, and `/sp.ui` first inspects its own output
+with `reset-command-artifacts.mjs`. `CLEAR_AND_REGENERATE` clears unconfirmed
+output without another prompt. `CONFIRMED_RECORDS_REQUIRE_CHOICE` pauses before
+deletion and asks the user to preserve records for fresh review or clear all.
+Preserve mode copies formal confirmation and recorded human input to
+`review/history/regeneration-preserved/<inventory>/` as
+`NON_AUTHORITATIVE_REREVIEW_INPUT`; clear mode requires `--ack-confirmed` and
+must not cite the removed decisions. Preserved archives cannot authorize
+regenerated output or enter the explicit confirmation-consumption route; fresh
+review is required. Apply recomputes the SHA-256 inventory and
+fails on drift, symlinks, hard links, or path escape.
 
-After a valid reset receipt, the gate returns its exact
-`--regenerate-outline-draft --reset <reset-id>` command instead of current-shape
-adoption. Former feature directories are source containers, not authoritative
-projects. The model rereads every preserved PRD and relevant implementation
-evidence and generates a new root Outline whose candidate projects use
-temporary `draft-project-*` identities without stable codes. The reset ID and
-receipt digest participate in source authority identity. Human confirmation
-freezes that proposed shape; stable candidate codes and artifact dispositions
-belong to a later reviewed reconciliation proposal. Neither reset, Outline
-confirmation, nor reconciliation may automatically delete implementation code.
+"Ordinary" means a direct full-stage invocation. Explicit confirmation
+consumption, transition-impact/recovery work, and coordinator-authorized Lite
+scoped passes keep their narrower contracts. All read-only prerequisite, Lite,
+hook, boundary, and route checks complete before reset apply; a blocked or
+narrowed run leaves active command output untouched.
+
+PRD reset owns only `spec-outline.md` and `prd/review/outline-*`, excluding old
+draft-reset recovery state. Flow owns `flows/`; UI owns `ui/`. PRD facts, stable
+spec, other command output, plan, tasks, code, tests, data, and migrations are
+outside the write set. The old `--discard-outline-draft` and
+`--regenerate-outline-draft --reset` routes remain only for already-created
+legacy plan/receipt recovery. A newly regenerated Outline can use temporary
+project candidates, but project reconciliation and code migration begin only
+after fresh Outline confirmation and never authorize automatic code deletion.
 
 Project codes reuse the native SP sequential feature prefix. `000` is the root;
 new authoritative boundaries receive repository-global `001`, `002`, and later
@@ -425,13 +419,23 @@ reviewer returns to Codex and reruns the owning `/sp.prd`, `/sp.flow`, or
 `/sp.ui` command; only that command may apply model reasoning to the recorded
 feedback.
 
-When a current confirmation has `human_confirmation: NEEDS_REVISION`, the
-owning command treats each `revision_requests.target_ref` as the repair boundary.
-It revises the named item and only directly dependent or adjacent items whose
-validity actually changes, explicitly lists any invalidated direct neighbor,
-and preserves unaffected accepted decisions. The next review data contains only
-changed or explicitly invalidated items. A revision request is an instruction
-to regenerate, never authorization.
+A fully confirmed write with no revision/open items returns the exact owning
+command plus `--consume-review-confirmation`. That explicit route validates the
+still-active current confirmation and complete identity, advances the stage,
+and does not reset or regenerate. Revision/open results return the ordinary
+owning command and therefore enter the preserve-or-clear regeneration flow.
+Preserved archives and copied/model-authored confirmations are forbidden on the
+consumption route.
+
+On the next ordinary owning command without the consume flag, the confirmation triggers the preserve-or-clear
+choice before regeneration. Preserve mode may use each
+`revision_requests.target_ref` and old
+decisions as non-authoritative candidate input, but still regenerates the full
+currently applicable command output and requires fresh confirmation. Clear mode
+must not read or reconstruct them. The next review data contains the complete
+currently applicable scope; changed or explicitly invalidated items may be
+highlighted but unaffected items are not silently omitted. A revision request
+is an instruction to reconsider, never authorization.
 
 `sp.prd` explicitly consumes a named discovery response, validates feature and
 response identities, schema version, candidate and target references, allowed

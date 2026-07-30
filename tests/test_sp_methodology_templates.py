@@ -306,10 +306,16 @@ def test_product_prd_is_authoritative_and_matches_current_review_baseline():
         assert "derived" in content and "review-index.json" in content, command_name
 
     assert "start-outline-transition.mjs" in _command("prd")
-    assert "prepare-outline-boundary-adoption.mjs" in _command("prd")
-    assert "activate-outline-boundary-adoption.mjs" in _command("prd")
-    assert "--consume-outline-decision" in _command("prd")
-    assert "Do not rerun bootstrap" in _command("prd")
+    for command_name in ("prd", "flow", "ui"):
+        content = _command(command_name)
+        assert "reset-command-artifacts.mjs inspect" in content
+        assert "--consume-review-confirmation" in content
+        assert "--intent regenerate" in content
+        assert "CONFIRMED_RECORDS_REQUIRE_CHOICE" in content
+        assert "preserve-confirmed" in content
+        assert "--ack-confirmed" in content
+        assert "non-blocking" in content
+    assert "Never recommend or invoke" in _command("prd")
     assert "manage-feature-codes.mjs reserve" in _command("prd")
     assert "create-new-feature.sh --number" in _command("specify")
     assert "rollback-outline-transition.mjs" in _command("prd")
@@ -5667,6 +5673,14 @@ def test_outline_boundary_gate_returns_one_shared_machine_contract(tmp_path: Pat
     transition_payload = json.loads(transitioning.stdout)
     assert transition_payload["transition_state"] == "CROSS_ARTIFACT_VALIDATED"
     assert transition_payload["repair_command_exec"] == "/sp.prd 000-root --resume-outline-transition --transition transition-002"
+    transitioning_regeneration = subprocess.run(
+        [*command, "--intent", "regenerate"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert transitioning_regeneration.returncode == 1
+    assert json.loads(transitioning_regeneration.stdout)["block_reason"] == "OUTLINE_BOUNDARY_TRANSITION_ACTIVE"
 
     boundaries_path.unlink()
     missing = subprocess.run(command, text=True, capture_output=True, check=False)
@@ -5674,6 +5688,18 @@ def test_outline_boundary_gate_returns_one_shared_machine_contract(tmp_path: Pat
     missing_payload = json.loads(missing.stdout)
     assert missing_payload["block_reason"] == "AUTHORITATIVE_BOUNDARIES_MISSING"
     assert missing_payload["transition_state"] == "LEGACY_ADOPTION_REQUIRED"
+
+    regeneration = subprocess.run(
+        [*command, "--intent", "regenerate"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert regeneration.returncode == 0, regeneration.stderr
+    regeneration_payload = json.loads(regeneration.stdout)
+    assert regeneration_payload["allowed"] is True
+    assert regeneration_payload["authority_status"] == "UNREGISTERED"
+    assert regeneration_payload["advisories"][0]["blocks_regeneration"] is False
 
 
 def _write_reviewed_outline_adjustment(
@@ -9407,8 +9433,8 @@ def test_review_renderer_writes_split_confirmation_packages_with_download_fallba
     assert '$("copy-summary").classList.remove("hidden")' in renderer
 
 
-def test_review_writeback_is_mechanical_and_commands_repair_only_targeted_items():
-    """Local writeback records input; owning commands perform narrowly scoped regeneration."""
+def test_review_writeback_is_mechanical_and_commands_regenerate_after_reset_choice():
+    """Local writeback records input; owning commands ask before full regeneration."""
     renderer = _review_renderer_bundle()
     launcher = (REVIEW_ROOT / "scripts" / "serve-review.mjs").read_text(encoding="utf-8")
     skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
@@ -9445,12 +9471,15 @@ def test_review_writeback_is_mechanical_and_commands_repair_only_targeted_items(
     ):
         assert "mechanical" in content or "机械" in content, label
         assert "target_ref" in content, label
-        assert "unaffected" in content or "未受影响" in content, label
+        assert "preserve-or-clear" in content or "保留" in content, label
+        assert "full" in content or "完整" in content, label
 
     for name, content in commands.items():
-        assert "target_ref" in content, name
-        assert "Preserve unaffected accepted decisions" in content or "preserve unaffected accepted decisions" in content, name
-        assert re.search(r"only\s+changed or explicitly invalidated", content), name
+        assert "revision_requests" in content, name
+        assert "reset-command-artifacts.mjs inspect" in content, name
+        assert "preserve-confirmed" in content, name
+        assert "--ack-confirmed" in content, name
+        assert "complete" in content or "full" in content, name
         assert "never authorization" in content or "not authorization" in content, name
 
 

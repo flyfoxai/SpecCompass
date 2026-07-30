@@ -479,6 +479,9 @@ function confirmationMarkdown(merged, reviewData, context) {
     ...source,
     digest: source.digest || "not-computed"
   }));
+  const nextStep = status === "CONFIRMED"
+    ? `Run the exact ${command} ${context.feature} --consume-review-confirmation command returned by the writer. It revalidates this active confirmation and advances readiness without clearing or regenerating.`
+    : `Run the exact ${command} ${context.feature} command returned by the writer. Before regeneration, choose whether to preserve this record as non-authoritative fresh-review input or clear all prior generated output.`;
   const lines = [
     "---",
     "document_type: sp_human_confirmation",
@@ -524,7 +527,8 @@ function confirmationMarkdown(merged, reviewData, context) {
     `# ${context.reviewType === "outline" ? "Outline" : context.reviewType === "ui" ? "UI" : "Flow"} Confirmation`,
     "",
     `Recorded mechanically by the local SpecCompass review writer at ${recordedAt}.`,
-    "No model interpretation was performed during writeback. Rerun the owning command to apply revision requests and regenerate only affected review items.",
+    "No model interpretation was performed during writeback.",
+    nextStep,
     "",
     "## Review Records",
     "",
@@ -1076,12 +1080,20 @@ async function processWriteback(payload, context) {
   await atomicWrite(context.absoluteTargetPath, content);
   context.targetVersion = targetVersion(content);
   const revisionCount = merged.records.filter((record) => record.revision_request).length;
+  const unresolvedCount = merged.records.filter((record) => (
+    record.bucket === "needs_decision_items"
+    || record.bucket === "unresolved_decision_items"
+    || record.bucket === "draft_excluded_items"
+  )).length;
+  const owningCommand = { flow: "/sp.flow", ui: "/sp.ui", outline: "/sp.prd" }[context.reviewType];
   return {
     ok: true,
     kind: payload.kind,
     target_path: context.targetPath,
     target_version: context.targetVersion,
-    next_command: `${{ flow: "/sp.flow", ui: "/sp.ui", outline: "/sp.prd" }[context.reviewType]} ${context.feature}`,
+    next_command: revisionCount || unresolvedCount
+      ? `${owningCommand} ${context.feature}`
+      : `${owningCommand} ${context.feature} --consume-review-confirmation`,
     review_data_id: currentReviewDataId,
     revision_request_count: revisionCount
   };

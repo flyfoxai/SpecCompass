@@ -31,19 +31,19 @@ def test_project_version_matches_latest_changelog_entry():
 
 
 def test_release_notes_publish_user_facing_release_theme():
-    """GitHub Release notes should describe rejected-Outline regeneration."""
+    """GitHub Release notes should describe direct command regeneration."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Regenerate rejected Outline drafts" in release_workflow
-    assert "/sp.prd <root> --discard-outline-draft" in release_workflow
-    assert "digest-bound plan" in release_workflow
-    assert "Every PRD, spec, Flow, UI, plan, task, implementation file, test, data file, and migration remains in place" in release_workflow
-    assert "outline-draft-reset.json" in release_workflow
-    assert "/sp.prd <root> --regenerate-outline-draft --reset <reset-id>" in release_workflow
-    assert "draft-project-*" in release_workflow
-    assert "human confirmation and separate reconciliation" in release_workflow
+    assert "## Regenerate PRD, Flow, and UI outputs directly" in release_workflow
+    assert r"Ordinary \`/sp.prd <feature>\`" in release_workflow
+    assert r"Ordinary \`/sp.flow <feature>\`" in release_workflow
+    assert r"\`/sp.ui <feature>\`" in release_workflow
+    assert "non-authoritative fresh-review input" in release_workflow
+    assert "non-blocking advisory" in release_workflow
+    assert "--consume-review-confirmation" in release_workflow
+    assert "tampered-plan detection" in release_workflow
     assert "symlink/hard-link rejection" in release_workflow
-    assert "ordinary aligned PRD, Flow, and UI work remains unchanged" in release_workflow
+    assert "code, tests, data, and migrations remain outside" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
@@ -51,15 +51,16 @@ def test_release_notes_publish_user_facing_release_theme():
     assert "specify init . --integration <agent> --force" in release_workflow
 
 
-def test_release_changelog_summary_matches_outline_alignment_focus():
-    """The generated changelog should lead with draft discard/regeneration."""
+def test_release_changelog_summary_matches_command_regeneration_focus():
+    """The generated changelog should lead with direct command regeneration."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "digest-bound discard and model regeneration" in trigger_workflow
-    assert "rejected pre-baseline Outline drafts" in trigger_workflow
-    assert "preserving PRDs, implementation artifacts, and ordinary aligned work" in trigger_workflow
+    assert "ordinary PRD, Flow, and UI commands regenerate" in trigger_workflow
+    assert "confirmation-aware reset choices" in trigger_workflow
+    assert "non-blocking legacy boundary advisories" in trigger_workflow
+    assert "recovery-safe file handling" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

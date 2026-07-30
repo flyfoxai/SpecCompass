@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added digest-bound discard and model regeneration for rejected pre-baseline Outline drafts while preserving PRDs, implementation artifacts, and ordinary aligned work." \
+              "- Made ordinary PRD, Flow, and UI commands regenerate their own complete active output with confirmation-aware reset choices, non-blocking legacy boundary advisories, and recovery-safe file handling." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

@@ -99,6 +99,7 @@ DISCOVERY_DISTRIBUTION_ASSETS = (
     Path("scripts/bootstrap-outline-boundaries.mjs"),
     Path("scripts/check-outline-boundary-gate.mjs"),
     Path("scripts/discard-outline-draft.mjs"),
+    Path("scripts/reset-command-artifacts.mjs"),
     Path("scripts/migrate-review-index.mjs"),
     Path("scripts/outline-adoption-lib.mjs"),
     Path("scripts/outline-boundaries-lib.mjs"),
@@ -911,9 +912,12 @@ def test_local_writer_records_confirmation_at_fixed_target(
         assert status == 200, body.decode("utf-8")
         result = json.loads(body)
         assert result["target_path"] == config["target_path"]
-        assert result["next_command"].startswith({"flow": "/sp.flow", "ui": "/sp.ui", "outline": "/sp.prd"}[review_type])
+        owning_command = {"flow": "/sp.flow", "ui": "/sp.ui", "outline": "/sp.prd"}[review_type]
+        assert result["next_command"] == f"{owning_command} {review_project.feature} --consume-review-confirmation"
         confirmation = target.read_text(encoding="utf-8")
         assert "No model interpretation was performed during writeback." in confirmation
+        assert "--consume-review-confirmation" in confirmation
+        assert "without clearing or regenerating" in confirmation
         frontmatter = yaml.safe_load(confirmation.split("---", 2)[1])
         assert frontmatter["human_confirmation"] == "CONFIRMED"
         assert frontmatter["review_data_identity_verified"] == "MATCH"
@@ -1487,11 +1491,15 @@ def test_local_writer_records_revision_request_without_authorizing(review_projec
         status, body = _post_writeback(origin, config, payload)
         assert status == 200, body.decode("utf-8")
         confirmation = review_project.root / str(config["target_path"])
-        frontmatter = yaml.safe_load(confirmation.read_text(encoding="utf-8").split("---", 2)[1])
+        confirmation_text = confirmation.read_text(encoding="utf-8")
+        frontmatter = yaml.safe_load(confirmation_text.split("---", 2)[1])
         assert frontmatter["human_confirmation"] == "NEEDS_REVISION"
         assert frontmatter["authorization_scope"] == "BLOCKED"
         assert frontmatter["owner_approval"]["status"] == "PENDING"
         assert frontmatter["revision_requests"][0]["target_ref"] == "module-1:flow-item-1:node-1"
+        assert json.loads(body)["next_command"] == f"/sp.flow {review_project.feature}"
+        assert "preserve this record" in confirmation_text
+        assert "clear all prior generated output" in confirmation_text
 
 
 def test_local_writer_records_discovery_response_at_pending_path(review_project: ReviewProject):

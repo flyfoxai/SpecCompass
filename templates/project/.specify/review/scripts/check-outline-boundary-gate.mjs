@@ -13,11 +13,16 @@ import {
 const args = process.argv.slice(2);
 const featureIndex = args.indexOf("--feature");
 const requestedFeature = featureIndex >= 0 ? args[featureIndex + 1] : null;
-const positional = featureIndex >= 0
-  ? args.filter((_, index) => index !== featureIndex && index !== featureIndex + 1)
-  : args;
-if (positional.length !== 2 || (featureIndex >= 0 && !requestedFeature)) {
-  console.error("Usage: node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root>/outline-boundaries.json specs/review-index.json [--feature <feature-slug>]");
+const intentIndex = args.indexOf("--intent");
+const intent = intentIndex >= 0 ? args[intentIndex + 1] : "ordinary";
+const optionIndexes = new Set();
+for (const index of [featureIndex, intentIndex]) {
+  if (index >= 0) { optionIndexes.add(index); optionIndexes.add(index + 1); }
+}
+const positional = args.filter((_, index) => !optionIndexes.has(index));
+if (positional.length !== 2 || (featureIndex >= 0 && !requestedFeature)
+  || !new Set(["ordinary", "regenerate"]).has(intent)) {
+  console.error("Usage: node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root>/outline-boundaries.json specs/review-index.json [--feature <feature-slug>] [--intent <ordinary|regenerate>]");
   process.exit(2);
 }
 
@@ -52,11 +57,53 @@ function block(document, reason, evidenceRefs, repairCommandExec, repairCommand 
   );
 }
 
+async function emitUnregisteredRegenerationAdvisory() {
+  const rootDirectory = dirname(boundariesPath);
+  const possibleEvidence = [
+    boundariesPath,
+    resolve(rootDirectory, "outline-boundaries-adoption.json"),
+    resolve(rootDirectory, "prd", "review", "outline-draft-reset.json"),
+    resolve(rootDirectory, "prd", "review", "outline-draft-reset-plan.json")
+  ];
+  const evidenceRefs = [];
+  for (const path of possibleEvidence) {
+    if (path === boundariesPath || await access(path).then(() => true, (error) => {
+      if (error.code === "ENOENT") return false;
+      throw error;
+    })) evidenceRefs.push(path);
+  }
+  emit(
+    {
+      allowed: true,
+      block_reason: null,
+      root_feature: rootFromPath,
+      current_baseline_id: null,
+      current_baseline_digest: null,
+      proposed_baseline_id: null,
+      transition_state: "LEGACY_ADOPTION_REQUIRED",
+      transition_id: null,
+      feature: requestedFeature,
+      authority_status: "UNREGISTERED",
+      advisories: [
+        {
+          code: "AUTHORITATIVE_BOUNDARIES_MISSING",
+          severity: "warning",
+          blocks_regeneration: false,
+          message: "Project-boundary registration is missing or stale. Regenerate the requested command output now; after generation, ask whether the old boundary candidate should be cleared and rebuilt. Do not open the boundary-adoption review as a substitute for this command."
+        }
+      ],
+      evidence_refs: evidenceRefs
+    },
+    0
+  );
+}
+
 try {
   try {
     await access(boundariesPath);
   } catch (error) {
     if (error.code !== "ENOENT") throw error;
+    if (intent === "regenerate") await emitUnregisteredRegenerationAdvisory();
     const rootDirectory = dirname(boundariesPath);
     const resetReceiptPath = resolve(rootDirectory, "prd", "review", "outline-draft-reset.json");
     const resetPlanPath = resolve(rootDirectory, "prd", "review", "outline-draft-reset-plan.json");
@@ -215,7 +262,9 @@ try {
       current_baseline_digest: document.current_baseline.baseline_digest,
       transition_state: "ALIGNED",
       transition_id: null,
-      feature: requestedFeature
+      feature: requestedFeature,
+      authority_status: "REGISTERED",
+      advisories: []
     },
     0
   );

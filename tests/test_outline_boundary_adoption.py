@@ -246,6 +246,23 @@ def test_missing_boundary_gate_routes_to_explicit_adoption(tmp_path: Path):
     assert payload["repair_command_exec"] == "/sp.prd 000-root --adopt-outline-boundaries"
     assert not Path(paths["boundaries"]).exists()
 
+    regeneration = _run(
+        GATE,
+        paths["boundaries"],
+        paths["index"],
+        "--feature",
+        "000-root",
+        "--intent",
+        "regenerate",
+        cwd=tmp_path,
+    )
+    assert regeneration.returncode == 0, regeneration.stderr
+    regeneration_payload = json.loads(regeneration.stdout)
+    assert regeneration_payload["allowed"] is True
+    assert regeneration_payload["authority_status"] == "UNREGISTERED"
+    assert regeneration_payload["advisories"][0]["code"] == "AUTHORITATIVE_BOUNDARIES_MISSING"
+    assert regeneration_payload["advisories"][0]["blocks_regeneration"] is False
+
 
 def test_adoption_normalizes_only_unconfirmed_flat_child_sibling_order(tmp_path: Path):
     specs = tmp_path / "specs"
