@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.35] - 2026-07-30
+
+### Fixed
+
+- Removed the circular `plan.md` prerequisite from `/sp.prd` and `/sp.specify`; both upstream commands now resolve feature paths without requiring downstream planning output.
+- Made an explicit `SPECIFY_FEATURE` command target override the previously persisted active feature in `.specify/feature.json`, preventing a command for one feature from resolving to another feature's directory.
+- Added Bash, PowerShell, command-template, and generated Skill regression coverage for pre-plan execution and explicit-target precedence.
+
 ## [0.11.34] - 2026-07-30
 
 ### Added

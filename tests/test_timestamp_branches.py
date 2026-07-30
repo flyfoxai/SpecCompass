@@ -1371,6 +1371,29 @@ class TestFeatureDirectoryResolution:
             pytest.fail("FEATURE_DIR not found in output")
 
     @requires_bash
+    def test_explicit_feature_name_overrides_persisted_active_feature(self, git_repo: Path):
+        """An explicit command target must not resolve to the previously active feature."""
+        explicit_dir = git_repo / "specs" / "000-root"
+        explicit_dir.mkdir(parents=True)
+        persisted_dir = git_repo / "specs" / "001-child"
+        persisted_dir.mkdir(parents=True)
+        (git_repo / ".specify" / "feature.json").write_text(
+            json.dumps({"feature_directory": "specs/001-child"}) + "\n",
+            encoding="utf-8",
+        )
+
+        result = subprocess.run(
+            ["bash", "-c", f'source "{COMMON_SH}" && get_feature_paths'],
+            cwd=git_repo,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "SPECIFY_FEATURE": "000-root"},
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert f"FEATURE_DIR={explicit_dir}" in result.stdout
+
+    @requires_bash
     def test_env_var_takes_priority_over_feature_json(self, git_repo: Path):
         """Env var wins over feature.json."""
         env_dir = git_repo / "specs" / "env-feature"
@@ -1474,3 +1497,28 @@ class TestFeatureDirectoryResolution:
                 break
         else:
             pytest.fail("FEATURE_DIR not found in PowerShell output")
+
+    @pytest.mark.skipif(not _has_pwsh(), reason="pwsh not installed")
+    def test_ps_explicit_feature_name_overrides_persisted_active_feature(self, git_repo: Path):
+        """PowerShell resolves an explicit command target before persisted active state."""
+        common_ps = PROJECT_ROOT / "scripts" / "powershell" / "common.ps1"
+        explicit_dir = git_repo / "specs" / "000-root"
+        explicit_dir.mkdir(parents=True)
+        persisted_dir = git_repo / "specs" / "001-child"
+        persisted_dir.mkdir(parents=True)
+        (git_repo / ".specify" / "feature.json").write_text(
+            json.dumps({"feature_directory": "specs/001-child"}) + "\n",
+            encoding="utf-8",
+        )
+
+        ps_cmd = f'. "{common_ps}"; $r = Get-FeaturePathsEnv; Write-Output "FEATURE_DIR=$($r.FEATURE_DIR)"'
+        result = subprocess.run(
+            ["pwsh", "-NoProfile", "-Command", ps_cmd],
+            cwd=git_repo,
+            capture_output=True,
+            text=True,
+            env={**os.environ, "SPECIFY_FEATURE": "000-root"},
+        )
+
+        assert result.returncode == 0, result.stderr
+        assert f"FEATURE_DIR={explicit_dir}" in result.stdout

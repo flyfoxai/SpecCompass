@@ -10,8 +10,8 @@ handoffs:
     prompt: Design the stabilized business flow for the active feature.
     send: true
 scripts:
-  sh: scripts/bash/check-prerequisites.sh --json
-  ps: scripts/powershell/check-prerequisites.ps1 -Json
+  sh: scripts/bash/check-prerequisites.sh --json --paths-only
+  ps: scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly
 ---
 
 ## User Input

@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Made ordinary PRD, Flow, and UI commands regenerate their own complete active output with confirmation-aware reset choices, non-blocking legacy boundary advisories, and recovery-safe file handling." \
+              "- Fixed PRD and Specify prerequisite routing so upstream commands run before plan.md exists and explicit feature targets override stale persisted active-feature state." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

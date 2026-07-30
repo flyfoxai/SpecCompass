@@ -31,19 +31,17 @@ def test_project_version_matches_latest_changelog_entry():
 
 
 def test_release_notes_publish_user_facing_release_theme():
-    """GitHub Release notes should describe direct command regeneration."""
+    """GitHub Release notes should describe the pre-plan prerequisite fix."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Regenerate PRD, Flow, and UI outputs directly" in release_workflow
-    assert r"Ordinary \`/sp.prd <feature>\`" in release_workflow
-    assert r"Ordinary \`/sp.flow <feature>\`" in release_workflow
-    assert r"\`/sp.ui <feature>\`" in release_workflow
-    assert "non-authoritative fresh-review input" in release_workflow
-    assert "non-blocking advisory" in release_workflow
-    assert "--consume-review-confirmation" in release_workflow
-    assert "tampered-plan detection" in release_workflow
-    assert "symlink/hard-link rejection" in release_workflow
-    assert "code, tests, data, and migrations remain outside" in release_workflow
+    assert "## Unblock PRD and Specify before planning" in release_workflow
+    assert r"\`/sp.prd <feature>\`" in release_workflow
+    assert r"\`/sp.specify <feature>\`" in release_workflow
+    assert r"without requiring \`plan.md\`" in release_workflow
+    assert "explicit command target now takes precedence" in release_workflow
+    assert r"\`.specify/feature.json\`" in release_workflow
+    assert "explicit directory, explicit feature name, persisted active feature" in release_workflow
+    assert "Downstream commands keep their existing explicit" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
@@ -52,15 +50,14 @@ def test_release_notes_publish_user_facing_release_theme():
 
 
 def test_release_changelog_summary_matches_command_regeneration_focus():
-    """The generated changelog should lead with direct command regeneration."""
+    """The generated changelog should lead with the upstream prerequisite fix."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "ordinary PRD, Flow, and UI commands regenerate" in trigger_workflow
-    assert "confirmation-aware reset choices" in trigger_workflow
-    assert "non-blocking legacy boundary advisories" in trigger_workflow
-    assert "recovery-safe file handling" in trigger_workflow
+    assert "PRD and Specify prerequisite routing" in trigger_workflow
+    assert "run before plan.md exists" in trigger_workflow
+    assert "explicit feature targets override stale persisted active-feature state" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

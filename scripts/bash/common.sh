@@ -209,13 +209,19 @@ get_feature_paths() {
 
     # Resolve feature directory.  Priority:
     #   1. SPECIFY_FEATURE_DIRECTORY env var (explicit override)
-    #   2. .specify/feature.json "feature_directory" key (persisted by /sp.specify)
-    #   3. Branch-name-based prefix lookup (legacy fallback)
+    #   2. SPECIFY_FEATURE env var (explicit feature name)
+    #   3. .specify/feature.json "feature_directory" key (persisted active feature)
+    #   4. Branch-name-based prefix lookup (legacy fallback)
     local feature_dir
     if [[ -n "${SPECIFY_FEATURE_DIRECTORY:-}" ]]; then
         feature_dir="$SPECIFY_FEATURE_DIRECTORY"
         # Normalize relative paths to absolute under repo root
         [[ "$feature_dir" != /* ]] && feature_dir="$repo_root/$feature_dir"
+    elif [[ -n "${SPECIFY_FEATURE:-}" ]]; then
+        if ! feature_dir=$(find_feature_dir_by_prefix "$repo_root" "$current_branch"); then
+            echo "ERROR: Failed to resolve explicit feature directory" >&2
+            return 1
+        fi
     elif [[ -f "$repo_root/.specify/feature.json" ]]; then
         local _fd
         if command -v jq >/dev/null 2>&1; then

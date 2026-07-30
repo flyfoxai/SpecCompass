@@ -1060,12 +1060,24 @@ def test_prd_template_has_prerequisite_scripts_and_upstream_handoffs():
     prd = _command("prd")
 
     assert "scripts:" in prd
-    assert "check-prerequisites.sh --json" in prd
-    assert "check-prerequisites.ps1 -Json" in prd
+    assert "check-prerequisites.sh --json --paths-only" in prd
+    assert "check-prerequisites.ps1 -Json -PathsOnly" in prd
     assert "agent: sp.specify" in prd
     assert "agent: sp.clarify" in prd
     assert "agent: sp.constitution" in prd
     assert "agent: sp.plan" not in prd
+
+
+def test_upstream_prd_and_specify_prerequisites_do_not_require_plan():
+    """Commands upstream of planning must only resolve paths, never require plan.md."""
+    for command in ("prd", "specify"):
+        frontmatter = yaml.safe_load(_command(command).split("---", 2)[1])
+        scripts = frontmatter["scripts"]
+
+        assert scripts["sh"].endswith("--json --paths-only"), command
+        assert scripts["ps"].endswith("-Json -PathsOnly"), command
+        assert "require-plan" not in scripts["sh"].lower(), command
+        assert "requireplan" not in scripts["ps"].lower(), command
 
 
 def test_specify_and_clarify_handoffs_route_to_flow_not_plan():

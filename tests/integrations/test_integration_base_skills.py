@@ -200,6 +200,26 @@ class SkillsIntegrationTests:
             "ps": f".specify/scripts/powershell/update-agent-context.ps1 -AgentType {self.KEY}"
         }
 
+        for command in ("prd", "specify"):
+            skill_file = i.skills_dest(tmp_path) / skill_directory_name(command) / "SKILL.md"
+            skill_frontmatter = yaml.safe_load(skill_file.read_text(encoding="utf-8").split("---", 2)[1])
+            assert skill_frontmatter["scripts"] == {
+                "ps": ".specify/scripts/powershell/check-prerequisites.ps1 -Json -PathsOnly"
+            }
+
+    def test_upstream_skills_resolve_paths_without_requiring_plan(self, tmp_path):
+        """Generated PRD/specify skills must run before plan.md exists."""
+        i = get_integration(self.KEY)
+        m = IntegrationManifest(self.KEY, tmp_path)
+        i.setup(tmp_path, m, script_type="sh")
+
+        for command in ("prd", "specify"):
+            skill_file = i.skills_dest(tmp_path) / skill_directory_name(command) / "SKILL.md"
+            skill_frontmatter = yaml.safe_load(skill_file.read_text(encoding="utf-8").split("---", 2)[1])
+            assert skill_frontmatter["scripts"] == {
+                "sh": ".specify/scripts/bash/check-prerequisites.sh --json --paths-only"
+            }
+
     def test_skill_uses_template_descriptions(self, tmp_path):
         """SKILL.md should use the original template description for ZIP parity."""
         i = get_integration(self.KEY)
