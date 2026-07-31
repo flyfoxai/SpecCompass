@@ -2,6 +2,20 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.36] - 2026-07-31
+
+### Added
+
+- Added an explicit `--host <RFC1918-private-ip>` review-launcher mode for trusted private networks while retaining `127.0.0.1` as the default.
+- Added a deterministic Outline Discovery structure repair tool that preserves stable IDs, questions, and constraints, is idempotent, and restores the source file when validation fails.
+
+### Fixed
+
+- Fixed Outline Discovery semantic numbering so overview maps show the real feature code such as `000`, Level 1 candidates use `01..N`, and candidate facts use `01.1..`.
+- Fixed incomplete child-map projection by requiring each business branch to contain source-backed facts and by preventing a `map_link` from also owning same-map details.
+- Aligned CLI and browser validation for feature identity, Outline maturity, Markdown source anchors, topology, and source authority so generated content cannot silently exceed its PRD/spec evidence.
+- Kept private-LAN review access bounded to RFC1918 addresses, matching Host headers, fixed renderer assets, same-type review data, and the review index; public addresses, hostnames, `0.0.0.0`, and unrelated project files remain blocked.
+
 ## [0.11.35] - 2026-07-30
 
 ### Fixed
