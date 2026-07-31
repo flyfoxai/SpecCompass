@@ -71,14 +71,20 @@ node .specify/review/scripts/serve-review.mjs --outline <feature>
 node .specify/review/scripts/serve-review.mjs --outline-discovery <feature>
 ```
 
-Use only the command matching the generated review type. The launcher binds to
-exactly `127.0.0.1`, chooses an available port by default, and prints
-`SPECCOMPASS_REVIEW_URL=` only after the renderer 和 review data 均返回 HTTP 200.
-Keep the process running and return that exact URL; never guess or replace its
-port. 交互复核禁止使用 `file://`，并且 `localhost` 不接受. Do not return a
-relative renderer path, a direct file link, or the Markdown batch manifest as
-the interactive entry. If either self-check fails, repair the generated data or
-fixed infrastructure and restart the launcher before closeout.
+Use only the command matching the generated review type. The launcher defaults
+to `127.0.0.1`. For trusted LAN review, pass the machine's exact RFC1918 IPv4
+address, for example `--host 10.0.0.209`; public addresses, hostnames, and
+`0.0.0.0` are rejected. It prints `SPECCOMPASS_REVIEW_URL=` only after the
+renderer 和 review data 均返回 HTTP 200. Keep the process running and return
+that exact URL; never guess or replace its port. 交互复核禁止使用 `file://`，并且
+`localhost` 不接受. LAN mode prints a warning and must be stopped when the
+review ends because reachable devices may read or submit the current session.
+The launcher serves only the fixed renderer, same-type structured review data
+used by feature navigation, and the review index; it must not expose unrelated
+project files.
+Do not return a relative renderer path, a direct file link, or the Markdown
+batch manifest as the interactive entry. If either self-check fails, repair the
+generated data or fixed infrastructure and restart the launcher before closeout.
 
 The launcher requires Node.js 18 or newer. Its writeback protocol is
 fail-closed and cross-platform: the browser permits one in-flight submission,

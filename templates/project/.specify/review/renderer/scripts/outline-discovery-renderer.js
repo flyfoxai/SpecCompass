@@ -94,16 +94,33 @@ function outlineDiscoveryBusinessMapLinks(data = reviewData) {
   });
 }
 
+function outlineDiscoveryFeatureCode(data = reviewData) {
+  const feature = String(data?.project?.feature || "").trim();
+  const match = feature.match(/^([0-9]{3,})(?:-|$)/);
+  return match?.[1] || "ROOT";
+}
+
 function outlineDiscoverySemanticMapOrdinal(map, data = reviewData) {
   if (!map) return "";
-  if (map.map_kind === "overview") return "01";
+  if (map.map_kind === "overview") return outlineDiscoveryFeatureCode(data);
   if (map.map_kind === "global_constraints") return "GOV";
   const businessLinks = outlineDiscoveryBusinessMapLinks(data);
   const linkedIndex = businessLinks.findIndex((node) => node.child_map_id === map.map_id);
-  if (linkedIndex >= 0) return `01.${linkedIndex + 1}`;
+  if (linkedIndex >= 0) return String(linkedIndex + 1).padStart(2, "0");
+
+  const parentLink = outlineDiscoveryNodes(data).find((node) => node.child_map_id === map.map_id);
+  const parentMap = parentLink ? outlineDiscoveryMap(parentLink.map_id, data) : null;
+  if (parentMap && parentMap.map_id !== map.map_id) {
+    const siblingLinks = outlineDiscoveryMapRootChildren(parentMap.map_id, data)
+      .filter((node) => node.node_kind === "map_link" && outlineDiscoveryMap(node.child_map_id, data)?.map_kind !== "global_constraints");
+    const siblingIndex = siblingLinks.findIndex((node) => node.child_map_id === map.map_id);
+    const parentOrdinal = outlineDiscoverySemanticMapOrdinal(parentMap, data);
+    if (parentOrdinal && siblingIndex >= 0) return `${parentOrdinal}.${siblingIndex + 1}`;
+  }
+
   const branchMaps = outlineDiscoveryMaps(data).filter((entry) => entry.map_kind !== "overview" && entry.map_kind !== "global_constraints");
   const fallbackIndex = Math.max(branchMaps.findIndex((entry) => entry.map_id === map.map_id), 0);
-  return `01.${fallbackIndex + 1}`;
+  return `M${fallbackIndex + 1}`;
 }
 
 function outlineDiscoverySemanticNodeOrdinal(node, map, data = reviewData) {

@@ -44,16 +44,16 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Unblock PRD and Specify before planning
+          ## Private LAN review access and reliable Outline maps
 
-          This patch fixes two prerequisite and target-resolution regressions in the upstream requirement stages:
+          This patch adds an explicit private-network review mode and repairs the Outline Discovery topology contract at its source:
 
-          - \`/sp.prd <feature>\` now resolves project paths without requiring \`plan.md\`, so Outline regeneration can run at its correct upstream stage.
-          - \`/sp.specify <feature>\` uses the same pre-plan contract and no longer creates a second circular dependency before planning.
-          - An explicit command target now takes precedence over the previously persisted active feature in \`.specify/feature.json\`.
-          - A request for \`000-root\` can no longer silently resolve to a stale \`001-child\` working directory.
-          - Bash and PowerShell use the same precedence: explicit directory, explicit feature name, persisted active feature, then branch fallback.
-          - Downstream commands keep their existing explicit Spec, Flow, UI, Bundle, Plan, and Tasks gates.
+          - The review launcher still defaults to \`127.0.0.1\`, but \`--host <RFC1918-private-ip>\` can expose a review to another device on the same private network.
+          - Public IPs, hostnames, \`0.0.0.0\`, mismatched Host headers, and unrelated project files remain blocked; LAN mode prints a clear exposure warning.
+          - Outline overview maps now display the real feature code such as \`000\`, Level 1 candidates use \`01..N\`, and facts inside a candidate use \`01.1..\`.
+          - A \`map_link\` is only a cross-map entry: it cannot also own same-map details, and every business child map must contain source-backed facts.
+          - CLI and browser validators enforce the same feature identity, maturity, Markdown section, topology, and source-integrity rules.
+          - The deterministic repair tool migrates legacy Level 1 data while preserving stable IDs, questions, and constraints; it is idempotent and restores the original file if validation fails.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install

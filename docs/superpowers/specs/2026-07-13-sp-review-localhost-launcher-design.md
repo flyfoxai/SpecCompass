@@ -9,7 +9,7 @@
 ## 目标
 
 - 通过随项目分发的程序启动复核页面，不再把 `file://` 视为有效复核方式。
-- 从目标项目根目录提供静态 HTTP 内容，仅绑定 `127.0.0.1`，自动选择可用端口。
+- 从目标项目根目录提供静态 HTTP 内容，默认绑定 `127.0.0.1`；经操作者显式指定时允许绑定 RFC1918 私网 IPv4，自动选择可用端口。
 - 在向用户报告链接之前，实际验证 renderer URL 和对应 review-data URL 都返回 HTTP 200。
 - 为 `/sp.flow` 与 `/sp.ui` 提供同一个跨平台启动接口和稳定的就绪输出协议。
 - 在确认栏提供“当前视图按推荐保存”“当前模块按推荐保存”“当前需求按推荐保存”三个按钮。
@@ -51,7 +51,7 @@ node .specify/review/scripts/serve-review.mjs --ui <feature>
 
 可选 `--port <port>` 用于诊断或人工固定端口；未提供时传入端口 `0`，由操作系统选择可用端口。feature 必须匹配 `/^[A-Za-z0-9][A-Za-z0-9._-]*$/`，并额外拒绝包含 `..` 的值；因此首字符不能是点或短横线，也不能包含路径分隔符。
 
-脚本从自身真实路径定位项目根目录，不依赖调用者当前工作目录。它先检查 renderer 与目标 review-data 文件可访问，再绑定 `127.0.0.1`。进入 `listening` 后取得实际端口，使用硬编码的 `http://127.0.0.1:<port>` origin 分别请求：
+脚本从自身真实路径定位项目根目录，不依赖调用者当前工作目录。它先检查 renderer 与目标 review-data 文件可访问，再绑定默认的 `127.0.0.1`，或绑定显式指定的 RFC1918 私网 IPv4。进入 `listening` 后取得实际端口，使用绑定地址构造 origin 分别请求：
 
 - `/.specify/review/renderer/speccompass-review-renderer.html?flow=<feature>` 或 `?ui=<feature>`
 - `/specs/<feature>/flows/review/flow-review-data.json` 或 `/specs/<feature>/ui/review/ui-review-data.json`
@@ -67,18 +67,19 @@ SPECCOMPASS_REVIEW_URL=http://127.0.0.1:<port>/.specify/review/renderer/speccomp
 
 ## HTTP 与安全边界
 
-- 监听地址固定为 `127.0.0.1`，不接受 `0.0.0.0`、LAN 地址或环境变量覆盖。
-- `Host` 必须严格等于当前 `127.0.0.1:<port>`；其他 Host 返回 403。
+- 监听地址默认是 `127.0.0.1`；显式 `--host` 仅接受 RFC1918 私网 IPv4，不接受 `0.0.0.0`、公网地址、域名或环境变量覆盖。
+- `Host` 必须严格等于当前绑定地址和端口；其他 Host 返回 403。
 - 只处理 `GET` 与 `HEAD`；其他方法返回 405，并设置 `Allow: GET, HEAD`。
 - URL 解码、标准化和绝对路径解析后必须仍位于项目根目录；已存在目标还要比较真实路径，阻止符号链接逃逸。
 - 不提供目录列表。目录、缺失文件和项目根外路径不能返回文件内容。
+- 静态内容白名单只包含固定 renderer 目录、需求导航使用的同类型结构化 review data 和 `specs/review-index.json`；不得提供 PRD、源码、配置或其他无关项目文件。
 - 至少为 HTML、JavaScript、CSS、JSON、SVG、PNG/JPEG/WebP、WOFF、WOFF2、TTF、OTF、EOT 与纯文本提供明确 MIME；响应增加 `X-Content-Type-Options: nosniff` 与 `Cache-Control: no-store`。
 - 自检 URL 只能由脚本根据实际端口与已验证 feature 构造，不能接受外部 origin，避免 SSRF。
 - `SIGINT`、`SIGTERM`、未捕获异常和未处理 Promise rejection 都要关闭 server 并结束进程。关闭流程必须幂等。
 
 ## Renderer 协议强制
 
-固定 renderer 加载数据前检查浏览器位置。只有 `http:` 且 hostname 精确为 `127.0.0.1` 才进入正常复核流程。`localhost`、`::1` 和其他 loopback 表示也有意拒绝，避免扩大 host 契约；启动器始终输出数字 IPv4 地址。
+固定 renderer 加载数据前检查浏览器位置。只有 `http:` 且 hostname 为 `127.0.0.1` 或 RFC1918 私网 IPv4 才进入正常复核流程。`localhost`、`::1`、公网地址和其他主机名仍拒绝；启动器始终输出数字 IPv4 地址。启用 `--host` 时页面会提示内网暴露风险。
 
 在 `file:` 或其他协议/host 下：
 
@@ -96,7 +97,7 @@ SPECCOMPASS_REVIEW_URL=http://127.0.0.1:<port>/.specify/review/renderer/speccomp
 1. 先运行现有 review-data validator。
 2. 运行对应的 `serve-review.mjs --flow/--ui` 命令，并保持终端服务存活。
 3. 等待 `SPECCOMPASS_REVIEW_URL=` 出现。
-4. 只把该行中的 `http://127.0.0.1:...` URL 作为主要复核入口交给用户。
+4. 只把该行中的完整 HTTP URL 作为主要复核入口交给用户；默认是 `http://127.0.0.1:...`，内网模式则使用显式绑定的 RFC1918 地址。
 5. 任一 200 自检失败时继续修复或报告 blocker，不能改用 `file://`、相对文件链接或自行猜测端口收尾。
 
 renderer README 和 SP 方法论文档同步删除把 `file://` 描述为有效静态复核兜底的内容。Flow/UI 命令生成的 `flow-review-batch.md` / `ui-review-batch.md` 仍可作为纯文本审核清单，但不是可交互复核入口。
@@ -148,8 +149,8 @@ requiresNodeDecision(node)
 - 固定 renderer 包含三个准确按钮标签和独立 handler。
 - 当前视图、当前模块、当前需求分别选择预期节点集合。
 - 三个作用域都只补齐 `MISSING` 且有推荐项的节点。
-- `file://` 与非 `127.0.0.1` 环境不加载数据，并禁用交互式复核入口。
-- `http://127.0.0.1` 下保留现有加载、推荐保存、下载与摘要行为。
+- `file://`、公网地址、域名和非 HTTP 环境不加载数据，并禁用交互式复核入口。
+- `http://127.0.0.1` 与显式 RFC1918 私网 IPv4 下保留现有加载、推荐保存、写回、下载与摘要行为。
 
 ### 下载补齐流程测试
 
@@ -167,7 +168,7 @@ requiresNodeDecision(node)
 ## 验收标准
 
 - 新生成或强制刷新的 SP 项目可以用一条 Node 命令启动复核页。
-- 用户收到的复核链接始终以 `http://127.0.0.1:<实际端口>/` 开头。
+- 默认复核链接以 `http://127.0.0.1:<实际端口>/` 开头；显式 LAN 模式链接使用请求的 RFC1918 私网 IPv4。
 - 链接报告前 renderer 和 review data 已各自通过真实 HTTP 200 检查。
 - 直接打开 renderer 文件不能加载、选择或导出确认结果。
 - 三个推荐保存按钮作用域准确，不覆盖任何已有草稿或人工决定。

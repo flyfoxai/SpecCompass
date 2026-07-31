@@ -2155,7 +2155,8 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "max_visible_nodes_per_map: 18" in prd
     assert "max_depth: 3" in prd
     assert "Direct child count is deliberately not part of the density budget" in prd
-    assert "There is no fixed minimum, default, or maximum number of direct child nodes" in prd
+    assert "A branch with only its root, or with only child `map_link` nodes, is invalid" in prd
+    assert "There is no fixed target count for direct child facts" in prd
     assert "core capability + observable outcome" in prd
     assert "Any user-supplied second-level or third-level list is a seed" in prd
     assert "Build a private fact ledger for that branch" in prd
@@ -4303,7 +4304,7 @@ def test_review_pages_use_short_url_parameters_as_primary_entry():
     assert "../../../specs/${encodeURIComponent(feature)}/ui/review/ui-review-data.json" in data_loader
     assert "../../../specs/${encodeURIComponent(feature)}/prd/review/outline-review-data.json" in data_loader
     assert "window.location.protocol === \"http:\"" in data_loader
-    assert "window.location.hostname === \"127.0.0.1\"" in data_loader
+    assert "isAllowedReviewHost(window.location.hostname)" in data_loader
     assert "serve-review.mjs" in data_loader
     assert "path.sep" not in data_loader
     assert "\\\\" not in data_loader
@@ -4479,8 +4480,8 @@ if (JSON.stringify(ids) !== JSON.stringify(["b-1", "b-2", "b-3"])) {{
     assert result.returncode == 0, result.stderr or result.stdout
 
 
-def test_review_renderer_transport_gate_rejects_non_127_http_before_accepting_data():
-    """Review controls stay blocked outside the launcher and inline data is never accepted."""
+def test_review_renderer_transport_gate_allows_explicit_private_lan_before_accepting_data():
+    """Only loopback/private LAN HTTP origins pass the launcher transport gate."""
     if shutil.which("node") is None:
         pytest.skip("node is required for renderer transport tests")
 
@@ -4545,7 +4546,11 @@ function evaluate(protocol, hostname, shouldBlock) {{
 evaluate("file:", "", true);
 evaluate("http:", "localhost", true);
 evaluate("https:", "127.0.0.1", true);
+evaluate("http:", "8.8.8.8", true);
 evaluate("http:", "127.0.0.1", false);
+evaluate("http:", "10.0.0.209", false);
+evaluate("http:", "172.16.1.20", false);
+evaluate("http:", "192.168.1.20", false);
 """
     result = subprocess.run(
         ["node", "-e", node_program],
@@ -6873,9 +6878,9 @@ def _outline_discovery_validator_sample() -> dict:
             {"node_id": "node-trading-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "交易闭环", "summary": "进入数据、策略和风险控制业务分图。", "source_status": "user-confirmed", "child_map_id": "map-trading-loop", "business_chain_refs": ["chain-trading-loop"], "capability_atom_refs": ["atom-controlled-order"]},
             {"node_id": "node-governance-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "全局治理约束", "summary": "查看对交易业务生效的项目原则。", "source_status": "doc", "child_map_id": "map-governance"},
             {"node_id": "node-trading-root", "parent_node_id": None, "map_id": "map-trading-loop", "node_kind": "root", "label": "从交易数据到受控订单", "summary": "接收数据，产生交易意图，风险放行后形成订单。", "source_status": "user-confirmed", "business_chain_refs": ["chain-trading-loop"]},
-            {"node_id": "node-data", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "capability", "label": "交易数据存储", "summary": "保存并更新行情、资金和持仓事实。", "source_status": "doc", "business_chain_refs": ["chain-trading-loop"]},
-            {"node_id": "node-strategy-risk", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "capability", "label": "策略与风险决策", "summary": "生成交易意图，并按仓位、损失和资金限制决定放行或阻断。", "source_status": "ai-proposed", "business_chain_refs": ["chain-trading-loop"]},
-            {"node_id": "node-order", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "acceptance", "label": "受控订单结果", "summary": "输出可执行订单，或记录风险阻断原因。", "source_status": "user-confirmed", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-data", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "capability", "label": "交易数据存储", "summary": "保存并更新行情、资金和持仓事实。", "source_status": "doc", "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"], "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-strategy-risk", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "capability", "label": "策略与风险决策", "summary": "生成交易意图，并按仓位、损失和资金限制决定放行或阻断。", "source_status": "ai-proposed", "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"], "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-order", "parent_node_id": "node-trading-root", "map_id": "map-trading-loop", "node_kind": "acceptance", "label": "受控订单结果", "summary": "输出可执行订单，或记录风险阻断原因。", "source_status": "user-confirmed", "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"], "business_chain_refs": ["chain-trading-loop"]},
             {"node_id": "node-governance-root", "parent_node_id": None, "map_id": "map-governance", "node_kind": "root", "label": "全局约束与治理", "summary": "只保留横切规则。", "source_status": "doc"},
             {"node_id": "node-constitution-rule", "parent_node_id": "node-governance-root", "map_id": "map-governance", "node_kind": "constraint", "label": "高风险决策需要人工确认", "summary": "扩大交易风险的规则变更必须由责任人确认。", "source_status": "doc", "affected_node_ids": ["node-strategy-risk"], "constitution_clause_refs": ["constitution-risk-review"]},
         ],
@@ -7162,6 +7167,183 @@ def test_outline_discovery_schema_allows_branch_node_source_refs():
     source_refs = schema["$defs"]["outline_node"]["properties"]["source_refs"]
     assert source_refs["minItems"] == 1
     assert source_refs["uniqueItems"] is True
+
+
+def test_outline_discovery_cli_verifies_canonical_feature_maturity_and_markdown_anchors(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    project_root = tmp_path / "project"
+    review_path = project_root / sample["artifact_path"]
+    review_path.parent.mkdir(parents=True)
+    (project_root / "specs" / "review-index.json").write_text(
+        json.dumps({"features": [{"feature": "001-outline", "feature_code": "001"}]}),
+        encoding="utf-8",
+    )
+    prd_path = project_root / "specs" / "001-outline" / "prd.md"
+    prd_path.write_text(
+        "# PRD\n\n| Outline Maturity | `explore` |\n\n## Core Trading Loop\n\n交易闭环。\n",
+        encoding="utf-8",
+    )
+    (project_root / "specs" / "001-outline" / "spec-outline.md").write_text(
+        "# Outline\n\n| Outline Maturity | `explore` |\n| Review Level | Level 1 portfolio-boundary discovery |\n",
+        encoding="utf-8",
+    )
+
+    review_path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+    accepted = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert accepted.returncode == 0, _review_validator_output(accepted)
+
+    invalid_anchor = json.loads(json.dumps(sample))
+    invalid_anchor["source_snapshot"][0]["anchors"] = ["Missing Heading"]
+    review_path.write_text(json.dumps(invalid_anchor, ensure_ascii=False), encoding="utf-8")
+    rejected_anchor = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert rejected_anchor.returncode != 0
+    assert "source anchor does not exist" in _review_validator_output(rejected_anchor)
+
+    invalid_maturity = json.loads(json.dumps(sample))
+    invalid_maturity["outline_maturity"] = "frame"
+    review_path.write_text(json.dumps(invalid_maturity, ensure_ascii=False), encoding="utf-8")
+    rejected_maturity = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert rejected_maturity.returncode != 0
+    assert "Level 1 portfolio-boundary discovery must use outline_maturity explore" in _review_validator_output(rejected_maturity)
+
+    prd_path.write_text(
+        "# PRD\n\n| Outline Maturity | `explore` |\n\n## Core Trading Loop\n\n交易闭环。[src:ai-proposed]\n",
+        encoding="utf-8",
+    )
+    review_path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+    promoted_proposal = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert promoted_proposal.returncode != 0
+    assert "referenced Markdown section contains [src:ai-proposed]" in _review_validator_output(promoted_proposal)
+
+
+def test_outline_discovery_structure_repair_projects_existing_facts_into_child_maps(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    sample["outline_maturity"] = "frame"
+    sample["maps"].insert(
+        1,
+        {
+            "map_id": "map-domain",
+            "title": "错误中间责任域",
+            "summary": "旧数据为了密度增加的中间分组。",
+            "map_kind": "branch",
+            "root_node_id": "node-domain-root",
+            "parent_map_id": "map-overview",
+        },
+    )
+    trading_map = next(map_ for map_ in sample["maps"] if map_["map_id"] == "map-trading-loop")
+    trading_map["parent_map_id"] = "map-domain"
+    trading_entry = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    trading_entry["map_id"] = "map-domain"
+    trading_entry["parent_node_id"] = "node-domain-root"
+    sample["outline_nodes"].extend(
+        [
+            {"node_id": "node-domain-root", "parent_node_id": None, "map_id": "map-domain", "node_kind": "root", "label": "错误中间责任域", "summary": "旧数据的中间分组根。", "source_status": "doc", "business_chain_refs": ["chain-trading-loop"]},
+            {"node_id": "node-domain-entry", "parent_node_id": "node-project", "map_id": "map-overview", "node_kind": "map_link", "label": "错误中间责任域", "summary": "进入错误中间责任域。", "source_status": "doc", "child_map_id": "map-domain", "business_chain_refs": ["chain-trading-loop"]},
+        ]
+    )
+    for node in sample["outline_nodes"]:
+        if node["node_id"] in {"node-data", "node-strategy-risk", "node-order"}:
+            node["map_id"] = "map-domain"
+            node["parent_node_id"] = "node-trading-entry"
+
+    review_path = tmp_path / "outline-discovery-data.json"
+    review_path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+    repair_script = REVIEW_ROOT / "scripts" / "repair-outline-discovery-structure.mjs"
+    repaired = subprocess.run(
+        ["node", str(repair_script), str(review_path), "--level-one", "--write"],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert repaired.returncode == 0, repaired.stderr or repaired.stdout
+
+    result = json.loads(review_path.read_text(encoding="utf-8"))
+    assert result["outline_maturity"] == "explore"
+    assert "map-domain" not in {map_["map_id"] for map_ in result["maps"]}
+    repaired_entry = next(node for node in result["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    assert repaired_entry["map_id"] == "map-overview"
+    assert repaired_entry["parent_node_id"] == "node-project"
+    assert not [node for node in result["outline_nodes"] if node["parent_node_id"] == "node-trading-entry"]
+    branch_facts = [
+        node for node in result["outline_nodes"]
+        if node["map_id"] == "map-trading-loop" and node["parent_node_id"] == "node-trading-root"
+    ]
+    assert {node["node_kind"] for node in branch_facts} >= {"scenario", "scope", "capability", "acceptance"}
+    accepted = _run_review_validator(result, tmp_path / "repaired-outline.json")
+    assert accepted.returncode == 0, _review_validator_output(accepted)
+
+    first_repair = review_path.read_text(encoding="utf-8")
+    repaired_again = subprocess.run(
+        ["node", str(repair_script), str(review_path), "--level-one", "--write"],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert repaired_again.returncode == 0, repaired_again.stderr or repaired_again.stdout
+    assert review_path.read_text(encoding="utf-8") == first_repair
+
+    sample["question_groups"][0]["map_id"] = "map-overview"
+    sample["question_groups"][0]["questions"][0]["outline_node_id"] = "node-domain-entry"
+    protected_path = tmp_path / "protected-grouping-outline.json"
+    protected_source = json.dumps(sample, ensure_ascii=False)
+    protected_path.write_text(protected_source, encoding="utf-8")
+    protected_repair = subprocess.run(
+        ["node", str(repair_script), str(protected_path), "--level-one", "--write"],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert protected_repair.returncode != 0
+    assert "refuses to remove grouping nodes referenced by questions or constraints" in (protected_repair.stderr or protected_repair.stdout)
+    assert protected_path.read_text(encoding="utf-8") == protected_source
+
+
+def test_outline_discovery_structure_repair_restores_source_when_validation_fails(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    next(node for node in sample["outline_nodes"] if node["node_id"] == "node-constitution-rule")["affected_node_ids"] = ["node-missing"]
+    review_path = tmp_path / "outline-discovery-data.json"
+    original = json.dumps(sample, ensure_ascii=False)
+    review_path.write_text(original, encoding="utf-8")
+
+    repair_script = REVIEW_ROOT / "scripts" / "repair-outline-discovery-structure.mjs"
+    repaired = subprocess.run(
+        ["node", str(repair_script), str(review_path), "--level-one", "--write"],
+        cwd=PROJECT_ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert repaired.returncode != 0
+    assert "original file was restored" in (repaired.stderr or repaired.stdout)
+    assert review_path.read_text(encoding="utf-8") == original
 
 
 def test_outline_discovery_rejects_level_one_candidate_that_merges_independent_business_chains(tmp_path):
@@ -7565,6 +7747,24 @@ def test_outline_discovery_rejects_candidate_without_capability_atom_evidence(tm
             "must be linked exactly once",
         ),
         (
+            "map-link-with-same-map-child",
+            lambda data: data["outline_nodes"].append({"node_id": "node-misplaced-detail", "parent_node_id": "node-trading-entry", "map_id": "map-overview", "node_kind": "scope", "label": "错挂的结果交接", "summary": "该事实应该位于交易闭环分图。", "source_status": "doc", "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"], "business_chain_refs": ["chain-trading-loop"]}),
+            "must not contain same-map children",
+        ),
+        (
+            "empty-business-branch",
+            lambda data: data.__setitem__("outline_nodes", [
+                node for node in data["outline_nodes"]
+                if node["node_id"] not in {"node-data", "node-strategy-risk", "node-order"}
+            ]),
+            "must expose at least one source-backed direct fact",
+        ),
+        (
+            "node-source-promotes-atom",
+            lambda data: data["business_context"]["capability_atoms"][0].__setitem__("source_status", "ai-proposed"),
+            "source_status cannot exceed its capability atom or business chain evidence",
+        ),
+        (
             "overview-constraint-impact",
             lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-constitution-rule").__setitem__("affected_node_ids", ["node-project"]),
             "must reference business branch nodes",
@@ -7613,11 +7813,6 @@ def test_outline_discovery_rejects_candidate_without_capability_atom_evidence(tm
         (
             "unbound-ai-proposal",
             lambda data: data.__setitem__("question_groups", [{**data["question_groups"][0], "questions": []}]),
-            "ai-proposed business node must bind a question",
-        ),
-        (
-            "unbound-overview-ai-proposal",
-            lambda data: next(node for node in data["outline_nodes"] if node["node_id"] == "node-trading-entry").__setitem__("source_status", "ai-proposed"),
             "ai-proposed business node must bind a question",
         ),
         (
@@ -7751,7 +7946,6 @@ for (const [label, mutate] of [
   ["constitution-clauses-not-array", (data) => data.constitution_snapshot.clauses = {{}}],
   ["business-branch-without-chain", (data) => delete data.outline_nodes.find((item) => item.node_id === "node-trading-entry").business_chain_refs],
   ["unbound-ai-proposal", (data) => data.question_groups[0].questions = []],
-  ["unbound-overview-ai-proposal", (data) => data.outline_nodes.find((item) => item.node_id === "node-trading-entry").source_status = "ai-proposed"],
   ["constitution-business-evidence", (data) => data.business_context.business_chains[0].source_refs = [".specify/memory/constitution.md#Risk Governance"]],
   ["mutable-constitution", (data) => data.constitution_snapshot.display_mode = "editable"],
   ["unknown-constitution-clause", (data) => data.outline_nodes.find((item) => item.node_id === "node-constitution-rule").constitution_clause_refs = ["missing-clause"]],
@@ -7764,6 +7958,21 @@ for (const [label, mutate] of [
     node.node_id = "node-trading-entry-duplicate";
     data.outline_nodes.push(node);
   }}],
+  ["map-link-with-same-map-child", (data) => data.outline_nodes.push({{
+    node_id: "node-misplaced-detail",
+    parent_node_id: "node-trading-entry",
+    map_id: "map-overview",
+    node_kind: "scope",
+    label: "错挂的结果交接",
+    summary: "该事实应该位于交易闭环分图。",
+    source_status: "doc",
+    source_refs: ["specs/001-outline/prd.md#Core Trading Loop"],
+    business_chain_refs: ["chain-trading-loop"]
+  }})],
+  ["empty-business-branch", (data) => {{
+    data.outline_nodes = data.outline_nodes.filter((item) => !["node-data", "node-strategy-risk", "node-order"].includes(item.node_id));
+  }}],
+  ["node-source-promotes-atom", (data) => data.business_context.capability_atoms[0].source_status = "ai-proposed"],
   ["overview-constraint-impact", (data) => {{
     data.outline_nodes.find((item) => item.node_id === "node-constitution-rule").affected_node_ids = ["node-project"];
   }}],
@@ -7916,6 +8125,7 @@ const fs = require("fs");
 const vm = require("vm");
 const source = fs.readFileSync({json.dumps(str(renderer))}, "utf8");
 const data = {{
+  project: {{ feature: "000-product-root" }},
   maps: [
     {{ map_id: "overview", map_kind: "overview", root_node_id: "overview-root", title: "总图" }},
     {{ map_id: "branch-a", map_kind: "branch", root_node_id: "branch-a-root", title: "分图 A" }},
@@ -7943,6 +8153,12 @@ vm.runInContext(source, context);
 const overview = data.maps[0];
 const entries = context.outlineDiscoveryOverviewPreviewEntries(overview, data);
 const counts = Object.fromEntries(["link-a", "link-b", "link-c"].map((id) => [id, entries.filter((entry) => entry.parentId === id).length]));
+if (context.outlineDiscoverySemanticMapOrdinal(overview, data) !== "000") throw new Error("overview lost feature code identity");
+if (context.outlineDiscoverySemanticMapOrdinal(data.maps[1], data) !== "01") throw new Error("first candidate ordinal is not 01");
+if (context.outlineDiscoverySemanticMapOrdinal(data.maps[2], data) !== "02") throw new Error("second candidate ordinal is not 02");
+const branchPresentation = context.outlineDiscoveryMapPresentation(data.maps[1]);
+if (branchPresentation.ordinalById.get("branch-a-root") !== "01") throw new Error("branch root ordinal is not 01");
+if (branchPresentation.ordinalById.get("a-1") !== "01.1") throw new Error("branch fact ordinal is not 01.1");
 if (JSON.stringify(counts) !== JSON.stringify({{"link-a": 2, "link-b": 0, "link-c": 2}})) throw new Error(JSON.stringify(counts));
 if (entries.some((entry) => entry.node.node_id === "a-deep")) throw new Error("deep descendants leaked into overview preview");
 if (new Set(entries.map((entry) => entry.key)).size !== entries.length) throw new Error("preview render keys are not unique");
@@ -9366,16 +9582,19 @@ def test_flow_ui_command_templates_do_not_embed_renderer_implementation_state_ma
         assert token in renderer_readme
 
 
-def test_review_localhost_launcher_is_required_by_commands_and_documentation():
-    """Interactive reviews must use the checked 127.0.0.1 launcher URL."""
+def test_review_launcher_and_private_lan_mode_are_documented():
+    """Interactive reviews use the launcher, with optional explicit private LAN mode."""
     flow = _command("flow")
     ui = _command("ui")
+    prd = _command("prd")
     skill = REVIEW_DATA_SKILL.read_text(encoding="utf-8")
     renderer_readme = RENDERER_README.read_text(encoding="utf-8")
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
 
     assert "node .specify/review/scripts/serve-review.mjs --flow <feature>" in flow
     assert "node .specify/review/scripts/serve-review.mjs --ui <feature>" in ui
+    assert "node .specify/review/scripts/serve-review.mjs --outline <feature>" in prd
+    assert "RFC1918" in prd and "0.0.0.0" in prd
 
     for content, label in (
         (flow, "flow command"),
@@ -9387,6 +9606,7 @@ def test_review_localhost_launcher_is_required_by_commands_and_documentation():
         assert "serve-review.mjs" in content, label
         assert "SPECCOMPASS_REVIEW_URL=" in content, label
         assert "127.0.0.1" in content, label
+        assert "RFC1918" in content or "私网" in content, label
         assert "renderer 和 review data 均返回 HTTP 200" in content, label
         assert "禁止使用 `file://`" in content, label
         assert "`localhost`" in content and "不接受" in content, label

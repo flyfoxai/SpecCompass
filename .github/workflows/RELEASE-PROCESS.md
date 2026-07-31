@@ -15,7 +15,7 @@ This separation ensures that git tags always point to commits with the correct v
 
 - Every release must bump the public version above the latest `v*` tag. Patch releases should normally leave the workflow input empty so the release trigger auto-increments the patch version.
 - Manual release versions are allowed for planned minor or major releases only when the requested version is strictly greater than the latest release tag. The workflow rejects duplicate, equal, or lower versions.
-- GitHub Release notes publish the current user-facing release focus, such as Flow/UI review confirmation improvements. Methodology documents are supporting references and are not published as the release theme unless the release is explicitly methodology-focused.
+- GitHub Release notes publish the current user-facing release focus, such as review access or Outline reliability improvements. Methodology documents are supporting references and are not published as the release theme unless the release is explicitly methodology-focused.
 - Support work such as implementation fixes, tests, CI maintenance, and workflow plumbing remains in git history and `CHANGELOG.md`; it is not promoted as a release theme.
 
 ## Before Creating a Release

@@ -5,6 +5,13 @@ const OUTLINE_DISCOVERY_DENSITY_BUDGET = Object.freeze({
   layer_balance_min_nodes: 8,
   max_layer_share: 0.6,
 });
+const OUTLINE_DISCOVERY_OVERVIEW_SAFETY_LIMIT = 64;
+
+function outlineSourceStatusExceedsEvidence(sourceStatus, evidenceStatuses) {
+  if (evidenceStatuses.includes("unresolved")) return sourceStatus !== "unresolved";
+  if (evidenceStatuses.includes("ai-proposed")) return !new Set(["ai-proposed", "unresolved"]).has(sourceStatus);
+  return false;
+}
 
 function validateBoundaryAdjustmentRuntime(data) {
   const value = data.boundary_adjustment;
@@ -115,7 +122,12 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
   }
   for (const map of data.maps) {
     const mapNodes = nodesByMap.get(map.map_id);
-    if (mapNodes.length > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_visible_nodes_per_map) return "单张 Outline 导图最多显示 18 个节点。";
+    if (map.map_kind === "overview" && mapNodes.length > OUTLINE_DISCOVERY_OVERVIEW_SAFETY_LIMIT) {
+      return `Outline 总图最多显示 ${OUTLINE_DISCOVERY_OVERVIEW_SAFETY_LIMIT} 个节点。`;
+    }
+    if (map.map_kind !== "overview" && mapNodes.length > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_visible_nodes_per_map) {
+      return "单张 Outline 分图最多显示 18 个节点。";
+    }
     const root = nodesById.get(map.root_node_id);
     if (!root || root.map_id !== map.map_id || root.node_kind !== "root" || root.parent_node_id !== null ||
         mapNodes.filter((node) => node.parent_node_id === null).length !== 1) {
@@ -155,7 +167,7 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
       if (depth > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_depth) return "单张 Outline 导图最多展示 3 层。";
       layers.set(depth, (layers.get(depth) || 0) + 1);
     }
-    if (mapNodes.length >= OUTLINE_DISCOVERY_DENSITY_BUDGET.layer_balance_min_nodes &&
+    if (map.map_kind !== "overview" && mapNodes.length >= OUTLINE_DISCOVERY_DENSITY_BUDGET.layer_balance_min_nodes &&
         Math.max(...layers.values()) / mapNodes.length > OUTLINE_DISCOVERY_DENSITY_BUDGET.max_layer_share) {
       return "Outline 导图任一层不能承载超过 60% 的节点。";
     }
@@ -164,7 +176,8 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
   const overviewMap = data.maps.find((map) => map.map_kind === "overview");
   const overviewRoot = overviewMap ? nodesById.get(overviewMap.root_node_id) : null;
   const globalMap = data.maps.find((map) => map.map_kind === "global_constraints");
-  const businessChainIds = new Set((data.business_context?.business_chains || []).map((chain) => chain?.chain_id));
+  const businessChainsById = new Map((data.business_context?.business_chains || []).map((chain) => [chain?.chain_id, chain]));
+  const businessChainIds = new Set(businessChainsById.keys());
   const capabilityAtomsById = new Map((data.business_context?.capability_atoms || []).map((atom) => [atom?.atom_id, atom]));
   const capabilityAtomOwnerCounts = new Map([...capabilityAtomsById.keys()].map((atomId) => [atomId, 0]));
   const businessChainProjectOwnerCounts = new Map([...businessChainIds].map((chainId) => [chainId, 0]));
@@ -175,6 +188,10 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
     const isBusinessNode = map.map_kind === "branch" || (map.map_kind === "overview" && node.node_kind !== "root" && childMap?.map_kind !== "global_constraints");
     const isLevelOneProjectLink = data.outline_maturity === "explore" &&
       map.map_kind === "overview" &&
+      node.parent_node_id === overviewRoot?.node_id &&
+      node.node_kind === "map_link" &&
+      childMap?.map_kind === "branch";
+    const isOverviewBusinessMapLink = map.map_kind === "overview" &&
       node.parent_node_id === overviewRoot?.node_id &&
       node.node_kind === "map_link" &&
       childMap?.map_kind === "branch";
@@ -192,6 +209,18 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
          new Set(node.capability_atom_refs).size !== node.capability_atom_refs.length ||
          node.capability_atom_refs.some((id) => !capabilityAtomsById.has(id)))) {
       return "业务节点的 capability_atom_refs 必须引用结构化业务能力原子。";
+    }
+    if (map.map_kind !== "global_constraints" && !(map.map_kind === "overview" && node.node_kind === "root")) {
+      const evidenceStatuses = [
+        ...(node.capability_atom_refs || []).map((id) => capabilityAtomsById.get(id)?.source_status),
+        ...(node.business_chain_refs || []).map((id) => businessChainsById.get(id)?.source_status),
+      ].filter(Boolean);
+      if (outlineSourceStatusExceedsEvidence(node.source_status, evidenceStatuses)) {
+        return "业务节点的来源等级不能高于其能力原子或业务链证据。";
+      }
+    }
+    if (isOverviewBusinessMapLink && (!Array.isArray(node.capability_atom_refs) || !node.capability_atom_refs.length)) {
+      return "总图业务分图入口必须拥有至少一个业务能力原子。";
     }
     if (isLevelOneProjectLink) {
       if (!Array.isArray(node.business_chain_refs) || node.business_chain_refs.length !== 1) {
@@ -241,6 +270,27 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
   for (const map of data.maps) {
     if (map.map_kind !== "overview" && childMapLinkCounts.get(map.map_id) !== 1) {
       return "Outline 子图必须且只能从父图链接一次。";
+    }
+  }
+  const sourcesByPath = new Map((data.source_snapshot || []).map((source) => [String(source?.path || "").replace(/\\/g, "/"), source]));
+  for (const map of data.maps) {
+    if (map.map_kind !== "branch") continue;
+    const directFacts = (nodesByMap.get(map.map_id) || []).filter(
+      (node) => node.parent_node_id === map.root_node_id && node.node_kind !== "map_link"
+    );
+    if (!directFacts.length) return "Outline 业务分图必须在根节点下展开至少一个有来源支持的业务事实。";
+    for (const node of directFacts) {
+      if (!Array.isArray(node.source_refs) || !node.source_refs.length) return "Outline 分图业务事实必须提供来源引用。";
+      for (const rawRef of node.source_refs) {
+        const ref = String(rawRef || "").replace(/\\/g, "/");
+        const hash = ref.indexOf("#");
+        const sourcePath = hash < 0 ? ref : ref.slice(0, hash);
+        const anchor = hash < 0 ? "" : ref.slice(hash + 1);
+        const source = sourcesByPath.get(sourcePath);
+        if (!source || (anchor && (!Array.isArray(source.anchors) || !source.anchors.includes(anchor)))) {
+          return "Outline 分图业务事实必须引用来源快照及其声明锚点。";
+        }
+      }
     }
   }
   if (data.outline_maturity === "explore" && [...capabilityAtomOwnerCounts.values()].some((ownerCount) => ownerCount !== 1)) {
@@ -502,12 +552,22 @@ function validateReviewData(data) {
       }
     }
     const questionedNodeIds = new Set(data.question_groups.flatMap((group) => group.questions.map((question) => question.outline_node_id)));
+    const questionedBranchMapIds = new Set(data.outline_nodes.flatMap((node) => {
+      if (!questionedNodeIds.has(node.node_id)) return [];
+      if (topology.mapsById.get(node.map_id)?.map_kind === "branch") return [node.map_id];
+      if (node.node_kind === "map_link" && topology.mapsById.get(node.child_map_id)?.map_kind === "branch") return [node.child_map_id];
+      return [];
+    }));
     for (const node of data.outline_nodes) {
       const map = topology.mapsById.get(node.map_id);
       const childKind = topology.mapsById.get(node.child_map_id)?.map_kind;
       const isBusinessNode = map?.map_kind === "branch" ||
         (map?.map_kind === "overview" && node.node_kind !== "root" && childKind !== "global_constraints");
-      if (node.source_status === "ai-proposed" && isBusinessNode && !questionedNodeIds.has(node.node_id)) return "AI 建议的业务节点必须绑定确认问题。";
+      const coveredByEntryQuestion = (map?.map_kind === "branch" && questionedBranchMapIds.has(map.map_id)) ||
+        (node.node_kind === "map_link" && questionedBranchMapIds.has(node.child_map_id));
+      if (node.source_status === "ai-proposed" && isBusinessNode && !questionedNodeIds.has(node.node_id) && !coveredByEntryQuestion) {
+        return "AI 建议的业务节点必须由自身问题或所属分图入口问题承载审核。";
+      }
     }
     return "";
   }

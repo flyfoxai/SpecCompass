@@ -101,6 +101,7 @@
     },
     "density_budget": {
       "type": "object",
+      "description": "Fixed child-map presentation budget. Runtime validators exempt the single Overview from node and layer-balance limits so every Level 1 candidate remains directly visible; the Overview has a separate 64-node safety ceiling.",
       "additionalProperties": false,
       "required": [
         "max_visible_nodes_per_map", "max_depth",

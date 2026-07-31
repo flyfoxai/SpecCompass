@@ -31,17 +31,20 @@ def test_project_version_matches_latest_changelog_entry():
 
 
 def test_release_notes_publish_user_facing_release_theme():
-    """GitHub Release notes should describe the pre-plan prerequisite fix."""
+    """GitHub Release notes should describe LAN review and Outline repairs."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Unblock PRD and Specify before planning" in release_workflow
-    assert r"\`/sp.prd <feature>\`" in release_workflow
-    assert r"\`/sp.specify <feature>\`" in release_workflow
-    assert r"without requiring \`plan.md\`" in release_workflow
-    assert "explicit command target now takes precedence" in release_workflow
-    assert r"\`.specify/feature.json\`" in release_workflow
-    assert "explicit directory, explicit feature name, persisted active feature" in release_workflow
-    assert "Downstream commands keep their existing explicit" in release_workflow
+    assert "## Private LAN review access and reliable Outline maps" in release_workflow
+    assert r"\`--host <RFC1918-private-ip>\`" in release_workflow
+    assert "Public IPs, hostnames" in release_workflow
+    assert "unrelated project files remain blocked" in release_workflow
+    assert r"feature code such as \`000\`" in release_workflow
+    assert r"Level 1 candidates use \`01..N\`" in release_workflow
+    assert r"facts inside a candidate use \`01.1..\`" in release_workflow
+    assert r"A \`map_link\` is only a cross-map entry" in release_workflow
+    assert "source-integrity rules" in release_workflow
+    assert "deterministic repair tool migrates legacy Level 1 data" in release_workflow
+    assert "restores the original file if validation fails" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
@@ -50,14 +53,15 @@ def test_release_notes_publish_user_facing_release_theme():
 
 
 def test_release_changelog_summary_matches_command_regeneration_focus():
-    """The generated changelog should lead with the upstream prerequisite fix."""
+    """The generated changelog should lead with both user-facing fixes."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "PRD and Specify prerequisite routing" in trigger_workflow
-    assert "run before plan.md exists" in trigger_workflow
-    assert "explicit feature targets override stale persisted active-feature state" in trigger_workflow
+    assert "explicit RFC1918 private-LAN review access" in trigger_workflow
+    assert "strict host and file boundaries" in trigger_workflow
+    assert "Outline Discovery topology" in trigger_workflow
+    assert "semantic numbering, source integrity, and deterministic migration" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

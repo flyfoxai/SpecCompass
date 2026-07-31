@@ -230,7 +230,7 @@ specs/<root-feature>/outline-boundaries.json
 
 当前已实现并必须保留的审核基线：
 
-- Flow、UI、正式 Outline 和 Outline Discovery 共用固定 renderer 与受限 `127.0.0.1` launcher。
+- Flow、UI、正式 Outline 和 Outline Discovery 共用固定 renderer 与 launcher；默认只监听 `127.0.0.1`，需要内网访问时可显式绑定 RFC1918 私网 IPv4，拒绝公网地址和 `0.0.0.0`。
 - 页面只允许从 launcher 短 URL 自动加载绑定的 review data；不再显示“加载 Flow”“加载 UI”“加载 Outline”“选择文件”等手动入口，也不接受 inline data。
 - 主操作是“写入项目”。loopback writer 只把完整结构化决定机械记录到固定 confirmation 或 pending 文件，不调用模型、不解释人工意见、不修改 PRD/Flow/UI，也不生成新一轮 review data。
 - 项目边界最终确认只能由绑定人工审核会话的 loopback writer 写入固定 `decision.json`；writer 从服务端会话注入 proposal/base/impact identity、request/session ID、时间和一次性 receipt，并同步追加 writeback ledger。单独出现 `confirmed_by.type: human`、模型生成文件或缺少 ledger 记录不能授权迁移。当前运行环境无法提供可信人工来源时必须 fail closed。

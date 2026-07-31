@@ -92,8 +92,15 @@ directory is clear, a blocking `spec-outline.md` is allowed, but its status must
 be only `NEEDS_PRD`, `NEEDS_CLARIFY`, `NEEDS_SOURCE`, `SPLIT_REQUIRED`,
 `NEEDS_DECISION`, or `BLOCKED`, never `READY_FOR_SPECIFY`.
 
-The shared Flow/UI/Outline/Discovery launcher requires Node.js 18 or newer and
-uses stable request IDs, bounded client retries, per-target cross-process
+The shared Flow/UI/Outline/Discovery launcher requires Node.js 18 or newer. It
+binds to `127.0.0.1` by default; trusted same-LAN review may explicitly use
+`--host <RFC1918-private-ip>` such as `--host 10.0.0.209`. Public addresses,
+hostnames, and `0.0.0.0` are rejected, and LAN mode prints a warning because
+reachable devices may read or submit the current session. Static access is
+limited to the renderer, same-type structured review data used by feature
+navigation, and the review index; unrelated project files are not served. The
+launcher uses
+stable request IDs, bounded client retries, per-target cross-process
 serialization, expected target SHA-256 versions, fsynced temporary files, and
 atomic replacement. Commands must distinguish delivery failures from rejected
 data. Only an error explicitly marked `allow_fallback: true` may expose or later

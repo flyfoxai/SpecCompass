@@ -335,9 +335,10 @@ def _wait_for_ready_url(process: subprocess.Popen[str], timeout: float = 8.0) ->
 
 
 @contextmanager
-def _running_launcher(project: ReviewProject, review_type: str = "flow"):
+def _running_launcher(project: ReviewProject, review_type: str = "flow", host: str | None = None):
+    extra = ["--host", host] if host else []
     process = subprocess.Popen(
-        _launcher_command(project, review_type),
+        _launcher_command(project, review_type, *extra),
         cwd=project.root,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
@@ -664,6 +665,57 @@ def test_launcher_emits_matching_url_after_http_self_checks(
         )
         with _http_request(data_url) as response:
             assert response.status == 200
+
+
+def test_launcher_accepts_explicit_loopback_host(review_project: ReviewProject):
+    with _running_launcher(review_project, host="127.0.0.1") as (_, ready_url):
+        assert urlsplit(ready_url).hostname == "127.0.0.1"
+
+
+def test_launcher_accepts_explicit_private_lan_host_when_address_is_available(
+    review_project: ReviewProject,
+):
+    probe = socket.socket()
+    try:
+        probe.bind(("10.0.0.209", 0))
+    except OSError:
+        pytest.skip("10.0.0.209 is not assigned on this test host")
+    finally:
+        probe.close()
+
+    with _running_launcher(review_project, host="10.0.0.209") as (process, ready_url):
+        parsed = urlsplit(ready_url)
+        assert parsed.hostname == "10.0.0.209"
+        assert process.poll() is None
+        with _http_request(ready_url) as response:
+            assert response.status == 200
+        origin, config = _writer_config(ready_url)
+        status, body = _post_writeback(origin, config, _confirmation_payload(review_project))
+        assert status == 200, body.decode("utf-8")
+        assert (
+            review_project.root
+            / "specs"
+            / review_project.feature
+            / "flows"
+            / "review"
+            / "flow-confirmation.md"
+        ).is_file()
+
+
+@pytest.mark.parametrize("host", ("0.0.0.0", "8.8.8.8", "172.15.0.1", "192.167.1.1", "localhost"))
+def test_launcher_rejects_non_private_host(review_project: ReviewProject, host: str):
+    result = subprocess.run(
+        _launcher_command(review_project, "flow", "--host", host),
+        cwd=review_project.root,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+        timeout=10,
+    )
+    assert result.returncode != 0
+    assert "RFC1918" in (result.stdout + result.stderr)
+    assert "SPECCOMPASS_REVIEW_URL=" not in result.stdout
 
 
 def test_confirmation_package_rejects_unknown_type_and_repeats_outline_identity():
@@ -1662,6 +1714,43 @@ def test_launcher_blocks_traversal_and_symlink_escape(review_project: ReviewProj
             connection.close()
             assert response.status in {403, 404}
             assert b"outside secret" not in body
+
+
+def test_launcher_does_not_serve_unrelated_project_files(review_project: ReviewProject):
+    secret = review_project.root / "project-secret.txt"
+    secret.write_text("not review data", encoding="utf-8")
+
+    with _running_launcher(review_project) as (_, ready_url):
+        parsed = urlsplit(ready_url)
+        connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=3)
+        connection.request("GET", "/project-secret.txt")
+        response = connection.getresponse()
+        body = response.read()
+        connection.close()
+
+        assert response.status == 403
+        assert b"not review data" not in body
+
+
+def test_launcher_serves_same_type_review_data_for_feature_navigation(review_project: ReviewProject):
+    other_feature = "002-other-review"
+    other_data = review_project.root / "specs" / other_feature / REVIEW_DATA_PATHS["flow"]
+    other_data.parent.mkdir(parents=True)
+    other_data.write_text("{}", encoding="utf-8")
+
+    with _running_launcher(review_project) as (_, ready_url):
+        parsed = urlsplit(ready_url)
+        other_url = f"http://{parsed.hostname}:{parsed.port}/specs/{other_feature}/{REVIEW_DATA_PATHS['flow']}"
+        with _http_request(other_url) as response:
+            assert response.status == 200
+
+        wrong_type_url = f"http://{parsed.hostname}:{parsed.port}/specs/{review_project.feature}/{REVIEW_DATA_PATHS['ui']}"
+        connection = http.client.HTTPConnection(parsed.hostname, parsed.port, timeout=3)
+        connection.request("GET", urlsplit(wrong_type_url).path)
+        response = connection.getresponse()
+        response.read()
+        connection.close()
+        assert response.status == 403
 
 
 def test_launcher_sigterm_stops_server_and_releases_port(review_project: ReviewProject):

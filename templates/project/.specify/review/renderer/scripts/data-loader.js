@@ -5,7 +5,20 @@ const REVIEW_TRANSPORT_CONTROL_IDS = [
 ];
 
 function isSupportedReviewTransport() {
-  return window.location.protocol === "http:" && window.location.hostname === "127.0.0.1";
+  return window.location.protocol === "http:" && isAllowedReviewHost(window.location.hostname);
+}
+
+function isPrivateIPv4(host) {
+  if (!/^(?:\d{1,3}\.){3}\d{1,3}$/.test(host || "")) return false;
+  const octets = host.split(".").map((value) => Number(value));
+  if (octets.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) return false;
+  return octets[0] === 10
+    || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+    || (octets[0] === 192 && octets[1] === 168);
+}
+
+function isAllowedReviewHost(host) {
+  return host === "127.0.0.1" || isPrivateIPv4(host);
 }
 
 function requireSupportedReviewTransport() {
@@ -15,7 +28,7 @@ function requireSupportedReviewTransport() {
     if (control) control.disabled = true;
   }
   setStatus(
-    "复核页只能通过 127.0.0.1 本地服务使用。请在项目根目录运行 serve-review.mjs 的 --flow、--ui、--outline 或 --outline-discovery 命令，并打开 SPECCOMPASS_REVIEW_URL= 输出的地址。",
+    "复核页必须通过 serve-review.mjs 的 HTTP 服务使用。默认使用 127.0.0.1；内网访问请显式使用 --host 10.x.x.x、172.16-31.x.x 或 192.168.x.x，并打开 SPECCOMPASS_REVIEW_URL= 输出的地址。",
     true
   );
   return false;

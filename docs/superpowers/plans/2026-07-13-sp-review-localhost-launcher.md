@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Distribute a self-contained localhost review launcher, reject unsupported renderer transports, and expose view/module/requirement recommendation-save scopes.
+**Goal:** Distribute a self-contained review launcher that defaults to localhost, supports explicit RFC1918 LAN access, rejects unsupported renderer transports, and exposes view/module/requirement recommendation-save scopes.
 
-**Architecture:** A Node.js standard-library server resolves the generated project root from its own installed path, serves repository files only on `127.0.0.1`, and emits a ready URL only after renderer and review-data HTTP checks return 200. The fixed renderer independently enforces the same transport contract and reuses its existing recommendation completion state machine for three scope selectors. Command templates, the review-data skill, and methodology docs point agents to the launcher as the only interactive entry.
+**Architecture:** A Node.js standard-library server resolves the generated project root from its own installed path, serves repository files on `127.0.0.1` by default or an explicitly selected RFC1918 IPv4 address, and emits a ready URL only after renderer and review-data HTTP checks return 200. The fixed renderer independently enforces the same transport contract and reuses its existing recommendation completion state machine for three scope selectors. Command templates, the review-data skill, and methodology docs point agents to the launcher as the only interactive entry.
 
 **Tech Stack:** Node.js ESM standard library, browser JavaScript/HTML/CSS, Python pytest contract and subprocess tests, Playwright browser verification.
 
 ## Global Constraints
 
 - The launcher is installed at `.specify/review/scripts/serve-review.mjs` and has no package dependencies.
-- Bind only `127.0.0.1`; default port is `0`; do not accept an origin or bind host from input or environment.
+- Bind `127.0.0.1` by default; allow explicit RFC1918 IPv4 `--host` values only. Reject `0.0.0.0`, public addresses, hostnames, and environment overrides. Default port is `0`.
 - Emit `SPECCOMPASS_REVIEW_URL=` only after both the renderer and selected review-data URL return HTTP 200.
-- The renderer accepts only `http:` with hostname exactly `127.0.0.1`; `file:`, `localhost`, `::1`, and other hosts remain blocked.
+- The renderer accepts only `http:` with hostname `127.0.0.1` or RFC1918 IPv4; `file:`, `localhost`, `::1`, public addresses, and other hosts remain blocked.
 - Recommendation completion writes only `MISSING` decision nodes with a valid `recommended_option`; it never overwrites drafts or saved choices.
 - The three scope labels are exactly `当前视图按推荐保存`, `当前模块按推荐保存`, and `当前需求按推荐保存`.
 - Keep the implementation generic; do not embed any project-specific module, flow, screen, or review-data content.
@@ -116,7 +116,7 @@ Assert exact labels and IDs for the view/module/requirement buttons, handler cal
 for label in ("当前视图按推荐保存", "当前模块按推荐保存", "当前需求按推荐保存"):
     assert label in renderer
 assert 'window.location.protocol === "http:"' in data_loader
-assert 'window.location.hostname === "127.0.0.1"' in data_loader
+assert 'isAllowedReviewHost(window.location.hostname)' in data_loader
 ```
 
 - [ ] **Step 2: Run focused renderer tests and verify RED**
@@ -141,7 +141,7 @@ Before accepting inline data or starting any fetch, check exact protocol and hos
 
 ```javascript
 function isSupportedReviewTransport() {
-  return window.location.protocol === "http:" && window.location.hostname === "127.0.0.1";
+  return window.location.protocol === "http:" && isAllowedReviewHost(window.location.hostname);
 }
 ```
 
@@ -226,7 +226,7 @@ Create generic temporary flow review data under a temporary generated project, s
 
 - [ ] **Step 4: Verify unsupported transport behavior**
 
-Open the renderer through `file://` and through a non-`127.0.0.1` hostname. Assert controls are disabled, the launcher instruction is visible, no review data is accepted, and no package can be downloaded.
+Open the renderer through `file://` and through a public/hostname origin. Also open it through an RFC1918 LAN origin. Assert the first two are blocked, the LAN origin works, the launcher instruction is visible for blocked transports, and no package can be downloaded from blocked origins.
 
 ### Task 5: Review, Commit, and Demonstration Server
 

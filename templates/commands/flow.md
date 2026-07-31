@@ -700,7 +700,10 @@ vocabulary instead.
   renderer 和 review data 均返回 HTTP 200. Keep that process running and present
   the exact emitted URL to the user. Do not guess a port or rewrite the URL.
   交互复核禁止使用 `file://`，并且 `localhost` 不接受；only the emitted
-  `http://127.0.0.1:<port>/...` URL is a valid interactive entry. A failed
+  `http://127.0.0.1:<port>/...` URL is the default interactive entry. For a
+  trusted LAN, use `--host <RFC1918-private-ip>` and return the exact emitted
+  URL instead; never use `0.0.0.0`, a public address, or a guessed host. A LAN
+  launcher prints a warning and must be stopped after review. A failed
   self-check is a model-fixable closeout failure, not a reason to return a file
   link, relative path, or Markdown batch manifest as the primary review entry.
 - End every run with a concrete closeout recommendation. Do not only list possible next commands. Give 2-3 options, choose one, explain why, and provide a one-line copy-pasteable `NEXT_COMMAND`.

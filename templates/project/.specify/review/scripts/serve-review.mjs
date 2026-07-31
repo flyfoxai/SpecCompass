@@ -3,6 +3,7 @@
 import { createServer, request as httpRequest } from "node:http";
 import { createHash, randomBytes } from "node:crypto";
 import { open, readFile, realpath, rename, stat, unlink } from "node:fs/promises";
+import { isIP } from "node:net";
 import { dirname, extname, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -102,15 +103,38 @@ function requireSupportedNodeRuntime() {
 
 function usageError(message) {
   throw new Error(
-    `${message}\nUsage: node .specify/review/scripts/serve-review.mjs (--flow <feature> | --ui <feature> | --outline <feature> | --outline-discovery <feature>) [--port <0-65535>]`
+    `${message}\nUsage: node .specify/review/scripts/serve-review.mjs (--flow <feature> | --ui <feature> | --outline <feature> | --outline-discovery <feature>) [--port <0-65535>] [--host <127.0.0.1|RFC1918 IPv4>]`
   );
+}
+
+function isPrivateIPv4(host) {
+  if (isIP(host) !== 4) return false;
+  const octets = host.split(".").map((value) => Number(value));
+  if (octets.length !== 4 || octets.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) {
+    return false;
+  }
+  return octets[0] === 10
+    || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
+    || (octets[0] === 192 && octets[1] === 168);
+}
+
+function isAllowedReviewHost(host) {
+  return host === LOOPBACK_HOST || isPrivateIPv4(host);
+}
+
+function isReviewDataPathForType(pathname, reviewType) {
+  const match = pathname.match(/^\/specs\/([^/]+)\//);
+  if (!match || !FEATURE_PATTERN.test(match[1]) || match[1].includes("..")) return false;
+  return pathname === `/${REVIEW_DATA_PATHS[reviewType](match[1])}`;
 }
 
 function parseArguments(argv) {
   let reviewType = null;
   let feature = null;
   let port = 0;
+  let host = LOOPBACK_HOST;
   let sawPort = false;
+  let sawHost = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -137,6 +161,18 @@ function parseArguments(argv) {
       index += 1;
       continue;
     }
+    if (argument === "--host") {
+      if (sawHost) usageError("Provide --host at most once.");
+      const value = argv[index + 1];
+      if (!value || value.startsWith("--")) usageError("--host requires an IPv4 address.");
+      if (!isAllowedReviewHost(value)) {
+        usageError("--host must be 127.0.0.1 or an RFC1918 private IPv4 address (10/8, 172.16/12, or 192.168/16); 0.0.0.0, public addresses, and hostnames are not allowed.");
+      }
+      host = value;
+      sawHost = true;
+      index += 1;
+      continue;
+    }
     usageError(`Unknown argument: ${argument}`);
   }
 
@@ -144,7 +180,7 @@ function parseArguments(argv) {
   if (!FEATURE_PATTERN.test(feature) || feature.includes("..")) {
     usageError("Feature must start with an alphanumeric character and contain only letters, digits, dots, underscores, or hyphens, without '..'.");
   }
-  return { reviewType, feature, port };
+  return { reviewType, feature, port, host };
 }
 
 function isWithin(root, candidate) {
@@ -1177,6 +1213,14 @@ function createRequestHandler(context) {
       sendText(response, 405, "Method not allowed.", { Allow: "GET, HEAD" });
       return;
     }
+    const rendererPrefix = "/.specify/review/renderer/";
+    const allowedStaticPath = pathname.startsWith(rendererPrefix)
+      || isReviewDataPathForType(pathname, context.reviewType)
+      || pathname === "/specs/review-index.json";
+    if (!allowedStaticPath) {
+      sendText(response, 403, "Forbidden path.");
+      return;
+    }
 
     const absolutePath = resolve(projectRoot, `.${pathname}`);
     if (!isWithin(projectRoot, absolutePath)) {
@@ -1245,7 +1289,7 @@ function shutdown(exitCode, error = null) {
 
 async function main() {
   requireSupportedNodeRuntime();
-  const { reviewType, feature, port } = parseArguments(process.argv.slice(2));
+  const { reviewType, feature, port, host } = parseArguments(process.argv.slice(2));
   const launcherPath = await realpath(fileURLToPath(import.meta.url));
   const projectRoot = resolve(dirname(launcherPath), "../../..");
   const realProjectRoot = await realpath(projectRoot);
@@ -1268,7 +1312,7 @@ async function main() {
   await new Promise((resolveListening, rejectListening) => {
     const onError = (error) => rejectListening(error);
     server.once("error", onError);
-    server.listen({ host: LOOPBACK_HOST, port }, () => {
+    server.listen({ host, port }, () => {
       server.off("error", onError);
       resolveListening();
     });
@@ -1276,7 +1320,7 @@ async function main() {
 
   const address = server.address();
   if (!address || typeof address === "string") throw new Error("Could not determine review server port.");
-  const expectedHost = `${LOOPBACK_HOST}:${address.port}`;
+  const expectedHost = `${host}:${address.port}`;
   const origin = `http://${expectedHost}`;
   const writebackToken = randomBytes(32).toString("base64url");
   const absoluteDataPath = resolve(projectRoot, dataPath);
@@ -1314,6 +1358,9 @@ async function main() {
   const dataUrl = `${origin}/${dataPath}`;
   await Promise.all([checkUrl(rendererUrl), checkUrl(dataUrl)]);
 
+  if (host !== LOOPBACK_HOST) {
+    console.warn(`WARNING: LAN review mode is enabled on ${host}. Devices that can reach this private address may read this review and submit this session; stop the server when finished.`);
+  }
   console.log(`SPECCOMPASS_REVIEW_URL=${rendererUrl}`);
   console.log(`Review server is running on ${origin}. Press Ctrl+C to stop.`);
 }

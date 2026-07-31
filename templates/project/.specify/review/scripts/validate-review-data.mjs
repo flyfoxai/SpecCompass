@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs";
+import path from "node:path";
 
 const args = process.argv.slice(2);
 
@@ -82,6 +83,7 @@ const outlineDiscoveryDensityBudget = Object.freeze({
   layer_balance_min_nodes: 8,
   max_layer_share: 0.6,
 });
+const outlineDiscoveryOverviewSafetyLimit = 64;
 const allowedOutlineMapKinds = new Set(["overview", "branch", "global_constraints", "value_stream"]);
 const allowedOutlineNodeKinds = new Set([
   "root", "goal", "role", "domain", "scope", "problem", "scenario",
@@ -477,6 +479,133 @@ function isSafeRepositoryRelativePath(value) {
     return false;
   }
   return normalized.split("/").every((segment) => segment && segment !== "." && segment !== "..");
+}
+
+function canonicalOutlineDiscoveryProjectRoot(data) {
+  const artifactPath = String(data?.artifact_path || "").replace(/\\/g, "/");
+  const absoluteReviewPath = path.resolve(reviewDataPath).replace(/\\/g, "/");
+  const suffix = `/${artifactPath}`;
+  if (!artifactPath || !absoluteReviewPath.endsWith(suffix)) return null;
+  return absoluteReviewPath.slice(0, -suffix.length);
+}
+
+function markdownHeadingSet(source) {
+  const headings = new Set();
+  for (const line of String(source || "").split(/\r?\n/)) {
+    const match = line.match(/^#{1,6}\s+(.+?)\s*#*\s*$/);
+    if (match) headings.add(match[1].trim());
+  }
+  return headings;
+}
+
+function markdownSectionMap(source) {
+  const text = String(source || "");
+  const matches = [...text.matchAll(/^(#{1,6})\s+(.+?)\s*#*\s*$/gm)];
+  const sections = new Map();
+  for (const [index, match] of matches.entries()) {
+    const level = match[1].length;
+    const next = matches.slice(index + 1).find((candidate) => candidate[1].length <= level);
+    sections.set(match[2].trim(), text.slice(match.index + match[0].length, next?.index ?? text.length));
+  }
+  return sections;
+}
+
+function sourceStatusExceedsEvidence(sourceStatus, evidenceStatuses) {
+  if (evidenceStatuses.includes("unresolved")) return sourceStatus !== "unresolved";
+  if (evidenceStatuses.includes("ai-proposed")) {
+    return !new Set(["ai-proposed", "unresolved"]).has(sourceStatus);
+  }
+  return false;
+}
+
+function markdownOutlineMetadata(source) {
+  const text = String(source || "");
+  const maturity = text.match(/\|\s*Outline Maturity\s*\|\s*`?(explore|frame|specify_ready)`?\s*\|/i)
+    || text.match(/^Outline Maturity:\s*`?(explore|frame|specify_ready)`?\s*$/im);
+  const reviewLevel = text.match(/\|\s*Review Level\s*\|\s*Level\s*([123])\b/i);
+  return {
+    outlineMaturity: maturity?.[1]?.toLowerCase() || null,
+    reviewLevel: reviewLevel ? Number(reviewLevel[1]) : null,
+  };
+}
+
+function validateOutlineDiscoveryProjectAuthority(data) {
+  const projectRoot = canonicalOutlineDiscoveryProjectRoot(data);
+  if (!projectRoot) {
+    warn("outline discovery was validated outside its declared artifact_path; project authority and Markdown anchors were not checked");
+    return;
+  }
+
+  const feature = String(data.project?.feature || "");
+  const featureCode = feature.match(/^([0-9]{3,})(?:-|$)/)?.[1] || null;
+  const reviewIndexPath = path.join(projectRoot, "specs", "review-index.json");
+  if (fs.existsSync(reviewIndexPath)) {
+    try {
+      const reviewIndex = JSON.parse(fs.readFileSync(reviewIndexPath, "utf8"));
+      const featureEntry = asArray(reviewIndex.features).find((entry) => entry?.feature === feature);
+      if (!featureEntry) fail(`outline discovery feature ${feature} is missing from specs/review-index.json`);
+      else if (featureCode && String(featureEntry.feature_code || "") !== featureCode) {
+        fail(`outline discovery feature code ${featureCode} does not match specs/review-index.json`);
+      }
+    } catch (error) {
+      fail(`outline discovery could not read specs/review-index.json: ${error.message}`);
+    }
+  }
+
+  const sourceSectionsByPath = new Map();
+  for (const source of asArray(data.source_snapshot)) {
+    const sourcePath = path.join(projectRoot, String(source?.path || ""));
+    if (!fs.existsSync(sourcePath) || !fs.statSync(sourcePath).isFile()) {
+      fail(`outline discovery source_snapshot path does not exist: ${source?.path || "<empty>"}`);
+      continue;
+    }
+    if (!/\.md$/i.test(sourcePath)) continue;
+    const markdown = fs.readFileSync(sourcePath, "utf8");
+    const headings = markdownHeadingSet(markdown);
+    sourceSectionsByPath.set(String(source.path).replace(/\\/g, "/"), markdownSectionMap(markdown));
+    for (const anchor of asArray(source?.anchors)) {
+      if (!headings.has(String(anchor || "").trim())) {
+        fail(`outline discovery source anchor does not exist in ${source.path}: ${anchor}`);
+      }
+    }
+  }
+
+  const proposalEvidenceRefs = (refs) => asArray(refs).filter((ref) => {
+    const normalized = String(ref || "").replace(/\\/g, "/");
+    const hash = normalized.indexOf("#");
+    if (hash === -1) return false;
+    const section = sourceSectionsByPath.get(normalized.slice(0, hash))?.get(normalized.slice(hash + 1));
+    return /\[src:ai-proposed\]/i.test(section || "");
+  });
+  const validateEntryAuthority = (entry, label) => {
+    if (!entry?.source_status || new Set(["ai-proposed", "unresolved"]).has(entry.source_status)) return;
+    const proposalRefs = proposalEvidenceRefs(entry.source_refs);
+    if (proposalRefs.length) {
+      fail(`${label} cannot claim source_status ${entry.source_status}; referenced Markdown section contains [src:ai-proposed]: ${proposalRefs[0]}`);
+    }
+  };
+  validateEntryAuthority(data.business_context?.product_subject, "business product_subject");
+  for (const [key, value] of Object.entries(data.business_context || {})) {
+    if (!Array.isArray(value)) continue;
+    value.forEach((entry, index) => validateEntryAuthority(entry, `business_context.${key}[${index}]`));
+  }
+  asArray(data.outline_nodes).forEach((node) => validateEntryAuthority(node, `outline node ${node.node_id}`));
+
+  const featureRoot = path.join(projectRoot, "specs", feature);
+  for (const relativePath of ["prd.md", "spec-outline.md"]) {
+    const metadataPath = path.join(featureRoot, relativePath);
+    if (!fs.existsSync(metadataPath)) continue;
+    const metadata = markdownOutlineMetadata(fs.readFileSync(metadataPath, "utf8"));
+    if (metadata.outlineMaturity && metadata.outlineMaturity !== data.outline_maturity) {
+      fail(`outline discovery maturity ${data.outline_maturity} does not match ${relativePath}: ${metadata.outlineMaturity}`);
+    }
+    if (metadata.reviewLevel === 1 && data.outline_maturity !== "explore") {
+      fail(`Level 1 portfolio-boundary discovery must use outline_maturity explore in ${relativePath}`);
+    }
+    if (metadata.reviewLevel === 2 && data.outline_maturity !== "frame") {
+      fail(`Level 2 child-project framing must use outline_maturity frame in ${relativePath}`);
+    }
+  }
 }
 
 const vagueFlowEdgeLabels = new Set([
@@ -1909,7 +2038,9 @@ function validateOutlineDiscoveryTopology(data) {
 
   for (const map of maps) {
     const mapNodes = nodesByMap.get(map.map_id) || [];
-    if (mapNodes.length > outlineDiscoveryDensityBudget.max_visible_nodes_per_map) {
+    if (map.map_kind === "overview" && mapNodes.length > outlineDiscoveryOverviewSafetyLimit) {
+      fail(`outline overview map ${map.map_id} may contain at most ${outlineDiscoveryOverviewSafetyLimit} visible nodes`);
+    } else if (map.map_kind !== "overview" && mapNodes.length > outlineDiscoveryDensityBudget.max_visible_nodes_per_map) {
       fail(`outline map ${map.map_id} may contain at most 18 visible nodes`);
     }
     const root = nodesById.get(map.root_node_id);
@@ -1932,6 +2063,11 @@ function validateOutlineDiscoveryTopology(data) {
         children.push(node);
         childrenByParent.set(parent.node_id, children);
       }
+    }
+  }
+  for (const node of nodes) {
+    if (node.node_kind === "map_link" && (childrenByParent.get(node.node_id) || []).length) {
+      fail(`outline map_link ${node.node_id} must not contain same-map children; put child facts under ${node.child_map_id || "its child map"}`);
     }
   }
   for (const map of maps) {
@@ -1957,7 +2093,7 @@ function validateOutlineDiscoveryTopology(data) {
       }
       layerCounts.set(depth, (layerCounts.get(depth) || 0) + 1);
     }
-    if (mapNodes.length >= outlineDiscoveryDensityBudget.layer_balance_min_nodes) {
+    if (map.map_kind !== "overview" && mapNodes.length >= outlineDiscoveryDensityBudget.layer_balance_min_nodes) {
       const largestLayer = Math.max(...layerCounts.values());
       if (largestLayer / mapNodes.length > outlineDiscoveryDensityBudget.max_layer_share) {
         fail(`outline map ${map.map_id} layer may contain at most 60% of visible nodes`);
@@ -1982,6 +2118,10 @@ function validateOutlineDiscoveryTopology(data) {
       node.parent_node_id === overviewRoot?.node_id &&
       node.node_kind === "map_link" &&
       childMap?.map_kind === "branch";
+    const isOverviewBusinessMapLink = map?.map_kind === "overview" &&
+      node.parent_node_id === overviewRoot?.node_id &&
+      node.node_kind === "map_link" &&
+      childMap?.map_kind === "branch";
     if (node.parent_node_id === overviewRoot?.node_id &&
         (node.node_kind !== "map_link" || !["branch", "global_constraints"].includes(mapsById.get(node.child_map_id)?.map_kind))) {
       fail("overview root direct children must be business or governance map links");
@@ -2001,6 +2141,18 @@ function validateOutlineDiscoveryTopology(data) {
           node.capability_atom_refs.some((id) => !capabilityAtomsById.has(id))) {
         fail(`outline node ${node.node_id} capability_atom_refs must reference business_context`);
       }
+    }
+    if (map?.map_kind !== "global_constraints" && !(map?.map_kind === "overview" && node.node_kind === "root")) {
+      const evidenceStatuses = [
+        ...asArray(node.capability_atom_refs).map((id) => capabilityAtomsById.get(id)?.source_status),
+        ...asArray(node.business_chain_refs).map((id) => asArray(data.business_context?.business_chains).find((chain) => chain.chain_id === id)?.source_status),
+      ].filter(Boolean);
+      if (sourceStatusExceedsEvidence(node.source_status, evidenceStatuses)) {
+        fail(`outline node ${node.node_id} source_status cannot exceed its capability atom or business chain evidence`);
+      }
+    }
+    if (isOverviewBusinessMapLink && (!Array.isArray(node.capability_atom_refs) || !node.capability_atom_refs.length)) {
+      fail(`outline overview business map_link ${node.node_id} must own at least one capability atom`);
     }
     if (isLevelOneProjectLink) {
       if (!Array.isArray(node.business_chain_refs) || node.business_chain_refs.length !== 1) {
@@ -2086,7 +2238,6 @@ function validateOutlineDiscoveryBranchFactExpansion(data, { mapsById, nodesById
     source,
   ]));
   const validateNodeSourceRefs = (node) => {
-    if (node.source_refs === undefined) return;
     const refs = asArray(node.source_refs);
     if (!refs.length) {
       fail(`outline branch node ${node.node_id} source_refs must not be empty when provided`);
@@ -2113,6 +2264,10 @@ function validateOutlineDiscoveryBranchFactExpansion(data, { mapsById, nodesById
     const directChildren = [...nodesById.values()].filter(
       (node) => node.map_id === map.map_id && node.parent_node_id === map.root_node_id,
     );
+    if (!directChildren.length || directChildren.every((node) => node.node_kind === "map_link")) {
+      fail(`outline branch map ${map.map_id} must expose at least one source-backed direct fact below its root`);
+      continue;
+    }
     directChildren.forEach(validateNodeSourceRefs);
 
     const childKinds = new Set(directChildren.map((node) => node.node_kind));
@@ -2532,6 +2687,7 @@ function validateOutlineDiscovery(data) {
     }
   }
 
+  validateOutlineDiscoveryProjectAuthority(data);
   validateOutlineDiscoveryConstitution(data);
   validateOutlineDiscoveryBusinessContext(data);
   const topology = validateOutlineDiscoveryTopology(data);
@@ -2635,12 +2791,20 @@ function validateOutlineDiscovery(data) {
     }
   }
   const questionedNodeIds = new Set(groups.flatMap((group) => asArray(group?.questions).map((question) => question?.outline_node_id)));
+  const questionedBranchMapIds = new Set(asArray(data.outline_nodes).flatMap((node) => {
+    if (!questionedNodeIds.has(node.node_id)) return [];
+    if (mapsById.get(node.map_id)?.map_kind === "branch") return [node.map_id];
+    if (node.node_kind === "map_link" && mapsById.get(node.child_map_id)?.map_kind === "branch") return [node.child_map_id];
+    return [];
+  }));
   for (const node of asArray(data.outline_nodes)) {
     const map = mapsById.get(node.map_id);
     const childKind = mapsById.get(node.child_map_id)?.map_kind;
     const isBusinessNode = map?.map_kind === "branch" ||
       (map?.map_kind === "overview" && node.node_kind !== "root" && childKind !== "global_constraints");
-    if (node?.source_status === "ai-proposed" && isBusinessNode && !questionedNodeIds.has(node.node_id)) {
+    const coveredByEntryQuestion = (map?.map_kind === "branch" && questionedBranchMapIds.has(map.map_id)) ||
+      (node.node_kind === "map_link" && questionedBranchMapIds.has(node.child_map_id));
+    if (node?.source_status === "ai-proposed" && isBusinessNode && !questionedNodeIds.has(node.node_id) && !coveredByEntryQuestion) {
       fail(`ai-proposed business node must bind a question: ${node.node_id}`);
     }
   }

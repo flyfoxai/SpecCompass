@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Fixed PRD and Specify prerequisite routing so upstream commands run before plan.md exists and explicit feature targets override stale persisted active-feature state." \
+              "- Added explicit RFC1918 private-LAN review access with strict host and file boundaries, and repaired Outline Discovery topology, semantic numbering, source integrity, and deterministic migration." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

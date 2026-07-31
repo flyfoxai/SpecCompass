@@ -147,16 +147,24 @@ node .specify/review/scripts/serve-review.mjs --outline <feature>
 node .specify/review/scripts/serve-review.mjs --outline-discovery <feature>
 ```
 
-The launcher binds only to `127.0.0.1`, chooses an available port unless an
-explicit port is supplied, and emits `SPECCOMPASS_REVIEW_URL=` only after the
-renderer 和 review data 均返回 HTTP 200. The agent must return that exact emitted
-URL and must not guess a port. 交互复核禁止使用 `file://`，并且 `localhost` 不接受;
-HTTPS, `::1`, and other hostnames are also unsupported. On any unsupported
-origin, the renderer rejects inline data and disables writeback and fallback
-controls. There is no manual JSON selector or colocated-file load button: a
-manually selected artifact can disagree with the launcher's bound feature,
-review type, capability token, and target identity. Loading is exclusively
-derived from the launcher's short URL.
+The launcher binds to `127.0.0.1` by default. For a trusted private network,
+the operator may explicitly pass `--host` with the machine's RFC1918 IPv4
+address, such as `10.0.0.209`, `172.16.0.20`, or `192.168.1.20`; public
+addresses, hostnames, and `0.0.0.0` are rejected. It chooses an available port
+unless an explicit port is supplied, and emits `SPECCOMPASS_REVIEW_URL=` only
+after the renderer 和 review data 均返回 HTTP 200. The agent must return that
+exact emitted URL and must not guess a port. 交互复核禁止使用 `file://`，并且
+`localhost` 不接受; HTTPS, `::1`, and other hostnames are also unsupported.
+When `--host` exposes the page to a LAN, the launcher prints a warning; stop it
+after review because reachable devices may read the current review and submit
+the current session. Static HTTP access is limited to the fixed renderer,
+same-type structured review data used by feature navigation, and
+`specs/review-index.json`; unrelated project
+files are not served. On any unsupported origin, the renderer rejects inline
+data and disables writeback and fallback controls. There is no manual JSON selector
+or colocated-file load button: a manually selected artifact can
+disagree with the launcher's bound feature, review type, capability token, and
+target identity. Loading is exclusively derived from the launcher's short URL.
 
 The primary reviewer-facing entry uses short URL parameters / 短参数. Opening
 `speccompass-review-renderer.html?flow=<feature>` auto-loads
