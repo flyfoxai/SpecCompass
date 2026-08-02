@@ -298,12 +298,13 @@ def test_product_prd_is_authoritative_and_matches_current_review_baseline():
         assert "transition" in content or "暂态" in content, label
         assert "outline_node_id" in content, label
 
-    for command_name in ("prd", "specify", "flow", "ui", "plan", "tasks", "analyze", "gate", "implement"):
+    for command_name in ("prd", "specify", "flow", "ui", "bundle", "plan", "tasks", "analyze", "gate", "implement"):
         content = _command(command_name)
         assert "check-outline-boundary-gate.mjs" in content, command_name
         assert "speccompass.outline-boundary-gate.v1" in content, command_name
         assert "repair_command_exec" in content, command_name
         assert "derived" in content and "review-index.json" in content, command_name
+        assert f"--stage {command_name}" in content, command_name
 
     assert "start-outline-transition.mjs" in _command("prd")
     for command_name in ("prd", "flow", "ui"):
@@ -315,6 +316,9 @@ def test_product_prd_is_authoritative_and_matches_current_review_baseline():
         assert "preserve-confirmed" in content
         assert "--ack-confirmed" in content
         assert "non-blocking" in content
+    assert "--stage <prd|flow|ui>" in review_skill
+    assert "The explicit Portfolio root must always keep `has_flow_review: false`" in review_skill
+    assert "never silently delete them" in review_skill
     assert "Never recommend or invoke" in _command("prd")
     assert "manage-feature-codes.mjs reserve" in _command("prd")
     assert "create-new-feature.sh --number" in _command("specify")
@@ -939,6 +943,21 @@ def test_non_route_commands_have_closeout_recommendation_contract():
             "copy-pasteable" in content or "复制粘贴" in content
         ), f"{command_file.name} missing copy-paste guidance"
         assert forbidden_prompt_field not in content, command_file.name
+
+
+def test_accept_routes_portfolio_root_outline_to_child_selection():
+    """Accepting a root Outline must not dispatch specification on feature 000."""
+    accept = _command("accept")
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    usage = (PROJECT_ROOT / "docs" / "reference" / "speckit-command-usage.md").read_text(encoding="utf-8")
+
+    for content in (accept, command_spec, methodology, usage):
+        assert "/sp.route all" in content
+        assert "001+" in content
+        assert "/sp.specify 000-*" in content or "/sp.specify <root-feature>" in content
+    assert "root `outline`" in accept
+    assert "non-root `outline`" in accept
 
 
 def test_closeout_recommendation_docs_cover_ordinary_commands():
@@ -2138,7 +2157,7 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "source-backed or explicitly unresolved product subject" in prd
     assert "at least one named role with a domain action" in prd
     assert "failing or changing business object, operation, or result" in prd
-    assert "return the whole product to `explore` only" in prd
+    assert "return the whole portfolio to `explore` only" in prd
     assert "From `specify_ready`, return to `frame`" in prd
     assert "model-owned compilation step" in prd
     assert "not cross-consumption by the confirmation package parser" in prd
@@ -2320,9 +2339,9 @@ def test_prd_outline_levels_have_non_overlapping_executable_contracts():
     assert "owned business state" in prd
     assert "all candidate boundaries are resolved" in prd
     assert "Level 2 owns child-project framing" in prd
-    assert "for a retained one-product decision" in prd
-    assert "confirmed parent PRD" in prd
-    assert "target the confirmed retained-product scope" in prd
+    assert "one explicit `001+` implementation boundary" in prd
+    assert "consume exactly one confirmed `Subproject Handoff`" in prd
+    assert "sole implementation child is a real coordinator-to-child ownership contract" in prd
     assert "silently merge children in Level 2" in prd
     assert "exactly one confirmed `Subproject Handoff`" in prd
     assert "must not reopen the full portfolio decomposition" in prd
@@ -2332,8 +2351,9 @@ def test_prd_outline_levels_have_non_overlapping_executable_contracts():
     assert "resulting state or observable outcome" in prd
     assert "Level 3 is a source-preserving compilation" in prd
     assert "must not create, merge, split, or reinterpret business facts" in prd
-    assert "return the whole product to `explore` only" in prd
+    assert "return the whole portfolio to `explore` only" in prd
     assert "route only those boundaries for Level 1 resolution" in prd
+    assert "never implementation in `000`" in prd
 
     assert "cross-domain substitution test" in prd
     assert "Apply the cross-domain substitution test to every chain" in prd
@@ -2349,7 +2369,7 @@ def test_prd_outline_levels_have_non_overlapping_executable_contracts():
 
     for content in (methodology, usage):
         assert "一级只负责项目组合拆分" in content
-        assert "二级只负责单个已确认子项目的业务闭环" in content
+        assert "二级只负责单个已确认 `001+` 实施子项目的业务闭环" in content
         assert "三级只负责保留来源身份的正式编译" in content
         assert "跨领域替换测试" in content
     assert "一级和二级均执行跨领域替换测试" in usage
@@ -5332,6 +5352,16 @@ def test_outline_boundaries_contract_validates_digest_state_and_closed_fields(tm
     assert result.returncode != 0
     assert "unsupported fields" in result.stderr
 
+    non_portfolio_root = json.loads(json.dumps(document))
+    non_portfolio_root["current_baseline"]["project_boundaries"][0]["feature_code"] = "999"
+    non_portfolio_root["current_baseline"]["project_boundaries"][1]["parent_feature_code"] = "999"
+    non_portfolio_root["current_baseline"]["baseline_digest"] = _contract_digest(
+        non_portfolio_root["current_baseline"], "baseline_digest"
+    )
+    result = validate(non_portfolio_root)
+    assert result.returncode != 0
+    assert "root_feature must use feature_code 000" in result.stderr
+
     unsafe_ref = json.loads(json.dumps(document))
     unsafe_ref["current_baseline"]["decision_ref"] = "C:\\outside\\decision.md"
     unsafe_ref["current_baseline"]["baseline_digest"] = _contract_digest(
@@ -5447,6 +5477,50 @@ def test_review_index_is_derived_from_aligned_outline_boundaries(tmp_path: Path)
     )
     assert rejected.returncode != 0
     assert "do not match outline-boundaries" in rejected.stderr
+
+
+def test_review_index_rejects_flow_or_ui_review_on_portfolio_root(tmp_path: Path):
+    index = {
+        "schema_version": 2,
+        "project": "Root",
+        "updated_at": "2026-07-27",
+        "hierarchy": {"mode": "explicit", "root_feature": "000-root"},
+        "features": [
+            {
+                "order": 1,
+                "feature_code": "000",
+                "feature": "000-root",
+                "title": "Root",
+                "parent_feature": None,
+                "sibling_order": 0,
+                "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Root."},
+                "outline_alignment": {"status": "one_to_one", "outline_node_refs": ["boundary-000"], "rationale": "Aligned."},
+                "has_flow_review": True,
+                "has_ui_review": False,
+                "has_outline_review": True,
+                "has_outline_discovery": False,
+            },
+            {
+                "order": 2,
+                "feature_code": "001",
+                "feature": "001-child",
+                "title": "Child",
+                "parent_feature": "000-root",
+                "sibling_order": 1,
+                "boundary_source": {"kind": "subproject_handoff", "handoff_ref": "specs/000-root/prd.md#handoff-001", "rationale": "Child."},
+                "outline_alignment": {"status": "one_to_one", "outline_node_refs": ["boundary-001"], "rationale": "Aligned."},
+                "has_flow_review": False,
+                "has_ui_review": False,
+                "has_outline_review": False,
+                "has_outline_discovery": False,
+            },
+        ],
+    }
+    index_path = tmp_path / "review-index.json"
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    result = subprocess.run(["node", str(REVIEW_INDEX_VALIDATOR), str(index_path)], text=True, capture_output=True, check=False)
+    assert result.returncode != 0
+    assert "portfolio-only" in result.stderr
 
 
 def test_legacy_boundary_bootstrap_produces_non_authoritative_candidate(tmp_path: Path):
@@ -5655,16 +5729,26 @@ def test_outline_boundary_gate_returns_one_shared_machine_contract(tmp_path: Pat
     )
     assert synced.returncode == 0, synced.stderr
 
-    command = ["node", str(OUTLINE_BOUNDARY_GATE), str(boundaries_path), str(index_path), "--feature", "001-child"]
+    base_command = ["node", str(OUTLINE_BOUNDARY_GATE), str(boundaries_path), str(index_path)]
+    command = [*base_command, "--feature", "001-child", "--stage", "specify"]
     allowed = subprocess.run(command, text=True, capture_output=True, check=False)
     assert allowed.returncode == 0, allowed.stderr
     payload = json.loads(allowed.stdout)
     assert payload["schema"] == "speccompass.outline-boundary-gate.v1"
     assert payload["allowed"] is True
     assert payload["current_baseline_id"] == "baseline-001"
-    without_feature = subprocess.run(command[:-2], text=True, capture_output=True, check=False)
+    without_feature = subprocess.run(base_command, text=True, capture_output=True, check=False)
     assert without_feature.returncode == 0, without_feature.stderr
     assert json.loads(without_feature.stdout)["feature"] is None
+
+    without_stage = subprocess.run(
+        [*base_command, "--feature", "001-child"],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert without_stage.returncode == 2
+    assert "--stage" in without_stage.stderr
 
     recovery_claim = root / ".outline-boundaries.json.start.lock.recovery"
     recovery_claim.write_text("{}", encoding="utf-8")
@@ -5717,6 +5801,66 @@ def test_outline_boundary_gate_returns_one_shared_machine_contract(tmp_path: Pat
     assert regeneration_payload["allowed"] is True
     assert regeneration_payload["authority_status"] == "UNREGISTERED"
     assert regeneration_payload["advisories"][0]["blocks_regeneration"] is False
+
+
+@pytest.mark.parametrize("stage", ("specify", "flow", "ui", "bundle", "plan", "tasks", "analyze", "gate", "implement"))
+def test_portfolio_root_is_not_an_implementation_target(tmp_path: Path, stage: str):
+    root = tmp_path / "specs" / "000-root"
+    root.mkdir(parents=True)
+    boundaries_path = root / "outline-boundaries.json"
+    index_path = tmp_path / "specs" / "review-index.json"
+    boundaries_path.write_text(json.dumps(_aligned_boundaries_document()), encoding="utf-8")
+    synced = subprocess.run(
+        ["node", str(OUTLINE_BOUNDARIES_SYNC), str(boundaries_path), str(index_path)],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert synced.returncode == 0, synced.stderr
+
+    result = subprocess.run(
+        [
+            "node", str(OUTLINE_BOUNDARY_GATE), str(boundaries_path), str(index_path),
+            "--feature", "000-root", "--stage", stage,
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["schema"] == "speccompass.outline-boundary-gate.v1"
+    assert payload["allowed"] is False
+    assert payload["block_reason"] == "PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET"
+    assert payload["feature"] == "000-root"
+    assert payload["stage"] == stage
+    assert payload["implementation_features"] == ["001-child"]
+
+
+@pytest.mark.parametrize(
+    ("root_directory", "requested_feature"),
+    (("000-root", "000-root"), ("legacy-root", "000-root")),
+)
+def test_unregistered_portfolio_root_is_blocked_before_implementation_advisory(
+    tmp_path: Path,
+    root_directory: str,
+    requested_feature: str,
+):
+    root = tmp_path / "specs" / root_directory
+    root.mkdir(parents=True)
+    boundaries_path = root / "outline-boundaries.json"
+    index_path = tmp_path / "specs" / "review-index.json"
+    result = subprocess.run(
+        [
+            "node", str(OUTLINE_BOUNDARY_GATE), str(boundaries_path), str(index_path),
+            "--feature", requested_feature, "--intent", "regenerate", "--stage", "flow",
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 1, result.stderr
+    assert json.loads(result.stdout)["block_reason"] == "PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET"
 
 
 def _write_reviewed_outline_adjustment(

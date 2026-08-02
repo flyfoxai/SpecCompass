@@ -15,14 +15,25 @@ const featureIndex = args.indexOf("--feature");
 const requestedFeature = featureIndex >= 0 ? args[featureIndex + 1] : null;
 const intentIndex = args.indexOf("--intent");
 const intent = intentIndex >= 0 ? args[intentIndex + 1] : "ordinary";
+const stageIndex = args.indexOf("--stage");
+const stage = stageIndex >= 0 ? args[stageIndex + 1] : null;
+const supportedStages = new Set([
+  "prd", "specify", "flow", "ui", "bundle", "plan", "tasks", "analyze", "gate", "implement"
+]);
+const implementationStages = new Set([
+  "specify", "flow", "ui", "bundle", "plan", "tasks", "analyze", "gate", "implement"
+]);
 const optionIndexes = new Set();
-for (const index of [featureIndex, intentIndex]) {
+for (const index of [featureIndex, intentIndex, stageIndex]) {
   if (index >= 0) { optionIndexes.add(index); optionIndexes.add(index + 1); }
 }
 const positional = args.filter((_, index) => !optionIndexes.has(index));
 if (positional.length !== 2 || (featureIndex >= 0 && !requestedFeature)
+  || (stageIndex >= 0 && !stage) || (stage !== null && !supportedStages.has(stage))
+  || (featureIndex >= 0 && stage === null)
+  || (stage !== null && implementationStages.has(stage) && !requestedFeature)
   || !new Set(["ordinary", "regenerate"]).has(intent)) {
-  console.error("Usage: node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root>/outline-boundaries.json specs/review-index.json [--feature <feature-slug>] [--intent <ordinary|regenerate>]");
+  console.error("Usage: node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root>/outline-boundaries.json specs/review-index.json [--feature <feature-slug>] [--intent <ordinary|regenerate>] [--stage <prd|specify|flow|ui|bundle|plan|tasks|analyze|gate|implement>]");
   process.exit(2);
 }
 
@@ -33,12 +44,16 @@ const rootFromPath = basename(dirname(boundariesPath));
 const commandBoundariesPath = boundariesArgument.replaceAll("\\", "/");
 const commandReviewIndexPath = reviewIndexArgument.replaceAll("\\", "/");
 
+function hasPortfolioCode(feature) {
+  return feature === "000" || feature?.startsWith("000-");
+}
+
 function emit(payload, exitCode) {
   console.log(JSON.stringify({ schema: "speccompass.outline-boundary-gate.v1", ...payload }, null, 2));
   process.exit(exitCode);
 }
 
-function block(document, reason, evidenceRefs, repairCommandExec, repairCommand = repairCommandExec) {
+function block(document, reason, evidenceRefs, repairCommandExec, repairCommand = repairCommandExec, details = {}) {
   emit(
     {
       allowed: false,
@@ -51,9 +66,28 @@ function block(document, reason, evidenceRefs, repairCommandExec, repairCommand 
       blocked_since: document?.transition?.started_at || document?.updated_at || null,
       evidence_refs: evidenceRefs,
       repair_command_exec: repairCommandExec,
-      repair_command: repairCommand
+      repair_command: repairCommand,
+      feature: requestedFeature,
+      stage,
+      ...details
     },
     1
+  );
+}
+
+function blockPortfolioRoot(document = null) {
+  const rootFeature = document?.root_feature || rootFromPath;
+  const implementationFeatures = (document?.current_baseline?.project_boundaries || [])
+    .filter((boundary) => boundary.feature !== rootFeature)
+    .sort((left, right) => left.order - right.order)
+    .map((boundary) => boundary.feature);
+  block(
+    document,
+    "PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET",
+    [boundariesPath, requestedFeature, `stage:${stage}`],
+    "/sp.route all",
+    `The portfolio root ${rootFeature} owns project-wide PRD, Outline, boundaries, constraints, and handoffs only. Select an implementation child for /sp.${stage}; never create or consume Spec, Flow, UI, Bundle, Plan, Tasks, analysis, gate, or implementation artifacts in the root.`,
+    { implementation_features: implementationFeatures }
   );
 }
 
@@ -99,6 +133,18 @@ async function emitUnregisteredRegenerationAdvisory() {
 }
 
 try {
+  // The caller's boundaries path explicitly identifies the root. Keep an
+  // unregistered portfolio root from using regeneration advisories to enter an
+  // implementation stage before an authoritative baseline exists.
+  if (implementationStages.has(stage) && (hasPortfolioCode(requestedFeature) || requestedFeature === rootFromPath)) {
+    try {
+      await access(boundariesPath);
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      blockPortfolioRoot();
+    }
+  }
+
   try {
     await access(boundariesPath);
   } catch (error) {
@@ -239,6 +285,10 @@ try {
     );
   }
 
+  if (implementationStages.has(stage) && (hasPortfolioCode(requestedFeature) || requestedFeature === document.root_feature)) {
+    blockPortfolioRoot(document);
+  }
+
   const sync = spawnSync(
     process.execPath,
     [resolve(scriptDir, "sync-review-index.mjs"), boundariesPath, reviewIndexPath, "--check"],
@@ -263,6 +313,7 @@ try {
       transition_state: "ALIGNED",
       transition_id: null,
       feature: requestedFeature,
+      stage,
       authority_status: "REGISTERED",
       advisories: []
     },

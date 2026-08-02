@@ -99,28 +99,48 @@ def _reviewed_transition_inputs(boundaries: Path, proposal: dict, cwd: Path) -> 
 
 
 def _aligned_document(*, timestamp_code: bool = False) -> dict:
-    root_code = "20260728-120000" if timestamp_code else "000"
+    root_code = "000"
     root_feature = f"{root_code}-root"
+    boundaries = [
+        {
+            "order": 1,
+            "feature_code": root_code,
+            "feature": root_feature,
+            "title": "Root",
+            "parent_feature_code": None,
+            "sibling_order": 0,
+            "outline_node_id": f"boundary-{root_code}",
+            "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Root boundary."},
+            "lifecycle": "active",
+            "predecessor_codes": [],
+        }
+    ]
+    if timestamp_code:
+        boundaries.append(
+            {
+                "order": 2,
+                "feature_code": "20260728-120000",
+                "feature": "20260728-120000-historical-child",
+                "title": "Historical child",
+                "parent_feature_code": "000",
+                "sibling_order": 1,
+                "outline_node_id": "boundary-20260728-120000",
+                "boundary_source": {
+                    "kind": "subproject_handoff",
+                    "handoff_ref": "specs/000-root/prd.md#handoff-historical-child",
+                    "rationale": "Historical timestamp feature retained under the Portfolio root.",
+                },
+                "lifecycle": "active",
+                "predecessor_codes": [],
+            }
+        )
     baseline = {
         "baseline_id": "baseline-001",
         "baseline_digest": "",
         "created_at": "2026-07-28T10:00:00.000Z",
         "created_by": "test-suite",
         "decision_ref": f"specs/{root_feature}/prd.md#decision-001",
-        "project_boundaries": [
-            {
-                "order": 1,
-                "feature_code": root_code,
-                "feature": root_feature,
-                "title": "Root",
-                "parent_feature_code": None,
-                "sibling_order": 0,
-                "outline_node_id": f"boundary-{root_code}",
-                "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Root boundary."},
-                "lifecycle": "active",
-                "predecessor_codes": [],
-            }
-        ],
+        "project_boundaries": boundaries,
         "tombstones": [],
     }
     baseline["baseline_digest"] = _digest(baseline, "baseline_digest")
@@ -456,6 +476,7 @@ def test_historical_timestamp_code_can_be_adopted_but_new_reservation_is_sequent
     assert json.loads(reservation.stdout)["feature_code"] == "001"
     stored = json.loads(ledger.read_text(encoding="utf-8"))
     assert {entry["feature_code"]: entry["status"] for entry in stored["entries"]} == {
+        "000": "active",
         "20260728-120000": "active",
         "001": "reserved",
     }

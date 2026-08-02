@@ -21,7 +21,7 @@ Here, ordinary means a direct full-stage invocation: not `--consume-review-confi
 
 The exact `/sp.ui <feature> --consume-review-confirmation` route is not an ordinary regeneration. It exists only for the fixed loopback writer's fully `CONFIRMED` result. Do not clear or regenerate. Recompute the complete Review Data ID, validate feature, batch, source identity, owner approval, and empty revision/open/draft-excluded lists, then record the current UI as ready for planning/downstream use. Any mismatch or non-confirmed status fails closed and returns ordinary `/sp.ui <feature>` for fresh generation; never consume a preserved archive or copied/model-authored confirmation through this route.
 
-Before clearing anything, resolve the explicit feature and root and run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature> --intent regenerate`. Accept only schema `speccompass.outline-boundary-gate.v1`. Missing legacy boundary registration is a non-blocking advisory and must not route to a PRD adoption page. A valid human-approved structural transition, unreadable/invalid established authority, interrupted finalization, or a target excluded by an established baseline still blocks before clearing. A derived index mismatch may be repaired mechanically with the returned sync command and then rechecked.
+Before clearing anything, resolve the explicit feature and root and run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature> --intent regenerate --stage ui`. Accept only schema `speccompass.outline-boundary-gate.v1`. Missing legacy boundary registration is a non-blocking advisory only for a non-root feature; `PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET` always blocks root-level UI generation and consumption. A valid human-approved structural transition, unreadable/invalid established authority, interrupted finalization, or a target excluded by an established baseline still blocks before clearing. A derived index mismatch may be repaired mechanically with the returned sync command and then rechecked.
 
 For any remaining `allowed: false`, leave generated artifacts untouched and return its `block_reason`, evidence, and exact `repair_command_exec`; do not invent a different repair or directly edit derived `review-index.json` identity fields.
 
@@ -618,6 +618,9 @@ instead.
   Downgrade / 降级 excess candidates to `important` before validation. Every
   critical point requires individual / 逐项 confirmation and is excluded from
   every bulk / 批量 recommended-option action.
+  This browser bulk-action exclusion does not prevent the separately authored
+  `/sp.accept ui <feature>` command, which is an explicit blanket
+  authorization that still records each critical selection individually.
   framework approximation/deviation notes, design authority metadata, tiered
   `OPTION_A`/`OPTION_B`/`OPTION_C`/`OPTION_D` choices,
   `recommended_option`, required `decision_background`, required

@@ -27,6 +27,28 @@
     "feature": {
       "type": "object",
       "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "anyOf": [
+              {
+                "required": ["feature_code"],
+                "properties": {"feature_code": {"const": "000"}}
+              },
+              {
+                "required": ["feature"],
+                "properties": {"feature": {"pattern": "^000(?:-|$)"}}
+              }
+            ]
+          },
+          "then": {
+            "properties": {
+              "has_flow_review": {"const": false},
+              "has_ui_review": {"const": false}
+            }
+          }
+        }
+      ],
       "required": [
         "order",
         "feature_code",

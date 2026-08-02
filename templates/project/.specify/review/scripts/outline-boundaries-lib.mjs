@@ -172,6 +172,7 @@ function validateBoundarySet(boundaries, tombstones, rootFeature, label, errors)
   const root = boundaries.find((boundary) => boundary?.feature === rootFeature);
   if (!root) errors.push(`${label} must contain root_feature ${rootFeature}.`);
   else if (root.parent_feature_code !== null || root.boundary_source?.kind !== "root") errors.push(`${label} root_feature must use root boundary and no parent.`);
+  if (root?.feature_code !== "000" || !root?.feature?.startsWith("000-")) errors.push(`${label} root_feature must use feature_code 000 and a 000-* feature slug.`);
   if (codes.has("000") && root?.feature_code !== "000") errors.push(`${label} feature_code 000 is reserved for root_feature.`);
   for (const boundary of boundaries) {
     if (!isObject(boundary) || boundary.feature === rootFeature) continue;
@@ -330,7 +331,7 @@ export function validateOutlineBoundaries(document) {
   const errors = [];
   if (!exactKeys(document, ROOT_KEYS, "outline-boundaries", errors)) return errors;
   if (document.schema_version !== 1) errors.push("outline-boundaries schema_version must be 1.");
-  if (!isNonEmptyString(document.root_feature) || !FEATURE_PATTERN.test(document.root_feature) || document.root_feature.includes("..")) errors.push("root_feature must be a safe feature slug.");
+  if (!isNonEmptyString(document.root_feature) || !FEATURE_PATTERN.test(document.root_feature) || document.root_feature.includes("..") || !document.root_feature.startsWith("000-")) errors.push("root_feature must be a safe 000-* Portfolio feature slug.");
   if (!isTimestamp(document.updated_at)) errors.push("updated_at must be an ISO-8601 timestamp.");
   if (!TRANSITION_STATES.has(document.transition_state)) errors.push("transition_state is invalid; ALIGNED_NEW_BASELINE is an event, not a state.");
   const hasCurrent = isObject(document.current_baseline);

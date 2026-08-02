@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added explicit RFC1918 private-LAN review access with strict host and file boundaries, and repaired Outline Discovery topology, semantic numbering, source integrity, and deterministic migration." \
+              "- Added explicit review acceptance and stage advancement for Outline, Flow, and UI, and enforced that the 000-* Portfolio root remains outside Flow/UI and implementation stages." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

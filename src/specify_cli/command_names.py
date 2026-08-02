@@ -12,6 +12,7 @@ from collections.abc import Iterable
 
 CORE_COMMAND_STEMS = frozenset(
     {
+        "accept",
         "analyze",
         "bundle",
         "checklist",

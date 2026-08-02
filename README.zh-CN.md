@@ -7,15 +7,16 @@ SpecCompass 基于 [GitHub Spec Kit](https://github.com/github/spec-kit) 增强�
 
 ## 核心能力
 
-- **PRD Outline 确认**：`/sp.prd` 根据来源把业务能力拆成可独立验收的候选子项目思维导图，提供节点候选、自由输入，并只读展示 Constitution；纲要成熟后，必须完成图形确认才能进入 `/sp.specify`。
+- **PRD Outline 确认**：`/sp.prd` 根据来源把业务能力拆成可独立验收的候选子项目思维导图，提供节点候选、自由输入，并只读展示 Constitution；`000-*` 顶层组合根只负责 PRD、Outline、约束和 handoff，不进入实现链，真正的实施子项目必须使用显式的 `001+` 边界。纲要成熟后，必须完成图形确认才能进入 `/sp.specify`。
 - **SP Lite 验证**：`/sp.lite` 先给出 2-3 个方向由人工选择，再基于同一份 Outline 全局路线交付最小可运行原型。后续轮次既可扩展已有原型，也可覆盖独立的 Outline 分支，同时避免重复和矛盾。
 - **Flow 和 UI 确认**：`/sp.flow`、`/sp.ui` 提供可视化确认页。确认项分为“非常重要、重要、普通”三档；非常重要项会控制数量，并且必须逐项确认。
+- **显式接受审核推荐**：查看当前 Outline、Flow 或 UI 审核界面后，可运行 `/sp.accept <outline|flow|ui> <feature> [--advance]` 按当前推荐逐项写入正式确认，并在所属阶段通过 readiness 后再推进下一阶段。
 - **受控交付**：规划、分析、准入、实现和验证都以已确认的范围和证据为依据。
 
 常用流程：
 
 ```text
-/sp.prd -> /sp.specify -> /sp.flow -> /sp.ui
+000-* /sp.prd -> Outline 确认 -> 001+ /sp.specify -> /sp.flow -> /sp.ui
         -> /sp.bundle -> /sp.plan -> /sp.tasks
         -> /sp.analyze -> /sp.gate -> /sp.implement
 ```

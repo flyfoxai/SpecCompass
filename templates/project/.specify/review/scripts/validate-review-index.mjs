@@ -103,6 +103,10 @@ for (const [position, entry] of features.entries()) {
   for (const flag of reviewFlags) {
     if (typeof entry[flag] !== "boolean") addError(`${label}.${flag} must be boolean.`);
   }
+  if ((entry.feature_code === "000" || entry.feature === "000" || entry.feature?.startsWith("000-"))
+    && (entry.has_flow_review === true || entry.has_ui_review === true)) {
+    addError(`${label} feature_code/slug 000 is portfolio-only and cannot advertise Flow or UI review.`);
+  }
 
   const boundary = entry.boundary_source;
   if (!boundary || typeof boundary !== "object" || Array.isArray(boundary)) {
@@ -184,6 +188,9 @@ if (mode === "flat") {
     }
     if (root.feature_code !== "000" && features.some((entry) => entry?.feature_code === "000")) {
       addError("feature_code 000 is reserved for the explicit hierarchy root when it exists.");
+    }
+    if (root.has_flow_review === true || root.has_ui_review === true) {
+      addError("explicit hierarchy root is portfolio-only and cannot advertise Flow or UI review.");
     }
   }
   for (const entry of features) {

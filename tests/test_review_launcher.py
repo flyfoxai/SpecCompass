@@ -154,6 +154,7 @@ def review_project(tmp_path: Path) -> ReviewProject:
         "outline-adjustment-lib.mjs",
         "outline-boundaries-lib.mjs",
         "outline-transition-workflow-lib.mjs",
+        "validate-review-data.mjs",
         "validate-review-index.mjs",
     ):
         shutil.copy2(REVIEW_LAUNCHER.parent / dependency, launcher.parent / dependency)
@@ -598,6 +599,9 @@ def test_launcher_is_distributed_and_force_refresh_preserves_project_content(tmp
         ("--flow", "feature", "--port", "-1"),
         ("--flow", "feature", "--port", "65536"),
         ("--flow", "feature", "--port", "1.5"),
+        ("--flow", "feature", "--accept-advance"),
+        ("--flow", "feature", "--accept-recommended", "--port", "0"),
+        ("--outline-discovery", "feature", "--accept-recommended"),
         ("--unknown", "feature"),
     ),
 )
@@ -984,20 +988,147 @@ def test_local_writer_records_confirmation_at_fixed_target(
         assert not target.with_name(f"{target.name}.speccompass-writeback.lock").exists()
 
 
+def _install_auto_accept_flow_fixture(review_project: ReviewProject, *, critical: bool = False) -> Path:
+    source = PROJECT_ROOT / "docs" / "examples" / "review" / "flow-review-data.json"
+    payload = json.loads(source.read_text(encoding="utf-8"))
+    payload["project"]["feature"] = review_project.feature
+    payload["artifact_path"] = f"specs/{review_project.feature}/flows/review/flow-review-data.json"
+    if critical:
+        payload["schema_version"] = 2
+        first_actionable = True
+        for module in payload["modules"]:
+            for diagram in module["diagrams"]:
+                for node in diagram["nodes"]:
+                    if node.get("recommended_option") or node.get("options") or node.get("review_level") == "must_confirm":
+                        node["confirmation_priority"] = "critical" if first_actionable else "normal"
+                        if first_actionable:
+                            node["critical_basis"] = "错误确认会让真实敏感数据被不可逆地发布给错误对象，且当前没有安全默认值或可撤销路径。"
+                            node["priority_reason"] = "必须由产品负责人明确授权发布对象边界，否则后续页面、开发与验收都会继承错误的数据权限。"
+                            first_actionable = False
+    data_path = review_project.data_path("flow")
+    data_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    return data_path
+
+
+@pytest.mark.parametrize("critical, advance", ((False, False), (True, False), (False, True)))
+def test_headless_writer_accepts_current_recommendations_and_returns_consume_route(
+    review_project: ReviewProject, critical: bool, advance: bool
+):
+    _install_auto_accept_flow_fixture(review_project, critical=critical)
+    command = ["node", str(review_project.launcher), "--flow", review_project.feature, "--accept-recommended"]
+    if advance:
+        command.append("--accept-advance")
+    result = subprocess.run(
+        command,
+        cwd=review_project.root,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr or result.stdout
+    payload = json.loads(result.stdout)
+    assert payload["accepted_mode"] == "explicit_recommended_command"
+    assert payload["accepted_recommended_count"] == 4
+    assert payload["accepted_critical_count"] == (1 if critical else 0)
+    assert payload["consume_command"] == f"/sp.flow {review_project.feature} --consume-review-confirmation"
+
+    target = review_project.root / payload["target_path"]
+    confirmation = target.read_text(encoding="utf-8")
+    frontmatter = yaml.safe_load(confirmation.split("---", 2)[1])
+    assert frontmatter["human_confirmation"] == "CONFIRMED"
+    assert frontmatter["authorization_scope"] == "READY_FOR_UI"
+    assert frontmatter["authorization_source"] == {
+        "mode": "explicit_recommended_command",
+        "command": f"/sp.accept flow {review_project.feature}{' --advance' if advance else ''}",
+        "critical_scope": "explicitly_authorized" if critical else "none",
+    }
+    assert frontmatter["accepted_recommended_count"] == 4
+    assert frontmatter["accepted_critical_count"] == (1 if critical else 0)
+    assert not list(target.parent.glob(f"{target.name}.tmp-*"))
+    assert not target.with_name(f"{target.name}.speccompass-writeback.lock").exists()
+
+
+def test_headless_writer_fails_closed_when_recommended_option_is_missing(review_project: ReviewProject):
+    data_path = _install_auto_accept_flow_fixture(review_project)
+    payload = json.loads(data_path.read_text(encoding="utf-8"))
+    decision = payload["modules"][0]["diagrams"][0]["nodes"][2]
+    decision.pop("recommended_option")
+    for option in decision["options"]:
+        option.pop("recommended", None)
+    data_path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+    result = subprocess.run(
+        ["node", str(review_project.launcher), "--flow", review_project.feature, "--accept-recommended"],
+        cwd=review_project.root,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "recommended" in (result.stderr + result.stdout).lower()
+    assert not (review_project.root / f"specs/{review_project.feature}/flows/review/flow-confirmation.md").exists()
+
+
+def test_headless_writer_rejects_outline_boundary_decision(review_project: ReviewProject):
+    data_path = review_project.data_path("outline")
+    payload = json.loads(data_path.read_text(encoding="utf-8"))
+    payload["boundary_adjustment"] = {"proposal_id": "baseline-002"}
+    data_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    result = subprocess.run(
+        ["node", str(review_project.launcher), "--outline", review_project.feature, "--accept-recommended"],
+        cwd=review_project.root,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "dedicated owner decision" in (result.stderr + result.stdout)
+    assert not (review_project.root / f"specs/{review_project.feature}/prd/review/outline-confirmation.md").exists()
+
+
+@pytest.mark.parametrize("review_type", ("flow", "ui"))
+def test_review_launcher_rejects_portfolio_root(review_project: ReviewProject, review_type: str):
+    root_feature = "000-portfolio"
+    data_path = review_project.root / "specs" / root_feature / ("flows/review/flow-review-data.json" if review_type == "flow" else "ui/review/ui-review-data.json")
+    data_path.parent.mkdir(parents=True, exist_ok=True)
+    source = review_project.data_path(review_type).read_text(encoding="utf-8")
+    data_path.write_text(source.replace(review_project.feature, root_feature), encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(review_project.launcher), f"--{review_type}", root_feature],
+        cwd=review_project.root,
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET" in (result.stderr + result.stdout)
+
+
 def test_outline_boundary_writer_injects_identity_receipt_and_append_only_ledger(review_project: ReviewProject):
-    feature = review_project.feature
+    feature = "000-boundary-review"
+    portfolio_project = ReviewProject(review_project.root, review_project.launcher, feature)
+    portfolio_project.data_path("outline").parent.mkdir(parents=True, exist_ok=True)
+    portfolio_project.data_path("outline").write_text(
+        review_project.data_path("outline").read_text(encoding="utf-8").replace(review_project.feature, feature),
+        encoding="utf-8",
+    )
     feature_root = review_project.root / "specs" / feature
     proposal_id = "baseline-002"
     draft = feature_root / "boundary-adjustments" / "drafts" / proposal_id
     draft.mkdir(parents=True)
     boundary = {
         "order": 1,
-        "feature_code": "001",
+        "feature_code": "000",
         "feature": feature,
         "title": "Review fixture",
         "parent_feature_code": None,
         "sibling_order": 0,
-        "outline_node_id": "boundary-001",
+        "outline_node_id": "boundary-000",
         "boundary_source": {"kind": "root", "handoff_ref": None, "rationale": "Fixture root."},
         "lifecycle": "active",
         "predecessor_codes": [],
@@ -1060,7 +1191,7 @@ def test_outline_boundary_writer_injects_identity_receipt_and_append_only_ledger
         "base_baseline_digest": baseline["baseline_digest"],
         "generated_at": "2026-07-28T01:01:00.000Z",
         "change_class": "METADATA",
-        "affected_feature_codes": ["001"],
+        "affected_feature_codes": ["000"],
         "artifact_inventory_digest": _contract_digest({"artifacts": [], "digest": ""}, "digest"),
         "artifacts": [],
         "impact_preview_digest": "",
@@ -1068,7 +1199,7 @@ def test_outline_boundary_writer_injects_identity_receipt_and_append_only_ledger
     preview["impact_preview_digest"] = _contract_digest(preview, "impact_preview_digest")
     (draft / "impact-preview.json").write_text(json.dumps(preview), encoding="utf-8")
 
-    review_data = json.loads(review_project.data_path("outline").read_text(encoding="utf-8"))
+    review_data = json.loads(portfolio_project.data_path("outline").read_text(encoding="utf-8"))
     node = review_data["modules"][0]["views"][0]["nodes"][0]
     node.update(
         {
@@ -1090,21 +1221,21 @@ def test_outline_boundary_writer_injects_identity_receipt_and_append_only_ledger
         "impact_preview_digest": preview["impact_preview_digest"],
         "initiated_by": "model",
         "change_class": "METADATA",
-        "affected_feature_codes": ["001"],
+        "affected_feature_codes": ["000"],
         "proposal_path": f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/proposal.json",
         "impact_preview_path": f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/impact-preview.json",
         "decision_path": decision_ref,
         "writer_ledger_path": f"specs/{feature}/boundary-adjustments/writeback-ledger.jsonl",
         "decision_target_ref": target_ref,
     }
-    review_project.data_path("outline").write_text(json.dumps(review_data), encoding="utf-8")
+    portfolio_project.data_path("outline").write_text(json.dumps(review_data), encoding="utf-8")
 
-    with _running_launcher(review_project, "outline") as (_, ready_url):
+    with _running_launcher(portfolio_project, "outline") as (_, ready_url):
         origin, config = _writer_config(ready_url)
         assert config["authorization_mode"] == "outline_boundary_human_decision"
         assert config["target_path"] == decision_ref
         assert config["fallback_authorizes_transition"] is False
-        payload = _confirmation_payload(review_project, "outline")
+        payload = _confirmation_payload(portfolio_project, "outline")
         payload["parts"][0]["target_path"] = decision_ref
         status, body = _post_writeback(origin, config, payload)
         assert status == 200, body.decode("utf-8")
@@ -1134,7 +1265,13 @@ def test_outline_boundary_writer_injects_identity_receipt_and_append_only_ledger
 
 
 def test_outline_boundary_adoption_uses_same_human_loopback_writer(review_project: ReviewProject):
-    feature = review_project.feature
+    feature = "000-adoption-review"
+    portfolio_project = ReviewProject(review_project.root, review_project.launcher, feature)
+    portfolio_project.data_path("outline").parent.mkdir(parents=True, exist_ok=True)
+    portfolio_project.data_path("outline").write_text(
+        review_project.data_path("outline").read_text(encoding="utf-8").replace(review_project.feature, feature),
+        encoding="utf-8",
+    )
     feature_root = review_project.root / "specs" / feature
     (feature_root / "prd.md").write_text("# Existing PRD\n", encoding="utf-8")
     (feature_root / "spec-outline.md").write_text("# Existing Outline\n\n- boundary-root\n", encoding="utf-8")
@@ -1146,7 +1283,7 @@ def test_outline_boundary_adoption_uses_same_human_loopback_writer(review_projec
         "features": [
             {
                 "order": 1,
-                "feature_code": "001",
+                "feature_code": "000",
                 "feature": feature,
                 "title": "Review fixture",
                 "parent_feature": None,
@@ -1193,7 +1330,7 @@ def test_outline_boundary_adoption_uses_same_human_loopback_writer(review_projec
         "project_boundaries": [
             {
                 "order": 1,
-                "feature_code": "001",
+                "feature_code": "000",
                 "feature": feature,
                 "title": "Review fixture",
                 "parent_feature_code": None,
@@ -1234,7 +1371,7 @@ def test_outline_boundary_adoption_uses_same_human_loopback_writer(review_projec
         "tombstones": [],
     }
     proposal["proposal_digest"] = _contract_digest(proposal, "proposal_digest")
-    review_data = json.loads(review_project.data_path("outline").read_text(encoding="utf-8"))
+    review_data = json.loads(portfolio_project.data_path("outline").read_text(encoding="utf-8"))
     node = review_data["modules"][0]["views"][0]["nodes"][0]
     node.update(
         {
@@ -1256,19 +1393,19 @@ def test_outline_boundary_adoption_uses_same_human_loopback_writer(review_projec
         "impact_preview_digest": preview["impact_preview_digest"],
         "initiated_by": "model",
         "change_class": "ADOPTION",
-        "affected_feature_codes": ["001"],
+        "affected_feature_codes": ["000"],
         "proposal_path": f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/proposal.json",
         "impact_preview_path": f"specs/{feature}/boundary-adjustments/drafts/{proposal_id}/impact-preview.json",
         "decision_path": decision_ref,
         "writer_ledger_path": f"specs/{feature}/boundary-adjustments/writeback-ledger.jsonl",
         "decision_target_ref": "module-1:outline-item-1:node-1",
     }
-    review_project.data_path("outline").write_text(json.dumps(review_data), encoding="utf-8")
+    portfolio_project.data_path("outline").write_text(json.dumps(review_data), encoding="utf-8")
 
-    with _running_launcher(review_project, "outline") as (_, ready_url):
+    with _running_launcher(portfolio_project, "outline") as (_, ready_url):
         origin, config = _writer_config(ready_url)
         assert config["authorization_mode"] == "outline_boundary_human_decision"
-        payload = _confirmation_payload(review_project, "outline")
+        payload = _confirmation_payload(portfolio_project, "outline")
         payload["parts"][0]["target_path"] = decision_ref
         status, body = _post_writeback(origin, config, payload)
         assert status == 200, body.decode("utf-8")

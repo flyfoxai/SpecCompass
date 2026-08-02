@@ -129,13 +129,19 @@ Fix model-fixable data issues first. If the remaining gap requires human
 information, mark the item blocked with a short reason and owner route.
 
 Before ordinary PRD, Flow, or UI review generation, run the boundary safety
-check with regeneration intent:
+check with regeneration intent and the matching stage:
 
 ```bash
-node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature> --intent regenerate
+node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature> --intent regenerate --stage <prd|flow|ui>
 ```
 
 Continue for schema `speccompass.outline-boundary-gate.v1` with `allowed: true`.
+`000-*` is permanently the Portfolio/coordinator root. It may generate PRD and
+Outline review, but `--stage flow` and `--stage ui` must return
+`PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET`; do not generate, consume, launch,
+or advertise Flow/UI review for that root. A unified shell, portfolio console,
+or cross-project journey that needs Flow/UI must belong to a confirmed `001+`
+implementation feature.
 `authority_status: UNREGISTERED` and a missing-boundary advisory do not block
 regeneration and must not open an adoption page. Do not infer lineage. A valid
 active structural transition, invalid established authority, interrupted
@@ -272,6 +278,11 @@ validation failure blocks completion; an unregistered legacy-index advisory
 does not block the primary PRD, Flow, or UI artifact. The renderer displays explicit
 paths such as `000 › 001` for demand navigation, while current-feature navigation
 still says `上一业务模块 / 业务模块 X/Y / 下一业务模块`.
+
+The explicit Portfolio root must always keep `has_flow_review: false` and
+`has_ui_review: false`. This applies even if legacy files exist on disk; preserve
+those files for explicit migration or operator cleanup, but never infer review
+availability from them and never silently delete them.
 
 review data 是待审内容 / review data is draft review content. The renderer is not
 an editor / 不是编辑器 and does not directly edit flow or UI design /
@@ -438,6 +449,13 @@ Each `revision_requests` item must preserve at least `target_ref`,
 against the current PRD/spec/flow/UI sources before changing data.
 
 ## Data Writing Rules
+
+Explicit auto-accept boundary: the browser's ordinary bulk recommended-option
+actions continue to exclude `critical` nodes. A separate user-authored
+`/sp.accept <outline|flow|ui> <feature>` command may authorize current critical
+recommendations one by one, records `authorization_source` and counts, and
+cannot accept `needs-decision` exits or replace Outline boundary
+adjustment/adoption decisions.
 
 - Generate new Flow/UI/Outline review data with `schema_version: 2`. Keep
   `confirmation_priority` independent from `review_level`: every actionable

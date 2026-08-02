@@ -239,7 +239,7 @@ def _activate(paths: dict[str, Path | dict], cwd: Path, env: dict[str, str] | No
 
 def test_missing_boundary_gate_routes_to_explicit_adoption(tmp_path: Path):
     paths = _project(tmp_path)
-    gate = _run(GATE, paths["boundaries"], paths["index"], "--feature", "000-root", cwd=tmp_path)
+    gate = _run(GATE, paths["boundaries"], paths["index"], "--feature", "000-root", "--stage", "prd", cwd=tmp_path)
     assert gate.returncode == 1
     payload = json.loads(gate.stdout)
     assert payload["transition_state"] == "LEGACY_ADOPTION_REQUIRED"
@@ -254,6 +254,8 @@ def test_missing_boundary_gate_routes_to_explicit_adoption(tmp_path: Path):
         "000-root",
         "--intent",
         "regenerate",
+        "--stage",
+        "prd",
         cwd=tmp_path,
     )
     assert regeneration.returncode == 0, regeneration.stderr
@@ -471,7 +473,7 @@ def test_adoption_requires_writer_ledger_then_activates_once_and_preserves_sourc
     journal = Path(paths["journal"]).read_text(encoding="utf-8").splitlines()
     assert len(consumed) == 1
     assert len(journal) == 1
-    gate = _run(GATE, paths["boundaries"], paths["index"], "--feature", "000-root", cwd=tmp_path)
+    gate = _run(GATE, paths["boundaries"], paths["index"], "--feature", "000-root", "--stage", "prd", cwd=tmp_path)
     assert gate.returncode == 0, gate.stdout + gate.stderr
 
 

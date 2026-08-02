@@ -188,6 +188,18 @@ DO_NOT_RUN: <当前不要运行的命令或 None>
 
 当 `/sp.flow` 或 `/sp.ui` 需要人工确认时，命令不能只写“请确认”。它必须先用简洁中文展示确认摘要：flow 要说明设计依据、业务目标、角色、主流程、决策点、异常/恢复、状态变化和需要看的标签；UI 要说明 PRD/spec/flow 依据、布局结构、screen/section、按钮和作用、字段和校验、图片/预览、图表/表格及数据源、权限/状态和需要看的标签。若其中有人工决策点，还要给 2-3 个选项、影响、推荐和理由。
 
+如果当前 Outline、Flow 或 UI review data 已经生成，且人工已经查看过界面，或明确授权采用所有推荐项，可以使用统一的显式自动接受入口：
+
+```text
+/sp.accept outline <feature> [--advance]
+/sp.accept flow <feature> [--advance]
+/sp.accept ui <feature> [--advance]
+```
+
+该入口只读取当前结构化 review data，逐项采用 `recommended_option`，通过正式 validator 后原子写入固定的 `*-confirmation.md`。它会在确认文档中记录 `authorization_source: explicit_recommended_command`、接受数量和 critical 数量；不会补造缺失推荐、改写 review data 或接受仍以 `needs-decision` 开头的出口。`critical` 推荐项只有在这条明确命令中才会逐项纳入授权；Outline boundary adjustment/adoption 仍必须走专用 digest-bound owner decision。默认只保存确认文档，`--advance` 才会先消费当前阶段确认，再推进到非根 `outline -> specify`、`flow -> ui` 或 `ui -> gate`。`000-*` 顶层组合根的 Outline 确认消费后改走 `/sp.route all` 选择明确的 `001+` 实施子项目，绝不运行 `/sp.specify 000-*`；任一阶段门禁失败都会停止。
+
+`000-*` 固定为 Portfolio/统筹根，只负责 PRD、Outline、全局约束、子项目交接、跨项目依赖和影响记录。即使项目最终只保留一个实施产品，也要建立一个明确的 `001+` 实施边界及其 `Subproject Handoff`；`000` 不能生成或消费 Spec、Flow、UI、Bundle、Plan、Tasks、analysis、gate 和实现产物，也不能在 review index 中声明 Flow/UI 可用。统一壳、组合控制台或跨项目旅程需要 Flow/UI 时，必须归属到可独立验收的 `001+` 子项目。
+
 停止规则：
 
 - `NEEDS_DECISION`、`HUMAN_DECISION`、`UNKNOWN_BLOCKER`：进入 `/sp.clarify`，生成或补齐人工决策包。

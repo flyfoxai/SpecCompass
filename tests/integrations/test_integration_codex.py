@@ -109,9 +109,9 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "primary_outcome_ref" in content
         assert "trigger_kind" in content
         assert "Level 2 owns child-project framing" in content
-        assert "for a retained one-product decision" in content
-        assert "confirmed parent PRD" in content
-        assert "target the confirmed retained-product scope" in content
+        assert "one explicit `001+` implementation boundary" in content
+        assert "consume exactly one confirmed `Subproject Handoff`" in content
+        assert "sole implementation child is a real coordinator-to-child ownership contract" in content
         assert "silently merge children in Level 2" in content
         assert "exactly one confirmed `Subproject Handoff`" in content
         assert "Level 3 is a source-preserving compilation" in content

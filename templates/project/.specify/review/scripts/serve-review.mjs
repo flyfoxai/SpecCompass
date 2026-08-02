@@ -2,6 +2,7 @@
 
 import { createServer, request as httpRequest } from "node:http";
 import { createHash, randomBytes } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import { open, readFile, realpath, rename, stat, unlink } from "node:fs/promises";
 import { isIP } from "node:net";
 import { dirname, extname, resolve, sep } from "node:path";
@@ -103,7 +104,7 @@ function requireSupportedNodeRuntime() {
 
 function usageError(message) {
   throw new Error(
-    `${message}\nUsage: node .specify/review/scripts/serve-review.mjs (--flow <feature> | --ui <feature> | --outline <feature> | --outline-discovery <feature>) [--port <0-65535>] [--host <127.0.0.1|RFC1918 IPv4>]`
+    `${message}\nUsage: node .specify/review/scripts/serve-review.mjs (--flow <feature> | --ui <feature> | --outline <feature> | --outline-discovery <feature>) [--port <0-65535>] [--host <127.0.0.1|RFC1918 IPv4>] [--accept-recommended [--accept-advance]]`
   );
 }
 
@@ -135,6 +136,8 @@ function parseArguments(argv) {
   let host = LOOPBACK_HOST;
   let sawPort = false;
   let sawHost = false;
+  let acceptRecommended = false;
+  let acceptAdvance = false;
 
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
@@ -173,6 +176,16 @@ function parseArguments(argv) {
       index += 1;
       continue;
     }
+    if (argument === "--accept-recommended") {
+      if (acceptRecommended) usageError("Provide --accept-recommended at most once.");
+      acceptRecommended = true;
+      continue;
+    }
+    if (argument === "--accept-advance") {
+      if (acceptAdvance) usageError("Provide --accept-advance at most once.");
+      acceptAdvance = true;
+      continue;
+    }
     usageError(`Unknown argument: ${argument}`);
   }
 
@@ -180,7 +193,16 @@ function parseArguments(argv) {
   if (!FEATURE_PATTERN.test(feature) || feature.includes("..")) {
     usageError("Feature must start with an alphanumeric character and contain only letters, digits, dots, underscores, or hyphens, without '..'.");
   }
-  return { reviewType, feature, port, host };
+  if (acceptRecommended && reviewType === "outline-discovery") {
+    usageError("--accept-recommended supports outline confirmation, flow, or ui; Outline discovery still requires a response delta.");
+  }
+  if (acceptRecommended && (sawPort || sawHost)) {
+    usageError("--accept-recommended is headless and cannot be combined with --port or --host.");
+  }
+  if (acceptAdvance && !acceptRecommended) {
+    usageError("--accept-advance requires --accept-recommended.");
+  }
+  return { reviewType, feature, port, host, acceptRecommended, acceptAdvance };
 }
 
 function isWithin(root, candidate) {
@@ -511,6 +533,9 @@ function confirmationMarkdown(merged, reviewData, context) {
     : "BLOCKED";
   const authorityIds = context.reviewType === "outline" ? packagePart.source_authority_ids : undefined;
   const recordedAt = new Date().toISOString();
+  const authorizationSource = context.authorizationSource || { mode: "interactive_review", command: null };
+  const acceptedRecommendedCount = Number(context.acceptedRecommendedCount || 0);
+  const acceptedCriticalCount = Number(context.acceptedCriticalCount || 0);
   const sourceArtifacts = (reviewData.source_snapshot || []).map((source) => ({
     ...source,
     digest: source.digest || "not-computed"
@@ -536,6 +561,9 @@ function confirmationMarkdown(merged, reviewData, context) {
     `batch_id: ${jsonYaml(packagePart.batch_id)}`,
     `batch_scope: ${jsonYaml(records.map(recordReference))}`,
     `package_session_id: ${jsonYaml(packagePart.package_session_id)}`,
+    `authorization_source: ${jsonYaml(authorizationSource)}`,
+    `accepted_recommended_count: ${acceptedRecommendedCount}`,
+    `accepted_critical_count: ${acceptedCriticalCount}`,
     `batch_review_status: ${status}`,
     `human_confirmation: ${status}`,
     `authorization_scope: ${authorizationScope}`,
@@ -576,6 +604,147 @@ function confirmationMarkdown(merged, reviewData, context) {
   return lines.join("\n");
 }
 
+function autoAcceptOption(node, targetRef) {
+  const recommendedId = cleanText(node.recommended_option);
+  if (!recommendedId) throw new Error(`Review target has no recommended_option: ${targetRef}`);
+  const matches = (node.options || []).filter((option) => option.id === recommendedId);
+  if (matches.length !== 1) throw new Error(`Review target does not have exactly one matching recommended option: ${targetRef}`);
+  const option = matches[0];
+  const nextExit = cleanText(option.next_exit);
+  if (!nextExit) throw new Error(`Recommended option has no next_exit: ${targetRef}`);
+  if (nextExit.toLowerCase().startsWith("needs-decision")) {
+    throw new Error(`Recommended option still requires a human decision: ${targetRef}`);
+  }
+  return option;
+}
+
+function autoAcceptPayload(reviewData, context) {
+  const collectionKey = reviewData.review_type === "outline" ? "views" : reviewData.review_type === "ui" ? "screens" : "diagrams";
+  const reviewDataId = reviewDataIdentifier(reviewData);
+  const targetRefs = new Set();
+  let acceptedRecommendedCount = 0;
+  let acceptedCriticalCount = 0;
+  const modules = (reviewData.modules || []).map((module) => {
+    const records = [];
+    for (const item of module[collectionKey] || []) {
+      for (const node of item.nodes || []) {
+        const targetRef = `${module.id || module.title}:${item.id || item.title}:${node.id}`;
+        if (targetRefs.has(targetRef)) throw new Error(`Duplicate review target: ${targetRef}`);
+        targetRefs.add(targetRef);
+        const requiresDecision = Boolean(node.recommended_option || (node.options || []).length || node.review_level === "must_confirm");
+        const option = requiresDecision ? autoAcceptOption(node, targetRef) : null;
+        if (requiresDecision) {
+          acceptedRecommendedCount += 1;
+          if (node.confirmation_priority === "critical") acceptedCriticalCount += 1;
+        }
+        const targetLabel = cleanText(`${module.title || module.id} / ${item.title || item.id} / ${node.label || node.id}`);
+        const status = requiresDecision ? "SAVED_RECOMMENDED" : "MISSING";
+        records.push({
+          target_ref: targetRef,
+          target_label: targetLabel,
+          module_id: cleanText(module.id),
+          module_title: cleanText(module.title || module.id),
+          item_id: cleanText(item.id),
+          item_title: cleanText(item.title || item.id),
+          node_id: cleanText(node.id),
+          node_label: cleanText(node.label || node.id),
+          review_layer: cleanText(node.review_layer),
+          review_level: cleanText(node.review_level),
+          confirmation_priority: cleanText(node.confirmation_priority),
+          priority_reason: cleanText(node.priority_reason),
+          critical_basis: cleanText(node.critical_basis),
+          owner: cleanText(node.owner),
+          bucket: requiresDecision ? "decision_recorded_items" : "confirmed_items",
+          status,
+          authorization_state: "AUTHORIZED",
+          is_authorized_decision: true,
+          selected_option: option?.id || "MISSING",
+          selected_option_label: cleanText(option?.label),
+          next_exit: cleanText(option?.next_exit),
+          change_type: "",
+          reviewer_note: requiresDecision ? "Accepted by explicit /sp.accept recommended-options authorization." : "",
+          line: option
+            ? `- ${targetLabel}; selected_option: ${option.id}; status: ${status}; next_exit: ${cleanText(option.next_exit)}`
+            : `- ${targetLabel}; status: ${status}`,
+          revision_request: null
+        });
+      }
+    }
+    return {
+      module_id: cleanText(module.id || module.title, "module"),
+      module_title: cleanText(module.title || module.id, "module"),
+      module_summary: cleanText(module.summary, "No module summary provided."),
+      status: "AUTHORIZED",
+      records
+    };
+  });
+  const records = modules.flatMap((module) => module.records);
+  if (!records.length) throw new Error("Review data has no review targets to accept.");
+  const packageSessionId = `speccompass-auto-${cleanText(reviewData.batch_id, "batch").replace(/[^A-Za-z0-9._-]/g, "-")}-${randomBytes(8).toString("hex")}`;
+  const part = {
+    format: "speccompass-confirmation-package",
+    version: 1,
+    schema_version: reviewData.schema_version,
+    review_type: reviewData.review_type,
+    package_session_id: packageSessionId,
+    batch_id: reviewData.batch_id,
+    review_data_id: reviewDataId,
+    outline_digest: reviewData.outline_digest,
+    source_authority_ids: reviewData.source_authority_ids,
+    source_review_data: context.dataPath,
+    target_path: context.targetPath,
+    total_record_count: records.length,
+    part_record_count: records.length,
+    part_index: 1,
+    part_count: 1,
+    authorization_source: {
+      mode: "explicit_recommended_command",
+      command: `/sp.accept ${reviewData.review_type} ${context.feature}${context.acceptAdvance ? " --advance" : ""}`,
+      critical_scope: acceptedCriticalCount ? "explicitly_authorized" : "none"
+    },
+    accepted_recommended_count: acceptedRecommendedCount,
+    accepted_critical_count: acceptedCriticalCount,
+    modules
+  };
+  return {
+    kind: "confirmation",
+    request_id: packageSessionId,
+    review_data_id: reviewDataId,
+    parts: [part]
+  };
+}
+
+function validateReviewDataFile(projectRoot, dataPath, validatorPath) {
+  const result = spawnSync(process.execPath, [validatorPath, dataPath], {
+    cwd: projectRoot,
+    encoding: "utf8"
+  });
+  if (result.status !== 0) {
+    throw new Error(`Review data validation failed: ${cleanText(result.stderr || result.stdout, `exit ${result.status}`)}`);
+  }
+}
+
+async function acceptRecommendedReview(context, validatorPath) {
+  return withWriteLock(context.absoluteTargetPath, async () => {
+    const beforeValidation = await readFile(context.absoluteDataPath, "utf8");
+    validateReviewDataFile(context.projectRoot, context.dataPath, validatorPath);
+    const afterValidation = await readFile(context.absoluteDataPath, "utf8");
+    if (beforeValidation !== afterValidation) {
+      throw new Error("Review data changed while it was being validated; retry against the current review.");
+    }
+    const reviewData = normalizeLegacyReviewData(JSON.parse(afterValidation));
+    if (reviewData.boundary_adjustment) {
+      throw new Error("Outline boundary adjustment/adoption reviews require their dedicated owner decision and cannot be accepted by /sp.accept.");
+    }
+    const payload = autoAcceptPayload(reviewData, context);
+    context.authorizationSource = payload.parts[0].authorization_source;
+    context.acceptedRecommendedCount = payload.parts[0].accepted_recommended_count;
+    context.acceptedCriticalCount = payload.parts[0].accepted_critical_count;
+    payload.expected_target_version = await currentTargetVersion(context.absoluteTargetPath);
+    return processWriteback(payload, context);
+  });
+}
+
 function validateDiscoveryDelta(delta, question) {
   const operation = cleanText(delta?.operation);
   if (!DISCOVERY_OPERATIONS.has(operation) || !(question.free_input?.allowed_operations || []).includes(operation)) {
@@ -613,6 +782,25 @@ function validateDiscoveryDelta(delta, question) {
 
 async function readJsonFile(path) {
   return JSON.parse(await readFile(path, "utf8"));
+}
+
+async function readOptionalJsonFile(path) {
+  try {
+    return await readJsonFile(path);
+  } catch (error) {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  }
+}
+
+async function isPortfolioRootFeature(projectRoot, feature) {
+  // 000 is permanently reserved for the portfolio root, including before a
+  // legacy project has adopted authoritative boundary registration.
+  if (feature === "000" || feature.startsWith("000-")) return true;
+  const index = await readOptionalJsonFile(resolve(projectRoot, "specs/review-index.json"));
+  if (index?.hierarchy?.mode === "explicit" && index.hierarchy.root_feature === feature) return true;
+  const boundaries = await readOptionalJsonFile(resolve(projectRoot, `specs/${feature}/outline-boundaries.json`));
+  return boundaries?.root_feature === feature;
 }
 
 function delay(milliseconds) {
@@ -1131,7 +1319,10 @@ async function processWriteback(payload, context) {
       ? `${owningCommand} ${context.feature}`
       : `${owningCommand} ${context.feature} --consume-review-confirmation`,
     review_data_id: currentReviewDataId,
-    revision_request_count: revisionCount
+    revision_request_count: revisionCount,
+    authorization_source: context.authorizationSource || { mode: "interactive_review", command: null },
+    accepted_recommended_count: Number(context.acceptedRecommendedCount || 0),
+    accepted_critical_count: Number(context.acceptedCriticalCount || 0)
   };
 }
 
@@ -1289,21 +1480,53 @@ function shutdown(exitCode, error = null) {
 
 async function main() {
   requireSupportedNodeRuntime();
-  const { reviewType, feature, port, host } = parseArguments(process.argv.slice(2));
+  const { reviewType, feature, port, host, acceptRecommended, acceptAdvance } = parseArguments(process.argv.slice(2));
   const launcherPath = await realpath(fileURLToPath(import.meta.url));
   const projectRoot = resolve(dirname(launcherPath), "../../..");
   const realProjectRoot = await realpath(projectRoot);
+  if (["flow", "ui"].includes(reviewType) && await isPortfolioRootFeature(projectRoot, feature)) {
+    throw new Error("PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET: the portfolio root cannot host or confirm Flow/UI review data; select an implementation child through /sp.route all.");
+  }
   const rendererPath = ".specify/review/renderer/speccompass-review-renderer.html";
   const dataPath = REVIEW_DATA_PATHS[reviewType](feature);
+  const validatorPath = ".specify/review/scripts/validate-review-data.mjs";
 
-  await Promise.all([
-    requireRegularFile(projectRoot, realProjectRoot, rendererPath),
+  const requiredPaths = [
     requireRegularFile(projectRoot, realProjectRoot, dataPath)
-  ]);
+  ];
+  if (acceptRecommended) requiredPaths.push(requireRegularFile(projectRoot, realProjectRoot, validatorPath));
+  else requiredPaths.push(requireRegularFile(projectRoot, realProjectRoot, rendererPath));
+  await Promise.all(requiredPaths);
   const initialReviewData = normalizeLegacyReviewData(await readJsonFile(resolve(projectRoot, dataPath)));
   const initialContext = { projectRoot, reviewType, feature };
+  if (acceptRecommended && initialReviewData.boundary_adjustment) {
+    throw new Error("Outline boundary adjustment/adoption reviews require their dedicated owner decision and cannot be accepted by /sp.accept.");
+  }
   const boundaryAdjustment = await validateBoundaryReviewBinding(initialReviewData, initialContext);
   const targetPath = boundaryAdjustment?.identity.decision_path || WRITEBACK_PATHS[reviewType](feature);
+
+  if (acceptRecommended) {
+    const context = {
+      projectRoot,
+      realProjectRoot,
+      reviewType,
+      feature,
+      dataPath,
+      targetPath,
+      absoluteDataPath: resolve(projectRoot, dataPath),
+      absoluteTargetPath: resolve(projectRoot, targetPath),
+      boundaryAdjustment: null,
+      acceptAdvance,
+      targetVersion: await currentTargetVersion(resolve(projectRoot, targetPath))
+    };
+    const result = await acceptRecommendedReview(context, resolve(projectRoot, validatorPath));
+    console.log(JSON.stringify({
+      ...result,
+      accepted_mode: "explicit_recommended_command",
+      consume_command: result.next_command
+    }));
+    return;
+  }
 
   server = createServer();
   server.requestTimeout = REQUEST_TIMEOUT_MS;

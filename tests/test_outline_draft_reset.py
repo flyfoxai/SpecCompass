@@ -51,8 +51,8 @@ def _entry(
             "outline_node_refs": [f"draft-node-{code}"],
             "rationale": "Non-authoritative draft mapping.",
         },
-        "has_flow_review": True,
-        "has_ui_review": True,
+        "has_flow_review": code != "000",
+        "has_ui_review": code != "000",
         "has_outline_review": True,
         "has_outline_discovery": True,
     }
@@ -202,13 +202,15 @@ def test_reset_plan_is_non_destructive_and_apply_preserves_product_artifacts(tmp
     assert all(item["parent_feature"] is None and item["sibling_order"] == 0 for item in index["features"])
     assert all(item["outline_alignment"]["status"] == "not_mapped" for item in index["features"])
     assert all(not item["has_outline_review"] and not item["has_outline_discovery"] for item in index["features"])
-    assert all(item["has_flow_review"] and item["has_ui_review"] for item in index["features"])
+    root_entry, child_entry = index["features"]
+    assert not root_entry["has_flow_review"] and not root_entry["has_ui_review"]
+    assert child_entry["has_flow_review"] and child_entry["has_ui_review"]
 
     replay = _apply(paths, plan, tmp_path)
     assert replay.returncode == 0, replay.stderr
     assert json.loads(replay.stdout)["receipt_digest"] == receipt["receipt_digest"]
 
-    gate = _run(GATE, paths["boundaries"], paths["index"], "--feature", "001-child", cwd=tmp_path)
+    gate = _run(GATE, paths["boundaries"], paths["index"], "--feature", "001-child", "--stage", "prd", cwd=tmp_path)
     assert gate.returncode == 1
     blocked = json.loads(gate.stdout)
     assert blocked["block_reason"] == "OUTLINE_DRAFT_REGENERATION_REQUIRED"

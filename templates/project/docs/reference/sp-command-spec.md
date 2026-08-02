@@ -119,23 +119,24 @@ whether `sp.specify` may start.
 Before formal Outline confirmation, `sp.prd` must record the orthogonal
 `outline_maturity` field in `spec-outline.md`. Its only values are `explore`,
 `frame`, and `specify_ready`. Level 1 owns portfolio decomposition: `explore`
-decides whether the parent remains one product or becomes cohesive child
-projects with independently verifiable outcomes and named business handoffs.
+decides whether the portfolio needs one implementation product or several
+cohesive implementation products with independently verifiable outcomes and
+named business handoffs. The `000-*` parent remains the portfolio/coordinator
+root in both cases; a one-product decision means one explicit `001+`
+implementation boundary.
 It requires a real product subject, a named role performing a domain action,
 and the failing or changing business object, operation, or result; generic
 goal/user/problem headings are not sufficient. Every source-backed capability
 must have exactly one owner or explicit disposition before Level 1 completes.
 
-Level 2 owns child-project framing: `frame` defines one confirmed child's, or
-one confirmed retained product's, scope, non-goals, first slice, actors,
-business chains, acceptance intent, source authority, rules, exceptions, and
-named handoffs. For a retained product it reads the confirmed parent PRD,
-accepted intent events that target the confirmed retained-product scope,
-inherited constraints, and their sources; decomposition events remain boundary
-history and are not reinterpreted as child-scope facts.
-For a decomposed parent it reads exactly one confirmed `Subproject Handoff`,
-its sources, inherited constraints, and accepted child-local deltas. It does
-not rerun portfolio grouping. Level 3 is a source-preserving compilation:
+Level 2 owns child-project framing: `frame` defines one confirmed `001+`
+implementation child's scope, non-goals, first slice, actors, business chains,
+acceptance intent, source authority, rules, exceptions, and named handoffs.
+Whether the portfolio has one implementation child or several, Level 2 reads
+exactly one confirmed `Subproject Handoff`, its sources, inherited constraints,
+and accepted child-local deltas. A sole child's handoff is the real ownership
+contract from coordinator to implementation boundary, not a fabricated sibling
+split. Level 2 does not rerun portfolio grouping. Level 3 is a source-preserving compilation:
 `specify_ready` compiles confirmed PRD and ledger material into formal Outline
 artifacts without creating, merging, splitting, promoting, or reinterpreting
 business facts. Constitution content remains display-only in `sp.prd`; formal
@@ -145,8 +146,9 @@ Maturity falls back to the narrowest affected level. A contradicted child chain
 returns from Level 3 to Level 2. A conflict in one named handoff or capability
 owner reopens only that boundary for Level 1 resolution while confirmed
 siblings remain stable. The complete portfolio returns to Level 1 only when
-the retain-one-product decision is reversed or the complete portfolio identity
-or ownership model is contradicted. Wording, ordering, formatting, and
+the one-versus-many implementation-boundary decision is reversed or the
+complete portfolio identity or ownership model is contradicted. Wording,
+ordering, formatting, and
 source-preserving summaries do not change maturity. Maturity is independent
 from readiness, `review_level`, and `confirmation_priority`.
 
@@ -263,14 +265,17 @@ candidates, including the recommended one, so Constitution prose cannot become
 a recommendation source without a real business-evidence chain.
 
 After a validated response confirms project boundaries, the parent PRD records
-`Project Decomposition` and emits one `Subproject Handoff` per confirmed child.
+`Project Decomposition` and emits one `Subproject Handoff` per confirmed
+implementation child, including the sole child selected by a one-product
+decision.
 Each handoff carries one business goal, roles, owned capabilities and objects,
 scope/non-goals, upstream inputs, downstream outputs, inherited global business
 gates, sources, and unresolved questions. Level 1 does not create child feature
-directories or authorize `sp.specify`. A confirmed decomposed parent must not
-continue to `sp.specify` as one product; each child starts its own feature-local
-`sp.prd` and Outline confirmation. A confirmed single project records its
-independence rationale instead of fabricating child handoffs.
+directories or authorize `sp.specify`. A confirmed parent must not continue to
+`sp.specify` as one product; each child starts its own feature-local `sp.prd`
+and Outline confirmation. A confirmed single-product portfolio establishes one
+`001+` child and a real handoff rather than turning `000` into an implementation
+feature.
 
 Model candidate generation and the confirmed authority baseline are separate
 phases, not two permanent project structures. Analytical Outline nodes use
@@ -281,15 +286,23 @@ stable baseline therefore requires `outline_alignment: one_to_one`; `merged`,
 `split`, `diverged`, and `not_mapped` are legacy-migration or approved
 structure-change transition states that block ordinary downstream development.
 Flow/UI modules remain local responsibility and business-chain decompositions
-inside that confirmed feature boundary. The root's
+inside that confirmed feature boundary. `000-*` is permanently a
+portfolio/coordinator root: it may own PRD, Outline, global constraints,
+cross-project handoffs, and dependency/impact records, but it is never an
+implementation feature. It must not own or consume `spec.md`, `flows/`, `ui/`,
+`bundle.md`, `plan.md`, `tasks.md`, analysis, gate, or implementation outputs.
+Every capability that needs a business Flow or UI, including a unified shell,
+portfolio console, or cross-project journey, must first be assigned to a
+confirmed `001+` leaf feature with its own business outcome. The root's
 `specs/<root-feature>/outline-boundaries.json` is the only writable source for
 boundary identity, code, title, order, parentage, lifecycle, and Outline
 mapping. Schema-v2 `specs/review-index.json` derives those fields one way and
 directly owns only `updated_at` plus four review availability flags. Numeric
 codes do not imply inheritance: `001-*` is the first child of a `000-*` root
 only through an explicit parent, `sibling_order: 1`, and a confirmed
-`Subproject Handoff`. Ordinary PRD/Flow/UI regeneration calls
-`check-outline-boundary-gate.mjs --intent regenerate`. A registered baseline
+`Subproject Handoff`. Every feature-targeted boundary check must pass the owning
+`--stage`; omitting it is invalid. Ordinary PRD/Flow/UI regeneration calls
+`check-outline-boundary-gate.mjs --intent regenerate --stage <prd|flow|ui>`. A registered baseline
 must be `ALIGNED`; an unregistered legacy project returns `allowed: true`,
 `authority_status: UNREGISTERED`, and a non-blocking advisory. Active approved
 transitions, invalid established authority, interrupted publication, and a
@@ -300,6 +313,15 @@ when the explicit feature already has a valid schema-v2 index entry that remains
 valid without identity changes. An invalid legacy index is left unchanged and
 reported as a non-blocking navigation advisory; ordinary generation must not
 sync, migrate, or adopt it as a prerequisite.
+
+The shared boundary gate accepts a `--stage` value for every downstream
+implementation command. It returns `PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET`
+for the root before any implementation artifact is created, regenerated,
+reviewed, consumed, planned, or gated. Review index validation and
+`sync-review-index.mjs` also force root `has_flow_review` and `has_ui_review`
+to `false`; the fixed review launcher refuses root Flow/UI review data. A
+missing boundary registration still allows ordinary PRD work, but never turns
+the `000` path into an implementation target.
 
 Missing boundary registration never substitutes a root-boundary page for the
 requested PRD, Flow, or UI. The older `/sp.prd --adopt-outline-boundaries`
@@ -433,6 +455,19 @@ and does not reset or regenerate. Revision/open results return the ordinary
 owning command and therefore enter the preserve-or-clear regeneration flow.
 Preserved archives and copied/model-authored confirmations are forbidden on the
 consumption route.
+
+The separate `/sp.accept <outline|flow|ui> <feature> [--advance]` command is an
+explicit authorization path for accepting every current `recommended_option`.
+It is not a browser bulk action: it may include `critical` recommendations,
+but the writer records each critical target as an individual selected option and
+audits the explicit command source. It does not accept Outline Discovery,
+boundary adjustment, or adoption decisions. Without `--advance` it only saves
+the fixed confirmation; with `--advance` it consumes the owning confirmation
+first, then dispatches exactly one mapped successor (`non-root outline ->
+specify`, `flow -> ui`, or `ui -> gate`) after readiness checks pass. The Portfolio root
+is the Outline exception: after consuming its confirmation, dispatch
+`/sp.route all` to select an explicit `001+` child and never run
+`/sp.specify <root-feature>`.
 
 On the next ordinary owning command without the consume flag, the confirmation triggers the preserve-or-clear
 choice before regeneration. Preserve mode may use each
@@ -699,6 +734,61 @@ The full `sp` document system may include:
 Not every file is seeded up front by the template root. Some are created or expanded by later commands.
 
 ## 8. Command Responsibilities
+
+### `sp.accept`
+
+`sp.accept` is the explicit, single-command route for accepting the current
+recommended choices in a formal Outline, Flow, or UI review after a person has
+inspected the result, or when the user explicitly authorizes those
+recommendations without another visual pass. Its syntax is:
+
+```text
+/sp.accept <outline|flow|ui> <feature> [--advance]
+```
+
+The command reads the current structured review data and invokes the same
+trusted review writer in headless mode:
+
+```text
+node .specify/review/scripts/serve-review.mjs --<type> <feature> --accept-recommended [--accept-advance]
+```
+
+`--accept-advance` is only an audit marker for the originating slash command;
+the writer never performs stage orchestration.
+
+The writer re-reads the data under the fixed confirmation-target lock, runs the
+installed review-data validator, verifies that the data did not change during
+validation, and accepts only each target's exact `recommended_option`. It fails
+closed for missing or ambiguous recommendations, recommended exits beginning
+with `needs-decision`, stale or invalid review data, write conflicts, and empty
+review targets. It atomically writes the fixed `outline-confirmation.md`,
+`flow-confirmation.md`, or `ui-confirmation.md` and records
+`authorization_source.mode: explicit_recommended_command`, the exact command,
+the accepted total, and the accepted `critical` total. The explicit command is
+the one blanket authorization exception for critical recommendations: each
+critical target is still recorded as an individual selected option. Browser
+bulk actions remain unable to authorize critical targets.
+
+Outline Discovery, Outline boundary adjustment, and Outline adoption decisions
+are not batch-acceptable through this route; they remain bound to their
+dedicated discovery or digest-bound owner decisions.
+
+Without `--advance`, the command stops after saving and returns the exact owner
+consumer. With `--advance`, it must first consume the confirmation through the
+owner command, then dispatch exactly one successor only after consumption reaches
+the documented ready state:
+
+| Review | Owner consumer | Successor |
+| --- | --- | --- |
+| Portfolio-root Outline | `/sp.prd <feature> --consume-review-confirmation` | `/sp.route all` |
+| Implementation-child Outline | `/sp.prd <feature> --consume-review-confirmation` | `/sp.specify <feature>` |
+| Flow | `/sp.flow <feature> --consume-review-confirmation` | `/sp.ui <feature>` |
+| UI | `/sp.ui <feature> --consume-review-confirmation` | `/sp.gate <feature>` |
+
+Any writer, owner-consumer, identity, source, readiness, or successor failure
+stops the sequence at that point. `sp.accept` never dispatches
+`/sp.implement`, skips `sp.gate`, or treats browser state, downloaded packages,
+or copied summaries as authorization.
 
 ### `sp.constitution`
 

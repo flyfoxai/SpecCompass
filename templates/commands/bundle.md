@@ -13,6 +13,12 @@ $ARGUMENTS
 
 You MUST consider the user input before proceeding.
 
+## Authoritative Outline Boundary Gate
+
+Before ordinary bundle generation, resolve the one root feature from the explicit target and `specs/review-index.json`; never infer ancestry from numeric codes or array order. Run `node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature> --stage bundle`. Accept only schema `speccompass.outline-boundary-gate.v1` with `allowed: true`, `transition_state: ALIGNED`, and the requested feature in the current baseline.
+
+For `allowed: false`, stop before writing `bundle.md` and reproduce the returned machine contract unchanged. `PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET` means the root may keep portfolio PRD, Outline, boundaries, constraints, and handoffs only; route to an implementation child instead of packaging root-level delivery inputs. Run only `repair_command_exec` and never edit derived `review-index.json` boundary fields.
+
 ## Active Lite Round
 
 Before normal execution, check `specs/<feature>/lite.md`. If it is absent or

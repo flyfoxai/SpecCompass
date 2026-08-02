@@ -37,6 +37,9 @@ function deriveReviewIndex(document, existing) {
       .map((boundary) => {
         const old = existingByCode.get(boundary.feature_code);
         const parent = boundary.parent_feature_code === null ? null : byCode.get(boundary.parent_feature_code)?.feature;
+        const isPortfolioRoot = boundary.feature === document.root_feature
+          || boundary.feature_code === "000"
+          || boundary.feature.startsWith("000-");
         if (boundary.parent_feature_code !== null && !parent) fail(`Missing parent boundary ${boundary.parent_feature_code}.`);
         return {
           order: boundary.order,
@@ -51,7 +54,12 @@ function deriveReviewIndex(document, existing) {
             outline_node_refs: [boundary.outline_node_id],
             rationale: "Derived from the authoritative aligned Outline boundary."
           },
-          ...Object.fromEntries(REVIEW_FLAGS.map((flag) => [flag, old?.[flag] === true]))
+          ...Object.fromEntries(REVIEW_FLAGS.map((flag) => [
+            flag,
+            isPortfolioRoot && ["has_flow_review", "has_ui_review"].includes(flag)
+              ? false
+              : old?.[flag] === true
+          ]))
         };
       })
   };

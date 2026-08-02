@@ -61,7 +61,7 @@ Outline 中存在两类节点，不能混淆：
 - `current_baseline` 中每个 active 项目边界节点必须对应一个 active feature，每个 active feature 也必须对应一个项目边界节点。
 - 稳定态的 `outline_alignment.status` 只能是 `one_to_one`。
 - `merged`、`split`、`diverged` 和 `not_mapped` 只允许出现在旧数据迁移、结构变更提案或迁移中的暂态记录，不得支持普通开发命令继续推进。
-- 根项目 `000-*` 可以拥有组合级 Outline；其下首个项目 `001-*` 只有在显式 `parent_feature`、`sibling_order: 1` 和已确认 handoff 同时成立时才是第一个子项目。数字本身不推导继承。
+- 根项目 `000-*` 只拥有组合级 PRD/Outline 和跨项目统筹记录；它不是实施 feature，不得拥有或消费 Spec、Flow、UI、Bundle、Plan、Tasks、analysis、gate 或实现产物。任何需要 Flow/UI 的统一壳、组合控制台或跨项目业务旅程，都必须归属一个 `001+` 可验收子项目。其下首个项目 `001-*` 只有在显式 `parent_feature`、`sibling_order: 1` 和已确认 handoff 同时成立时才是第一个子项目。数字本身不推导继承。
 
 ### 4.3 稳定编码
 
@@ -196,7 +196,7 @@ specs/<root-feature>/outline-boundaries.json
 
 旧版显式草稿重置仍使用独立的 `outline-draft-reset.schema.json`，仅作为已创建 plan/receipt 的兼容恢复工具，不再是普通重生成的前置步骤。普通 PRD/Flow/UI 统一使用 `speccompass.command-artifact-reset.v1` 检查合同：命令、feature、精确文件清单、每个 SHA-256、inventory digest、人工记录和待选模式。`apply` 必须重算 inventory，只有未漂移才允许清除；显式旧 receipt 损坏仍按其原合同 fail closed，但不能因此把一个普通重生成命令改道到 adoption 页面。
 
-`outline-boundaries.json` 是已登记项目边界身份、标题、父子关系、生命周期和 baseline 状态的唯一写入事实源。已登记时，`review-index.json` 的身份字段只能由它单向派生，普通命令只维护 `updated_at` 和四个 review availability 字段；派生漂移由 `sync-review-index.mjs` 机械修复。尚未登记时，普通 PRD/Flow/UI 可以在显式目标 feature 内重生成，但必须保留现有 index 身份字段，不得猜 parent、顺序或映射；存在对应 entry 时只更新本命令 flag，不存在时只报告提示。缺登记不是结构授权，也不是日常生成阻断。
+`outline-boundaries.json` 是已登记项目边界身份、标题、父子关系、生命周期和 baseline 状态的唯一写入事实源。已登记时，`review-index.json` 的身份字段只能由它单向派生，普通命令只维护 `updated_at` 和四个 review availability 字段；根项目的 `has_flow_review` 与 `has_ui_review` 永远为 `false`，由 `sync-review-index.mjs` 机械保持。共享 boundary gate 通过 `--stage` 向所有下游命令传播根边界规则，根进入 Spec、Flow、UI、Bundle、Plan、Tasks、analysis、gate 或实现阶段时统一返回 `PORTFOLIO_ROOT_NOT_IMPLEMENTATION_TARGET`。尚未登记时，普通 PRD 可以在根上继续形成 Outline，但根不能借缺登记进入实施链；Flow/UI review launcher 也拒绝根级 review data。
 
 `feature-code-ledger.json` 是代码分配历史的唯一写入事实源，但不是第二套项目边界清单。分配器使用短锁和原子替换，在取号时同时检查账本、current baseline、tombstone、spec 目录和可见 Git refs。多个离线副本发生同号预留或账本/base digest 冲突时必须停止并重新分配，不能自动合并。baseline 仍决定项目是否 active 或 retired；账本保证任何出现过的代码以后都不会再次发放。
 
@@ -204,7 +204,7 @@ specs/<root-feature>/outline-boundaries.json
 
 每个 root 的 active proposal 必须记录 `base_baseline_id`、`base_baseline_digest`、`proposal_digest`、`transition_id` 和 `transition_revision`。Git 分支或其他离线工作副本可以各自形成提案，但合并时只要 base digest 不再等于目标分支的 current digest，就不得自动合并或按字段拼接，必须 rebase 后重新运行影响评估并重新批准受影响决定。
 
-存量项目不能通过扫描目录直接晋升为权威 Outline，但“尚未登记”也不能冻结生成。`check-outline-boundary-gate.mjs --intent regenerate` 对缺文件返回 `allowed: true`、`authority_status: UNREGISTERED` 和非阻断提示；普通 PRD/Flow/UI 先完成自己的真实产物。旧 `--adopt-outline-boundaries` 保留为用户显式选择的兼容维护入口，不再是唯一恢复路线，也不得自动弹出重型页面。旧 flat index 的 parent/sibling 只表示未知，模型可以提出登记候选，但在登记完成前不能把推断写成用户已确认事实。
+存量项目不能通过扫描目录直接晋升为权威 Outline，但“尚未登记”也不能冻结生成。所有带 `--feature` 的边界检查都必须同时传入所属 `--stage`，省略 stage 直接视为无效调用。`check-outline-boundary-gate.mjs --intent regenerate --stage <prd|flow|ui>` 对缺文件返回 `allowed: true`、`authority_status: UNREGISTERED` 和非阻断提示；普通 PRD/Flow/UI 先完成自己的真实产物。旧 `--adopt-outline-boundaries` 保留为用户显式选择的兼容维护入口，不再是唯一恢复路线，也不得自动弹出重型页面。旧 flat index 的 parent/sibling 只表示未知，模型可以提出登记候选，但在登记完成前不能把推断写成用户已确认事实。
 
 普通 `/sp.prd` 无需特殊参数就整体重做 Outline，不能强迫用户先采纳错误草稿，也不能要求先执行旧 reset receipt 的专用命令。`prd.md` 和保留实现仍是来源，旧 Outline 不是来源。新 Outline 确认后如确实改变项目结构，才进入独立 reconciliation 和影响迁移；Outline 确认从不授权删除代码。
 

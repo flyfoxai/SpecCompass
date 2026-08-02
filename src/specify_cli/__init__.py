@@ -777,6 +777,7 @@ def _install_shared_infra(
     def migrate_legacy_core_command_refs() -> None:
         """Rewrite old user-visible core command names in installed SP memory."""
         replacements = {
+            "/sp-accept": "/sp.accept",
             "/sp-analyze": "/sp.analyze",
             "/sp-bundle": "/sp.bundle",
             "/sp-checklist": "/sp.checklist",
@@ -801,12 +802,12 @@ def _install_shared_infra(
             for old, new in replacements.items():
                 updated = updated.replace(old, new)
             updated = re.sub(
-                r"/speckit\.(analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|prd|specify|tasks|taskstoissues|ui)\b",
+                r"/speckit\.(accept|analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|prd|specify|tasks|taskstoissues|ui)\b",
                 r"/sp.\1",
                 updated,
             )
             updated = re.sub(
-                r"\bprompts:speckit\.(analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|prd|specify|tasks|taskstoissues|ui)\b",
+                r"\bprompts:speckit\.(accept|analyze|bundle|checklist|clarify|constitution|flow|gate|implement|plan|prd|specify|tasks|taskstoissues|ui)\b",
                 r"/sp.\1",
                 updated,
             )
@@ -1135,6 +1136,7 @@ def _get_skills_dir(project_path: Path, selected_ai: str) -> Path:
 DEFAULT_SKILLS_DIR = ".agents/skills"
 NATIVE_SKILLS_AGENTS = {"codex", "kimi"}
 SKILL_DESCRIPTIONS = {
+    "accept": "Accept current Outline, Flow, or UI recommended review options and optionally advance.",
     "specify": "Create or update feature specifications from natural language descriptions.",
     "prd": "Shape mandatory upstream PRD intake and outline readiness before stable feature specification.",
     "plan": "Generate technical implementation plans from feature specifications.",

@@ -26,6 +26,7 @@ _HOOK_COMMAND_NOTE = (
 # Mapping of command template stem → argument-hint text shown inline
 # when a user invokes the slash command in Claude Code.
 ARGUMENT_HINTS: dict[str, str] = {
+    "accept": "Review stage and feature to accept, optionally with --advance",
     "specify": "Describe the feature you want to specify",
     "prd": "Optional product discovery or PRD shaping brief",
     "route": "Optional routing context or feature directory to inspect",
