@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.37] - 2026-08-02
+
+### Changed
+
+- Added explicit `/sp.accept <outline|flow|ui> <feature> [--advance]` review acceptance, audited confirmation writeback, and readiness-gated stage advancement.
+- Reserved the `000-*` Portfolio root for PRD, Outline, constraints, and handoffs; Flow/UI and implementation work now require an explicit `001+` child boundary.
+- Enforced the Portfolio-root rule through boundary gates, review-index derivation, review launcher checks, command templates, and bilingual documentation.
+
 ## [0.11.36] - 2026-07-31
 
 ### Added
