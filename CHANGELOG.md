@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.38] - 2026-08-03
+
+### Changed
+
+- Added accurate low-fidelity UI review previews, component-level adjustment controls, full-browser inspection, and on-demand screen-level layout feedback with identity-validated structured writeback.
+- feat(review): add accurate adjustable UI previews
+- chore: begin 0.11.38.dev0 development
+
 ## [0.11.37] - 2026-08-02
 
 ### Changed
