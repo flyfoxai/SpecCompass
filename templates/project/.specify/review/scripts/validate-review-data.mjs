@@ -28,6 +28,9 @@ const allowedUiLayouts = new Set([
   "custom"
 ]);
 const allowedUiRegionPositions = new Set(["top", "left", "main", "right", "bottom", "modal", "drawer", "inline"]);
+const allowedUiPreviewViewports = new Set(["desktop", "tablet", "mobile"]);
+const allowedUiButtonVariants = new Set(["primary", "secondary", "danger", "ghost"]);
+const allowedUiBadgeTones = new Set(["neutral", "info", "success", "warning", "danger"]);
 const allowedUiComponentKinds = new Set([
   "button",
   "input",
@@ -174,6 +177,7 @@ const allowedReviewItemKeys = new Set([
   "user_outcome",
   "flow_refs",
   "screen_layout",
+  "preview_viewport",
   "screen_regions",
   "states",
   "framework_approximation",
@@ -192,6 +196,7 @@ const uiOnlyReviewItemKeys = new Set([
   "user_outcome",
   "flow_refs",
   "screen_layout",
+  "preview_viewport",
   "screen_regions",
   "states",
   "framework_approximation",
@@ -271,7 +276,18 @@ const allowedUiComponentKeys = new Set([
   "field_ref",
   "state_ref",
   "decision_node_id",
-  "future_behavior_note"
+  "future_behavior_note",
+  "display"
+]);
+const allowedUiComponentDisplayKeys = new Set([
+  "value",
+  "placeholder",
+  "helper_text",
+  "options",
+  "columns",
+  "rows",
+  "button_variant",
+  "badge_tone"
 ]);
 const allowedUiStateKeys = new Set([
   "id",
@@ -1657,6 +1673,7 @@ function validateOptions(scope, node, reviewType) {
 
 function validateUiScreenStructure(itemLabel, item) {
   validateEnum(itemLabel, "screen_layout", item.screen_layout, allowedUiLayouts);
+  validateEnum(itemLabel, "preview_viewport", item.preview_viewport, allowedUiPreviewViewports);
 
   if (!item.screen_layout) {
     fail(`${itemLabel}: UI review data requires screen_layout`);
@@ -1676,7 +1693,7 @@ function validateUiScreenStructure(itemLabel, item) {
     const regionLabel = `${itemLabel}:region-${region.id || regionIndex + 1}`;
     validateKnownKeys(regionLabel, region, allowedScreenRegionKeys);
     validateReadableCopy(regionLabel, region);
-    for (const key of ["id", "title", "purpose", "position"]) {
+    for (const key of ["id", "title", "purpose", "position", "source_ref"]) {
       if (!region[key]) {
         fail(`${regionLabel}: missing ${key}`);
       }
@@ -1703,6 +1720,35 @@ function validateUiScreenStructure(itemLabel, item) {
         }
       }
       validateEnum(componentLabel, "kind", component.kind, allowedUiComponentKinds);
+      if (component.display !== undefined) {
+        if (!component.display || typeof component.display !== "object" || Array.isArray(component.display)) {
+          fail(`${componentLabel}: display must be an object`);
+        } else {
+          validateKnownKeys(`${componentLabel}:display`, component.display, allowedUiComponentDisplayKeys);
+          validateEnum(`${componentLabel}:display`, "button_variant", component.display.button_variant, allowedUiButtonVariants);
+          validateEnum(`${componentLabel}:display`, "badge_tone", component.display.badge_tone, allowedUiBadgeTones);
+          if (component.display.options !== undefined && !["select", "filter"].includes(component.kind)) {
+            fail(`${componentLabel}: display.options is allowed only for select or filter components`);
+          }
+          if ((component.display.columns !== undefined || component.display.rows !== undefined) && component.kind !== "table") {
+            fail(`${componentLabel}: display.columns and display.rows are allowed only for table components`);
+          }
+          if (component.display.rows !== undefined && !asArray(component.display.columns).length) {
+            fail(`${componentLabel}: display.rows requires display.columns so visible cells keep their exact meaning`);
+          }
+          for (const [rowIndex, row] of asArray(component.display.rows).entries()) {
+            if (asArray(row).length !== asArray(component.display.columns).length) {
+              fail(`${componentLabel}: display.rows[${rowIndex}] must have the same number of cells as display.columns`);
+            }
+          }
+          if (component.display.button_variant !== undefined && component.kind !== "button") {
+            fail(`${componentLabel}: display.button_variant is allowed only for button components`);
+          }
+          if (component.display.badge_tone !== undefined && component.kind !== "badge") {
+            fail(`${componentLabel}: display.badge_tone is allowed only for badge components`);
+          }
+        }
+      }
       if (component.id) {
         if (componentIds.has(component.id)) {
           fail(`${itemLabel}: duplicate component id ${component.id}`);

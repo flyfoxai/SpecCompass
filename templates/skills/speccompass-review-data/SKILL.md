@@ -448,6 +448,23 @@ Each `revision_requests` item must preserve at least `target_ref`,
 `reviewer_note` as the human's natural-language revision request and reason
 against the current PRD/spec/flow/UI sources before changing data.
 
+UI confirmation packages may also contain `selected_option:
+UI_COMPONENT_ADJUSTMENT`. These records come from selecting a rendered preview
+element and proposing its visible text, position, or size in the right rail.
+Preserve the stable `<module>:<screen>:<region>:<component>` `target_ref` and the
+structured `adjustment` payload. Treat the browser appearance as a provisional
+review aid, not as an authoritative edit; the next `/sp.ui` run applies the
+request to the relevant UI source and regenerates review data.
+
+They may additionally contain `selected_option: UI_LAYOUT_ADJUSTMENT` for an
+overall layout suggestion scoped to one current screen, such as replacing a
+three-column structure with two columns. Preserve its page-level target,
+`current_screen_layout`, and natural-language `layout_suggestion`. It is a
+non-authorizing `MODIFY_SCREEN_STRUCTURE` request for the next `/sp.ui` run and
+must not be assigned to an arbitrary component. In the review UI, open this
+workspace only when the reviewer selects the current screen's preview title
+bar; it must not remain permanently visible in the right rail.
+
 ## Data Writing Rules
 
 Explicit auto-accept boundary: the browser's ordinary bulk recommended-option
@@ -647,6 +664,13 @@ first explain why the screen exists, then describe what the reviewer sees:
   and `components`.
 - `components`: visible UI elements such as buttons, inputs, tables, cards,
   navigation, badges, empty states, and plain text markers.
+- `component.label`: exact user-visible copy. Low fidelity may simplify visual
+  polish, but it must not omit, rename, merge, or invent controls or wording.
+- `component.display`: optional source-backed preview content such as
+  `placeholder`, current `value`, select `options`, table `columns` and sample
+  `rows`, helper text, `button_variant`, or `badge_tone`. Omit unknown values
+  instead of inventing realistic-looking filler. Missing table columns or
+  option copy must remain a visible review gap.
 - `states`: default, empty, loading, error, success, permission, or
   `dynamic_marker` notes. A dynamic marker is a plain text marker; write
   `future_behavior_note` such as `此处数字未来会自动更新` instead of animation or
@@ -658,6 +682,12 @@ Use `decision_node_id`, `action_ref`, `field_ref`, or `state_ref` on components
 when a visible UI element maps to a decision node. If a screen has no visible
 regions/components/states, validation fails because the reviewer cannot inspect
 the UI.
+
+Every source-backed visible button, field, table, status, tab, navigation item,
+and user-facing text must appear exactly once in `screen_regions[].components`.
+The fixed renderer displays the target-product surface without review prose by
+default. Region purpose, component kind, source refs, and other audit-only copy
+belong to the optional specification-annotation layer, never to product UI.
 
 Build the screen contract in two steps. First extract source-backed Flow facts:
 role, trigger, business object, state, exception, permission, and expected

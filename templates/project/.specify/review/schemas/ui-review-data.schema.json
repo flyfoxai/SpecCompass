@@ -164,6 +164,10 @@
             "custom"
           ]
         },
+        "preview_viewport": {
+          "type": "string",
+          "enum": ["desktop", "tablet", "mobile"]
+        },
         "screen_regions": {
           "type": "array",
           "minItems": 1,
@@ -197,16 +201,16 @@
     "screen_region": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "title", "purpose", "position", "components"],
+      "required": ["id", "title", "purpose", "position", "source_ref", "components"],
       "properties": {
-        "id": {"type": "string"},
-        "title": {"type": "string"},
-        "purpose": {"type": "string"},
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string", "minLength": 1},
         "position": {
           "type": "string",
           "enum": ["top", "left", "main", "right", "bottom", "modal", "drawer", "inline"]
         },
-        "source_ref": {"type": "string"},
+        "source_ref": {"type": "string", "minLength": 1},
         "components": {
           "type": "array",
           "minItems": 1,
@@ -223,7 +227,7 @@
       "additionalProperties": false,
       "required": ["id", "kind", "label", "purpose", "source_ref"],
       "properties": {
-        "id": {"type": "string"},
+        "id": {"type": "string", "minLength": 1},
         "kind": {
           "type": "string",
           "enum": [
@@ -248,14 +252,52 @@
             "error-note"
           ]
         },
-        "label": {"type": "string"},
-        "purpose": {"type": "string"},
-        "source_ref": {"type": "string"},
+        "label": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string", "minLength": 1},
+        "source_ref": {"type": "string", "minLength": 1},
         "action_ref": {"type": "string"},
         "field_ref": {"type": "string"},
         "state_ref": {"type": "string"},
         "decision_node_id": {"type": "string"},
-        "future_behavior_note": {"type": "string"}
+        "future_behavior_note": {"type": "string"},
+        "display": {"$ref": "#/$defs/ui_component_display"}
+      }
+    },
+    "ui_component_display": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "value": {"type": "string"},
+        "placeholder": {"type": "string"},
+        "helper_text": {"type": "string"},
+        "options": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "rows": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string"}
+          }
+        },
+        "button_variant": {
+          "type": "string",
+          "enum": ["primary", "secondary", "danger", "ghost"]
+        },
+        "badge_tone": {
+          "type": "string",
+          "enum": ["neutral", "info", "success", "warning", "danger"]
+        }
       }
     },
     "ui_state": {

@@ -56,6 +56,36 @@ instead. Renderer changes require a separate implementation task with tests.
 
 ## Contract
 
+### UI preview content fidelity
+
+The fixed UI renderer is a low-fidelity review surface, but its visible product
+content must be faithful to the source UI specification. Every specified
+button, field, label, option, table column, value, status, and page region must
+appear with the exact product copy. Low fidelity may simplify visual styling;
+it must not omit, rename, merge, or invent product content.
+
+The preview opens in a clean product view. Review-only purpose, component kind,
+source reference, and audit notes stay hidden until the reviewer enables
+`显示规格标注`. Desktop, tablet, and mobile controls change only the preview
+width; they do not change or remove the specified content. When required
+display data is missing, the renderer shows an explicit specification gap
+instead of a generic skeleton or fabricated example value. UI review data
+supplies exact visible content through each component's optional `display`
+object, while `label` remains the component's primary visible name.
+
+This is a renderer mechanism, not a request to redesign the example product.
+The high-contrast `目标 UI 预览区` boundary separates the source-backed product
+surface from renderer navigation, review controls, decisions, and audit notes.
+Only content inside that boundary represents the proposed target UI; example
+business data exists solely to demonstrate the mechanism.
+
+The inline target UI surface uses compact typography and spacing so reviewers
+can keep navigation and decision controls visible while working. `查看全图`
+opens the current desktop, tablet, or mobile surface in a near-full-viewport,
+read-only native `<dialog>`. The dialog never changes review state or carries
+review decisions; closing it restores focus to `查看全图`, and all interaction
+continues in the compact inline surface.
+
 - Flow data path: `specs/<feature>/flows/review/flow-review-data.json`
 - UI data path: `specs/<feature>/ui/review/ui-review-data.json`
 - Outline data path: `specs/<feature>/prd/review/outline-review-data.json`
@@ -399,6 +429,26 @@ a structured natural-language revision / 自然语言修改意见. Submitted
 non-recommended choices are exported as `revision_requests` in the confirmation
 document / 确认文档, then the next `/sp.flow` or `/sp.ui` run applies those
 requests to the structured review data and regenerates the page.
+
+In UI review mode, every rendered component is selectable, including controls,
+tables, badges, and cards. Selection opens an element adjustment workspace in
+the right rail with a natural-language suggestion, replacement visible text,
+and compact position/size controls. The inline preview reflects these proposals
+and stores them in browser state, while the full-preview dialog remains
+read-only. Meaningful proposals are exported as `UI_COMPONENT_ADJUSTMENT`
+revision records with a stable `<module>:<screen>:<region>:<component>` target
+and a structured `adjustment` payload. They remain revision requests rather
+than direct edits or implementation authorization.
+
+The preview title bar is the screen-scoped entry for an overall layout
+suggestion / 整体布局建议. The panel stays out of the right rail until the reviewer
+selects that title bar, so it does not permanently displace element or decision
+content. It is for page-level structure requests such as changing three columns
+to two, not for individual component geometry. Selecting a component or review
+node exits the layout selection. The browser stores one suggestion per
+`<module>:<screen>` and exports it as a non-authorizing `UI_LAYOUT_ADJUSTMENT`
+revision record. The writer verifies the current screen and its source-backed
+`screen_layout` before accepting the request.
 
 `revision_requests` entries use this minimum shape:
 

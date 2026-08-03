@@ -732,6 +732,9 @@ function runtimeValidateReviewData(data) {
           result.errors.push(`${itemLabel} 缺少 screen_regions，UI review data requires screen_regions; UI review data must describe UI screen regions/components; optional states may add screen-state notes, but review nodes alone are not enough。`);
         }
         for (const region of item.screen_regions || []) {
+          if (!runtimeCompactText(region.source_ref)) {
+            result.errors.push(`${itemLabel} / ${region.title || region.id || "未命名区域"} 缺少 source_ref，无法核对区域内容来源。`);
+          }
           if (!Array.isArray(region.components) || region.components.length === 0) {
             result.errors.push(`${itemLabel} / ${region.title || region.id || "未命名区域"} 缺少 components，无法展示界面元素。`);
           }
@@ -744,6 +747,28 @@ function runtimeValidateReviewData(data) {
               result.errors.push(`duplicate component id: ${component.id}。重复组件 id 会导致 UI 预览选中态串到其他元素。`);
             }
             componentIds.add(component.id);
+            for (const key of ["label", "purpose", "source_ref"]) {
+              if (!runtimeCompactText(component[key])) {
+                result.errors.push(`${itemLabel} / ${component.id} 缺少 ${key}，无法准确展示界面内容。`);
+              }
+            }
+            const display = component.display;
+            if (display && typeof display === "object" && !Array.isArray(display)) {
+              if (display.options !== undefined && !["select", "filter"].includes(component.kind)) {
+                result.errors.push(`${itemLabel} / ${component.id} 只有 select 或 filter 可以提供 display.options。`);
+              }
+              if ((display.columns !== undefined || display.rows !== undefined) && component.kind !== "table") {
+                result.errors.push(`${itemLabel} / ${component.id} 只有 table 可以提供 display.columns 或 display.rows。`);
+              }
+              if (display.rows !== undefined && !Array.isArray(display.columns)) {
+                result.errors.push(`${itemLabel} / ${component.id} 的 display.rows 必须同时提供 display.columns。`);
+              }
+              for (const [rowIndex, row] of (display.rows || []).entries()) {
+                if (!Array.isArray(row) || row.length !== (display.columns || []).length) {
+                  result.errors.push(`${itemLabel} / ${component.id} 的 display.rows[${rowIndex}] 单元格数量与 display.columns 不一致。`);
+                }
+              }
+            }
           }
         }
       }
@@ -926,6 +951,8 @@ function acceptReviewData(data) {
     selectedModuleIndex = 0;
     selectedItemIndex = 0;
     selectedNodeId = null;
+    selectedUiComponentId = null;
+    selectedUiLayoutId = null;
     runtimeWarnings = [];
     runtimeErrors = [];
     renderOutlineDiscovery(data);
@@ -936,6 +963,8 @@ function acceptReviewData(data) {
   selectedModuleIndex = 0;
   selectedItemIndex = 0;
   selectedNodeId = null;
+  selectedUiComponentId = null;
+  selectedUiLayoutId = null;
   reviewMode = "confirm";
   copyDraftWarningArmed = false;
   downloadDraftWarningArmed = false;

@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added explicit review acceptance and stage advancement for Outline, Flow, and UI, and enforced that the 000-* Portfolio root remains outside Flow/UI and implementation stages." \
+              "- Added accurate low-fidelity UI review previews, component-level adjustment controls, full-browser inspection, and on-demand screen-level layout feedback with identity-validated structured writeback." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

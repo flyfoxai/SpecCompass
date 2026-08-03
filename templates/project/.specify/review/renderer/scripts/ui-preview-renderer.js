@@ -1,4 +1,6 @@
 /* Fixed SpecCompass review renderer infrastructure. Review commands only fill JSON review data. UI dynamic marker behavior is displayed as plain text, not animation. */
+let uiPreviewViewport = "desktop";
+let uiPreviewAnnotations = false;
 function render() {
   if (!reviewData) {
     return;
@@ -82,6 +84,8 @@ function goToModule(index) {
   selectedModuleIndex = nextIndex;
   selectedItemIndex = 0;
   selectedNodeId = null;
+  selectedUiComponentId = null;
+  selectedUiLayoutId = null;
   render();
 }
 
@@ -143,6 +147,8 @@ function renderCenter() {
     button.addEventListener("click", () => {
       selectedItemIndex = index;
       selectedNodeId = null;
+      selectedUiComponentId = null;
+      selectedUiLayoutId = null;
       render();
     });
     tabs.appendChild(button);
@@ -449,24 +455,58 @@ function svgEl(tag) {
 }
 
 function renderUiScreen(item) {
-  const frame = create("section", `ui-screen-preview ui-layout-${safeClassToken(item?.screen_layout)}`);
-  const heading = create("div", "ui-screen-heading");
+  const frame = create(
+    "section",
+    `ui-screen-preview ui-layout-${safeClassToken(item?.screen_layout)} ${uiPreviewAnnotations ? "ui-preview-annotations" : ""}`
+  );
+  const heading = create("div", "ui-screen-heading ui-layout-selectable");
+  const layoutEntry = currentUiLayoutEntry();
+  const layoutRef = layoutEntry?.ref || uiLayoutReference(currentModule(), item);
+  heading.dataset.uiLayoutRef = layoutRef;
+  heading.setAttribute("role", "button");
+  heading.setAttribute("tabindex", "0");
+  heading.setAttribute("aria-label", `调整${item?.title || "当前界面"}整体布局`);
+  heading.setAttribute("aria-pressed", String(selectedUiLayoutId === layoutRef));
   const headingText = create("div");
-  appendText(headingText, "span", "界面实例预览", "ui-preview-label");
+  appendText(headingText, "span", "低保真内容预览", "ui-preview-label");
   appendText(headingText, "strong", item?.title || "界面预览");
-  appendText(headingText, "span", `界面结构：${uiLayoutLabel(item?.screen_layout)}。下方描边范围是产品界面示意，外围内容是审核说明。`);
+  appendText(headingText, "span", `界面结构：${uiLayoutLabel(item?.screen_layout)}。视觉细节已简化，控件和文字必须与 review data 一致。`);
   heading.appendChild(headingText);
   if (item?.framework_approximation) {
     appendText(heading, "span", item.framework_approximation, "ui-framework-note");
   }
+  const activateLayout = (event) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    selectedUiLayoutId = selectedUiLayoutId === layoutRef ? null : layoutRef;
+    selectedUiComponentId = null;
+    selectedNodeId = null;
+    render();
+    if (selectedUiLayoutId) {
+      window.requestAnimationFrame(() => {
+        document.querySelector(`[data-ui-layout-adjustment-ref="${CSS.escape(layoutRef)}"]`)
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }
+  };
+  heading.addEventListener("click", activateLayout);
+  heading.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    activateLayout(event);
+  });
   frame.appendChild(heading);
-  frame.appendChild(renderUiScreenContext(item));
+  frame.appendChild(renderUiPreviewToolbar());
 
+  const stage = create("section", `ui-preview-stage ui-preview-inline ui-preview-${safeClassToken(uiPreviewViewport)}`);
+  stage.setAttribute("aria-label", "目标 UI 预览区");
+  const boundaryBar = create("div", "ui-preview-boundary-bar");
+  appendText(boundaryBar, "strong", "目标 UI 预览区");
+  appendText(boundaryBar, "span", `${uiPreviewViewportLabel(uiPreviewViewport)}画布`);
+  stage.appendChild(boundaryBar);
+
+  const canvas = create("div", "ui-preview-canvas");
   const productFrame = create("section", "ui-product-frame");
-  const titlebar = create("div", "ui-product-titlebar");
-  appendText(titlebar, "strong", item?.title || "业务页面");
-  appendText(titlebar, "span", "产品页面显示范围", "ui-product-range");
-  productFrame.appendChild(titlebar);
+  productFrame.setAttribute("aria-label", `${item?.title || "业务页面"}的低保真内容预览`);
 
   const positions = new Set((item?.screen_regions || []).map((region) => region.position));
   const regionGrid = create(
@@ -480,10 +520,13 @@ function renderUiScreen(item) {
     ].join(" ")
   );
   for (const region of item?.screen_regions || []) {
-    regionGrid.appendChild(renderUiRegion(region));
+    regionGrid.appendChild(renderUiRegion(region, item));
   }
   productFrame.appendChild(regionGrid);
-  frame.appendChild(productFrame);
+  canvas.appendChild(productFrame);
+  stage.appendChild(canvas);
+  frame.appendChild(stage);
+  frame.appendChild(renderUiScreenContext(item));
 
   const stateNotes = item?.states || [];
   if (stateNotes.length) {
@@ -508,20 +551,108 @@ function renderUiScreen(item) {
   return frame;
 }
 
+function renderUiPreviewToolbar() {
+  const toolbar = create("div", "ui-preview-toolbar");
+  const note = create("div", "ui-preview-accuracy-note");
+  appendText(note, "strong", "内容校对模式");
+  appendText(note, "span", "不补写未知文案；缺少表头、选项或示例值时直接标出缺口。");
+  toolbar.appendChild(note);
+
+  const controls = create("div", "ui-preview-toolbar-controls");
+  controls.setAttribute("aria-label", "切换界面预览宽度");
+  for (const [value, label] of [["desktop", "桌面"], ["tablet", "平板"], ["mobile", "手机"]]) {
+    const button = create("button", "ui-preview-mode-button", label);
+    button.type = "button";
+    button.setAttribute("aria-pressed", String(uiPreviewViewport === value));
+    button.addEventListener("click", () => {
+      uiPreviewViewport = value;
+      render();
+    });
+    controls.appendChild(button);
+  }
+  const annotations = create(
+    "button",
+    "ui-preview-annotation-toggle",
+    uiPreviewAnnotations ? "隐藏规格标注" : "显示规格标注"
+  );
+  annotations.type = "button";
+  annotations.setAttribute("aria-pressed", String(uiPreviewAnnotations));
+  annotations.addEventListener("click", () => {
+    uiPreviewAnnotations = !uiPreviewAnnotations;
+    render();
+  });
+  controls.appendChild(annotations);
+
+  const fullPreview = create("button", "ui-preview-full-button", "查看全图");
+  fullPreview.type = "button";
+  fullPreview.setAttribute("aria-haspopup", "dialog");
+  fullPreview.addEventListener("click", () => showUiFullPreview(fullPreview));
+  controls.appendChild(fullPreview);
+  toolbar.appendChild(controls);
+  return toolbar;
+}
+
+function showUiFullPreview(trigger) {
+  const screen = trigger.closest(".ui-screen-preview");
+  const source = screen?.querySelector(".ui-preview-stage");
+  if (!source || typeof window.SpecCompassOverlay?.showPreviewDialog !== "function") {
+    setStatus("当前浏览器无法打开 UI 全图预览。", true);
+    return;
+  }
+
+  const preview = source.cloneNode(true);
+  preview.classList.remove("ui-preview-inline");
+  preview.classList.add("ui-preview-dialog-stage");
+  preview.setAttribute("aria-label", `${currentItem()?.title || "目标 UI"}只读全图预览`);
+  for (const selected of preview.querySelectorAll(".selected, .resolved, .ui-component-adjustment-selected")) {
+    selected.classList.remove("selected", "resolved", "ui-component-adjustment-selected");
+  }
+  for (const component of preview.querySelectorAll(".ui-component")) {
+    component.removeAttribute("role");
+    component.removeAttribute("tabindex");
+    component.removeAttribute("aria-label");
+    component.removeAttribute("aria-pressed");
+    component.querySelector(":scope > .ui-component-face")?.removeAttribute("aria-hidden");
+  }
+  for (const control of preview.querySelectorAll("button, input, select, textarea, [tabindex]")) {
+    control.tabIndex = -1;
+    if ("disabled" in control) control.disabled = true;
+    control.setAttribute("aria-disabled", "true");
+    control.removeAttribute("aria-pressed");
+  }
+
+  window.SpecCompassOverlay.showPreviewDialog({
+    title: currentItem()?.title || "目标 UI 全图",
+    body: `${uiPreviewViewportLabel(uiPreviewViewport)}只读全图；关闭后回到内嵌预览继续确认。`,
+    content: preview,
+    trigger
+  });
+}
+
+function uiPreviewViewportLabel(viewport) {
+  return {
+    desktop: "桌面",
+    tablet: "平板",
+    mobile: "手机"
+  }[viewport] || "自定义";
+}
+
 function renderUiScreenContext(item) {
-  const context = create("section", "ui-screen-context");
+  const context = create("details", "ui-screen-context");
+  appendText(context, "summary", "查看页面业务依据与进入条件");
+  const body = create("div", "ui-screen-context-body");
   const heading = create("div", "ui-screen-context-heading");
   appendText(heading, "span", "功能说明", "ui-preview-label");
   appendText(heading, "h4", "这个界面为什么存在");
-  context.appendChild(heading);
-  appendText(context, "p", item?.business_context || "", "ui-screen-context-lead");
+  body.appendChild(heading);
+  appendText(body, "p", item?.business_context || "", "ui-screen-context-lead");
 
   const facts = create("dl", "ui-screen-context-grid");
   appendUiScreenContextFact(facts, "谁会使用", item?.primary_users || []);
   appendUiScreenContextFact(facts, "什么时候进入", item?.entry_scenarios || []);
   appendUiScreenContextFact(facts, "要完成的事", item?.user_goal || "");
   appendUiScreenContextFact(facts, "完成后得到", item?.user_outcome || "");
-  context.appendChild(facts);
+  body.appendChild(facts);
 
   const flowRefs = item?.flow_refs || [];
   if (flowRefs.length) {
@@ -531,8 +662,9 @@ function renderUiScreenContext(item) {
     for (const ref of flowRefs) {
       appendText(details, "p", ref);
     }
-    context.appendChild(details);
+    body.appendChild(details);
   }
+  context.appendChild(body);
   return context;
 }
 
@@ -543,112 +675,439 @@ function appendUiScreenContextFact(container, label, value) {
   container.appendChild(row);
 }
 
-function renderUiRegion(region) {
+function renderUiRegion(region, item = currentItem()) {
   const section = create("section", `ui-region ui-region-${safeClassToken(region.position)}`);
+  section.setAttribute("aria-label", region.title || region.id || "未命名区域");
   const header = create("div", "ui-region-header");
   appendText(header, "strong", region.title || region.id || "未命名区域");
   appendText(header, "span", uiRegionPositionLabel(region.position));
+  header.classList.add("ui-annotation");
   section.appendChild(header);
-  appendText(section, "p", region.purpose || "未提供区域用途。", "ui-region-purpose");
+  appendText(section, "p", region.purpose || "未提供区域用途。", "ui-region-purpose ui-annotation");
 
   const components = create("div", "ui-components");
   for (const component of region.components || []) {
-    components.appendChild(renderUiComponent(component));
+    components.appendChild(renderUiComponent(component, region, item));
   }
   section.appendChild(components);
 
   for (const note of region.notes || []) {
-    appendText(section, "p", note, "ui-region-note");
+    appendText(section, "p", note, "ui-region-note ui-annotation");
   }
   return section;
 }
 
-function renderUiComponent(component) {
-  const nodeId = component.decision_node_id || component.action_ref || "";
-  const supportsInfoDialog = !nodeId && ["dynamic-marker", "chart-note", "modal-note"].includes(component.kind || "");
-  const componentEl = document.createElement("button");
-  componentEl.type = "button";
-  componentEl.className = uiComponentClassName(component, nodeId, supportsInfoDialog);
-  componentEl.setAttribute("aria-pressed", String(Boolean(selectedNodeId && nodeId === selectedNodeId)));
-  componentEl.disabled = !nodeId && !supportsInfoDialog;
-  appendText(componentEl, "span", uiComponentKindLabel(component.kind), "ui-component-kind");
-  componentEl.appendChild(renderUiComponentFace(component));
-  appendText(componentEl, "span", component.purpose || "", "ui-component-purpose");
-  if (component.future_behavior_note || component.kind === "dynamic-marker") {
-    appendText(
-      componentEl,
-      "span",
-      component.future_behavior_note || "此处未来会按真实数据自动更新。",
-      "ui-dynamic-marker"
-    );
-  }
-  componentEl.addEventListener("click", () => {
-    if (supportsInfoDialog) {
-      window.SpecCompassOverlay?.showInfoDialog({
-        title: component.label || component.id || "说明",
-        body: component.future_behavior_note || component.purpose || "此处为只读说明，用于帮助理解界面预览。",
-        trigger: componentEl
-      });
-      return;
+function uiComponentReference(module, item, region, component) {
+  return [
+    module?.id || module?.title || "module",
+    item?.id || item?.title || "screen",
+    region?.id || region?.title || region?.position || "region",
+    component?.id || component?.label || "component"
+  ].join(":");
+}
+
+function uiLayoutReference(module, item) {
+  return [
+    "ui-layout",
+    module?.id || module?.title || "module",
+    item?.id || item?.title || "screen"
+  ].join(":");
+}
+
+function allUiLayoutEntries() {
+  if (reviewData?.review_type !== "ui") return [];
+  const entries = [];
+  for (const module of reviewData.modules || []) {
+    for (const item of module.screens || []) {
+      entries.push({ module, item, ref: uiLayoutReference(module, item) });
     }
-    if (!nodeId) return;
-    selectedNodeId = selectedNodeId === nodeId ? null : nodeId;
+  }
+  return entries;
+}
+
+function currentUiLayoutEntry() {
+  if (reviewData?.review_type !== "ui") return null;
+  const module = currentModule();
+  const item = currentItem();
+  return module && item ? { module, item, ref: uiLayoutReference(module, item) } : null;
+}
+
+function uiLayoutAdjustmentMap() {
+  const adjustments = state?.__meta?.ui_layout_adjustments;
+  return adjustments && typeof adjustments === "object" && !Array.isArray(adjustments) ? adjustments : {};
+}
+
+function uiLayoutAdjustment(ref) {
+  const saved = uiLayoutAdjustmentMap()[ref] || {};
+  return {
+    suggestion: String(saved.suggestion || "").slice(0, 2000),
+    updated_at: saved.updated_at || ""
+  };
+}
+
+function savedUiLayoutAdjustments() {
+  const adjustments = uiLayoutAdjustmentMap();
+  return allUiLayoutEntries()
+    .map((entry) => ({ ...entry, adjustment: uiLayoutAdjustment(entry.ref) }))
+    .filter((entry) => adjustments[entry.ref] && entry.adjustment.suggestion.trim());
+}
+
+function updateUiLayoutAdjustment(entry, suggestion) {
+  if (!entry?.ref) return false;
+  const previousState = snapshotReviewState();
+  const adjustments = { ...uiLayoutAdjustmentMap() };
+  const normalized = String(suggestion || "").slice(0, 2000);
+  if (normalized.trim()) {
+    adjustments[entry.ref] = { suggestion: normalized, updated_at: new Date().toISOString() };
+  } else {
+    delete adjustments[entry.ref];
+  }
+  state.__meta = { ...(state.__meta || {}), ui_layout_adjustments: adjustments };
+  markSummaryDirty();
+  if (!saveState()) {
+    restoreReviewState(previousState);
+    return false;
+  }
+  copyDraftWarningArmed = false;
+  downloadDraftWarningArmed = false;
+  resetExportButtonLabels();
+  return true;
+}
+
+function resetUiLayoutAdjustment(entry) {
+  return updateUiLayoutAdjustment(entry, "");
+}
+
+function allUiComponentEntries() {
+  if (reviewData?.review_type !== "ui") return [];
+  const entries = [];
+  for (const module of reviewData.modules || []) {
+    for (const item of module.screens || []) {
+      for (const region of item.screen_regions || []) {
+        for (const component of region.components || []) {
+          entries.push({
+            module,
+            item,
+            region,
+            component,
+            ref: uiComponentReference(module, item, region, component)
+          });
+        }
+      }
+    }
+  }
+  return entries;
+}
+
+function selectedUiComponentEntry() {
+  if (!selectedUiComponentId) return null;
+  return allUiComponentEntries().find((entry) => entry.ref === selectedUiComponentId) || null;
+}
+
+function selectedUiLayoutEntry() {
+  if (!selectedUiLayoutId) return null;
+  return allUiLayoutEntries().find((entry) => entry.ref === selectedUiLayoutId) || null;
+}
+
+function uiComponentAdjustmentMap() {
+  const adjustments = state?.__meta?.ui_component_adjustments;
+  return adjustments && typeof adjustments === "object" && !Array.isArray(adjustments) ? adjustments : {};
+}
+
+function uiComponentAdjustment(ref, viewport = uiPreviewViewport) {
+  const saved = uiComponentAdjustmentMap()[ref] || {};
+  const savedLayouts = saved.layout && typeof saved.layout === "object" && !Array.isArray(saved.layout)
+    ? saved.layout
+    : {};
+  const layout = savedLayouts[viewport] || saved;
+  return {
+    suggestion: saved.suggestion || "",
+    text: saved.text || "",
+    offset_x: Number(layout.offset_x) || 0,
+    offset_y: Number(layout.offset_y) || 0,
+    width_step: Number(layout.width_step) || 0,
+    height_step: Number(layout.height_step) || 0,
+    layout: Object.fromEntries(
+      ["desktop", "tablet", "mobile"]
+        .filter((key) => savedLayouts[key] && typeof savedLayouts[key] === "object")
+        .map((key) => [key, {
+          offset_x: Number(savedLayouts[key].offset_x) || 0,
+          offset_y: Number(savedLayouts[key].offset_y) || 0,
+          width_step: Number(savedLayouts[key].width_step) || 0,
+          height_step: Number(savedLayouts[key].height_step) || 0
+        }])
+    ),
+    updated_at: saved.updated_at || ""
+  };
+}
+
+function hasMeaningfulUiComponentAdjustment(adjustment, component = null) {
+  const originalText = component?.label || component?.id || "未命名组件";
+  return Boolean(
+    adjustment?.suggestion?.trim()
+    || (adjustment?.text?.trim() && adjustment.text.trim() !== originalText)
+    || Object.values(adjustment?.layout || {}).some((layout) => (
+      layout.offset_x || layout.offset_y || layout.width_step || layout.height_step
+    ))
+    || adjustment?.offset_x || adjustment?.offset_y || adjustment?.width_step || adjustment?.height_step
+  );
+}
+
+function savedUiComponentAdjustments() {
+  const adjustments = uiComponentAdjustmentMap();
+  return allUiComponentEntries()
+    .map((entry) => ({ ...entry, adjustment: uiComponentAdjustment(entry.ref) }))
+    .filter((entry) => adjustments[entry.ref] && hasMeaningfulUiComponentAdjustment(entry.adjustment, entry.component));
+}
+
+function clampUiAdjustment(value, minimum, maximum) {
+  return Math.min(maximum, Math.max(minimum, Number(value) || 0));
+}
+
+function updateUiComponentAdjustment(entry, patch) {
+  if (!entry?.ref) return false;
+  const previousState = snapshotReviewState();
+  const current = uiComponentAdjustment(entry.ref);
+  const nextLayout = {
+    offset_x: clampUiAdjustment(patch.offset_x ?? current.offset_x, -80, 80),
+    offset_y: clampUiAdjustment(patch.offset_y ?? current.offset_y, -80, 80),
+    width_step: clampUiAdjustment(patch.width_step ?? current.width_step, -4, 6),
+    height_step: clampUiAdjustment(patch.height_step ?? current.height_step, -4, 6)
+  };
+  const layout = { ...(current.layout || {}), [uiPreviewViewport]: nextLayout };
+  if (!nextLayout.offset_x && !nextLayout.offset_y && !nextLayout.width_step && !nextLayout.height_step) {
+    delete layout[uiPreviewViewport];
+  }
+  const next = {
+    suggestion: String(patch.suggestion ?? current.suggestion ?? "").slice(0, 2000),
+    text: String(patch.text ?? current.text ?? "").slice(0, 200),
+    layout,
+    updated_at: new Date().toISOString()
+  };
+  const originalText = entry.component?.label || entry.component?.id || "未命名组件";
+  if (!next.text?.trim() || next.text.trim() === originalText) next.text = "";
+  const adjustments = { ...uiComponentAdjustmentMap() };
+  if (hasMeaningfulUiComponentAdjustment(next, entry.component)) {
+    adjustments[entry.ref] = next;
+  } else {
+    delete adjustments[entry.ref];
+  }
+  state.__meta = { ...(state.__meta || {}), ui_component_adjustments: adjustments };
+  markSummaryDirty();
+  if (!saveState()) {
+    restoreReviewState(previousState);
+    return false;
+  }
+  copyDraftWarningArmed = false;
+  downloadDraftWarningArmed = false;
+  resetExportButtonLabels();
+  return true;
+}
+
+function resetUiComponentAdjustment(entry) {
+  if (!entry?.ref) return false;
+  const previousState = snapshotReviewState();
+  const adjustments = { ...uiComponentAdjustmentMap() };
+  delete adjustments[entry.ref];
+  state.__meta = { ...(state.__meta || {}), ui_component_adjustments: adjustments };
+  markSummaryDirty();
+  if (!saveState()) {
+    restoreReviewState(previousState);
+    return false;
+  }
+  resetExportButtonLabels();
+  return true;
+}
+
+function applyUiComponentAdjustment(componentEl, adjustment) {
+  const widthScale = Math.max(0.8, 1 + adjustment.width_step * 0.05);
+  const heightScale = Math.max(0.8, 1 + adjustment.height_step * 0.05);
+  componentEl.style.translate = adjustment.offset_x || adjustment.offset_y
+    ? `${adjustment.offset_x}px ${adjustment.offset_y}px`
+    : "";
+  componentEl.style.scale = adjustment.width_step || adjustment.height_step
+    ? `${widthScale} ${heightScale}`
+    : "";
+  componentEl.style.transformOrigin = adjustment.width_step || adjustment.height_step ? "top left" : "";
+}
+
+function uiComponentDecisionNodeId(component) {
+  const knownNodeIds = new Set(currentItemNodes().map((node) => node.id));
+  return component?.decision_node_id || (knownNodeIds.has(component?.action_ref) ? component.action_ref : "");
+}
+
+function renderUiComponent(component, region, item = currentItem()) {
+  const module = currentModule();
+  const componentRef = uiComponentReference(module, item, region, component);
+  const adjustment = uiComponentAdjustment(componentRef);
+  const nodeId = uiComponentDecisionNodeId(component);
+  const componentEl = document.createElement("div");
+  componentEl.className = uiComponentClassName(component, nodeId, componentRef, adjustment);
+  componentEl.dataset.componentId = component.id || "";
+  componentEl.dataset.uiComponentRef = componentRef;
+  componentEl.dataset.sourceRef = component.source_ref || "";
+  componentEl.setAttribute("role", "button");
+  componentEl.setAttribute("tabindex", "0");
+  componentEl.setAttribute("aria-label", `调整${component.label || component.id || "界面元素"}`);
+  componentEl.setAttribute("aria-pressed", String(selectedUiComponentId === componentRef));
+  const face = renderUiComponentFace(component, adjustment.text);
+  face.classList.add("ui-component-face");
+  face.setAttribute("aria-hidden", "true");
+  for (const control of face.querySelectorAll("button, input, select, textarea, [tabindex]")) {
+    control.tabIndex = -1;
+  }
+  componentEl.appendChild(face);
+  applyUiComponentAdjustment(componentEl, adjustment);
+
+  const annotation = create("div", "ui-component-annotation ui-annotation");
+  appendText(annotation, "span", uiComponentKindLabel(component.kind), "ui-component-kind");
+  appendText(annotation, "span", component.purpose || "未提供组件用途。", "ui-component-purpose");
+  appendText(annotation, "span", component.source_ref || "未提供来源。", "ui-component-source");
+  componentEl.appendChild(annotation);
+
+  const activate = (event) => {
+    event?.preventDefault();
+    event?.stopPropagation();
+    selectedUiComponentId = componentRef;
+    selectedUiLayoutId = null;
+    selectedNodeId = nodeId || null;
     render();
+    window.requestAnimationFrame(() => {
+      document.querySelector(`[data-ui-adjustment-ref="${CSS.escape(componentRef)}"]`)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  };
+  componentEl.addEventListener("click", activate);
+  componentEl.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    activate(event);
   });
   return componentEl;
 }
 
-function uiComponentClassName(component, nodeId, supportsInfoDialog) {
+function uiComponentClassName(component, nodeId, componentRef, adjustment) {
   const base = nodeId && isResolved({ id: nodeId }) ? "ui-component resolved" : "ui-component";
-  const classes = [base, `ui-component-${safeClassToken(component.kind)}`];
-  if (nodeId || supportsInfoDialog) classes.push("has-decision");
-  if (supportsInfoDialog) classes.push("has-info-dialog");
+  const classes = [base, "is-adjustable", `ui-component-${safeClassToken(component.kind)}`];
+  if (nodeId) classes.push("has-decision");
   if (selectedNodeId && nodeId === selectedNodeId) classes.push("selected");
+  if (selectedUiComponentId === componentRef) classes.push("ui-component-adjustment-selected");
+  if (hasMeaningfulUiComponentAdjustment(adjustment, component)) classes.push("ui-component-adjusted");
   return classes.join(" ");
 }
 
-function renderUiComponentFace(component) {
+function renderUiComponentFace(component, replacementText = "") {
   const kind = component.kind || "";
-  const label = component.label || component.id || "未命名组件";
+  const label = replacementText?.trim() || component.label || component.id || "未命名组件";
+  const display = component.display || {};
   if (kind === "button") {
-    const face = create("span", `ui-button-face ${/确认|发布|新建|提交/.test(label) ? "primary" : ""}`, label);
-    return face;
+    const button = create("button", `ui-button-face ui-button-${safeClassToken(display.button_variant || "secondary")}`, label);
+    button.type = "button";
+    return button;
   }
-  if (kind === "search" || kind === "input" || kind === "filter" || kind === "select" || kind === "textarea") {
-    const face = create("span", `ui-input-face ui-input-${safeClassToken(kind)}`);
-    appendText(face, "span", label, "ui-input-placeholder");
-    if (kind === "search") appendText(face, "span", "⌕", "ui-input-icon");
-    if (kind === "select" || kind === "filter") appendText(face, "span", "⌄", "ui-input-icon");
-    return face;
+  if (kind === "search" || kind === "input" || kind === "textarea") {
+    const field = create("label", `ui-input-face ui-input-${safeClassToken(kind)}`);
+    appendText(field, "span", label, "ui-field-label");
+    const control = document.createElement(kind === "textarea" ? "textarea" : "input");
+    if (kind === "search") control.type = "search";
+    if (display.value) control.value = display.value;
+    if (display.placeholder) control.placeholder = display.placeholder;
+    control.readOnly = true;
+    field.appendChild(control);
+    if (display.helper_text) appendText(field, "span", display.helper_text, "ui-field-helper");
+    if (!display.value && !display.placeholder) {
+      appendText(field, "span", "输入内容未提供", "ui-preview-content-gap ui-field-content-gap");
+    }
+    return field;
+  }
+  if (kind === "select" || kind === "filter") {
+    const field = create("label", `ui-input-face ui-input-${safeClassToken(kind)}`);
+    appendText(field, "span", label, "ui-field-label");
+    const select = document.createElement("select");
+    const options = display.options?.length ? display.options : display.value ? [display.value] : [];
+    for (const optionLabel of options) select.appendChild(create("option", "", optionLabel));
+    if (!options.length) {
+      const missingOption = create("option", "", "选项文案未提供");
+      missingOption.disabled = true;
+      missingOption.selected = true;
+      select.appendChild(missingOption);
+    }
+    field.appendChild(select);
+    if (display.helper_text) appendText(field, "span", display.helper_text, "ui-field-helper");
+    if (!options.length) {
+      appendText(field, "span", "选项文案未提供", "ui-preview-content-gap ui-field-content-gap");
+    }
+    return field;
+  }
+  if (kind === "checkbox" || kind === "radio") {
+    const choice = create("label", "ui-choice-face");
+    const input = document.createElement("input");
+    input.type = kind;
+    input.addEventListener("click", (event) => event.preventDefault());
+    choice.appendChild(input);
+    appendText(choice, "span", label);
+    return choice;
   }
   if (kind === "table") {
-    const face = create("span", "ui-table-face");
-    appendText(face, "strong", label);
-    for (let index = 0; index < 3; index += 1) {
-      const row = create("span", "ui-table-row");
-      row.appendChild(create("span"));
-      row.appendChild(create("span"));
-      row.appendChild(create("span"));
-      face.appendChild(row);
+    const face = create("div", "ui-table-face");
+    const table = document.createElement("table");
+    appendText(table, "caption", label);
+    const columns = display.columns || [];
+    if (columns.length) {
+      const head = document.createElement("thead");
+      const row = document.createElement("tr");
+      for (const column of columns) appendText(row, "th", column);
+      head.appendChild(row);
+      table.appendChild(head);
+      const body = document.createElement("tbody");
+      for (const values of display.rows || []) {
+        const bodyRow = document.createElement("tr");
+        for (const value of values) appendText(bodyRow, "td", value);
+        body.appendChild(bodyRow);
+      }
+      if (!(display.rows || []).length) {
+        const emptyRow = document.createElement("tr");
+        const emptyCell = appendText(emptyRow, "td", "示例数据未提供", "ui-table-empty");
+        emptyCell.colSpan = columns.length;
+        body.appendChild(emptyRow);
+      }
+      table.appendChild(body);
+    } else {
+      appendText(face, "p", "表格列文案未提供", "ui-preview-content-gap");
     }
+    face.appendChild(table);
     return face;
   }
   if (kind === "badge") {
-    return create("span", "ui-badge-face", label);
+    return create("span", `ui-badge-face ui-badge-${safeClassToken(display.badge_tone || "neutral")}`, label);
   }
   if (kind === "card") {
-    const face = create("span", "ui-card-face");
+    const face = create("article", "ui-card-face");
     appendText(face, "strong", label);
-    appendText(face, "span", "用于集中展示检查结果或摘要。");
+    if (display.value) appendText(face, "span", display.value);
+    if (display.helper_text) appendText(face, "span", display.helper_text);
     return face;
   }
   if (kind === "dynamic-marker" || kind === "chart-note" || kind === "modal-note") {
-    const face = create("span", "ui-note-face");
+    const face = create("div", "ui-note-face");
     appendText(face, "strong", label);
     appendText(face, "span", component.future_behavior_note || "此处为未来动态信息的占位说明。");
     return face;
   }
-  return create("strong", "ui-text-face", label);
+  if (kind === "tab") {
+    const tab = create("button", "ui-tab-face", label);
+    tab.type = "button";
+    tab.setAttribute("role", "tab");
+    tab.setAttribute("aria-selected", "false");
+    return tab;
+  }
+  if (kind === "nav") return create("nav", "ui-nav-face", label);
+  if (kind === "empty-state" || kind === "error-note") {
+    const message = create("div", `ui-message-face ui-message-${safeClassToken(kind)}`);
+    appendText(message, "strong", label);
+    if (display.helper_text) appendText(message, "span", display.helper_text);
+    return message;
+  }
+  return create("p", "ui-text-face", label);
 }
 
 function renderUiState(state) {

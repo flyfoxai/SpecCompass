@@ -352,6 +352,29 @@ regenerating the whole batch. Regenerate fresh review data containing only
 changed or explicitly invalidated nodes, validate it, and ask for fresh
 confirmation. A revision request is not authorization.
 
+The UI review preview also supports element-level revision requests / 元素级修改建议.
+Clicking any rendered component opens the right-rail adjustment workspace. The
+reviewer may enter a natural-language suggestion, propose replacement visible
+text, or use the position and size controls. These controls are provisional
+review aids: they update only the browser preview and must never mutate review
+data or authoritative UI artifacts directly. Persist meaningful adjustments in
+the confirmation package as `UI_COMPONENT_ADJUSTMENT` revision records. Keep
+their stable `target_ref` in `<module>:<screen>:<region>:<component>` form and
+preserve the structured `adjustment` payload alongside `reviewer_note`. A later
+`/sp.ui` run must interpret the request against the current UI sources and
+regenerate the affected review data. The full-preview dialog is read-only.
+
+The current screen's preview title bar is the entry for its overall layout
+suggestion / 整体布局建议. Keep this panel hidden from the right rail until the
+reviewer clicks or keyboard-activates that title bar; selecting a component or
+review node must replace it with the newly selected content. Use it for
+page-level requests such as changing a three-column screen to two columns.
+Persist non-empty suggestions separately as `UI_LAYOUT_ADJUSTMENT` revision
+records with `change_type: MODIFY_SCREEN_STRUCTURE`; never attach them to an
+arbitrary component or treat them as direct edits. A later `/sp.ui` run applies
+the natural-language request to the named screen's structured layout and
+regenerates the affected preview.
+
 Review pages are rendered by the reusable `speccompass-review-data` toolchain:
 normal `/sp.flow` and `/sp.ui` commands must fill structured review data, must
 not edit the fixed renderer, and must not write HTML/CSS/JS for the confirmation
@@ -533,6 +556,18 @@ instead.
   option card must lead with `背景信息`, `决策摘要`, `收益`, `代价`, and, for the
   recommended option, `推荐理由`. `consequence` and `next_exit` are execution
   fields for writeback/routing, not the primary visible decision explanation.
+  Low fidelity may simplify spacing, color, imagery, and component polish, but
+  it must not omit, rename, merge, or invent visible controls and copy. Treat
+  every `component.label` as exact user-visible wording. Use optional
+  `component.display` fields for source-backed `placeholder`, current `value`,
+  select `options`, table `columns`/sample `rows`, helper text, button variant,
+  or badge tone. Omit unknown display details instead of guessing; the fixed
+  renderer must expose the missing content as a review gap. Every visible
+  button, field, table, status, tab, navigation item, and user-facing text from
+  the screen source must appear exactly once in `screen_regions[].components`.
+  The preview shows a clean target-product surface by default; region purpose,
+  component type, source reference, and other review-only explanations appear
+  only when the reviewer enables specification annotations.
 - When UI review data is created or repaired, change only the current real
   feature's `has_ui_review` flag and `updated_at` in `specs/review-index.json`.
   Preserve `has_flow_review`, `has_outline_review`, and

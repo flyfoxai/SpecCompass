@@ -65,7 +65,9 @@ function summaryFingerprint() {
 function hasUnexportedSavedChoices() {
   const copiedFingerprint = state.__meta?.copied_fingerprint || "";
   const groups = buildSummaryGroups();
-  const savedCount = groups.decision_records.length + groups.needs_decision_items.length;
+  const savedCount = groups.decision_records.length
+    + groups.needs_decision_items.length
+    + groups.revision_requests.length;
   return Boolean(copiedFingerprint !== summaryFingerprint() && savedCount);
 }
 
@@ -136,15 +138,24 @@ function renderRail() {
     renderOutlineAdjustmentRail();
     return;
   }
-  $("rail-title").textContent = "当前确认";
-  $("authorization-steps").classList.remove("hidden");
-  $("priority-filters").classList.remove("hidden");
-  document.querySelector(".rail-actions")?.classList.remove("hidden");
   const item = currentItem();
-  $("rail-summary").textContent = selectedNodeId
-    ? "当前只显示选中的确认点。"
-    : `${item?.title || "当前视图"}的确认点。`;
-  $("show-all").classList.toggle("hidden", !selectedNodeId);
+  const selectedLayout = selectedUiLayoutEntry();
+  const selectedComponent = selectedUiComponentEntry();
+  const associatedNodeId = selectedComponent ? uiComponentDecisionNodeId(selectedComponent.component) : "";
+  $("authorization-steps").classList.toggle("hidden", Boolean(selectedLayout));
+  $("priority-filters").classList.toggle("hidden", Boolean(selectedLayout));
+  document.querySelector(".rail-actions")?.classList.toggle("hidden", Boolean(selectedLayout));
+  $("rail-title").textContent = selectedLayout ? "整体布局建议" : selectedComponent ? "元素修改建议" : "当前确认";
+  $("rail-summary").textContent = selectedLayout
+    ? `正在调整「${selectedLayout.item.title || selectedLayout.item.id || "当前界面"}」的整体布局。`
+    : selectedComponent
+    ? associatedNodeId
+      ? `正在调整「${selectedComponent.component.label || selectedComponent.component.id}」；下方保留关联确认点。`
+      : `正在调整「${selectedComponent.component.label || selectedComponent.component.id}」；该元素没有绑定确认点，下方保留当前界面确认点。`
+    : selectedNodeId
+      ? "当前只显示选中的确认点。"
+      : `${item?.title || "当前视图"}的确认点。`;
+  $("show-all").classList.toggle("hidden", Boolean(selectedLayout) || !selectedNodeId);
 
   const counts = priorityCounts();
   for (const button of $("priority-filters").querySelectorAll("[data-priority]")) {
@@ -155,14 +166,216 @@ function renderRail() {
 
   const list = $("node-list");
   list.replaceChildren();
-  for (const node of visibleNodes()) {
-    list.appendChild(nodeCard(node));
+  if (selectedLayout) {
+    list.appendChild(renderUiLayoutAdjustmentPanel(selectedLayout));
+  } else {
+    if (selectedComponent) {
+      list.appendChild(renderUiComponentAdjustmentPanel(selectedComponent));
+    }
+    for (const node of visibleNodes()) {
+      list.appendChild(nodeCard(node));
+    }
   }
   if (pendingFocusNodeId) {
     const textarea = document.querySelector(`[data-node-id="${CSS.escape(pendingFocusNodeId)}"] textarea`);
     if (textarea) textarea.focus();
     pendingFocusNodeId = null;
   }
+}
+
+function uiAdjustmentIconButton(label, title, onClick) {
+  const button = create("button", "ui-adjustment-icon-button", label);
+  button.type = "button";
+  button.title = title;
+  button.setAttribute("aria-label", title);
+  button.addEventListener("click", onClick);
+  return button;
+}
+
+function syncUiLayoutAdjustmentPanel(entry) {
+  const adjustment = uiLayoutAdjustment(entry.ref);
+  const panel = document.querySelector(`[data-ui-layout-adjustment-ref="${CSS.escape(entry.ref)}"]`);
+  const stateBadge = panel?.querySelector(".ui-adjustment-state");
+  if (stateBadge) stateBadge.textContent = adjustment.suggestion.trim() ? "已有整体建议" : "待输入";
+  const reset = panel?.querySelector(".ui-layout-adjustment-footer button");
+  if (reset) reset.disabled = !adjustment.suggestion.trim();
+}
+
+function renderUiLayoutAdjustmentPanel(entry) {
+  const adjustment = uiLayoutAdjustment(entry.ref);
+  const panel = create("section", "ui-layout-adjustment-panel");
+  panel.dataset.uiLayoutAdjustmentRef = entry.ref;
+
+  const heading = create("div", "ui-adjustment-heading");
+  const title = create("div");
+  appendText(title, "span", "页面级调整", "ui-adjustment-kicker");
+  appendText(title, "h3", "整体布局建议");
+  heading.appendChild(title);
+  appendText(heading, "span", adjustment.suggestion.trim() ? "已有整体建议" : "待输入", "ui-adjustment-state");
+  panel.appendChild(heading);
+
+  const facts = create("dl", "ui-adjustment-facts");
+  appendAdjustmentFact(facts, "当前界面", entry.item.title || entry.item.id || "未命名界面");
+  appendAdjustmentFact(facts, "现有布局", uiLayoutLabel(entry.item.screen_layout));
+  panel.appendChild(facts);
+
+  const suggestionLabel = create("label", "ui-adjustment-field");
+  appendText(suggestionLabel, "span", "布局修改意见");
+  const suggestion = document.createElement("textarea");
+  suggestion.maxLength = 2000;
+  suggestion.placeholder = "例如：当前三栏改为两栏，详情区改为点击后弹出。";
+  suggestion.value = adjustment.suggestion;
+  suggestion.addEventListener("input", () => {
+    const previous = uiLayoutAdjustment(entry.ref).suggestion;
+    if (!updateUiLayoutAdjustment(entry, suggestion.value)) {
+      suggestion.value = previous;
+      return;
+    }
+    syncUiLayoutAdjustmentPanel(entry);
+    setStatus("整体布局意见已保存为 UI 修订建议。");
+  });
+  suggestionLabel.appendChild(suggestion);
+  panel.appendChild(suggestionLabel);
+
+  const footer = create("div", "ui-adjustment-footer ui-layout-adjustment-footer");
+  appendText(footer, "span", "作用范围：当前页面整体结构。", "ui-adjustment-note");
+  const reset = create("button", "", "清除整体建议");
+  reset.type = "button";
+  reset.disabled = !adjustment.suggestion.trim();
+  reset.addEventListener("click", () => {
+    if (!resetUiLayoutAdjustment(entry)) return;
+    suggestion.value = "";
+    syncUiLayoutAdjustmentPanel(entry);
+    setStatus("已清除当前页面的整体布局建议。");
+  });
+  footer.appendChild(reset);
+  panel.appendChild(footer);
+  return panel;
+}
+
+function uiAdjustmentValue(adjustment) {
+  const width = 100 + adjustment.width_step * 5;
+  const height = 100 + adjustment.height_step * 5;
+  return `位置 X ${adjustment.offset_x}px / Y ${adjustment.offset_y}px；尺寸 ${width}% × ${height}%`;
+}
+
+function syncUiAdjustmentPanel(entry) {
+  const adjustment = uiComponentAdjustment(entry.ref);
+  const meaningful = hasMeaningfulUiComponentAdjustment(adjustment, entry.component);
+  const panel = document.querySelector(`[data-ui-adjustment-ref="${CSS.escape(entry.ref)}"]`);
+  const stateBadge = panel?.querySelector(".ui-adjustment-state");
+  if (stateBadge) stateBadge.textContent = meaningful ? "已有修改建议" : "待输入";
+  const reset = panel?.querySelector(".ui-adjustment-footer button");
+  if (reset) reset.disabled = !meaningful;
+  const target = document.querySelector(`.ui-preview-inline [data-ui-component-ref="${CSS.escape(entry.ref)}"]`);
+  target?.classList.toggle("ui-component-adjusted", meaningful);
+}
+
+function renderUiComponentAdjustmentPanel(entry) {
+  const adjustment = uiComponentAdjustment(entry.ref);
+  const component = entry.component;
+  const panel = create("section", "ui-component-adjustment-panel");
+  panel.dataset.uiAdjustmentRef = entry.ref;
+
+  const heading = create("div", "ui-adjustment-heading");
+  const title = create("div");
+  appendText(title, "span", `${uiComponentKindLabel(component.kind)} · ${entry.region.title || entry.region.id || uiRegionPositionLabel(entry.region.position)}`, "ui-adjustment-kicker");
+  appendText(title, "h3", component.label || component.id || "未命名元素");
+  heading.appendChild(title);
+  appendText(heading, "span", hasMeaningfulUiComponentAdjustment(adjustment, component) ? "已有修改建议" : "待输入", "ui-adjustment-state");
+  panel.appendChild(heading);
+
+  const facts = create("dl", "ui-adjustment-facts");
+  appendAdjustmentFact(facts, "规格来源", component.source_ref || "未提供");
+  appendAdjustmentFact(facts, "元素标识", entry.ref);
+  panel.appendChild(facts);
+
+  const suggestionLabel = create("label", "ui-adjustment-field");
+  appendText(suggestionLabel, "span", "修改建议");
+  const suggestion = document.createElement("textarea");
+  suggestion.maxLength = 2000;
+  suggestion.placeholder = "例如：将按钮移到筛选条件右侧，主操作文案改为“创建问卷”。";
+  suggestion.value = adjustment.suggestion;
+  suggestion.addEventListener("input", () => {
+    if (updateUiComponentAdjustment(entry, { suggestion: suggestion.value })) syncUiAdjustmentPanel(entry);
+  });
+  suggestionLabel.appendChild(suggestion);
+  panel.appendChild(suggestionLabel);
+
+  const textLabel = create("label", "ui-adjustment-field");
+  appendText(textLabel, "span", "显示文字");
+  const textRow = create("div", "ui-adjustment-text-row");
+  const textInput = document.createElement("input");
+  textInput.type = "text";
+  textInput.maxLength = 200;
+  textInput.value = adjustment.text || component.label || component.id || "";
+  textInput.setAttribute("aria-label", "调整元素显示文字");
+  textInput.addEventListener("input", () => {
+    if (!updateUiComponentAdjustment(entry, { text: textInput.value })) return;
+    const target = document.querySelector(`.ui-preview-inline [data-ui-component-ref="${CSS.escape(entry.ref)}"]`);
+    const oldFace = target?.querySelector(":scope > .ui-component-face");
+    if (!oldFace) return;
+    const replacement = renderUiComponentFace(component, uiComponentAdjustment(entry.ref).text);
+    replacement.classList.add("ui-component-face");
+    replacement.setAttribute("aria-hidden", "true");
+    for (const control of replacement.querySelectorAll("button, input, select, textarea, [tabindex]")) control.tabIndex = -1;
+    oldFace.replaceWith(replacement);
+    syncUiAdjustmentPanel(entry);
+  });
+  textRow.appendChild(textInput);
+  textRow.appendChild(uiAdjustmentIconButton("↺", "恢复原始文字", () => {
+    if (!updateUiComponentAdjustment(entry, { text: "" })) return;
+    render();
+  }));
+  textLabel.appendChild(textRow);
+  panel.appendChild(textLabel);
+
+  const controlLabel = create("span", "ui-adjustment-control-label", `位置与尺寸（${uiPreviewViewportLabel(uiPreviewViewport)}）`);
+  panel.appendChild(controlLabel);
+  const controls = create("div", "ui-adjustment-controls");
+  controls.setAttribute("role", "group");
+  controls.setAttribute("aria-label", "调整元素位置和尺寸");
+  controls.append(
+    uiAdjustmentIconButton("←", "向左移动 8 像素", () => adjustUiComponentAndRender(entry, { offset_x: uiComponentAdjustment(entry.ref).offset_x - 8 })),
+    uiAdjustmentIconButton("↑", "向上移动 8 像素", () => adjustUiComponentAndRender(entry, { offset_y: uiComponentAdjustment(entry.ref).offset_y - 8 })),
+    uiAdjustmentIconButton("↓", "向下移动 8 像素", () => adjustUiComponentAndRender(entry, { offset_y: uiComponentAdjustment(entry.ref).offset_y + 8 })),
+    uiAdjustmentIconButton("→", "向右移动 8 像素", () => adjustUiComponentAndRender(entry, { offset_x: uiComponentAdjustment(entry.ref).offset_x + 8 }))
+  );
+  controls.appendChild(create("span", "ui-adjustment-control-divider"));
+  controls.append(
+    uiAdjustmentIconButton("W−", "缩小宽度 5%", () => adjustUiComponentAndRender(entry, { width_step: uiComponentAdjustment(entry.ref).width_step - 1 })),
+    uiAdjustmentIconButton("W+", "增大宽度 5%", () => adjustUiComponentAndRender(entry, { width_step: uiComponentAdjustment(entry.ref).width_step + 1 })),
+    uiAdjustmentIconButton("H−", "缩小高度 5%", () => adjustUiComponentAndRender(entry, { height_step: uiComponentAdjustment(entry.ref).height_step - 1 })),
+    uiAdjustmentIconButton("H+", "增大高度 5%", () => adjustUiComponentAndRender(entry, { height_step: uiComponentAdjustment(entry.ref).height_step + 1 }))
+  );
+  panel.appendChild(controls);
+  appendText(panel, "p", uiAdjustmentValue(adjustment), "ui-adjustment-value");
+
+  const footer = create("div", "ui-adjustment-footer");
+  appendText(footer, "span", "临时预览，不直接改写 UI 规格。", "ui-adjustment-note");
+  const reset = create("button", "", "重置此元素");
+  reset.type = "button";
+  reset.disabled = !hasMeaningfulUiComponentAdjustment(adjustment, component);
+  reset.addEventListener("click", () => {
+    if (!resetUiComponentAdjustment(entry)) return;
+    setStatus("已清除此元素的临时修改建议。");
+    render();
+  });
+  footer.appendChild(reset);
+  panel.appendChild(footer);
+  return panel;
+}
+
+function adjustUiComponentAndRender(entry, patch) {
+  if (!updateUiComponentAdjustment(entry, patch)) return;
+  const adjustment = uiComponentAdjustment(entry.ref);
+  const target = document.querySelector(`.ui-preview-inline [data-ui-component-ref="${CSS.escape(entry.ref)}"]`);
+  if (target) applyUiComponentAdjustment(target, adjustment);
+  const panel = document.querySelector(`[data-ui-adjustment-ref="${CSS.escape(entry.ref)}"]`);
+  const value = panel?.querySelector(".ui-adjustment-value");
+  if (value) value.textContent = uiAdjustmentValue(adjustment);
+  syncUiAdjustmentPanel(entry);
+  setStatus("元素调整已保存为 UI 修订建议。");
 }
 
 function outlineAdjustmentTarget() {
@@ -413,12 +626,16 @@ function nodeCard(node) {
   card.addEventListener("click", (event) => {
     if (event.target.closest("button, textarea, select, label, summary")) return;
     selectedNodeId = selectedNodeId === node.id ? null : node.id;
+    selectedUiLayoutId = null;
+    selectedUiComponentId = null;
     render();
   });
   card.addEventListener("keydown", (event) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       selectedNodeId = selectedNodeId === node.id ? null : node.id;
+      selectedUiLayoutId = null;
+      selectedUiComponentId = null;
       render();
     }
   });
@@ -717,8 +934,87 @@ function revisionRequestObject(module, item, node, saved, option) {
   };
 }
 
+function uiAdjustmentChangeType(adjustment) {
+  const hasLayout = Object.values(adjustment.layout || {}).some((layout) => (
+    layout.offset_x || layout.offset_y || layout.width_step || layout.height_step
+  ));
+  const hasText = Boolean(adjustment.text?.trim());
+  if (hasLayout && hasText) return "OTHER";
+  if (hasLayout) return "MODIFY_REGION_LAYOUT";
+  if (hasText) return "MODIFY_FIELD_ACTION_COPY";
+  return "OTHER";
+}
+
+function uiLayoutAdjustmentRevisionRequest(entry) {
+  const suggestion = entry.adjustment.suggestion.trim();
+  return {
+    target_ref: entry.ref,
+    target_label: `${entry.module.title || entry.module.id} / ${entry.item.title || entry.item.id} / 整体布局`,
+    review_type: "ui",
+    change_type: "MODIFY_SCREEN_STRUCTURE",
+    selected_option: "UI_LAYOUT_ADJUSTMENT",
+    reviewer_note: suggestion,
+    expected_model_action: "下一轮 /sp.ui 根据页面级整体布局建议更新当前界面的结构化 UI review data，并重新生成受影响界面。",
+    next_exit: "needs-revision",
+    adjustment: {
+      current_screen_layout: summaryText(entry.item.screen_layout || ""),
+      layout_suggestion: summaryText(suggestion)
+    }
+  };
+}
+
+function uiLayoutAdjustmentRecordLine(entry) {
+  return `- ${summaryText(`${entry.module.title || entry.module.id} / ${entry.item.title || entry.item.id} / 整体布局`)}；selected_option: UI_LAYOUT_ADJUSTMENT；status: SAVED_SUBMITTED；change_type: MODIFY_SCREEN_STRUCTURE；note: ${summaryText(entry.adjustment.suggestion)}`;
+}
+
+function uiAdjustmentReviewerNote(entry) {
+  const adjustment = entry.adjustment;
+  const notes = [];
+  if (adjustment.suggestion?.trim()) notes.push(adjustment.suggestion.trim());
+  if (adjustment.text?.trim()) notes.push(`将显示文字改为“${adjustment.text.trim()}”`);
+  for (const [viewport, layout] of Object.entries(adjustment.layout || {})) {
+    const viewportLabel = uiPreviewViewportLabel(viewport);
+    if (layout.offset_x || layout.offset_y) {
+      notes.push(`${viewportLabel}位置偏移为 X ${layout.offset_x}px、Y ${layout.offset_y}px`);
+    }
+    if (layout.width_step || layout.height_step) {
+      notes.push(`${viewportLabel}尺寸调整为宽度 ${100 + layout.width_step * 5}%、高度 ${100 + layout.height_step * 5}%`);
+    }
+  }
+  return notes.join("；") || "请重新评估此界面元素。";
+}
+
+function uiAdjustmentRevisionRequest(entry) {
+  const layouts = Object.fromEntries(
+    Object.entries(entry.adjustment.layout || {}).map(([viewport, layout]) => [viewport, {
+      offset_x_px: layout.offset_x,
+      offset_y_px: layout.offset_y,
+      width_percent: 100 + layout.width_step * 5,
+      height_percent: 100 + layout.height_step * 5
+    }])
+  );
+  return {
+    target_ref: entry.ref,
+    target_label: `${entry.module.title || entry.module.id} / ${entry.item.title || entry.item.id} / ${entry.region.title || entry.region.id} / ${entry.component.label || entry.component.id}`,
+    review_type: "ui",
+    change_type: uiAdjustmentChangeType(entry.adjustment),
+    selected_option: "UI_COMPONENT_ADJUSTMENT",
+    reviewer_note: uiAdjustmentReviewerNote(entry),
+    expected_model_action: "下一轮 /sp.ui 根据元素级修改建议更新 UI review data，并重新生成受影响界面。",
+    next_exit: "needs-revision",
+    adjustment: {
+      replacement_text: summaryText(entry.adjustment.text || ""),
+      layouts
+    }
+  };
+}
+
+function uiAdjustmentRecordLine(entry) {
+  return `- ${summaryText(`${entry.module.title || entry.module.id} / ${entry.item.title || entry.item.id} / ${entry.region.title || entry.region.id} / ${entry.component.label || entry.component.id}`)}；selected_option: UI_COMPONENT_ADJUSTMENT；status: SAVED_SUBMITTED；change_type: ${uiAdjustmentChangeType(entry.adjustment)}；note: ${summaryText(uiAdjustmentReviewerNote(entry))}`;
+}
+
 function revisionRequestMarkdown(request) {
-  return [
+  const lines = [
     `- target_ref: ${summaryScalar(request.target_ref)}`,
     `  target_label: ${summaryScalar(request.target_label)}`,
     `  review_type: ${summaryScalar(request.review_type)}`,
@@ -727,7 +1023,9 @@ function revisionRequestMarkdown(request) {
     `  reviewer_note: ${summaryScalar(request.reviewer_note)}`,
     `  expected_model_action: ${summaryScalar(request.expected_model_action)}`,
     `  next_exit: ${summaryScalar(request.next_exit)}`
-  ].join("\n");
+  ];
+  if (request.adjustment) lines.push(`  adjustment: ${summaryScalar(JSON.stringify(request.adjustment))}`);
+  return lines.join("\n");
 }
 
 function buildSummaryGroups() {
@@ -771,6 +1069,18 @@ function buildSummaryGroups() {
     if (isSubmittedRevisionRequest(node, saved)) {
       groups.revision_requests.push(revisionRequestMarkdown(buildRevisionRequest(module, item, node, saved, option)));
     }
+  }
+
+  for (const entry of savedUiComponentAdjustments()) {
+    const line = uiAdjustmentRecordLine(entry);
+    groups.needs_decision_items.push(line);
+    groups.revision_requests.push(revisionRequestMarkdown(uiAdjustmentRevisionRequest(entry)));
+  }
+
+  for (const entry of savedUiLayoutAdjustments()) {
+    const line = uiLayoutAdjustmentRecordLine(entry);
+    groups.needs_decision_items.push(line);
+    groups.revision_requests.push(revisionRequestMarkdown(uiLayoutAdjustmentRevisionRequest(entry)));
   }
 
   return groups;
@@ -836,8 +1146,82 @@ function buildConfirmationRecord(module, item, node) {
   return record;
 }
 
+function buildUiAdjustmentConfirmationRecord(entry) {
+  const request = uiAdjustmentRevisionRequest(entry);
+  return {
+    record_type: "ui_component_adjustment",
+    target_ref: entry.ref,
+    target_label: request.target_label,
+    module_id: summaryText(entry.module.id || ""),
+    module_title: summaryText(entry.module.title || entry.module.id || ""),
+    item_id: summaryText(entry.item.id || ""),
+    item_title: summaryText(entry.item.title || entry.item.id || ""),
+    region_id: summaryText(entry.region.id || ""),
+    region_title: summaryText(entry.region.title || entry.region.id || ""),
+    component_id: summaryText(entry.component.id || ""),
+    component_kind: summaryText(entry.component.kind || ""),
+    source_ref: summaryText(entry.component.source_ref || ""),
+    node_id: summaryText(entry.component.id || ""),
+    node_label: summaryText(entry.component.label || entry.component.id || ""),
+    review_layer: "component",
+    review_level: "revision_request",
+    confirmation_priority: "",
+    priority_reason: "",
+    critical_basis: "",
+    owner: "UI reviewer",
+    bucket: "needs_decision_items",
+    status: "SAVED_SUBMITTED",
+    authorization_state: "NOT_AUTHORIZED",
+    is_authorized_decision: false,
+    selected_option: "UI_COMPONENT_ADJUSTMENT",
+    selected_option_label: "元素级修改建议",
+    next_exit: "needs-revision",
+    change_type: request.change_type,
+    reviewer_note: request.reviewer_note,
+    requested_changes: request.adjustment,
+    line: uiAdjustmentRecordLine(entry),
+    revision_request: request
+  };
+}
+
+function buildUiLayoutAdjustmentConfirmationRecord(entry) {
+  const request = uiLayoutAdjustmentRevisionRequest(entry);
+  return {
+    record_type: "ui_layout_adjustment",
+    target_ref: entry.ref,
+    target_label: request.target_label,
+    module_id: summaryText(entry.module.id || ""),
+    module_title: summaryText(entry.module.title || entry.module.id || ""),
+    item_id: summaryText(entry.item.id || ""),
+    item_title: summaryText(entry.item.title || entry.item.id || ""),
+    screen_layout: summaryText(entry.item.screen_layout || ""),
+    node_id: "screen-layout",
+    node_label: "整体布局",
+    review_layer: "screen",
+    review_level: "revision_request",
+    confirmation_priority: "",
+    priority_reason: "",
+    critical_basis: "",
+    owner: "UI reviewer",
+    bucket: "needs_decision_items",
+    status: "SAVED_SUBMITTED",
+    authorization_state: "NOT_AUTHORIZED",
+    is_authorized_decision: false,
+    selected_option: "UI_LAYOUT_ADJUSTMENT",
+    selected_option_label: "页面级整体布局建议",
+    next_exit: "needs-revision",
+    change_type: request.change_type,
+    reviewer_note: request.reviewer_note,
+    requested_changes: request.adjustment,
+    line: uiLayoutAdjustmentRecordLine(entry),
+    revision_request: request
+  };
+}
+
 function buildConfirmationPackageInput() {
   const groups = buildSummaryGroups();
+  const componentAdjustments = savedUiComponentAdjustments();
+  const layoutAdjustments = savedUiLayoutAdjustments();
   const modules = [];
   for (const module of reviewData?.modules || []) {
     const records = [];
@@ -846,13 +1230,21 @@ function buildConfirmationPackageInput() {
         records.push(buildConfirmationRecord(module, item, node));
       }
     }
+    for (const entry of componentAdjustments.filter((candidate) => candidate.module === module)) {
+      records.push(buildUiAdjustmentConfirmationRecord(entry));
+    }
+    for (const entry of layoutAdjustments.filter((candidate) => candidate.module === module)) {
+      records.push(buildUiLayoutAdjustmentConfirmationRecord(entry));
+    }
     modules.push({
       module_id: module.id || module.title || "module",
       module_title: module.title || module.id || "未命名模块",
       module_summary: module.summary || "未提供模块说明。",
-      status: records.some((record) => record.bucket === "unresolved_decision_items" || record.bucket === "draft_excluded_items")
-        ? "HAS_OPEN_ITEMS"
-        : "AUTHORIZED",
+      status: records.some((record) => record.revision_request)
+        ? "NEEDS_REVISION"
+        : records.some((record) => record.bucket === "unresolved_decision_items" || record.bucket === "draft_excluded_items")
+          ? "HAS_OPEN_ITEMS"
+          : "AUTHORIZED",
       records
     });
   }

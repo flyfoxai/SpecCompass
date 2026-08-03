@@ -180,6 +180,7 @@
   }
 
   function isUnauthorizedDraftRecord(record) {
+    if (["ui_component_adjustment", "ui_layout_adjustment"].includes(record?.record_type)) return false;
     return (
       record?.status === "DRAFT" ||
       record?.bucket === "draft_excluded_items" ||

@@ -141,6 +141,8 @@ $("review-mode-switch")?.addEventListener("click", (event) => {
 });
 $("show-all").addEventListener("click", () => {
   selectedNodeId = null;
+  selectedUiComponentId = null;
+  selectedUiLayoutId = null;
   render();
 });
 $("priority-filters").addEventListener("click", (event) => {
@@ -148,6 +150,8 @@ $("priority-filters").addEventListener("click", (event) => {
   if (!button) return;
   selectedPriority = button.dataset.priority || "all";
   selectedNodeId = null;
+  selectedUiComponentId = null;
+  selectedUiLayoutId = null;
   render();
 });
 function runRecommendationCompletion(entries, scopeLabel) {

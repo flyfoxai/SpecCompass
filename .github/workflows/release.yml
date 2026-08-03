@@ -44,14 +44,15 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Explicit review acceptance and Portfolio-root boundaries
+          ## Accurate and adjustable UI review previews
 
-          This release makes review closeout explicit and keeps the Portfolio root separate from implementation features:
+          This release turns \`/sp.ui\` review into a more faithful design-mechanism preview without turning the browser into a direct UI editor:
 
-          - After inspecting an Outline, Flow, or UI review, \`/sp.accept <outline|flow|ui> <feature> [--advance]\` adopts the exact current recommendations, records an auditable formal confirmation, and advances only after the owner stage passes readiness checks.
-          - Missing recommendations, unresolved \`needs-decision\` exits, stale review identity, and dedicated Outline boundary decisions remain fail-closed.
-          - The explicit \`000-*\` Portfolio root owns PRD, Outline, global constraints, and handoffs only. It cannot create or consume Spec, Flow, UI, Bundle, Plan, Tasks, analysis, gate, or implementation artifacts.
-          - Flow/UI review flags and the shared boundary gate enforce that root rule; implementation work starts from an explicit \`001+\` child boundary.
+          - UI review pages render declared buttons, copy, inputs, tables, cards, badges, states, and layout regions accurately while intentionally keeping visual polish lightweight.
+          - A strongly bounded inline preview supports the normal review workflow, while a read-only full-preview dialog makes ordinary desktop web layouts inspectable without shrinking the entire review surface.
+          - Selecting any declared component opens element-specific natural-language feedback plus controls for replacement text, position, width, and height, with separate desktop, tablet, and mobile geometry.
+          - Selecting the preview title bar opens screen-level layout feedback, such as changing three columns to two, without permanently occupying the right rail; selecting a component replaces it with that component's controls.
+          - Every adjustment remains a provisional review request and is written back as identity-validated structured evidence. Browser interactions never directly mutate the authoritative UI source.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install

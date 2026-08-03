@@ -56,6 +56,7 @@
             "specs/ask-survey/flows/survey-publish.mmd#发布结果"
           ],
           "screen_layout": "list_detail",
+          "preview_viewport": "desktop",
           "framework_approximation": "示例使用固定 renderer 近似展示；真实前端可按 PRD 选定框架实现。",
           "framework_notes": [
             "动态数量先用文字标注，不在确认页实现动画或真实计算。",
@@ -74,14 +75,20 @@
                   "kind": "search",
                   "label": "搜索问卷名称",
                   "purpose": "按问卷名称快速找到目标问卷。",
-                  "source_ref": "ui.md#搜索"
+                  "source_ref": "ui.md#搜索",
+                  "display": {
+                    "placeholder": "搜索问卷名称"
+                  }
                 },
                 {
                   "id": "survey-new-button",
                   "kind": "button",
                   "label": "新建问卷",
                   "purpose": "进入问卷草稿创建流程。",
-                  "source_ref": "ui.md#新建问卷"
+                  "source_ref": "ui.md#新建问卷",
+                  "display": {
+                    "button_variant": "primary"
+                  }
                 },
                 {
                   "id": "survey-tenant-filter",
@@ -105,7 +112,10 @@
                   "kind": "table",
                   "label": "问卷表格",
                   "purpose": "集中展示草稿、已发布、已关闭等问卷状态。",
-                  "source_ref": "ui.md#问卷表格"
+                  "source_ref": "ui.md#问卷表格",
+                  "display": {
+                    "columns": ["问卷名称", "状态", "回收数量", "最近更新"]
+                  }
                 },
                 {
                   "id": "survey-response-count-note",
@@ -122,6 +132,9 @@
                   "label": "发布",
                   "purpose": "打开右侧发布抽屉，要求运营完成发布前确认。",
                   "source_ref": "ui.md#发布按钮",
+                  "display": {
+                    "button_variant": "secondary"
+                  },
                   "decision_node_id": "ui-survey-publish-confirmation"
                 }
               ]
@@ -139,6 +152,9 @@
                   "label": "发布前检查",
                   "purpose": "显示题目、回收范围和截止时间是否已填写。",
                   "source_ref": "ui.md#发布前检查",
+                  "display": {
+                    "helper_text": "题目、回收范围和截止时间"
+                  },
                   "decision_node_id": "ui-survey-publish-confirmation"
                 },
                 {
@@ -146,7 +162,10 @@
                   "kind": "badge",
                   "label": "需重点确认",
                   "purpose": "提醒审核人这是会影响真实用户的高风险操作。",
-                  "source_ref": "ui.md#发布风险"
+                  "source_ref": "ui.md#发布风险",
+                  "display": {
+                    "badge_tone": "danger"
+                  }
                 },
                 {
                   "id": "publish-submit-button",
@@ -154,6 +173,9 @@
                   "label": "确认发布",
                   "purpose": "检查通过后将问卷发布给目标用户。",
                   "source_ref": "ui.md#确认发布",
+                  "display": {
+                    "button_variant": "primary"
+                  },
                   "decision_node_id": "ui-survey-publish-confirmation"
                 }
               ],

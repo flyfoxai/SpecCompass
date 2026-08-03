@@ -988,6 +988,81 @@ def test_local_writer_records_confirmation_at_fixed_target(
         assert not target.with_name(f"{target.name}.speccompass-writeback.lock").exists()
 
 
+def test_local_writer_records_screen_scoped_ui_layout_adjustment(review_project: ReviewProject):
+    data_path = review_project.data_path("ui")
+    review_data = json.loads(data_path.read_text(encoding="utf-8"))
+    screen = review_data["modules"][0]["screens"][0]
+    screen["screen_layout"] = "list_detail"
+    data_path.write_text(json.dumps(review_data, ensure_ascii=False), encoding="utf-8")
+
+    suggestion = "将当前三栏布局改成两栏，详情区改为点击后弹出。"
+    adjustment = {
+        "current_screen_layout": "list_detail",
+        "layout_suggestion": suggestion,
+    }
+    target_ref = "ui-layout:module-1:ui-item-1"
+    layout_record = {
+        "record_type": "ui_layout_adjustment",
+        "target_ref": target_ref,
+        "target_label": "Primary module / UI item / 整体布局",
+        "module_id": "module-1",
+        "module_title": "Primary module",
+        "item_id": "ui-item-1",
+        "item_title": "UI item",
+        "screen_layout": "list_detail",
+        "node_id": "screen-layout",
+        "node_label": "整体布局",
+        "review_layer": "screen",
+        "review_level": "revision_request",
+        "bucket": "needs_decision_items",
+        "status": "SAVED_SUBMITTED",
+        "authorization_state": "NOT_AUTHORIZED",
+        "is_authorized_decision": False,
+        "selected_option": "UI_LAYOUT_ADJUSTMENT",
+        "selected_option_label": "页面级整体布局建议",
+        "next_exit": "needs-revision",
+        "change_type": "MODIFY_SCREEN_STRUCTURE",
+        "reviewer_note": suggestion,
+        "requested_changes": adjustment,
+        "revision_request": {
+            "target_ref": target_ref,
+            "target_label": "Primary module / UI item / 整体布局",
+            "review_type": "ui",
+            "change_type": "MODIFY_SCREEN_STRUCTURE",
+            "selected_option": "UI_LAYOUT_ADJUSTMENT",
+            "reviewer_note": suggestion,
+            "expected_model_action": "下一轮 /sp.ui 根据页面级整体布局建议重新生成受影响界面。",
+            "next_exit": "needs-revision",
+            "adjustment": adjustment,
+        },
+    }
+
+    with _running_launcher(review_project, "ui") as (_, ready_url):
+        origin, config = _writer_config(ready_url)
+        payload = _confirmation_payload(review_project, "ui")
+        part = payload["parts"][0]
+        part["modules"][0]["records"].append(layout_record)
+        part["total_record_count"] = 2
+        part["part_record_count"] = 2
+        stale_payload = json.loads(json.dumps(payload, ensure_ascii=False))
+        stale_payload["parts"][0]["modules"][0]["records"][1]["screen_layout"] = "dashboard"
+        stale_status, stale_body = _post_writeback(origin, config, stale_payload)
+        assert stale_status == 400
+        assert "identity" in stale_body.decode("utf-8")
+        status, body = _post_writeback(origin, config, payload)
+
+    assert status == 200, body.decode("utf-8")
+    confirmation_path = review_project.root / "specs" / review_project.feature / "ui" / "review" / "ui-confirmation.md"
+    confirmation = confirmation_path.read_text(encoding="utf-8")
+    frontmatter = yaml.safe_load(confirmation.split("---", 2)[1])
+    saved = next(record for record in frontmatter["decision_records"] if record.get("record_type") == "ui_layout_adjustment")
+    assert saved["target_ref"] == target_ref
+    assert saved["selected_option"] == "UI_LAYOUT_ADJUSTMENT"
+    assert saved["authorization_state"] == "NOT_AUTHORIZED"
+    assert saved["requested_changes"] == adjustment
+    assert frontmatter["revision_requests"][0]["adjustment"] == adjustment
+
+
 def _install_auto_accept_flow_fixture(review_project: ReviewProject, *, critical: bool = False) -> Path:
     source = PROJECT_ROOT / "docs" / "examples" / "review" / "flow-review-data.json"
     payload = json.loads(source.read_text(encoding="utf-8"))

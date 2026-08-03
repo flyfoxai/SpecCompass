@@ -6502,8 +6502,20 @@ def test_ui_review_data_has_independent_screen_contract():
         assert field in review_item["required"]
     assert "screen_region" in ui_schema["$defs"]
     assert "ui_component" in ui_schema["$defs"]
+    assert "ui_component_display" in ui_schema["$defs"]
     assert "ui_state" in ui_schema["$defs"]
     assert "components" in ui_schema["$defs"]["screen_region"]["required"]
+    assert "source_ref" in ui_schema["$defs"]["screen_region"]["required"]
+    assert {
+        "value",
+        "placeholder",
+        "helper_text",
+        "options",
+        "columns",
+        "rows",
+        "button_variant",
+        "badge_tone",
+    } <= set(ui_schema["$defs"]["ui_component_display"]["properties"])
     assert "dynamic_marker" in schema_text
     assert "future_behavior_note" in schema_text
 
@@ -6646,6 +6658,7 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                         "title": "发布信息区",
                         "purpose": "让运营人员检查问卷发布前必须填写的信息。",
                         "position": "main",
+                        "source_ref": "specs/example/spec.md#问卷发布",
                         "components": [
                             {
                                 "id": "publish-title",
@@ -6653,6 +6666,10 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                                 "label": "问卷标题",
                                 "purpose": "填写用户看到的问卷名称。",
                                 "source_ref": "specs/example/spec.md#问卷发布",
+                                "display": {
+                                    "placeholder": "请输入问卷标题",
+                                    "helper_text": "填写用户看到的问卷名称。",
+                                },
                             },
                             {
                                 "id": "publish-button",
@@ -6661,6 +6678,7 @@ def _review_validator_sample(review_type: str, *, node_count: int = 3, include_e
                                 "purpose": "确认信息无误后进入发布。",
                                 "source_ref": "specs/example/spec.md#问卷发布",
                                 "action_ref": "DEC1",
+                                "display": {"button_variant": "primary"},
                             },
                         ],
                     }
@@ -9205,6 +9223,82 @@ def test_review_data_validator_requires_specific_ui_screen_context(tmp_path):
     assert "generic user wording" in _review_validator_output(result)
 
 
+def test_ui_preview_display_contract_preserves_exact_visible_content(tmp_path):
+    """Low-fidelity preview fields stay source-backed and component-specific."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for review data validator tests")
+
+    valid = _review_validator_sample("ui")
+    component = valid["modules"][0]["screens"][0]["screen_regions"][0]["components"][0]
+    component["display"] = {
+        "value": "员工满意度调查",
+        "placeholder": "请输入问卷标题",
+        "helper_text": "填写用户看到的问卷名称。",
+    }
+    result = _run_review_validator(valid, tmp_path / "ui-display-valid.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+    wrong_options = _review_validator_sample("ui")
+    button = wrong_options["modules"][0]["screens"][0]["screen_regions"][0]["components"][1]
+    button["display"] = {"options": ["直接发布", "定时发布"]}
+    result = _run_review_validator(wrong_options, tmp_path / "ui-button-options-invalid.json")
+    assert result.returncode != 0
+    assert "display.options is allowed only for select or filter" in _review_validator_output(result)
+
+    mismatched_table = _review_validator_sample("ui")
+    region = mismatched_table["modules"][0]["screens"][0]["screen_regions"][0]
+    region["components"].append(
+        {
+            "id": "publish-table",
+            "kind": "table",
+            "label": "发布记录",
+            "purpose": "核对发布对象与发布状态。",
+            "source_ref": "specs/example/spec.md#问卷发布",
+            "display": {
+                "columns": ["发布对象", "状态"],
+                "rows": [["全体员工"]],
+            },
+        }
+    )
+    result = _run_review_validator(mismatched_table, tmp_path / "ui-table-row-invalid.json")
+    assert result.returncode != 0
+    assert "same number of cells as display.columns" in _review_validator_output(result)
+
+    renderer = _review_renderer_bundle()
+    assert "显示规格标注" in renderer
+    assert "目标 UI 预览区" in renderer
+    assert "ui-preview-boundary-bar" in renderer
+    assert "ui-preview-canvas" in renderer
+    assert "查看全图" in renderer
+    assert "showPreviewDialog" in renderer
+    assert "ui-preview-inline" in renderer
+    assert "speccompass-preview-dialog" in renderer
+    assert "返回审核" in renderer
+    assert "selectedUiComponentId" in renderer
+    assert "ui-component-adjustment-panel" in renderer
+    assert "修改建议" in renderer
+    assert "显示文字" in renderer
+    assert "位置与尺寸" in renderer
+    assert "向左移动 8 像素" in renderer
+    assert "UI_COMPONENT_ADJUSTMENT" in renderer
+    assert "ui_component_adjustments" in renderer
+    assert "整体布局建议" in renderer
+    assert "UI_LAYOUT_ADJUSTMENT" in renderer
+    assert "ui_layout_adjustments" in renderer
+    assert "当前三栏改为两栏" in renderer
+    assert "selectedUiLayoutId" in renderer
+    assert "selectedUiLayoutEntry" in renderer
+    assert "ui-layout-selectable" in renderer
+    assert "调整${item?.title" in renderer
+    assert "stays out of the right rail until" in (REVIEW_ROOT / "renderer" / "README.md").read_text(encoding="utf-8")
+    assert "full-preview dialog remains" in (REVIEW_ROOT / "renderer" / "README.md").read_text(encoding="utf-8")
+    assert "表格列文案未提供" in renderer
+    assert "输入内容未提供" in renderer
+    assert "选项文案未提供" in renderer
+    assert 'appendText(table, "caption", label)' in renderer
+    assert "用于集中展示检查结果或摘要。" not in renderer
+
+
 def _run_review_validator(sample: dict, path: Path) -> subprocess.CompletedProcess[str]:
     path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
     return subprocess.run(
@@ -9839,6 +9933,14 @@ def test_review_writeback_is_mechanical_and_commands_regenerate_after_reset_choi
     assert 'new Set(["EACCES", "EBUSY", "EEXIST", "EPERM"])' in launcher
     assert "outline-discovery-response-pending.json" in launcher
     assert "No model interpretation was performed during writeback." in launcher
+    assert "currentUiComponentTargets" in launcher
+    assert 'record.record_type === "ui_component_adjustment"' in launcher
+    assert "validateUiComponentAdjustmentRecord" in launcher
+    assert "currentUiLayoutTargets" in launcher
+    assert 'record.record_type === "ui_layout_adjustment"' in launcher
+    assert "validateUiLayoutAdjustmentRecord" in launcher
+    assert "reviewTargetRefs.size !== expectedTargets.size" in launcher
+    assert '"ui_component_adjustment", "ui_layout_adjustment"' in renderer
 
     for content, label in (
         (skill, "review-data skill"),

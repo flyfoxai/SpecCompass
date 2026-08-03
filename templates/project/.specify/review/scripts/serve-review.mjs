@@ -339,6 +339,98 @@ function currentReviewTargets(reviewData) {
   return targets;
 }
 
+function currentUiComponentTargets(reviewData) {
+  const targets = new Map();
+  if (reviewData.review_type !== "ui") return targets;
+  for (const module of reviewData.modules || []) {
+    for (const item of module.screens || []) {
+      for (const region of item.screen_regions || []) {
+        for (const component of region.components || []) {
+          const targetRef = `${module.id || module.title}:${item.id || item.title}:${region.id || region.title || region.position}:${component.id || component.label}`;
+          targets.set(targetRef, { module, item, region, component });
+        }
+      }
+    }
+  }
+  return targets;
+}
+
+function currentUiLayoutTargets(reviewData) {
+  const targets = new Map();
+  if (reviewData.review_type !== "ui") return targets;
+  for (const module of reviewData.modules || []) {
+    for (const item of module.screens || []) {
+      const targetRef = `ui-layout:${module.id || module.title}:${item.id || item.title}`;
+      targets.set(targetRef, { module, item });
+    }
+  }
+  return targets;
+}
+
+function validateUiComponentAdjustmentRecord(record, targetRef, target) {
+  if (record.selected_option !== "UI_COMPONENT_ADJUSTMENT"
+    || record.status !== "SAVED_SUBMITTED"
+    || record.bucket !== "needs_decision_items"
+    || record.authorization_state !== "NOT_AUTHORIZED"
+    || record.is_authorized_decision !== false) {
+    throw new Error(`UI component adjustment record state is invalid: ${targetRef}`);
+  }
+  if (cleanText(record.module_id) !== cleanText(target.module.id)
+    || cleanText(record.item_id) !== cleanText(target.item.id)
+    || cleanText(record.region_id) !== cleanText(target.region.id)
+    || cleanText(record.component_id) !== cleanText(target.component.id)
+    || cleanText(record.source_ref) !== cleanText(target.component.source_ref)) {
+    throw new Error(`UI component adjustment identity does not match current review data: ${targetRef}`);
+  }
+  const changes = record.requested_changes;
+  if (!changes || typeof changes !== "object" || Array.isArray(changes)) {
+    throw new Error(`UI component adjustment must preserve requested_changes: ${targetRef}`);
+  }
+  if (typeof changes.replacement_text !== "string" || changes.replacement_text.length > 200) {
+    throw new Error(`UI component adjustment replacement_text is invalid: ${targetRef}`);
+  }
+  if (!changes.layouts || typeof changes.layouts !== "object" || Array.isArray(changes.layouts)
+    || Object.keys(changes.layouts).some((viewport) => !["desktop", "tablet", "mobile"].includes(viewport))) {
+    throw new Error(`UI component adjustment layouts are invalid: ${targetRef}`);
+  }
+  for (const [viewport, layout] of Object.entries(changes.layouts)) {
+    if (!layout || typeof layout !== "object" || Array.isArray(layout)) {
+      throw new Error(`UI component adjustment ${viewport} layout is invalid: ${targetRef}`);
+    }
+    for (const field of ["offset_x_px", "offset_y_px", "width_percent", "height_percent"]) {
+      if (!Number.isFinite(layout[field])) throw new Error(`UI component adjustment ${viewport}.${field} is invalid: ${targetRef}`);
+    }
+    if (Math.abs(layout.offset_x_px) > 80 || Math.abs(layout.offset_y_px) > 80
+      || layout.width_percent < 80 || layout.width_percent > 130
+      || layout.height_percent < 80 || layout.height_percent > 130) {
+      throw new Error(`UI component adjustment values are outside the supported preview range: ${targetRef}`);
+    }
+  }
+}
+
+function validateUiLayoutAdjustmentRecord(record, targetRef, target) {
+  if (record.selected_option !== "UI_LAYOUT_ADJUSTMENT"
+    || record.status !== "SAVED_SUBMITTED"
+    || record.bucket !== "needs_decision_items"
+    || record.authorization_state !== "NOT_AUTHORIZED"
+    || record.is_authorized_decision !== false) {
+    throw new Error(`UI layout adjustment record state is invalid: ${targetRef}`);
+  }
+  if (cleanText(record.module_id) !== cleanText(target.module.id)
+    || cleanText(record.item_id) !== cleanText(target.item.id)
+    || cleanText(record.screen_layout) !== cleanText(target.item.screen_layout)) {
+    throw new Error(`UI layout adjustment identity does not match current review data: ${targetRef}`);
+  }
+  const changes = record.requested_changes;
+  if (!changes || typeof changes !== "object" || Array.isArray(changes)
+    || typeof changes.layout_suggestion !== "string"
+    || !cleanText(changes.layout_suggestion)
+    || changes.layout_suggestion.length > 2000
+    || cleanText(changes.current_screen_layout) !== cleanText(target.item.screen_layout)) {
+    throw new Error(`UI layout adjustment requested_changes are invalid: ${targetRef}`);
+  }
+}
+
 function boundaryAdjustmentPaths(feature, proposalId) {
   const base = `specs/${feature}/boundary-adjustments`;
   const draft = `${base}/drafts/${proposalId}`;
@@ -474,7 +566,10 @@ function mergeConfirmationParts(parts, context, reviewData) {
   }
   const records = [];
   const targetRefs = new Set();
+  const reviewTargetRefs = new Set();
   const expectedTargets = currentReviewTargets(reviewData);
+  const componentTargets = currentUiComponentTargets(reviewData);
+  const layoutTargets = currentUiLayoutTargets(reviewData);
   let summedRecordCount = 0;
   for (const [index, part] of ordered.entries()) {
     if (part.part_index !== index + 1) throw new Error("confirmation parts must be complete and use consecutive part_index values");
@@ -489,11 +584,33 @@ function mergeConfirmationParts(parts, context, reviewData) {
     for (const record of partRecords) {
       const targetRef = recordReference(record);
       if (targetRefs.has(targetRef)) throw new Error(`duplicate confirmation target_ref: ${targetRef}`);
+      const isComponentAdjustment = record.record_type === "ui_component_adjustment";
+      const isLayoutAdjustment = record.record_type === "ui_layout_adjustment";
+      if (isComponentAdjustment) {
+        const componentTarget = componentTargets.get(targetRef);
+        if (!componentTarget) throw new Error(`UI component adjustment target_ref is not present in current review data: ${targetRef}`);
+        validateUiComponentAdjustmentRecord(record, targetRef, componentTarget);
+        if (!record.revision_request || record.revision_request.target_ref !== targetRef
+          || !sameJson(record.revision_request.adjustment, record.requested_changes)) {
+          throw new Error(`UI component adjustment revision_request does not match its record: ${targetRef}`);
+        }
+      } else if (isLayoutAdjustment) {
+        const layoutTarget = layoutTargets.get(targetRef);
+        if (!layoutTarget) throw new Error(`UI layout adjustment target_ref is not present in current review data: ${targetRef}`);
+        validateUiLayoutAdjustmentRecord(record, targetRef, layoutTarget);
+        if (!record.revision_request || record.revision_request.target_ref !== targetRef
+          || !sameJson(record.revision_request.adjustment, record.requested_changes)) {
+          throw new Error(`UI layout adjustment revision_request does not match its record: ${targetRef}`);
+        }
+      }
       const sourceNode = expectedTargets.get(targetRef);
-      if (!sourceNode) throw new Error(`confirmation target_ref is not present in current review data: ${targetRef}`);
-      const optionIds = new Set((sourceNode.options || []).map((option) => option.id));
-      if (record.selected_option !== "MISSING" && record.selected_option && !optionIds.has(record.selected_option)) {
-        throw new Error(`confirmation selected_option is not present on current review node: ${targetRef}`);
+      if (!isComponentAdjustment && !isLayoutAdjustment) {
+        if (!sourceNode) throw new Error(`confirmation target_ref is not present in current review data: ${targetRef}`);
+        const optionIds = new Set((sourceNode.options || []).map((option) => option.id));
+        if (record.selected_option !== "MISSING" && record.selected_option && !optionIds.has(record.selected_option)) {
+          throw new Error(`confirmation selected_option is not present on current review node: ${targetRef}`);
+        }
+        reviewTargetRefs.add(targetRef);
       }
       if (record.revision_request && record.revision_request.target_ref !== targetRef) {
         throw new Error(`revision_request target_ref does not match its confirmation record: ${targetRef}`);
@@ -512,7 +629,7 @@ function mergeConfirmationParts(parts, context, reviewData) {
     }
   }
   if (summedRecordCount !== first.total_record_count) throw new Error("sum(part_record_count) does not equal total_record_count");
-  if (targetRefs.size !== expectedTargets.size) throw new Error("confirmation package does not contain every current review target");
+  if (reviewTargetRefs.size !== expectedTargets.size) throw new Error("confirmation package does not contain every current review target");
   return { package: first, records };
 }
 
