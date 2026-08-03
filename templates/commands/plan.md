@@ -115,6 +115,13 @@ Global rules:
 - If required inputs are missing or unstable, stop and report the gap explicitly.
 - User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Manage context as an engineering budget: start from routing, bundle, trace, and open items; expand only to the workset or source documents needed for the current planning decision.
+- The design chain is layered: consume the effective PRD source roots, the
+  confirmed Outline, and confirmed Flow/UI contracts before planning. The
+  repository-root `prd/` is the default source root; human-specified roots are
+  added or explicitly substituted and must be recorded in planning evidence.
+- After Outline, Flow, and UI are confirmed, make reversible technical
+  decomposition and delivery choices autonomously inside those contracts. Do
+  not reopen settled product decisions for ordinary workset organization.
 
 Execution flow:
 
@@ -122,6 +129,11 @@ Execution flow:
 2. Run Stage Entry Preflight before delivery planning.
    - Confirm routing identifies one active feature and the required `bundle.md` is current enough for planning.
    - Check whether user input changes product goal, requirements, acceptance, flow, UI, workset boundary, architecture boundary, or implementation-readiness expectations. Route upstream before planning if the change belongs to PRD/spec/clarify/flow/ui.
+   - If planning discovers a material product, permission, safety, money, compliance,
+     irreversible, critical-acceptance, or cross-project ownership decision,
+     stop and return it to the owning Outline/Flow/UI Web review. Purely
+     technical high-impact choices that have no existing review owner remain
+     `NEEDS_DECISION` and must not be self-approved.
    - Confirm upstream flow and UI contracts needed by the requested workset are present or explicitly tracked as open items. If delivery planning would have to invent flow state, UI behavior, data binding, permission, acceptance, or source facts, stop and route to `/sp.flow`, `/sp.ui`, `/sp.specify`, or `/sp.clarify`.
    - Confirm flow/UI batch confirmation is complete before treating those artifacts as planning input. If flow or UI readiness is `WAITING_FOR_BATCH_REVIEW`, `NEEDS_REVISION`, stale, missing batch confirmation evidence, or still has consumed `needs_decision_items` / `unresolved_decision_items`, stop and route to the relevant `/sp.flow` or `/sp.ui` batch review path instead of creating implementation readiness.
    - For frontend work, read the UI confirmation design fields before planning
@@ -157,7 +169,7 @@ Execution flow:
      - any hard signal: distinct external system, release cadence, permission/data model, independent migration, irreversible data/security/compliance/rollback risk, or 2+ blocking open items affecting acceptance/release/rollback/security
      - or at least three warning signals: 3+ roles, 4+ user paths, 5+ artifact categories across UI/API/data/permissions/events/migration/external systems, 12+ trace anchors, 8+ core docs needed for one workset, or implementation expected across 8+ major files or 4+ module boundaries
    - Treat near-threshold complexity as an observation band, not an automatic split. Record the candidate split and risk, but wait for stronger evidence or user confirmation before creating sub-features or sub-projects.
-   - Recommend the smallest safe promotion level and ask for confirmation before creating sub-features or sub-projects:
+   - Recommend the smallest safe promotion level and ask for confirmation before creating sub-features or sub-projects. A sub-project or boundary change must return to the Outline Web review; do not create it from Plan alone:
      - isolated workset group when the area remains inside the same feature and release target
      - sub-feature when it has an independent user goal, acceptance loop, or task plan
      - sub-project when it has an independent lifecycle, external system, release cadence, permission/data model, or repo-level impact

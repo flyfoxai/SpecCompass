@@ -31,18 +31,21 @@ def test_project_version_matches_latest_changelog_entry():
 
 
 def test_release_notes_publish_user_facing_release_theme():
-    """GitHub Release notes should describe accurate, adjustable UI review previews."""
+    """GitHub Release notes should describe source-backed layered planning."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Accurate and adjustable UI review previews" in release_workflow
-    assert r"\`/sp.ui\` review" in release_workflow
-    assert "buttons, copy, inputs, tables, cards, badges, states, and layout regions" in release_workflow
-    assert "read-only full-preview dialog" in release_workflow
-    assert "replacement text, position, width, and height" in release_workflow
-    assert "desktop, tablet, and mobile geometry" in release_workflow
-    assert "preview title bar opens screen-level layout feedback" in release_workflow
-    assert "without permanently occupying the right rail" in release_workflow
-    assert "never directly mutate the authoritative UI source" in release_workflow
+    assert "## Source-backed layered Outline planning" in release_workflow
+    assert r"\`/sp.prd\` builds Outline" in release_workflow
+    assert "repository's default" in release_workflow
+    assert r"\`prd/\` source root" in release_workflow
+    assert r"A \`000-*\` Portfolio root defines only its direct implementation children" in release_workflow
+    assert r"Each \`001+\` child treats its parent handoff" in release_workflow
+    assert "rereads PRD sources to generate its own detailed Outline" in release_workflow
+    assert "scope, ownership, outcomes, handoffs, and inherited constraints" in release_workflow
+    assert r"\`/sp.flow\` consumes PRD plus a confirmed Outline" in release_workflow
+    assert r"\`/sp.ui\` consumes PRD plus confirmed Outline and Flow" in release_workflow
+    assert "multiple source-backed capability atoms and business chains" in release_workflow
+    assert "Major business or design decisions remain human-confirmed" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
@@ -50,17 +53,16 @@ def test_release_notes_publish_user_facing_release_theme():
     assert "specify init . --integration <agent> --force" in release_workflow
 
 
-def test_release_changelog_summary_matches_ui_review_focus():
-    """The generated changelog should lead with the user-facing UI review improvements."""
+def test_release_changelog_summary_matches_layered_planning_focus():
+    """The generated changelog should lead with the layered planning contract."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "accurate low-fidelity UI review previews" in trigger_workflow
-    assert "component-level adjustment controls" in trigger_workflow
-    assert "full-browser inspection" in trigger_workflow
-    assert "on-demand screen-level layout feedback" in trigger_workflow
-    assert "identity-validated structured writeback" in trigger_workflow
+    assert "source-backed layered planning" in trigger_workflow
+    assert "Portfolio roots define direct child boundaries and handoffs" in trigger_workflow
+    assert "implementation children expand their own detailed Outlines from PRD sources" in trigger_workflow
+    assert "Flow/UI consume confirmed upstream artifacts" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

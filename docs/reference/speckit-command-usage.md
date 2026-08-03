@@ -186,7 +186,7 @@ DO_NOT_RUN: <当前不要运行的命令或 None>
 
 结构化推荐内容放在前面，最终复制框必须放在整个回复最底部。最终复制框只放 `NEXT_COMMAND` 的值本身，不带 `NEXT_COMMAND:` 标签，也不放 `OPTION_A/B/C`、`MY_RECOMMENDATION`、`NEXT_COMMAND_EXEC`、`WHY_THIS_NEXT`、`DO_NOT_RUN` 或解释文字。如果没有可执行下一步，复制框只写 `None`。
 
-当 `/sp.flow` 或 `/sp.ui` 需要人工确认时，命令不能只写“请确认”。它必须先用简洁中文展示确认摘要：flow 要说明设计依据、业务目标、角色、主流程、决策点、异常/恢复、状态变化和需要看的标签；UI 要说明 PRD/spec/flow 依据、布局结构、screen/section、按钮和作用、字段和校验、图片/预览、图表/表格及数据源、权限/状态和需要看的标签。若其中有人工决策点，还要给 2-3 个选项、影响、推荐和理由。
+当 `/sp.flow` 或 `/sp.ui` 需要人工确认时，命令不能只写“请确认”。它必须先用简洁中文展示确认摘要：flow 要说明设计依据、业务目标、角色、主流程、决策点、异常/恢复、状态变化和需要看的标签；UI 要说明 PRD/spec/flow 依据、布局结构、screen/section、按钮和作用、字段和校验、图片/预览、图表/表格及数据源、权限/状态和需要看的标签。若其中有人工决策点，Flow `must_confirm` 给 2-4 个选项；UI `must_confirm` 保留现有更严格的 3-4 个选项。每项都要说明影响、推荐和理由。
 
 如果当前 Outline、Flow 或 UI review data 已经生成，且人工已经查看过界面，或明确授权采用所有推荐项，可以使用统一的显式自动接受入口：
 
@@ -200,9 +200,15 @@ DO_NOT_RUN: <当前不要运行的命令或 None>
 
 `000-*` 固定为 Portfolio/统筹根，只负责 PRD、Outline、全局约束、子项目交接、跨项目依赖和影响记录。即使项目最终只保留一个实施产品，也要建立一个明确的 `001+` 实施边界及其 `Subproject Handoff`；`000` 不能生成或消费 Spec、Flow、UI、Bundle、Plan、Tasks、analysis、gate 和实现产物，也不能在 review index 中声明 Flow/UI 可用。统一壳、组合控制台或跨项目旅程需要 Flow/UI 时，必须归属到可独立验收的 `001+` 子项目。
 
+默认业务资料根是仓库根 `prd/`。人工可以为具体项目或当前运行追加、或明确替换资料目录；`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。父级 handoff 和它引用的文档优先读取，但不是白名单。`001+` 生成自己的详细 Outline 时，必须在父级方向和边界内重新读取资料根中的角色、对象、规则、场景、异常、验收和风险。父子核对看范围、责任、结果、交接和全局约束，不要求两边写出相同节点。
+
+`000` 可以用能力原子保证来源覆盖，但不能把每个原子自动变成真实子项目。一个能力原子只归属一个直接子项目，一个直接子项目可以拥有多个能力原子和业务链。`000` 的分图只展示直接子项目的目标、拥有范围、整体结果、命名交接、来源和未决边界；内部模块、详细 Flow 和 UI 交给对应 `001/002` 自己生成。
+
+三个设计阶段按输入递增：Outline 基于 PRD 资料；Flow 基于 PRD 资料和已确认 Outline；UI 基于 PRD 资料、已确认 Outline 和已确认 Flow。低影响、可逆选择由模型记录后继续；会改变范围、权限、安全、真实资金/数据、合规、不可逆行为、关键验收或大范围返工的决定，必须进入所属 Outline/Flow/UI Web 审核页。三层确认后，Plan、Tasks、Implement 应在框架内提高自主性，只在发现新的重大决定、上游冲突或 stale 确认时回退。
+
 停止规则：
 
-- `NEEDS_DECISION`、`HUMAN_DECISION`、`UNKNOWN_BLOCKER`：进入 `/sp.clarify`，生成或补齐人工决策包。
+- `NEEDS_DECISION`、`HUMAN_DECISION`：若决定属于当前 Outline/Flow/UI 且 review data 能表达，留在所属 Web 审核页完成；只有无法由所属页面表达的独立上游决定才进入 `/sp.clarify`。`UNKNOWN_BLOCKER` 先进入 owner 诊断，不能由模型猜测放行。
 - `BLOCKED` + `UPSTREAM_DOC_GAP`：如果 `blockerRoute` 是具体 owner route，例如 `/sp.flow`，可以继续到该 owner 命令补文档。
 - `REPEATED_FALLBACK` 或 `fallback-loop-detected`：说明 `memory/fallback-log.md` 已记录同一失败签名重复出现，不能继续重跑同一路线；应进入 `/sp.clarify` 或 owner 决策。
 - 普通缺失阶段：如 `NEEDS_PRD`、`NEEDS_SPECIFY`、`NEEDS_FLOW`、`NEEDS_UI`、`NEEDS_BUNDLE`、`NEEDS_PLAN`、`NEEDS_TASKS`、`NEEDS_ANALYZE`、`NEEDS_GATE`，可在 `continueAllowed: true` 时继续到对应命令。

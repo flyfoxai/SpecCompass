@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added accurate low-fidelity UI review previews, component-level adjustment controls, full-browser inspection, and on-demand screen-level layout feedback with identity-validated structured writeback." \
+              "- Added source-backed layered planning: Portfolio roots define direct child boundaries and handoffs, implementation children expand their own detailed Outlines from PRD sources, and Flow/UI consume confirmed upstream artifacts." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

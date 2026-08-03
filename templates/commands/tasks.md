@@ -112,6 +112,10 @@ Global rules:
 - If required inputs are missing or unstable, stop and report the gap explicitly.
 - User-facing next-step commands must use the host-appropriate form: `/sp.*` on slash-command hosts, or Codex skills via `$sp-*`, `/skills`, or a matching natural-language request.
 - Manage context as an engineering budget: start from routing, plan, worksets, trace, and open items; expand only to the delivery docs needed to make executable tasks.
+- When the active plan and upstream Outline/Flow/UI confirmations are current,
+  derive reversible task decomposition, ordering, file packets, and checks
+  autonomously. Do not ask for human approval for ordinary task-local choices or
+  reopen settled design decisions.
 
 Execution flow:
 
@@ -127,6 +131,10 @@ Execution flow:
      - A stale confirmation counts as `WAITING_FOR_BATCH_REVIEW`. If `plan.md` lists `Implementation Readiness` but the underlying flow/UI confirmation is missing, needs revision, stale, contains consumed `needs_decision_items` or `unresolved_decision_items`, or is narrower than the requested task scope, treat that readiness as draft-only and route to the owner command before creating `Mode: impl` task packets.
      - `SCOPED_CONFIRMATION` does not unlock task generation for the whole batch. Only explicitly confirmed or `decision_recorded_items` may be used, and only when `needs_decision_items` or `unresolved_decision_items` are split into a child batch with dependency impact recorded. If the selected workset or task packet depends on unresolved child-batch items, stop and route to `/sp.flow`, `/sp.ui`, or `/sp.plan`.
    - Check whether user input changes product goal, requirements, acceptance, flow, UI, workset split, code boundary, allowed write set, required checks, or parallel boundary. Route to the owner command before generating tasks if the change belongs upstream.
+   - If task generation exposes a new material product, boundary, permission,
+     safety, money, compliance, irreversible, critical-acceptance, or UI
+     decision, stop and return it to the owning Outline/Flow/UI Web review
+     instead of hiding the choice in a task packet.
    - If task generation would need to invent readiness, code landing, runtime commands, allowed write sets, source facts, or human decisions, stop and route to `/sp.plan`, `/sp.flow`, `/sp.ui`, `/sp.specify`, or `/sp.clarify`.
    - If preflight fails, report `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`.
 3. Load the smallest useful task-generation context:

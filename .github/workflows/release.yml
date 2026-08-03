@@ -44,15 +44,17 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Accurate and adjustable UI review previews
+          ## Source-backed layered Outline planning
 
-          This release turns \`/sp.ui\` review into a more faithful design-mechanism preview without turning the browser into a direct UI editor:
+          This release makes each SP design stage consume the right evidence at the right level:
 
-          - UI review pages render declared buttons, copy, inputs, tables, cards, badges, states, and layout regions accurately while intentionally keeping visual polish lightweight.
-          - A strongly bounded inline preview supports the normal review workflow, while a read-only full-preview dialog makes ordinary desktop web layouts inspectable without shrinking the entire review surface.
-          - Selecting any declared component opens element-specific natural-language feedback plus controls for replacement text, position, width, and height, with separate desktop, tablet, and mobile geometry.
-          - Selecting the preview title bar opens screen-level layout feedback, such as changing three columns to two, without permanently occupying the right rail; selecting a component replaces it with that component's controls.
-          - Every adjustment remains a provisional review request and is written back as identity-validated structured evidence. Browser interactions never directly mutate the authoritative UI source.
+          - \`/sp.prd\` builds Outline from the repository's default \`prd/\` source root, the current feature PRD, accepted decisions, and any user-supplied source directories.
+          - A \`000-*\` Portfolio root defines only its direct implementation children, their responsibility boundaries, global constraints, and Subproject Handoffs. It no longer expands child-internal modules, Flow, or UI.
+          - Each \`001+\` child treats its parent handoff as a direction and responsibility contract, then rereads PRD sources to generate its own detailed Outline.
+          - Parent-child reconciliation checks scope, ownership, outcomes, handoffs, and inherited constraints instead of requiring both levels to repeat the same nodes.
+          - \`/sp.flow\` consumes PRD plus a confirmed Outline; \`/sp.ui\` consumes PRD plus confirmed Outline and Flow. Stale or unconfirmed upstream evidence remains fail-closed.
+          - Discovery validation allows one direct child project to own multiple source-backed capability atoms and business chains while preserving complete coverage and unique ownership.
+          - Major business or design decisions remain human-confirmed through the owning Outline, Flow, or UI review page; downstream planning and implementation stay autonomous within those confirmed contracts.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install

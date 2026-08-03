@@ -3,7 +3,7 @@
 ## 文档状态
 
 - 文档类型：本项目长期维护的产品 PRD
-- 当前版本：2026-07-30 普通命令产物重生成补丁基线
+- 当前版本：2026-08-03 分层设计输入与父子 Outline 聚焦基线
 - 审查记录：早期迁移合同二轮曾达到 `PASS / NO_BLOCKER`；2026-07-28 针对日常/调整双通道与人工最终确认的 Claude Opus 4.8、Gemini 3.1 Pro 复核均为 `CONDITIONAL_PASS`，本文已按共同意见补齐授权来源、状态映射、锁生命周期、轻量白名单、root 冻结、stale 检查和恢复约束
 - 适用范围：SpecCompass 的 PRD、Outline、子项目、Flow、UI、Plan、Tasks、实现与图形审核链路
 - 权威关系：本文件定义产品需求；`sp-project-methodology.md` 解释方法；命令模板、skill、schema、脚本和 renderer 必须实现本文件，不得反向改写产品原则
@@ -100,6 +100,32 @@ Outline 中存在两类节点，不能混淆：
 - reset 后，旧 `000-*`、`001-*` 等目录只是“保留的需求/实现来源容器”。它们的旧编号、标题、parent、顺序和 Outline 映射不再自动代表新项目结构。
 - 新 Outline 的候选项目先使用 `draft-project-*` 临时身份。模型可以重新划分项目，但不能在人工确认前把临时节点写成 active feature 或稳定 `feature_code`。
 - 用户确认新 Outline 后，系统另建项目 reconciliation proposal，才分配候选 SP 编码并逐项决定旧 PRD、Spec、Flow、UI、任务和代码如何归属。任何 Outline reset 或 reconciliation 都不能自动删除代码；无法证明安全迁移的内容保持 legacy/blocked，等待单独清理决定。
+
+### 4.6 分层设计输入、父子聚焦与决策权限
+
+Outline、Flow、UI 不是三次互不相干的生成，也不是把上一层内容换一种格式重复一遍。它们采用逐层增加输入、逐层增加设计细节的合同：
+
+```text
+Outline = 当前层 PRD 资料 + 已确认父级方向/边界 + 有界模型补全
+Flow    = 当前 PRD 资料 + 已确认 Outline + 稳定 Spec/澄清 + 有界模型补全
+UI      = 当前 PRD 资料 + 已确认 Outline + 已确认 Flow + 稳定 Spec/澄清 + 设计权威 + 有界模型补全
+```
+
+- 默认业务资料根是仓库根目录 `prd/`，命令应递归读取与当前产品、子项目或目标范围有关的 Markdown 及其他受支持资料，而不是假定 `specs/<feature>/prd.md` 已经包含全部事实。`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一来源。
+- 人工可以为当前仓库或当前运行明确指定一个或多个其他资料目录；指定后把这些目录与默认 `prd/` 一起纳入来源集合，除非人工明确要求替换默认根。不同项目使用不同资料目录属于运行输入，不应写死为某个项目名称或全局特殊规则。
+- 来源选择必须记录到 `Source Authority Summary`、`Source Snapshot` 或等价证据中。父级 handoff 引用、用户点名文档和当前 feature 资料优先读取，但它们不是来源白名单；只要仍在人工授权的资料根内且与当前边界有关，就应继续寻找支撑事实或冲突证据。
+- `000-*` 只设计产品组合、直接 `001+` 子项目、各自目标和责任范围、跨项目 handoff、来源与全局约束。它可以平铺能力原子来证明来源覆盖，但一个直接子项目可以拥有多个能力原子和业务链。能力原子是覆盖与归属单位，不是必须创建真实项目的单位。
+- `000-*` 的子项目分图只展示判断直接项目边界所需的目标、拥有范围、可观察结果、命名 handoff、来源和未决边界。内部模块、详细业务步骤、页面、字段和实现结构不得在 `000` 中继续生长，也不得伪装成三级项目。
+- `001+` 生成自己的 Outline 时，父级 `Subproject Handoff` 只提供方向、责任边界、继承约束和命名交接，不声称包含子项目全部需求。子项目必须重新读取默认 `prd/` 及人工指定资料目录，从中寻找本项目的角色、对象、规则、场景、异常、验收和风险，再在 handoff 范围内形成更细的 Outline。
+- 父子核对检查的是方向、范围、归属和交接是否一致：子项目没有越出 handoff、没有漏掉已移交责任、没有与兄弟项目重复拥有状态或结果、没有破坏全局约束。父子节点名称、数量或文字是否重复，不是通过条件；父级没有写出子项目全部细节，也不是缺陷。
+
+资料不足时，模型应继续做有界的架构生长和设计，但必须区分业务事实与设计补全：
+
+- 低影响、可逆、不会改变业务范围、权限、资金、数据安全、合规、验收或跨项目责任的选择，由模型直接决定，标记来源和理由，并继续完成当前阶段。
+- 模型可以补全常见结构、遗漏的可恢复状态、合理的页面组织或技术落点，但不能把这些补全写成用户已经提供或正式文档已经确认的业务事实。
+- 会显著改变项目边界、核心业务结果、权限与安全、真实资金或数据、合规、不可逆行为、关键验收、跨项目所有权或大范围返工的决定，必须停在所属 SP 阶段的 Web 审核页。页面给出 2-4 个真实可执行方案、各自影响和模型推荐；模型推荐不等于人工授权。
+- Outline、Flow、UI 已有的图形审核、批次确认、scoped confirmation、review identity、digest、source snapshot 和 stale 校验继续作为正式授权机制。能在所属阶段审核页表达的决定不得降级成聊天中的一句“请确认”或由模型代写确认文件。
+- Plan、Tasks 和 Implement 在已确认 Outline、Flow、UI 框架内提高模型自主性：模型自行完成可逆的技术分解、任务编排、代码落点和局部实现选择，并按现有验证门禁推进。只有发现上游冲突、新的重大决定或确认范围已经过期时，才返回拥有该决定的 Outline、Flow 或 UI 阶段重新走 Web 审核。
 
 ## 5. 结构变更生命周期
 
@@ -216,11 +242,12 @@ specs/<root-feature>/outline-boundaries.json
 
 未确认 draft 不影响普通命令。正式 active transition 创建后，MVP 对该 root 的所有普通写入实行冻结，不区分是否看起来与本次迁移无关；只读诊断和绑定 active transition 的迁移 workset 可以运行。精细到 feature 的并发冻结属于后续优化，不得在 MVP 中由模型自行判断。
 
-- `/sp.prd`：默认检查并清除自身旧 Outline 产物，然后从 PRD 事实重新生成；发现人工记录时先让用户选保留复审或全部清除。边界讨论是生成后的可选事项，不得抢占本轮 Outline。只有人工确认具体结构 proposal 后才建立正式 `proposed_baseline`。
+- `/sp.prd`：默认检查并清除自身旧 Outline 产物，然后从默认 `prd/`、人工指定资料目录、当前 feature PRD、父级 handoff 和已接受决定中重新生成；发现人工记录时先让用户选保留复审或全部清除。边界讨论是生成后的可选事项，不得抢占本轮 Outline。只有人工确认具体结构 proposal 后才建立正式 `proposed_baseline`。
 - `/sp.prd --discard-outline-draft`、`--regenerate-outline-draft`、`--adopt-outline-boundaries`：只为已存在旧版 plan/receipt 或用户明确维护请求保留，不得成为普通 `/sp.prd` 的推荐前置命令。
 - `/sp.specify`：只消费 `ALIGNED` 的当前基线；存在未完成结构迁移时阻断普通稳定化。
-- `/sp.flow`、`/sp.ui`：默认整体清除并重生成各自命令目录；确认记录按同一二选一合同处理。缺少遗留边界只提示，正式结构迁移才阻断或转入绑定 impact workset。
-- `/sp.plan`、`/sp.tasks`：不得为尚未完成基线切换的新边界安排普通实现工作，只能生成明确标记的迁移 workset。
+- `/sp.flow`：默认从当前 PRD 资料、已确认 Outline、稳定 Spec/澄清重新生成；不得只靠旧 Flow 或父级 handoff 猜业务细节。确认记录按同一二选一合同处理。
+- `/sp.ui`：默认从当前 PRD 资料、已确认 Outline、已确认 Flow、稳定 Spec/澄清和设计权威重新生成；不得让 UI 补写缺失的业务规则。确认记录按同一二选一合同处理。
+- `/sp.plan`、`/sp.tasks`：不得为尚未完成基线切换的新边界安排普通实现工作，只能生成明确标记的迁移 workset；上游框架已经确认时，应自行完成低影响、可逆的技术分解和任务编排，不为普通局部选择反复请求人工确认。
 - `/sp.analyze`、`/sp.gate`：检查双索引一致性、跨产物闭包、悬空引用、重复归属、旧代码复用和未完成迁移。
 - `/sp.implement`：只能执行已通过 gate 的当前基线任务或结构迁移任务，不能自行改变项目边界。
 
@@ -270,6 +297,9 @@ specs/<root-feature>/outline-boundaries.json
 | 双基线与结构迁移状态机 | 已实现 | 草案保持 `ALIGNED`；只有 loopback writer 的人工决定才能启动；每条命令独立持有短锁 |
 | 跨产物影响闭包和回滚 | 已实现受控发布链 | inventory 动态检查 Flow/UI；物理变化使用 manifest、恢复副本、可重放 publication receipt 和提交前重验 |
 | 存量项目权威边界接入 | 候选生成已实现 | 仍需人工确认后建立首个权威基线 |
+| 分层资料读取与父子 Outline 聚焦 | 本轮写入产品合同、命令模板和 Discovery 校验 | 默认读取 `prd/`；人工可追加资料根；验证真实项目样本中的来源覆盖和父子 handoff 一致性 |
+| Outline/Flow/UI 重大决策 Web 审核 | 已有三类固定 renderer、机械写回、批次确认和 stale 校验 | 保持所属阶段决策在 Web 页完成，不退化为模型自批或聊天口头授权 |
+| Plan 纯技术重大决策的独立 Web 审核 | 尚无单独 Plan renderer | MVP 先 fail closed；会改变上游合同的决定返回所属 Outline/Flow/UI Web 审核，纯技术重大决定保留明确 blocker，后续补专用审核面 |
 | 多分支并发与中断恢复 | 已实现并加固 | base digest CAS、固定 recovery sidecar、owner 二次核对、Windows 删除重试、单命令短锁、staged/published/committed 三阶段和故障重试已覆盖；多人共改同一 proposal 延后 |
 
 ## 12. 验收标准
@@ -293,6 +323,11 @@ specs/<root-feature>/outline-boundaries.json
 17. 无权威 baseline 时，显式 draft reset 的 plan 阶段不移动任何文件；apply 只归档白名单文件，且每个 PRD、代码、Flow/UI、spec、task、测试和数据仍存在并保持原摘要。
 18. reset 中断后，重复执行同一 plan 能识别已归档文件并前滚到唯一 receipt；plan、保留来源或待归档草稿发生变化时拒绝继续。
 19. reset 后旧 feature 条目不再约束新 Outline 项目划分；新候选使用临时身份，只有用户确认后的 reconciliation 才产生候选稳定代码和项目迁移。
+20. 没有人工指定资料目录时，Outline、Flow、UI 都会把仓库根 `prd/` 作为默认业务资料根；人工追加目录后，来源快照能够说明实际读取范围和关键锚点。
+21. Level 1 能把多个能力原子和业务链唯一分配给同一个直接子项目，同时仍拒绝遗漏、重复 owner、chain 集合错配和跨项目状态/结果重叠；不会把每个能力原子自动升级为真实项目。
+22. `001+` 的详细 Outline 同时消费已确认 handoff 和当前资料根中的项目细节；父子核对以范围、责任、结果、交接和全局约束为准，不要求两层生成相同节点。
+23. Flow 只能在 PRD 资料和已确认 Outline 上设计，UI 只能在 PRD 资料、已确认 Outline 和已确认 Flow 上设计；任一上游身份或摘要过期都会让下游确认失效。
+24. Outline、Flow、UI 的重大决定都通过所属 Web 审核页给出 2-4 个方案、影响和推荐；低影响可逆选择由模型记录后继续。三层确认后，Plan、Tasks、Implement 对框架内局部选择保持自主，只在出现新的重大决定或上游冲突时回退。
 
 ## 13. 非目标
 

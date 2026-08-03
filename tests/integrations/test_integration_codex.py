@@ -101,16 +101,16 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "must not use Constitution content as business evidence" in content
         assert "Level 1 owns portfolio decomposition" in content
         assert "Allocate every source-backed capability atom exactly once" in content
-        assert "one capability atom, one business chain, and one candidate project" in content
-        assert "must not merge atoms during initial Level 1 generation" in content
-        assert "Merging is a user decision option" in content
-        assert "normal fact capture and interruption recovery remain separate chains" in content.lower()
-        assert "parameter or rule change governance remains separate" in content.lower()
+        assert "one atom may belong to only one direct project, while one direct project may own multiple atom/chain pairs" in content
+        assert "Project grouping never merges or deletes atoms" in content
+        assert "Do not generate a keep/merge question for every atom" in content
+        assert "normal fact capture and interruption recovery remain separate atom/chain pairs" in content.lower()
+        assert "parameter or rule-change governance remains a separate atom/chain pair" in content.lower()
         assert "primary_outcome_ref" in content
         assert "trigger_kind" in content
         assert "Level 2 owns child-project framing" in content
         assert "one explicit `001+` implementation boundary" in content
-        assert "consume exactly one confirmed `Subproject Handoff`" in content
+        assert "Consume exactly one confirmed `Subproject Handoff`" in content
         assert "sole implementation child is a real coordinator-to-child ownership contract" in content
         assert "silently merge children in Level 2" in content
         assert "exactly one confirmed `Subproject Handoff`" in content

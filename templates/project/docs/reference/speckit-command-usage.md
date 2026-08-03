@@ -190,7 +190,7 @@ DO_NOT_RUN: <当前不要运行的命令或 None>
 
 停止规则：
 
-- `NEEDS_DECISION`、`HUMAN_DECISION`、`UNKNOWN_BLOCKER`：进入 `/sp.clarify`，生成或补齐人工决策包。
+- `NEEDS_DECISION`、`HUMAN_DECISION`：若决定属于当前 Outline/Flow/UI 且 review data 能表达，留在所属 Web 审核页完成；只有无法由所属页面表达的独立上游决定才进入 `/sp.clarify`。`UNKNOWN_BLOCKER` 先进入 owner 诊断，不能由模型猜测放行。
 - `BLOCKED` + `UPSTREAM_DOC_GAP`：如果 `blockerRoute` 是具体 owner route，例如 `/sp.flow`，可以继续到该 owner 命令补文档。
 - `REPEATED_FALLBACK` 或 `fallback-loop-detected`：说明 `memory/fallback-log.md` 已记录同一失败签名重复出现，不能继续重跑同一路线；应进入 `/sp.clarify` 或 owner 决策。
 - 普通缺失阶段：如 `NEEDS_PRD`、`NEEDS_SPECIFY`、`NEEDS_FLOW`、`NEEDS_UI`、`NEEDS_BUNDLE`、`NEEDS_PLAN`、`NEEDS_TASKS`、`NEEDS_ANALYZE`、`NEEDS_GATE`，可在 `continueAllowed: true` 时继续到对应命令。
@@ -215,9 +215,11 @@ export SPECIFY_FEATURE=001-photo-albums
 
 然后由 `spec-outline.md` 的 outline readiness 判断是否可以进入 `/sp.specify`。后续命令不应把 `main` 或 `master` 这种普通分支误当成 feature。
 
-`/sp.prd` 的三级职责不能混用。一级只负责项目组合拆分：先从用户输入、当前 PRD、已接受决策和正式业务来源平铺提取全部能力原子及 `business_context`；后者至少保留 `product_subject`、`business_objects`、`operations`、`outcomes`、`business_chains` 和 `evidence_gaps`。初始生成严格执行“一个能力原子、一条业务链、一个候选子项目”，不因顺序相邻、共享对象或存储、同进程运行或共同终局结果而预先合并；合并只能作为用户选择，绑定到具体分支并在有效 Discovery 响应确认后生效。候选数量不固定，导图过密时拆图而不减少候选。低延迟、共享存储、顺序处理或部署便利不能决定产品边界；事务一致性和双向交接若来自法规、合同或多方法律义务，应保留为业务不变量，否则只记为交付风险。禁止按前端、后端、数据库、API、引擎、消息队列、仓库、部署或团队拆分。候选标题只靠“中心、枢纽、平台、系统、模块、工作台、网络”等容器词成立时，只能视为边界警示；应检查它拥有的业务状态、独立结果和交接契约。
+`/sp.prd` 的三级职责不能混用。默认业务资料根是仓库根 `prd/`；人工可以追加或明确替换资料目录，命令必须记录实际来源根和锚点。`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。一级只负责项目组合和直接子项目：先完整提取能力原子及 `business_context`，至少保留 `product_subject`、`business_objects`、`operations`、`outcomes`、`business_chains` 和 `evidence_gaps`，再按业务责任分配项目。固定关系是“一个来源能力形成一个能力原子；一个能力原子只归属一个直接子项目；一个直接子项目可以拥有多个能力原子和业务链”。能力原子保证来源不丢，不会自动变成真实项目。`000` 分图只展示目标、拥有范围、整体结果、命名交接、来源和未决边界，不生成 `001/002` 内部模块、详细流程或 UI。低延迟、共享存储、顺序处理或部署便利不能决定产品边界；禁止按前端、后端、数据库、API、引擎、消息队列、仓库、部署或团队拆分。
 
-二级只负责单个已确认 `001+` 实施子项目的业务闭环。无论一级确认一个还是多个实施产品，二级都只读取一份已确认 `Subproject Handoff` 及其来源、继承约束和子项目局部变更；只有一个实施子项目时，这份 handoff 是 `000` 统筹根向真实实施边界移交职责的合同，并非虚构拆分。每条首个切片业务链必须包含触发或输入、业务对象及起始状态、动作或控制、结果状态或可观察结果、异常路径、来源和命名交接，不得重做全局候选分组。单个交接冲突只重开这个命名边界，不能重开全部子项目。三级只负责保留来源身份的正式编译：把已确认材料写入 `spec-outline.md` 和正式 review data，不新建、合并、拆分或重释业务事实。
+二级只负责单个已确认 `001+` 实施子项目的业务闭环。它用一份已确认 `Subproject Handoff` 约束方向、责任和交接，同时重新读取默认 `prd/`、人工指定资料目录、当前 feature PRD 和子项目局部变更。handoff 引用是优先来源，不是白名单，也不声称写全子项目细节。父子核对检查范围、责任、结果、交接和全局约束，不比较节点名称、数量或文字是否相同。每条首个切片业务链必须包含触发或输入、业务对象及起始状态、动作或控制、结果状态或可观察结果、异常路径、来源和命名交接。三级只负责保留来源身份的正式编译，不新建、合并、拆分或重释业务事实。
+
+三个设计阶段按输入递增：Outline 基于 PRD 资料；Flow 基于 PRD 资料和已确认 Outline；UI 基于 PRD 资料、已确认 Outline 和已确认 Flow。资料不足时，模型可以补全低影响、可逆的结构并标记推断；会改变范围、权限、安全、资金、合规、不可逆行为、关键验收或造成大范围返工的决定，必须进入所属 Outline/Flow/UI Web 审核页，给出 2-4 个方案、影响和推荐。三层确认后，Plan、Tasks、Implement 应自行完成框架内的技术分解、任务和代码，只在发现新的重大决定或上游冲突时回退。
 
 一级和二级均执行跨领域替换测试：一段话若只替换产品名就能原样用于无关行业，必须改成有来源的业务对象、动作、控制、结果、交接或明确证据缺口。写出 Discovery 前还要执行可见文本清洗，删除内部阶段、检查过程、目录创建、SP 路由和渲染说明，不能用“目标、用户、问题、范围、全局认知”等套话代替产品内容。
 

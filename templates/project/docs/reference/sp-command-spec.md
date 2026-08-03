@@ -129,14 +129,30 @@ and the failing or changing business object, operation, or result; generic
 goal/user/problem headings are not sufficient. Every source-backed capability
 must have exactly one owner or explicit disposition before Level 1 completes.
 
+The repository-root `prd/` directory is the default business-source corpus for
+design-stage commands. A human may add or explicitly replace source directories
+for a repository or run; commands record the effective roots and exact anchors
+in the source authority/snapshot evidence. `specs/<feature>/prd.md` is the
+feature-local synthesis and decision target, not the default sole source.
+Parent handoff refs and user-named files are priority reads, never an allowlist.
+The layered input contract is: Outline reads PRD sources; Flow reads PRD sources
+plus confirmed Outline; UI reads PRD sources plus confirmed Outline and
+confirmed Flow. Stable Spec, clarifications, and design authority add compiled
+constraints but never replace those inputs.
+
 Level 2 owns child-project framing: `frame` defines one confirmed `001+`
 implementation child's scope, non-goals, first slice, actors, business chains,
 acceptance intent, source authority, rules, exceptions, and named handoffs.
-Whether the portfolio has one implementation child or several, Level 2 reads
-exactly one confirmed `Subproject Handoff`, its sources, inherited constraints,
-and accepted child-local deltas. A sole child's handoff is the real ownership
-contract from coordinator to implementation boundary, not a fabricated sibling
-split. Level 2 does not rerun portfolio grouping. Level 3 is a source-preserving compilation:
+Whether the portfolio has one implementation child or several, Level 2 uses
+exactly one confirmed `Subproject Handoff` to constrain direction, ownership,
+inherited constraints, and named handoffs, then scans the default `prd/`, every
+human-specified source root, the feature-local PRD, and accepted child-local
+deltas for detailed child facts. The handoff is a priority source, not a
+whitelist or complete child specification. A sole child's handoff is the real
+ownership contract from coordinator to implementation boundary, not a
+fabricated sibling split. Parent-child reconciliation checks direction, scope,
+ownership, outcomes, handoffs, and inherited constraints; it does not compare
+node names, counts, or prose. Level 2 does not rerun portfolio grouping. Level 3 is a source-preserving compilation:
 `specify_ready` compiles confirmed PRD and ledger material into formal Outline
 artifacts without creating, merging, splitting, promoting, or reinterpreting
 business facts. Constitution content remains display-only in `sp.prd`; formal
@@ -168,16 +184,18 @@ silently rewriting or canonizing it. Capability coverage tables, stage labels,
 quality checklists, and model self-review are private compilation work and must
 not appear in maps, questions, recommendations, or user-facing responses.
 
-Before Stage B, enumerate every source-backed atom without grouping. Initial
-Level 1 generation is one capability atom, one business chain, and one candidate
-project. It must not merge atoms during initial Level 1 generation, even when
-they are sequential, share objects or storage, or contribute to one later
-result. Stage B compiles candidate subprojects and business maps one per atom.
-Each candidate owns one business state, has one business goal and an
-independently verifiable business outcome, and exchanges only small explicit
-business input/output contracts with adjacent candidates. Merging is a user
-decision option bound to one concrete candidate branch; it takes effect only
-after a validated Discovery response confirms the named merge.
+Before Stage B, enumerate every source-backed atom without grouping and pair
+each atom with exactly one business chain. Stage B groups complete atom/chain
+pairs into direct candidate projects. One atom and chain have exactly one Level
+1 project owner; one direct project may own one or more atom/chain pairs. Its
+`business_chain_refs` must equal the chains named by its
+`capability_atom_refs`. Capability atoms remain separate coverage records and
+never become projects merely because they are atomic. Each candidate has one
+cohesive business goal, an independently verifiable overall project outcome,
+and explicit business input/output contracts with adjacent candidates. The
+initial grouping is a model proposal confirmed in Discovery; later merge,
+split, defer, exclude, or owner-change options are generated only for concrete
+unresolved project boundaries, never once per atom.
 There is no fixed candidate count. Retain one project when a split cannot close
 independent outcomes or candidates require each other's private internals with
 no stable business contract. Product boundaries are independent from runtime
@@ -212,8 +230,12 @@ sequential or share a runtime. Ask only about a specific responsibility that
 may merge, split, defer, or change owner.
 The Overview is named for the real product portfolio, business system, or
 controlled business loop; its business capability branches are candidate
-subprojects, each with a branch map for goals, owned capabilities, outcomes,
-boundaries, and business handoffs.
+direct subprojects. A Level 1 branch map contains only the goal, owned scope,
+overall outcome, named handoffs, source basis, and unresolved boundary needed to
+judge that direct project. These nodes are analytical boundary notes, not
+lower-level projects. Internal modules, detailed scenarios, step-by-step flows,
+screens, fields, APIs, and implementation structure belong to the corresponding
+`001+` Outline and later stages.
 
 Stage C runs a semantic quality gate before Discovery data is written. It checks
 source coverage, candidate independence, responsibility purity, loose coupling,
@@ -827,6 +849,11 @@ or copied summaries as authorization.
 
 ### `sp.flow`
 
+- read the effective PRD source roots and the current confirmed
+  `spec-outline.md`/Outline confirmation before Flow design. `spec.md` and
+  clarifications add stable compiled constraints; they do not replace PRD or
+  confirmed Outline. A stale or missing Outline confirmation blocks stable
+  Flow.
 - require upstream `Stage Readiness: READY_FOR_FLOW` before generating stable
   flow artifacts. Missing readiness, `SP_STAGE_SEED`, `NEEDS_CLARIFY`,
   `NEEDS_DECISION`, `BLOCKED`, high-impact open items, generic templates, or a
@@ -879,11 +906,14 @@ or copied summaries as authorization.
 - `--auto` may skip only the visual review gate; it must never skip subject
   scope, business domain anchor, stage entry preflight, or subject-confusion
   checks
-- offer 2-3 options with impact, recommendation, and next command when multiple
-  flow repairs are reasonable; do not silently choose for the user
-- offer 2-3 options with impact, recommendation, and next command when coarse
-  input admits multiple valid flow patterns; do not silently choose a materially
-  different business process for the user
+- choose low-impact reversible flow details with model judgment, mark inferred
+  content, and continue. When multiple choices would materially change business
+  state, permissions, safety, money, compliance, irreversible behavior,
+  acceptance, or downstream scope, encode 2-4 real options and a recommendation
+  as `must_confirm` targets in the Flow Web review. Do not downgrade a
+  representable Flow decision to chat approval or a model-authored confirmation.
+  Low-impact review notes may use 2-3 concise alternatives when that is enough
+  to explain the choice; this does not relax the 2-4 `must_confirm` contract.
 - mark new or refreshed flow outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
 - check direct-neighbor data-linkage when flow changes affect state, data, permission, events, persistence, side effects, acceptance, tests, rollback, release, or human decisions
 - route unresolved flow/data-linkage gaps to `open-items.md` and the closest owner command instead of inventing transitions
@@ -895,6 +925,9 @@ or copied summaries as authorization.
 ### `sp.ui`
 
 - define screen structure, user actions, and interface-level responsibilities
+- read the effective PRD source roots, current confirmed Outline, and confirmed
+  Flow batch before UI design. `spec.md`, clarifications, and design authority
+  add constraints; they do not replace PRD, Outline, or Flow.
 - run after `sp.flow` and consume its flow contract. It requires flow
   `Stage Readiness: READY_FOR_UI` before generating stable UI artifacts. If the
   required flow output is missing, generic, stale, unconfirmed, or not
@@ -970,12 +1003,12 @@ or copied summaries as authorization.
 - `--auto` may skip only the visual review gate; it must never skip subject
   scope, business domain anchor, stage entry preflight, subject-confusion
   checks, or Process Visualization UI checks
-- offer 2-3 options with impact, recommendation, and next command when multiple
-  UI layouts, interaction models, or information architecture repairs are
-  reasonable; do not silently choose for the user
-- offer 2-3 options with impact, recommendation, and next command when coarse
-  input admits multiple valid UI patterns; do not silently choose a materially
-  different interaction model for the user
+- choose low-impact reversible layout, component, and interaction details with
+  model judgment and continue. Put choices that materially change user
+  authority, safety, money, compliance, irreversible actions, critical
+  acceptance, scope, or costly downstream work into the UI Web review as
+  `must_confirm` targets with the option contract above. Do not use chat approval
+  or model-authored confirmation when the UI review data can express the choice.
 - avoid inventing business events, state transitions, permissions, side effects, or validation rules from UI convenience alone
 - mark new or refreshed UI outputs as draft facts until `sp.analyze`, `sp.gate`, or equivalent evidence checks them
 - finish by writing UI `Stage Readiness`: `READY_FOR_PLAN` only when required
@@ -1007,6 +1040,15 @@ or copied summaries as authorization.
 ### `sp.plan`
 
 - organize delivery design outputs
+- after confirmed Outline, Flow, and UI are current, autonomously choose
+  reversible technical decomposition, code landing, and verification details
+  inside those contracts and record the rationale; do not ask for human approval
+  for ordinary local choices
+- if planning discovers a decision that would change a confirmed project
+  boundary, business flow, permission/safety rule, critical acceptance, or UI
+  contract, stop and return it to the owning Outline/Flow/UI Web review. Purely
+  technical high-impact decisions without an existing review owner fail closed
+  as `NEEDS_DECISION` until an SP review surface records the human choice
 - split the feature into worksets
 - define Source Layout, Runtime Commands, Code Mapping, Test Mapping, and Workset Code Boundary when implementation may follow
 - define `Dependency Surface` and `Reverse Trace Expectation` when implementation may touch existing code, public behavior, schemas, permissions, routes, events, acceptance paths, or shared registries
@@ -1017,6 +1059,9 @@ or copied summaries as authorization.
 ### `sp.tasks`
 
 - bind worksets and deliverables into executable `Mode: doc` or `Mode: impl` tasks
+- derive task detail autonomously from confirmed upstream contracts and the
+  active plan; do not reopen settled design choices or request approval for
+  reversible task-local organization
 - consume `plan.md` `Implementation Readiness`; do not invent a separate readiness source
 - default missing mode to `Mode: doc`
 - create `Mode: impl` task packets only when readiness supports implementation
@@ -1030,6 +1075,12 @@ or copied summaries as authorization.
 ### `sp.implement`
 
 - execute only selected `Mode: impl` tasks with sufficient task-packet fields
+- within a confirmed task packet, make reversible code-level choices
+  autonomously and verify them; do not reopen confirmed Outline/Flow/UI or ask
+  for approval on ordinary implementation details
+- if implementation exposes a new material business, boundary, permission,
+  safety, compliance, irreversible, acceptance, or UI decision, stop before
+  encoding it in code and return to the owning Outline/Flow/UI Web review
 - confirm `plan.md` readiness, `Allowed Write Set`, `Required Checks`, trace anchors, open items, and effective defaults before editing
 - use memory-first routing before reading code broadly: feature memory, workset memory, trace/open-items, task `Read Set`, direct source/test files, then dependency expansion only when evidence requires it
 - check direct dependencies and reverse trace before risky code changes, especially delete, move, rename, public behavior, schema, permission, route, event, or acceptance changes

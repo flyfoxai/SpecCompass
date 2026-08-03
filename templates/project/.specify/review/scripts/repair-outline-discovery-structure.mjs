@@ -104,7 +104,6 @@ const refreshedNodesById = new Map(data.outline_nodes.map((node) => [node.node_i
 
 const atomsById = new Map(asArray(data.business_context?.capability_atoms).map((entry) => [entry.atom_id, entry]));
 const chainsById = new Map(asArray(data.business_context?.business_chains).map((entry) => [entry.chain_id, entry]));
-const operationsById = new Map(asArray(data.business_context?.operations).map((entry) => [entry.operation_id, entry]));
 const outcomesById = new Map(asArray(data.business_context?.outcomes).map((entry) => [entry.outcome_id, entry]));
 const usedNodeIds = new Set(data.outline_nodes.map((node) => node.node_id));
 const uniqueNodeId = (base) => {
@@ -121,7 +120,7 @@ const markdownHeadingSlug = (heading) => String(heading || "")
   .replace(/[^\p{L}\p{N}\s-]/gu, "")
   .replace(/\s+/g, "-")
   .replace(/-+/g, "-");
-const addFact = (map, root, suffix, kind, label, summary, source, chainId, atomId = null) => {
+const addFact = (map, root, suffix, kind, label, summary, source, chainIds, atomIds = []) => {
   const node = {
     node_id: uniqueNodeId(`${root.node_id}-fact-${suffix}`),
     parent_node_id: root.node_id,
@@ -131,42 +130,45 @@ const addFact = (map, root, suffix, kind, label, summary, source, chainId, atomI
     summary,
     source_status: source?.source_status || root.source_status,
     source_refs: asArray(source?.source_refs).length ? source.source_refs : root.source_refs,
-    business_chain_refs: [chainId],
+    business_chain_refs: chainIds,
   };
-  if (atomId) node.capability_atom_refs = [atomId];
+  if (atomIds.length) node.capability_atom_refs = atomIds;
   data.outline_nodes.push(node);
 };
 
 for (const map of candidateMaps) {
   const root = refreshedNodesById.get(map.root_node_id);
   const link = candidateLinks.get(map.map_id);
-  const atomId = asArray(root.capability_atom_refs)[0] || asArray(link?.capability_atom_refs)[0];
-  const atom = atomsById.get(atomId);
-  const chainId = asArray(atom?.business_chain_refs)[0] || asArray(root.business_chain_refs)[0] || asArray(link?.business_chain_refs)[0];
-  const chain = chainsById.get(chainId);
-  if (!atom || !chain) throw new Error(`candidate branch lacks atom/chain semantics: ${map.map_id}`);
+  const atomIds = [...new Set([
+    ...asArray(link?.capability_atom_refs),
+    ...asArray(root.capability_atom_refs),
+  ])];
+  const atoms = atomIds.map((atomId) => atomsById.get(atomId));
+  const chainIds = [...new Set(atoms.flatMap((atom) => asArray(atom?.business_chain_refs)))];
+  const chains = chainIds.map((chainId) => chainsById.get(chainId));
+  if (!atomIds.length || atoms.some((atom) => !atom) || !chainIds.length || chains.some((chain) => !chain)) {
+    throw new Error(`candidate branch lacks complete atom/chain semantics: ${map.map_id}`);
+  }
+  const source = {
+    source_status: atoms.some((atom) => atom.source_status === "ai-proposed")
+      ? "ai-proposed"
+      : atoms.some((atom) => atom.source_status === "unresolved") ? "unresolved" : atoms[0].source_status,
+    source_refs: [...new Set(atoms.flatMap((atom) => asArray(atom.source_refs)))],
+  };
   const existingFacts = data.outline_nodes.filter((node) => node.map_id === map.map_id && node.parent_node_id === root.node_id && node.node_kind !== "map_link");
-  const representedKinds = new Set(existingFacts.map((node) => node.node_kind));
-  if (!representedKinds.has("scenario")) {
-    addFact(map, root, "trigger", "scenario", chain.trigger_or_input, `Trigger/input: ${chain.trigger_or_input}`, chain, chainId, atomId);
-  }
-  if (!representedKinds.has("scope")) {
-    addFact(map, root, "state", "scope", chain.owned_state, `Owned state: ${chain.owned_state}`, chain, chainId, atomId);
-  }
-  const existingCapabilities = existingFacts.filter((node) => node.node_kind === "capability");
-  let remainingOperationFacts = Math.max(0, asArray(chain.operation_refs).length - existingCapabilities.length);
-  for (const operationId of asArray(chain.operation_refs)) {
-    const operation = operationsById.get(operationId);
-    if (!operation || existingFacts.some((node) => node.label === operation.label) || remainingOperationFacts === 0) continue;
-    addFact(map, root, `operation-${operationId}`, "capability", operation.label, operation.summary, operation, chainId, atomId);
-    remainingOperationFacts -= 1;
-  }
-  const outcome = outcomesById.get(chain.primary_outcome_ref);
-  if (outcome && !existingFacts.some((node) => node.node_kind === "acceptance" || node.label === outcome.label)) {
-    addFact(map, root, "outcome", "acceptance", outcome.label, outcome.summary, outcome, chainId, atomId);
-  }
-  if (!existingFacts.some((node) => node.label === chain.downstream_handoff)) {
-    addFact(map, root, "handoff", "scope", chain.downstream_handoff, `Downstream handoff: ${chain.downstream_handoff}`, chain, chainId, atomId);
+  if (!existingFacts.length) {
+    const responsibilityLabel = atoms.map((atom) => atom.label).join("、");
+    const outcomes = chains
+      .map((chain) => outcomesById.get(chain.primary_outcome_ref))
+      .filter(Boolean);
+    const outcomeLabel = outcomes.map((outcome) => outcome.label).join("、");
+    const handoffs = [...new Set(chains.map((chain) => chain.downstream_handoff))];
+    addFact(map, root, "responsibility", "capability", responsibilityLabel,
+      `This project owns these source-backed responsibilities: ${responsibilityLabel}.`, source, chainIds, atomIds);
+    addFact(map, root, "outcomes", "acceptance", outcomeLabel,
+      outcomes.map((outcome) => outcome.summary).join(" "), source, chainIds, atomIds);
+    addFact(map, root, "handoffs", "scope", handoffs.join("、"),
+      `Named downstream handoffs: ${handoffs.join("; ")}.`, source, chainIds, atomIds);
   }
 }
 

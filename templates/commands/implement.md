@@ -124,6 +124,13 @@ round or a documentation-only delta cannot complete this stage.
      `NEEDS_UI`, `NEEDS_PLAN`, or `NEEDS_TASKS` instead of guessing.
    - Check whether user input changes requirements, acceptance, flow, UI, architecture, workset boundary, task split, allowed write set, required checks, risk acceptance, or verification standard. If so, stop implementation and route to `/sp.specify`, `/sp.clarify`, `/sp.flow`, `/sp.ui`, `/sp.plan`, or `/sp.tasks` as the owner.
    - If implementation would need to invent missing source facts, code boundaries, task packet fields, runtime commands, human decisions, or validation downgrade, stop and report the upstream route instead of editing.
+   - Within a confirmed task packet, make reversible code-level choices
+     autonomously and verify them. Do not request human approval for ordinary
+     local implementation details or reopen confirmed Outline/Flow/UI choices.
+   - If implementation exposes a new material project-boundary, business-flow,
+     permission, safety, money, compliance, irreversible, critical-acceptance,
+     or UI decision, stop before encoding it in code and return to the owning
+     Outline/Flow/UI Web review. A model recommendation is not authorization.
    - If preflight fails, return `NEEDS_PLAN`, `NEEDS_TASKS`, `NEEDS_CONTEXT`, `BLOCKED`, or `NEEDS_DECISION` as appropriate, and include `Missing/Weak Artifact`, `Blocker Type`, `Root Layer`, `Owner Route`, `Why current command cannot continue`, `Next /sp.* route`, and `Writeback Target`.
 
 3. **Check checklists status** (if FEATURE_DIR/checklists/ exists):

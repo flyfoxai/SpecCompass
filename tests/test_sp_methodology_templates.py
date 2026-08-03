@@ -2174,12 +2174,11 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "max_visible_nodes_per_map: 18" in prd
     assert "max_depth: 3" in prd
     assert "Direct child count is deliberately not part of the density budget" in prd
-    assert "A branch with only its root, or with only child `map_link` nodes, is invalid" in prd
-    assert "There is no fixed target count for direct child facts" in prd
-    assert "core capability + observable outcome" in prd
-    assert "Any user-supplied second-level or third-level list is a seed" in prd
-    assert "Build a private fact ledger for that branch" in prd
-    assert "Never start from a two-child skeleton" in prd
+    assert "Level 1 boundary-note rule" in prd
+    assert "complete atom/chain allocation" in prd
+    assert "Do not expand every trigger, operation, exception, recovery step" in prd
+    assert "internal module tree, detailed scenarios, step-by-step flow" in prd
+    assert "Every visible boundary note must have a non-empty `source_refs`" in prd
     assert "Do not emit the deprecated `density_budget.max_children_per_node` field" in prd
     assert "max_layer_share: 0.6" in prd
     assert "affected business `node_id` values" in prd
@@ -2187,13 +2186,14 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     for content in (methodology, design):
         assert "XMind 风格" in content
         assert "全局总图" in content
-        assert "业务分图" in content
         assert "全局约束" in content
         assert "稳定 ID" in content
         assert "最多 18 个可见节点" in content
         assert "最多 3 层" in content
         assert "最多 4 个直接子节点" in content
         assert "60%" in content
+    assert "候选子项目边界分图" in methodology
+    assert "业务分图" in design
     assert "do not guess or silently upcast it" in prd
     assert "do not downgrade it to an incompatible earlier contract" in prd
     assert "must reference an earlier accepted event" in prd
@@ -2251,14 +2251,14 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
     assert "Stage B - propose candidate subprojects and compile business maps" in prd
     assert "Stage C - run the semantic quality gate" in prd
     assert "capability_atoms" in prd
-    assert "normal fact capture and interruption recovery remain separate chains" in prd.lower()
-    assert "parameter or rule change governance remains separate" in prd.lower()
+    assert "normal fact capture and interruption recovery remain separate atom/chain pairs" in prd.lower()
+    assert "parameter or rule-change governance remains a separate atom/chain pair" in prd.lower()
     assert "primary_outcome_ref" in prd
     assert "trigger_kind" in prd
-    assert "one capability atom, one business chain, and one candidate project" in prd
-    assert "Merging is a user decision option" in prd
-    assert "must not merge atoms during initial Level 1 generation" in prd
-    assert "independently verifiable business outcome" in prd
+    assert "one atom may belong to only one direct project, while one direct project may own multiple atom/chain pairs" in prd
+    assert "Project grouping never merges or deletes atoms" in prd
+    assert "Do not generate a keep/merge question for every atom" in prd
+    assert "independently verifiable overall outcome" in prd
     assert "frontend, backend, database" in prd
     assert "Do not impose a fixed project count" in prd
     assert "Project Decomposition" in prd
@@ -2290,8 +2290,8 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
     assert "must not write Constitution clauses into the PRD" in prd
     assert "must not target Constitution clauses with discovery deltas" in prd
     assert "business capability branches" in command_spec
-    assert "candidate subprojects" in command_spec
-    assert "independently verifiable business outcome" in command_spec
+    assert "candidate direct subprojects" in command_spec_text
+    assert "independently verifiable overall project outcome" in command_spec
     assert "Subproject Handoff" in command_spec
     assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in command_spec_text
     assert "make confirmation of that split the default recommendation" in command_spec_text
@@ -2304,8 +2304,8 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
     assert "Constitution is displayed only as a read-only governance snapshot" in command_spec
     assert "三阶段" in methodology
     assert "能力原子" in methodology
-    assert "一个能力原子、一条业务链、一个候选子项目" in methodology
-    assert "合并只能作为用户选择" in methodology
+    assert "一个能力原子只归属一个直接子项目" in methodology
+    assert "一个直接子项目可以拥有多个能力原子和业务链" in methodology
     assert "候选子项目" in methodology
     assert "中心、枢纽、平台、系统、模块、工作台、网络" in methodology
     assert "前面加上领域词" in methodology
@@ -2318,6 +2318,46 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
     assert "不能仅因为拆分未确认" in methodology
     assert "可见文本清洗" in methodology
     assert "完整业务链" in methodology
+
+
+def test_layered_design_sources_parent_child_focus_and_decision_authority_are_documented():
+    product_prd = PRODUCT_PRD.read_text(encoding="utf-8")
+    methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
+    prd = _command("prd")
+    flow = _command("flow")
+    ui = _command("ui")
+    plan = _command("plan")
+    tasks = _command("tasks")
+    implement = _command("implement")
+    command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
+
+    assert "默认业务资料根是仓库根目录 `prd/`" in product_prd
+    assert "人工可以为当前仓库或当前运行明确指定一个或多个其他资料目录" in product_prd
+    assert "一个直接子项目可以拥有多个能力原子和业务链" in product_prd
+    assert "父子核对检查的是方向、范围、归属和交接是否一致" in product_prd
+    assert "Outline、Flow、UI 已有的图形审核" in product_prd
+    assert "Plan、Tasks 和 Implement 在已确认 Outline、Flow、UI 框架内提高模型自主性" in product_prd
+
+    assert "仓库根 `prd/` 是默认业务资料根" in methodology
+    assert "Outline 读取 PRD 资料；Flow 读取 PRD 资料和已确认 Outline；UI 读取 PRD 资料、已确认 Outline 和已确认 Flow" in methodology
+    assert "父子核对只检查方向、范围、责任、结果、交接和全局约束" in methodology
+
+    assert "repository-root `prd/` directory is the default business-source corpus" in prd
+    assert "Parent-child reconciliation checks direction, scope, ownership, outcomes, handoffs" in prd
+    assert "one direct project may own multiple atom/chain pairs" in prd
+    assert "Do not generate the candidate's internal module tree" in prd
+
+    assert "Stable Flow input is `PRD sources + confirmed Outline + stable Spec/clarifications`" in flow
+    assert "Flow Web review" in flow
+    assert "Stable UI input is `PRD sources + confirmed Outline + confirmed Flow" in ui
+    assert "UI Web review" in ui
+    assert "make reversible technical" in plan
+    assert "choices autonomously inside those contracts" in plan
+    assert "derive reversible task decomposition" in tasks
+    assert "make reversible code-level choices" in implement
+
+    assert "The layered input contract is: Outline reads PRD sources" in command_spec
+    assert "one direct project may own one or more atom/chain pairs" in command_spec
 
 
 def test_prd_outline_levels_have_non_overlapping_executable_contracts():
@@ -2340,7 +2380,7 @@ def test_prd_outline_levels_have_non_overlapping_executable_contracts():
     assert "all candidate boundaries are resolved" in prd
     assert "Level 2 owns child-project framing" in prd
     assert "one explicit `001+` implementation boundary" in prd
-    assert "consume exactly one confirmed `Subproject Handoff`" in prd
+    assert "Consume exactly one confirmed `Subproject Handoff`" in prd
     assert "sole implementation child is a real coordinator-to-child ownership contract" in prd
     assert "silently merge children in Level 2" in prd
     assert "exactly one confirmed `Subproject Handoff`" in prd
@@ -2367,15 +2407,16 @@ def test_prd_outline_levels_have_non_overlapping_executable_contracts():
         assert "Level 3 is a source-preserving compilation" in content
         assert "cross-domain substitution test" in content
 
+    assert "一级只负责项目组合拆分" in methodology
+    assert "一级只负责项目组合和直接子项目" in usage
     for content in (methodology, usage):
-        assert "一级只负责项目组合拆分" in content
         assert "二级只负责单个已确认 `001+` 实施子项目的业务闭环" in content
         assert "三级只负责保留来源身份的正式编译" in content
         assert "跨领域替换测试" in content
     assert "一级和二级均执行跨领域替换测试" in usage
     assert "只读治理快照" in methodology
-    assert "候选子项目" in usage
-    assert "中心、枢纽、平台、系统、模块、工作台、网络" in usage
+    assert "直接子项目" in usage
+    assert "禁止按前端、后端、数据库、API、引擎、消息队列、仓库、部署或团队拆分" in usage
     assert "子项目交接" in usage
     assert "不能仅因为拆分未确认" in usage
     assert "可见文本清洗" in usage
@@ -7103,6 +7144,76 @@ def _outline_discovery_validator_sample() -> dict:
     }
 
 
+def _add_second_atom_to_current_level_one_project(sample: dict) -> None:
+    """Add a second atom/chain pair owned by the existing direct project."""
+    source_ref = "specs/001-outline/prd.md#Core Trading Loop"
+    sample["business_context"]["outcomes"].append(
+        {
+            "outcome_id": "outcome-risk-decision",
+            "label": "形成风险放行决定",
+            "summary": "交易意图被明确放行或阻断，并记录可追溯原因。",
+            "source_status": "doc",
+            "source_refs": [source_ref],
+        }
+    )
+    sample["business_context"]["business_chains"].append(
+        {
+            "chain_id": "chain-risk-decision",
+            "label": "交易意图风险放行",
+            "chain_kind": "primary",
+            "trigger_kind": "business_event",
+            "trigger_or_input": "交易意图进入风险审核",
+            "owned_state": "已经过风险规则裁定的交易意图",
+            "object_refs": ["object-market-account-data", "object-order"],
+            "operation_refs": ["operation-decide-order"],
+            "outcome_refs": ["outcome-risk-decision"],
+            "primary_outcome_ref": "outcome-risk-decision",
+            "downstream_handoff": "向订单执行责任交付放行决定或阻断事实",
+            "source_status": "doc",
+            "source_refs": [source_ref],
+        }
+    )
+    sample["business_context"]["capability_atoms"].append(
+        {
+            "atom_id": "atom-risk-decision",
+            "label": "裁定交易意图是否放行",
+            "trigger_kind": "business_event",
+            "trigger_or_input": "交易意图进入风险审核",
+            "owned_state": "已经过风险规则裁定的交易意图",
+            "object_refs": ["object-market-account-data", "object-order"],
+            "operation_refs": ["operation-decide-order"],
+            "outcome_refs": ["outcome-risk-decision"],
+            "primary_outcome_ref": "outcome-risk-decision",
+            "downstream_handoff": "向订单执行责任交付放行决定或阻断事实",
+            "business_chain_refs": ["chain-risk-decision"],
+            "source_status": "doc",
+            "source_refs": [source_ref],
+        }
+    )
+    sample["business_context"]["source_capability_coverage"].append(
+        {
+            "source_capability_id": "source-risk-decision",
+            "label": "裁定交易意图是否放行",
+            "trigger_or_input": "交易意图进入风险审核",
+            "owned_state": "已经过风险规则裁定的交易意图",
+            "observable_outcome": "形成可追溯的风险放行决定或阻断事实。",
+            "independent_acceptance_reason": "风险裁定有独立输入、状态和可核验结果。",
+            "disposition": "atom",
+            "capability_atom_ref": "atom-risk-decision",
+            "source_refs": [source_ref],
+        }
+    )
+    sample["outline_nodes"][0]["business_chain_refs"].append("chain-risk-decision")
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project["business_chain_refs"].append("chain-risk-decision")
+    project["capability_atom_refs"].append("atom-risk-decision")
+    branch_root = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-root")
+    branch_root["business_chain_refs"].append("chain-risk-decision")
+    for candidate in sample["question_groups"][0]["questions"][0]["candidates"]:
+        candidate["business_chain_refs"].append("chain-risk-decision")
+        candidate["capability_atom_refs"].append("atom-risk-decision")
+
+
 def _outline_intent_ledger_sample() -> dict:
     return {
         "schema_version": 3,
@@ -7455,7 +7566,8 @@ def test_outline_discovery_structure_repair_projects_existing_facts_into_child_m
         node for node in result["outline_nodes"]
         if node["map_id"] == "map-trading-loop" and node["parent_node_id"] == "node-trading-root"
     ]
-    assert {node["node_kind"] for node in branch_facts} >= {"scenario", "scope", "capability", "acceptance"}
+    assert {node["node_kind"] for node in branch_facts} >= {"capability", "acceptance"}
+    assert not any(node["label"].startswith("Trigger/input:") for node in branch_facts)
     accepted = _run_review_validator(result, tmp_path / "repaired-outline.json")
     assert accepted.returncode == 0, _review_validator_output(accepted)
 
@@ -7508,44 +7620,26 @@ def test_outline_discovery_structure_repair_restores_source_when_validation_fail
     assert review_path.read_text(encoding="utf-8") == original
 
 
-def test_outline_discovery_rejects_level_one_candidate_that_merges_independent_business_chains(tmp_path):
-    """A Level 1 candidate cannot hide multiple independently verifiable outcomes behind one label."""
+def test_outline_discovery_accepts_multiple_atom_chain_pairs_in_one_direct_project(tmp_path):
+    """A direct project may own multiple complete atom/chain pairs."""
     sample = _outline_discovery_validator_sample()
-    sample["business_context"]["outcomes"].append(
-        {
-            "outcome_id": "outcome-risk-decision",
-            "label": "形成风险放行决定",
-            "summary": "交易意图被明确放行或阻断，并记录可追溯原因。",
-            "source_status": "doc",
-            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
-        }
-    )
-    sample["business_context"]["business_chains"].append(
-        {
-            "chain_id": "chain-risk-decision",
-            "label": "交易意图风险放行",
-            "chain_kind": "primary",
-            "trigger_kind": "business_event",
-            "trigger_or_input": "交易意图进入风险审核",
-            "owned_state": "已经过风险规则裁定的交易意图",
-            "object_refs": ["object-market-account-data", "object-order"],
-            "operation_refs": ["operation-decide-order"],
-            "outcome_refs": ["outcome-risk-decision"],
-            "primary_outcome_ref": "outcome-risk-decision",
-            "downstream_handoff": "向订单执行责任交付放行决定或阻断事实",
-            "source_status": "doc",
-            "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
-        }
-    )
-    sample["question_groups"][0]["questions"][0]["candidates"][0]["business_chain_refs"] = [
-        "chain-trading-loop",
-        "chain-risk-decision",
-    ]
+    _add_second_atom_to_current_level_one_project(sample)
 
-    result = _run_review_validator(sample, tmp_path / "discovery-mixed-business-boundary.json")
+    result = _run_review_validator(sample, tmp_path / "discovery-multi-atom-project.json")
+
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_project_chain_set_that_does_not_match_owned_atoms(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    _add_second_atom_to_current_level_one_project(sample)
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project["business_chain_refs"].remove("chain-risk-decision")
+
+    result = _run_review_validator(sample, tmp_path / "discovery-project-chain-set-mismatch.json")
 
     assert result.returncode != 0
-    assert "exactly one primary business chain" in _review_validator_output(result)
+    assert "business_chain_refs must equal the chains referenced by its capability_atom_refs" in _review_validator_output(result)
 
 
 def test_outline_discovery_rejects_level_one_chain_with_multiple_independent_outcomes(tmp_path):
@@ -7757,7 +7851,7 @@ def test_outline_discovery_rejects_candidate_bound_to_another_level_one_project(
     result = _run_review_validator(sample, tmp_path / "discovery-candidate-other-project.json")
 
     assert result.returncode != 0
-    assert "current Level 1 project capability atom" in _review_validator_output(result)
+    assert "current Level 1 project's complete capability atom and business chain sets" in _review_validator_output(result)
 
 
 def test_outline_discovery_rejects_level_one_chains_that_share_a_primary_outcome(tmp_path):
