@@ -2,6 +2,14 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.39] - 2026-08-03
+
+### Changed
+
+- Added source-backed layered planning: Portfolio roots define direct child boundaries and handoffs, implementation children expand their own detailed Outlines from PRD sources, and Flow/UI consume confirmed upstream artifacts.
+- feat(outline): enforce source-backed layered planning
+- chore: begin 0.11.39.dev0 development
+
 ## [0.11.38] - 2026-08-03
 
 ### Changed
