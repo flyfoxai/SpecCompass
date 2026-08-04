@@ -2,6 +2,18 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.41] - 2026-08-04
+
+### Changed
+
+- Made recursive Outline boundaries follow coherent business responsibility, complexity reduction, stable handoffs, and coordination cost instead of fixed child counts or one project per capability atom.
+- Allowed reasoned `ai-proposed` multi-atom groupings to enter Web Discovery when PRD sources do not prescribe project architecture, while rejecting `unresolved` groupings as already-chosen child boundaries.
+- Kept parent direction and handoffs intentionally incomplete: every child window rereads the default `prd/`, human-specified sources, feature PRD, accepted decisions, and parent references before generating its own Outline.
+- Removed a project-specific data-management/display split rule from the reusable `/sp.prd` mechanism and aligned Schema, CLI, browser validation, installed command references, and regression tests with the general boundary principles.
+- fix: keep unconfirmed outline capabilities separate
+- fix: choose outline boundaries by complexity tradeoffs
+- chore: begin 0.11.41.dev0 development
+
 ## [0.11.40] - 2026-08-04
 
 ### Changed
