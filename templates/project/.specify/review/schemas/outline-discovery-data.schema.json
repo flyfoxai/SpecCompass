@@ -225,6 +225,25 @@
         {
           "if": {"properties": {"capability_atom_refs": {"minItems": 2}}},
           "then": {"required": ["grouping_basis"]}
+        },
+        {
+          "if": {
+            "required": ["parent_unit_id", "capability_atom_refs"],
+            "properties": {
+              "parent_unit_id": {"type": "string"},
+              "capability_atom_refs": {"minItems": 2}
+            }
+          },
+          "then": {
+            "properties": {
+              "source_status": {"enum": ["user", "user-confirmed", "doc"]},
+              "grouping_basis": {
+                "properties": {
+                  "authority": {"enum": ["user", "user-confirmed", "doc"]}
+                }
+              }
+            }
+          }
         }
       ]
     },

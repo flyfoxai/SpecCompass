@@ -2323,6 +2323,7 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "默认业务资料根是仓库根目录 `prd/`" in product_prd
     assert "人工可以为当前仓库或当前运行明确指定一个或多个其他资料目录" in product_prd
     assert "`000-*` 是唯一顶级 Outline 单元，但不是空壳协调器" in product_prd
+    assert "不能先聚合成大项目再要求人工接受" in product_prd
     assert "Outline 的树深和一次生成窗口分开管理" in product_prd
     assert "直接子单元必须不重叠且完整覆盖父单元" in product_prd
     assert "Outline、Flow、UI 已有的图形审核" in product_prd
@@ -2335,6 +2336,7 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "repository-root `prd/` directory is the default business-source corpus" in prd
     assert "Parent-child reconciliation checks direction, scope, ownership, outcomes, handoffs" in prd
     assert "A multi-atom unit requires `grouping_basis`" in prd
+    assert "`ai-proposed` or `unresolved` grouping is invalid" in prd
     assert "Mark a unit `expanded` only when `decomposition_basis`" in prd
     assert "Mark it `terminal` only when `terminal_basis`" in prd
 
@@ -2350,6 +2352,7 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "The layered input contract is: Outline reads PRD sources" in command_spec
     assert "A multi-atom unit carries" in command_spec
     assert "`grouping_basis`" in command_spec
+    assert "remain Web Discovery options" in command_spec
     assert "Only a formally confirmed terminal unit may enter `frame`" in command_spec
 
 
@@ -7336,6 +7339,39 @@ def _add_second_atom_to_current_level_one_project(sample: dict) -> None:
         candidate["capability_atom_refs"].append("atom-risk-decision")
 
 
+def _outline_discovery_v4_multi_atom_child_sample(
+    *,
+    grouping_authority: str = "doc",
+    child_source_status: str = "user-confirmed",
+) -> dict:
+    sample = _outline_discovery_v4_root_sample()
+    _add_second_atom_to_current_level_one_project(sample)
+    sample = json.loads(json.dumps(sample).replace("specs/001-outline", "specs/000-outline"))
+
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project.pop("aggregation_basis")
+    root, child = sample["decomposition_window"]["units"]
+    for unit in (root, child):
+        unit["capability_atom_refs"].append("atom-risk-decision")
+        unit["business_chain_refs"].append("chain-risk-decision")
+    root["grouping_basis"] = {
+        "authority": "ai-proposed",
+        "shared_business_goal": "当前展开根统一承载交易意图、风险决定和受控订单结果的既定业务范围。",
+        "shared_lifecycle_or_owner": "顶层交易范围覆盖从意图进入到订单结果形成的完整业务生命周期。",
+        "parent_cohesion": "展开根只是当前已选择的分析范围，不代表把后代能力预先合并为一个项目。",
+        "source_refs": root["source_refs"],
+    }
+    child["grouping_basis"] = {
+        "authority": grouping_authority,
+        "shared_business_goal": "风险裁定和订单形成共同完成从交易意图到受控订单结果的单一业务目标。",
+        "shared_lifecycle_or_owner": "同一交易控制责任在订单形成生命周期内持续拥有风险决定和订单结果。",
+        "parent_cohesion": "拆开后风险决定与订单结果无法通过稳定业务交接完成当前整体业务验收。",
+        "source_refs": child["source_refs"],
+    }
+    child["source_status"] = child_source_status
+    return sample
+
+
 def _outline_intent_ledger_sample() -> dict:
     return {
         "schema_version": 3,
@@ -7597,6 +7633,26 @@ def test_outline_discovery_v4_accepts_top_level_one_layer_window(tmp_path):
     assert result.returncode == 0, _review_validator_output(result)
 
 
+def test_outline_discovery_v4_accepts_documented_multi_atom_child(tmp_path):
+    result = _run_review_validator(
+        _outline_discovery_v4_multi_atom_child_sample(),
+        tmp_path / "discovery-v4-documented-grouping.json",
+    )
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v4_rejects_ai_proposed_multi_atom_child(tmp_path):
+    sample = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="ai-proposed")
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-ai-grouping.json")
+    assert result.returncode != 0
+    assert "grouping_basis" in _review_validator_output(result)
+
+    sample = _outline_discovery_v4_multi_atom_child_sample(child_source_status="ai-proposed")
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-ai-grouped-unit.json")
+    assert result.returncode != 0
+    assert "source_status" in _review_validator_output(result)
+
+
 def test_outline_discovery_v4_accepts_non_root_two_layer_window(tmp_path):
     result = _run_review_validator(
         _outline_discovery_v4_non_root_sample(),
@@ -7801,6 +7857,8 @@ def test_outline_discovery_v4_rejects_cycles_and_browser_duplicate_window_ids(tm
     state_store = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
     data_validator = REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js"
     valid_sample = _outline_discovery_v4_root_sample()
+    documented_grouping = _outline_discovery_v4_multi_atom_child_sample()
+    unconfirmed_grouping = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="ai-proposed")
     detail_source = _outline_discovery_validator_sample()
     forbidden_detail = json.loads(json.dumps(next(
         node for node in detail_source["outline_nodes"] if node["node_id"] == "node-data"
@@ -7822,6 +7880,13 @@ vm.createContext(context);
 vm.runInContext(source, context);
 const valid = {json.dumps(valid_sample, ensure_ascii=False)};
 if (context.validateReviewData(valid) !== "") throw new Error("valid v4 discovery rejected");
+const documentedGrouping = {json.dumps(documented_grouping, ensure_ascii=False)};
+if (context.validateReviewData(documentedGrouping) !== "") throw new Error("documented grouping rejected");
+const unconfirmedGrouping = {json.dumps(unconfirmed_grouping, ensure_ascii=False)};
+const groupingError = context.validateReviewData(unconfirmedGrouping);
+if (!groupingError.includes("正式 PRD") || !groupingError.includes("当前树继续拆开")) {{
+  throw new Error("unconfirmed multi-atom grouping was not rejected: " + groupingError);
+}}
 const duplicateIds = structuredClone(valid);
 duplicateIds.decomposition_window.terminal_unit_ids.push("unit-trading-loop");
 const duplicateError = context.validateReviewData(duplicateIds);

@@ -365,6 +365,7 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
   const chainsById = new Map((data.business_context?.business_chains || []).map((chain) => [chain.chain_id, chain]));
   const sources = new Map((data.source_snapshot || []).map((source) => [String(source?.path || "").replace(/\\/g, "/"), source]));
   const statuses = new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]);
+  const aggregationAuthorities = new Set(["doc", "user", "user-confirmed"]);
   const unitsById = new Map();
   const childrenById = new Map();
   const refsError = (refs) => {
@@ -407,6 +408,14 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
     if (atomRefs.length > 1 && basisError(unit.grouping_basis,
       ["shared_business_goal", "shared_lifecycle_or_owner", "parent_cohesion"], "authority")) {
       return "多能力 Outline 单元必须提供完整 grouping_basis。";
+    }
+    if (unit.parent_unit_id !== null && atomRefs.length > 1
+        && !aggregationAuthorities.has(unit.grouping_basis?.authority)) {
+      return "非根多能力 Outline 单元必须由正式 PRD 或人工确认支持；未经确认的合并应保留为 Web 选项，当前树继续拆开显示。";
+    }
+    if (unit.parent_unit_id !== null && atomRefs.length > 1
+        && !aggregationAuthorities.has(unit.source_status)) {
+      return "非根多能力 Outline 单元的来源状态必须是 doc、user 或 user-confirmed。";
     }
     if (atomRefs.length === 1 && unit.grouping_basis !== undefined) return "单能力 Outline 单元不能声明 grouping_basis。";
     if (unit.decomposition_state === "expanded" && basisError(unit.decomposition_basis,

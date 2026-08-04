@@ -154,7 +154,12 @@ Direct children must be non-overlapping and exactly cover the parent's atoms and
 chains. Capabilities with independently owned state, outcome, or named handoff
 default to separate, loosely coupled units. A multi-atom unit carries
 `grouping_basis` explaining its shared business goal, lifecycle/owner, and
-cohesion inside the parent branch. Grouping is not a terminal claim.
+cohesion inside the parent branch. For every non-root unit, both the grouping
+authority and unit source status must be `doc`, `user`, or `user-confirmed`;
+`ai-proposed` and `unresolved` merges remain Web Discovery options while the
+current generated tree keeps the atoms separate. The current expansion root is
+the already-selected scope and is exempt from this descendant aggregation gate.
+Grouping is not a terminal claim.
 
 The unique `000-*` top unit generates exactly one descendant level in its first
 window. Any ordinary non-root `decompose` window normally generates two or three

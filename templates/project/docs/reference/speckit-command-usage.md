@@ -215,7 +215,7 @@ export SPECIFY_FEATURE=001-photo-albums
 
 然后由 `spec-outline.md` 的 outline readiness 判断是否可以进入 `/sp.specify`。后续命令不应把 `main` 或 `master` 这种普通分支误当成 feature。
 
-`/sp.prd` 使用递归 Outline 窗口，而不是固定三级项目职责。默认业务资料根是仓库根 `prd/`；人工可以追加或明确替换资料目录，命令必须记录实际来源根和锚点。`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。每轮先完整提取当前展开根的 `business_context`，包含 `product_subject`、`business_objects`、`operations`、`outcomes`、`capability_atoms`、`business_chains` 和证据缺口，再按业务责任分配直接子单元。`000` 是有目标、有结果和来源的顶级单元，第一次只生成一层；普通单元每轮生成两层或三层，提前到达 terminal 时可以少于两层。一个能力原子只归属一个直接子单元；具有独立状态、独立结果或明确 handoff 的能力默认保持独立候选，不能因共享页面、数据库、运行时、阶段或团队而合并。多原子单元必须提供 `grouping_basis`，父单元必须提供 `decomposition_basis` 或 `terminal_basis`。三层仅是界面显示窗口，不是整棵树上限。
+`/sp.prd` 使用递归 Outline 窗口，而不是固定三级项目职责。默认业务资料根是仓库根 `prd/`；人工可以追加或明确替换资料目录，命令必须记录实际来源根和锚点。`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。每轮先完整提取当前展开根的 `business_context`，包含 `product_subject`、`business_objects`、`operations`、`outcomes`、`capability_atoms`、`business_chains` 和证据缺口，再按业务责任分配直接子单元。`000` 是有目标、有结果和来源的顶级单元，第一次只生成一层；普通单元每轮生成两层或三层，提前到达 terminal 时可以少于两层。一个能力原子只归属一个直接子单元；具有独立状态、独立结果或明确 handoff 的能力默认保持独立候选，不能因共享页面、数据库、运行时、阶段或团队而合并。非根多原子单元必须提供由正式 PRD 或已确认人工决定支持的 `grouping_basis` 和来源状态；模型自己提出或尚未解决的合并只能成为 Web Discovery 选项，当前窗口仍生成独立单元。父单元必须提供 `decomposition_basis` 或 `terminal_basis`。三层仅是界面显示窗口，不是整棵树上限。
 
 v4 `decompose` 分图除结构根外，只能展示已登记到本轮 `decomposition_window.units` 的 Outline 单元。普通说明节点不是下一级项目，不显示项目编号和树深；目标、能力、验收等功能细节只在已确认 terminal 单元的 `detail` 窗口生成。
 
