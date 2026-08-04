@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added source-backed layered planning: Portfolio roots define direct child boundaries and handoffs, implementation children expand their own detailed Outlines from PRD sources, and Flow/UI consume confirmed upstream artifacts." \
+              "- Added evidence-driven recursive Outline boundaries: capability atoms prove source coverage without setting project count, models compare complexity reduction with coordination cost, and reasoned project partitions remain human-confirmed through Discovery." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp

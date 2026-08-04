@@ -44,17 +44,18 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Source-backed layered Outline planning
+          ## Evidence-driven recursive Outline boundaries
 
-          This release makes each SP design stage consume the right evidence at the right level:
+          This release makes recursive project decomposition follow business complexity instead of a fixed node count or a one-atom-per-project rule:
 
-          - \`/sp.prd\` builds Outline from the repository's default \`prd/\` source root, the current feature PRD, accepted decisions, and any user-supplied source directories.
-          - A \`000-*\` Portfolio root defines only its direct implementation children, their responsibility boundaries, global constraints, and Subproject Handoffs. It no longer expands child-internal modules, Flow, or UI.
-          - Each \`001+\` child treats its parent handoff as a direction and responsibility contract, then rereads PRD sources to generate its own detailed Outline.
-          - Parent-child reconciliation checks scope, ownership, outcomes, handoffs, and inherited constraints instead of requiring both levels to repeat the same nodes.
-          - \`/sp.flow\` consumes PRD plus a confirmed Outline; \`/sp.ui\` consumes PRD plus confirmed Outline and Flow. Stale or unconfirmed upstream evidence remains fail-closed.
-          - Discovery validation allows one direct child project to own multiple source-backed capability atoms and business chains while preserving complete coverage and unique ownership.
-          - Major business or design decisions remain human-confirmed through the owning Outline, Flow, or UI review page; downstream planning and implementation stay autonomous within those confirmed contracts.
+          - \`/sp.prd\` rereads the repository's default \`prd/\` source root, the current feature PRD, accepted decisions, parent handoffs, and any user-supplied source directories for every child window.
+          - Capability atoms prove source coverage and unique ownership; their count does not determine how many child projects must be generated.
+          - The model compares candidate partitions by coherent business responsibility, complexity reduction, stable handoffs, coordination cost, duplicated state, and acceptance fragmentation.
+          - Independently owned state, outcome, role, rule set, or named handoff is a split signal, not an automatic boundary. Keeping related capabilities together is valid when it produces the lower-complexity single-responsibility unit.
+          - A reasoned \`ai-proposed\` grouping can enter Discovery when PRD sources provide business facts without prescribing project architecture. An \`unresolved\` grouping cannot masquerade as a chosen child boundary.
+          - There is no fixed child count, preferred range, or requirement to split as finely as possible. \`000-*\` still generates one direct layer per root window, while deeper windows remain bounded presentation slices of the recursive tree.
+          - Schema, CLI, and browser validation remain strict about complete coverage, unique ownership, business-chain consistency, topology, and explicit grouping/decomposition/terminal evidence.
+          - Material scope, ownership, safety, money, compliance, irreversible, critical-acceptance, or broad-rework decisions remain human-confirmed through the owning Web Discovery page.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install

@@ -100,7 +100,10 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "must not use Constitution content as business evidence" in content
         assert "`explore` recursively decomposes the current Outline unit" in content
         assert "never an empty coordinator placeholder" in content
-        assert "An atom may belong to only one direct child" in content
+        assert "may belong to only one direct child" in content
+        assert "Atom count is not child count" in content
+        assert "a reasoned model partition is valid Discovery input" in content
+        assert "a requirement to split as finely as possible" in content
         assert "grouping_basis" in content
         assert "decomposition_basis" in content
         assert "terminal_basis" in content

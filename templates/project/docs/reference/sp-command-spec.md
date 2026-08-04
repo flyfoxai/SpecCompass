@@ -151,15 +151,19 @@ Stage B recursively partitions the current root. Every Outline unit retains its
 own `business_goal`, `overall_outcome`, capability/chain references, and sources;
 a parent never becomes an empty directory merely because it has children.
 Direct children must be non-overlapping and exactly cover the parent's atoms and
-chains. Capabilities with independently owned state, outcome, or named handoff
-default to separate, loosely coupled units. A multi-atom unit carries
-`grouping_basis` explaining its shared business goal, lifecycle/owner, and
-cohesion inside the parent branch. For every non-root unit, both the grouping
-authority and unit source status must be `doc`, `user`, or `user-confirmed`;
-`ai-proposed` and `unresolved` merges remain Web Discovery options while the
-current generated tree keeps the atoms separate. The current expansion root is
-the already-selected scope and is exempt from this descendant aggregation gate.
-Grouping is not a terminal claim.
+chains. Atom count does not determine child count. Independently owned state,
+outcome, role, rule set, or named handoff is a split signal; the model compares
+the complexity removed by a split with the coordination, duplicated state, and
+acceptance fragmentation it introduces. It chooses the lower-complexity
+partition whose children have coherent responsibilities and stable handoffs. A
+multi-atom unit carries `grouping_basis` explaining its shared business goal,
+lifecycle/owner, and the concrete cost of separating it inside the parent
+branch. Its authority may be `ai-proposed` when product sources provide the
+business facts but not the project architecture; such a unit remains a Discovery
+candidate until human confirmation. `unresolved` cannot authorize an already
+grouped non-root unit and must instead produce named partition options. Grouping
+is not a terminal claim, no fixed child count applies, and finer is not
+automatically better.
 
 The unique `000-*` top unit generates exactly one descendant level in its first
 window. Any ordinary non-root `decompose` window normally generates two or three

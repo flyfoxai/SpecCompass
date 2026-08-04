@@ -2500,15 +2500,10 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         ["shared_business_goal", "shared_lifecycle_or_owner", "parent_cohesion"],
         "authority",
       );
-      if (unit.parent_unit_id !== null && !allowedAggregationAuthorities.has(unit.grouping_basis?.authority)) {
+      if (unit.parent_unit_id !== null && unit.grouping_basis?.authority === "unresolved") {
         fail(
-          `${label}.grouping_basis.authority must be doc, user, or user-confirmed for a non-root multi-atom unit; ` +
-          "keep independently verifiable atoms in separate generated units until a Web Discovery merge is confirmed",
-        );
-      }
-      if (unit.parent_unit_id !== null && !allowedAggregationAuthorities.has(unit.source_status)) {
-        fail(
-          `${label}.source_status must be doc, user, or user-confirmed for a non-root multi-atom unit`,
+          `${label}.grouping_basis.authority must not be unresolved for a non-root multi-atom unit; ` +
+          "present the competing partitions as a Web Discovery decision instead of treating one grouping as chosen",
         );
       }
     } else if (unit.grouping_basis !== undefined) {

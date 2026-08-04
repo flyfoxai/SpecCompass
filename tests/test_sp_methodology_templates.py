@@ -2252,7 +2252,7 @@ def test_prd_recursive_outline_uses_business_semantics_and_keeps_constitution_re
     assert "Stage C - run the semantic quality gate" in prd
     assert "capability_atoms" in prd
     assert "Each atom has exactly one matching business chain" in prd
-    assert "An atom may belong to only one direct child" in prd
+    assert "may belong to only one direct child" in prd
     assert "grouping_basis" in prd
     assert "decomposition_basis" in prd
     assert "terminal_basis" in prd
@@ -2296,12 +2296,12 @@ def test_prd_recursive_outline_uses_business_semantics_and_keeps_constitution_re
     assert "三阶段" in methodology
     assert "能力原子" in methodology
     assert "一个能力原子只归属一个直接子单元" in methodology
-    assert "父单元只有在聚合依据成立时才可以包含多个能力原子和业务链" in methodology
-    assert "默认拆分、显式交接、单一业务职责、松散耦合" in methodology
+    assert "能力原子负责来源覆盖，不负责决定项目数量" in methodology
+    assert "目标仍是功能单一、松散耦合" in methodology
     assert "grouping_basis" in methodology
     assert "decomposition_basis" in methodology
     assert "terminal_basis" in methodology
-    assert "不设固定子单元数量或整棵树的最大深度" in methodology
+    assert "不设固定子单元数量、偏好区间、一个原子一个项目的映射或整棵树的最大深度" in methodology
     assert "`000-*` 是唯一树根" in methodology
     assert "只用于内部编译" in methodology
     assert "不能仅因为拆分未确认" in methodology
@@ -2323,7 +2323,7 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "默认业务资料根是仓库根目录 `prd/`" in product_prd
     assert "人工可以为当前仓库或当前运行明确指定一个或多个其他资料目录" in product_prd
     assert "`000-*` 是唯一顶级 Outline 单元，但不是空壳协调器" in product_prd
-    assert "不能先聚合成大项目再要求人工接受" in product_prd
+    assert "整个过程不设固定项目数量，也不追求越细越好" in product_prd
     assert "Outline 的树深和一次生成窗口分开管理" in product_prd
     assert "直接子单元必须不重叠且完整覆盖父单元" in product_prd
     assert "Outline、Flow、UI 已有的图形审核" in product_prd
@@ -2336,7 +2336,8 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "repository-root `prd/` directory is the default business-source corpus" in prd
     assert "Parent-child reconciliation checks direction, scope, ownership, outcomes, handoffs" in prd
     assert "A multi-atom unit requires `grouping_basis`" in prd
-    assert "`ai-proposed` or `unresolved` grouping is invalid" in prd
+    assert "The grouping authority may be `doc`, `user`, `user-confirmed`, or `ai-proposed`" in prd
+    assert "`unresolved` cannot authorize a grouped child" in prd
     assert "Mark a unit `expanded` only when `decomposition_basis`" in prd
     assert "Mark it `terminal` only when `terminal_basis`" in prd
 
@@ -2350,9 +2351,10 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "make reversible code-level choices" in implement
 
     assert "The layered input contract is: Outline reads PRD sources" in command_spec
-    assert "A multi-atom unit carries" in command_spec
+    assert "multi-atom unit carries" in command_spec
     assert "`grouping_basis`" in command_spec
-    assert "remain Web Discovery options" in command_spec
+    assert "Its authority may be `ai-proposed`" in command_spec
+    assert "automatically better" in command_spec
     assert "Only a formally confirmed terminal unit may enter `frame`" in command_spec
 
 
@@ -7641,16 +7643,21 @@ def test_outline_discovery_v4_accepts_documented_multi_atom_child(tmp_path):
     assert result.returncode == 0, _review_validator_output(result)
 
 
-def test_outline_discovery_v4_rejects_ai_proposed_multi_atom_child(tmp_path):
+def test_outline_discovery_v4_accepts_reasoned_model_multi_atom_child(tmp_path):
     sample = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="ai-proposed")
     result = _run_review_validator(sample, tmp_path / "discovery-v4-ai-grouping.json")
-    assert result.returncode != 0
-    assert "grouping_basis" in _review_validator_output(result)
+    assert result.returncode == 0, _review_validator_output(result)
 
     sample = _outline_discovery_v4_multi_atom_child_sample(child_source_status="ai-proposed")
     result = _run_review_validator(sample, tmp_path / "discovery-v4-ai-grouped-unit.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v4_rejects_unresolved_multi_atom_child(tmp_path):
+    sample = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="unresolved")
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-unresolved-grouping.json")
     assert result.returncode != 0
-    assert "source_status" in _review_validator_output(result)
+    assert "grouping_basis" in _review_validator_output(result)
 
 
 def test_outline_discovery_v4_accepts_non_root_two_layer_window(tmp_path):
@@ -7858,7 +7865,8 @@ def test_outline_discovery_v4_rejects_cycles_and_browser_duplicate_window_ids(tm
     data_validator = REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js"
     valid_sample = _outline_discovery_v4_root_sample()
     documented_grouping = _outline_discovery_v4_multi_atom_child_sample()
-    unconfirmed_grouping = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="ai-proposed")
+    model_grouping = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="ai-proposed")
+    unresolved_grouping = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="unresolved")
     detail_source = _outline_discovery_validator_sample()
     forbidden_detail = json.loads(json.dumps(next(
         node for node in detail_source["outline_nodes"] if node["node_id"] == "node-data"
@@ -7882,10 +7890,12 @@ const valid = {json.dumps(valid_sample, ensure_ascii=False)};
 if (context.validateReviewData(valid) !== "") throw new Error("valid v4 discovery rejected");
 const documentedGrouping = {json.dumps(documented_grouping, ensure_ascii=False)};
 if (context.validateReviewData(documentedGrouping) !== "") throw new Error("documented grouping rejected");
-const unconfirmedGrouping = {json.dumps(unconfirmed_grouping, ensure_ascii=False)};
-const groupingError = context.validateReviewData(unconfirmedGrouping);
-if (!groupingError.includes("正式 PRD") || !groupingError.includes("当前树继续拆开")) {{
-  throw new Error("unconfirmed multi-atom grouping was not rejected: " + groupingError);
+const modelGrouping = {json.dumps(model_grouping, ensure_ascii=False)};
+if (context.validateReviewData(modelGrouping) !== "") throw new Error("reasoned model grouping rejected");
+const unresolvedGrouping = {json.dumps(unresolved_grouping, ensure_ascii=False)};
+const groupingError = context.validateReviewData(unresolvedGrouping);
+if (!groupingError.includes("unresolved") || !groupingError.includes("Web Discovery")) {{
+  throw new Error("unresolved multi-atom grouping was not rejected: " + groupingError);
 }}
 const duplicateIds = structuredClone(valid);
 duplicateIds.decomposition_window.terminal_unit_ids.push("unit-trading-loop");

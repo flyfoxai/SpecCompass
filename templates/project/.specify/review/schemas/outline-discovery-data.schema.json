@@ -236,10 +236,9 @@
           },
           "then": {
             "properties": {
-              "source_status": {"enum": ["user", "user-confirmed", "doc"]},
               "grouping_basis": {
                 "properties": {
-                  "authority": {"enum": ["user", "user-confirmed", "doc"]}
+                  "authority": {"enum": ["user", "user-confirmed", "doc", "ai-proposed"]}
                 }
               }
             }

@@ -410,12 +410,8 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
       return "多能力 Outline 单元必须提供完整 grouping_basis。";
     }
     if (unit.parent_unit_id !== null && atomRefs.length > 1
-        && !aggregationAuthorities.has(unit.grouping_basis?.authority)) {
-      return "非根多能力 Outline 单元必须由正式 PRD 或人工确认支持；未经确认的合并应保留为 Web 选项，当前树继续拆开显示。";
-    }
-    if (unit.parent_unit_id !== null && atomRefs.length > 1
-        && !aggregationAuthorities.has(unit.source_status)) {
-      return "非根多能力 Outline 单元的来源状态必须是 doc、user 或 user-confirmed。";
+        && unit.grouping_basis?.authority === "unresolved") {
+      return "非根多能力 Outline 单元不能用 unresolved 作为归组依据；请把不同划分方案交给 Web Discovery 决定。";
     }
     if (atomRefs.length === 1 && unit.grouping_basis !== undefined) return "单能力 Outline 单元不能声明 grouping_basis。";
     if (unit.decomposition_state === "expanded" && basisError(unit.decomposition_basis,
