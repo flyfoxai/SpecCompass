@@ -215,17 +215,19 @@ export SPECIFY_FEATURE=001-photo-albums
 
 然后由 `spec-outline.md` 的 outline readiness 判断是否可以进入 `/sp.specify`。后续命令不应把 `main` 或 `master` 这种普通分支误当成 feature。
 
-`/sp.prd` 的三级职责不能混用。默认业务资料根是仓库根 `prd/`；人工可以追加或明确替换资料目录，命令必须记录实际来源根和锚点。`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。一级只负责项目组合和直接子项目：先完整提取能力原子及 `business_context`，至少保留 `product_subject`、`business_objects`、`operations`、`outcomes`、`business_chains` 和 `evidence_gaps`，再按业务责任分配项目。固定关系是“一个来源能力形成一个能力原子；一个能力原子只归属一个直接子项目；一个直接子项目可以拥有多个能力原子和业务链”。能力原子保证来源不丢，不会自动变成真实项目。`000` 分图只展示目标、拥有范围、整体结果、命名交接、来源和未决边界，不生成 `001/002` 内部模块、详细流程或 UI。低延迟、共享存储、顺序处理或部署便利不能决定产品边界；禁止按前端、后端、数据库、API、引擎、消息队列、仓库、部署或团队拆分。
+`/sp.prd` 使用递归 Outline 窗口，而不是固定三级项目职责。默认业务资料根是仓库根 `prd/`；人工可以追加或明确替换资料目录，命令必须记录实际来源根和锚点。`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。每轮先完整提取当前展开根的 `business_context`，包含 `product_subject`、`business_objects`、`operations`、`outcomes`、`capability_atoms`、`business_chains` 和证据缺口，再按业务责任分配直接子单元。`000` 是有目标、有结果和来源的顶级单元，第一次只生成一层；普通单元每轮生成两层或三层，提前到达 terminal 时可以少于两层。一个能力原子只归属一个直接子单元；具有独立状态、独立结果或明确 handoff 的能力默认保持独立候选，不能因共享页面、数据库、运行时、阶段或团队而合并。多原子单元必须提供 `grouping_basis`，父单元必须提供 `decomposition_basis` 或 `terminal_basis`。三层仅是界面显示窗口，不是整棵树上限。
 
-二级只负责单个已确认 `001+` 实施子项目的业务闭环。它用一份已确认 `Subproject Handoff` 约束方向、责任和交接，同时重新读取默认 `prd/`、人工指定资料目录、当前 feature PRD 和子项目局部变更。handoff 引用是优先来源，不是白名单，也不声称写全子项目细节。父子核对检查范围、责任、结果、交接和全局约束，不比较节点名称、数量或文字是否相同。每条首个切片业务链必须包含触发或输入、业务对象及起始状态、动作或控制、结果状态或可观察结果、异常路径、来源和命名交接。三级只负责保留来源身份的正式编译，不新建、合并、拆分或重释业务事实。
+v4 `decompose` 分图除结构根外，只能展示已登记到本轮 `decomposition_window.units` 的 Outline 单元。普通说明节点不是下一级项目，不显示项目编号和树深；目标、能力、验收等功能细节只在已确认 terminal 单元的 `detail` 窗口生成。
 
-三个设计阶段按输入递增：Outline 基于 PRD 资料；Flow 基于 PRD 资料和已确认 Outline；UI 基于 PRD 资料、已确认 Outline 和已确认 Flow。资料不足时，模型可以补全低影响、可逆的结构并标记推断；会改变范围、权限、安全、资金、合规、不可逆行为、关键验收或造成大范围返工的决定，必须进入所属 Outline/Flow/UI Web 审核页，给出 2-4 个方案、影响和推荐。三层确认后，Plan、Tasks、Implement 应自行完成框架内的技术分解、任务和代码，只在发现新的重大决定或上游冲突时回退。
+子单元生成自己的 Outline 时，使用已确认 `Subproject Handoff` 继承方向、责任和交接，同时重新读取默认 `prd/`、人工指定目录、当前 feature PRD、父级引用和本地确认资料。handoff 是优先来源，不是白名单，也不声称写全子单元细节。父子核对检查范围、责任、结果、交接、来源和全局约束，并检查子单元完整覆盖父单元，不比较节点名称、数量或文字是否相同。只有正式确认的 terminal 单元才进入详细功能 Outline；Flow 和 UI 继续分别消费 PRD、Outline 和 Flow。
 
-一级和二级均执行跨领域替换测试：一段话若只替换产品名就能原样用于无关行业，必须改成有来源的业务对象、动作、控制、结果、交接或明确证据缺口。写出 Discovery 前还要执行可见文本清洗，删除内部阶段、检查过程、目录创建、SP 路由和渲染说明，不能用“目标、用户、问题、范围、全局认知”等套话代替产品内容。
+三个设计阶段按输入递增：Outline 基于 PRD 资料；Flow 基于 PRD 资料和已确认 Outline；UI 基于 PRD 资料、已确认 Outline 和已确认 Flow。资料不足时，模型可以补全低影响、可逆的结构并标记推断；会改变范围、权限、安全、资金、合规、不可逆行为、关键验收或造成大范围返工的决定，必须进入所属 Outline/Flow/UI Web 审核页，给出 2-4 个方案、影响和推荐。Outline、Flow 和 UI 三个设计阶段都确认后，Plan、Tasks、Implement 应自行完成框架内的技术分解、任务和代码，只在发现新的重大决定或上游冲突时回退。
 
-用户确认项目边界后，父级 PRD 记录 `Project Decomposition`，并为每个独立子项目生成子项目交接（`Subproject Handoff`），写清业务目标、角色、能力和对象、范围、上下游交接、全局业务门禁、来源和未决问题。Level 1 不会自动创建子项目目录或授权 `/sp.specify`。`000` 永远是 Portfolio/统筹根：只负责 PRD、Outline、全局约束、子项目交接、跨项目依赖和影响记录，不拥有 `spec.md`、`flows/`、`ui/`、`bundle.md`、`plan.md`、`tasks.md`、analysis、gate 或实现产物。任何需要 Flow/UI 的统一壳、组合控制台或跨项目业务旅程，都必须先归属一个 `001+` 的可验收子项目。确认拆分后，各子项目分别建立 feature 目录并完成自己的 `/sp.prd` 和 Outline 确认；父级大项目不再整体进入 `/sp.specify`。确认不拆分时也不能把 `000` 变成实施 feature；应建立至少一个 `001+` 实施边界，或继续停留在 Outline 决策阶段。
+每个递归窗口都执行跨领域替换测试：一段话若只替换产品名就能原样用于无关行业，必须改成有来源的业务对象、动作、控制、结果、交接或明确证据缺口。写出 Discovery 前还要执行可见文本清洗，删除内部阶段、检查过程、目录创建、SP 路由和渲染说明，不能用“目标、用户、问题、范围、全局认知”等套话代替产品内容。
 
-Level 1 和 Level 2 的项目边界选择留在图形 Discovery 中，不能仅因为拆分未确认、影响较大或状态为 `SPLIT_REQUIRED`/`NEEDS_DECISION` 就转到 `/sp.clarify`。图形响应下载前，`NEXT_COMMAND_EXEC` 保持 `None`；用户交回响应后由下一次 `/sp.prd` 消费。只有节点绑定的图形选择确实表达不了某个独立决策时，才使用 `/sp.clarify`。
+用户确认直接子单元后，父级 PRD 记录 `Project Decomposition`，并为每个子单元生成 `Subproject Handoff`，写清业务目标、整体结果、角色、能力和对象、范围、上下游交接、继承约束、来源和未决问题。`000` 保留顶级 Outline 语义和全局约束，不在同一轮替子单元生成更深层细节；子单元在自己的 feature 或展开窗口继续递归。任何需要 Flow/UI 的实现边界，都必须来自已确认的 terminal 单元；未到 terminal 时不能跳过拆分直接进入实现。
+
+所有递归窗口的拆分和终止选择留在图形 Discovery 中，不能仅因为拆分未确认、影响较大或状态为 `SPLIT_REQUIRED`/`NEEDS_DECISION` 就转到 `/sp.clarify`。图形响应下载前，`NEXT_COMMAND_EXEC` 保持 `None`；用户交回响应后由下一次 `/sp.prd` 消费。只有节点绑定的图形选择确实表达不了某个独立决策时，才使用 `/sp.clarify`。
 
 PRD 页面可以同时展示 `constitution_snapshot`，但固定为 `read_only` 和 `governance_only`。它只是 Constitution 的只读治理快照：不参与业务推断，不产生问题或推荐，不写入 PRD，也不能成为 discovery delta 的目标。`/sp.constitution` 继续负责正式长期治理规则；`/sp.prd` 只负责产品事实、业务能力和范围。
 

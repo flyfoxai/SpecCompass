@@ -186,7 +186,7 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
     const map = mapsById.get(node.map_id);
     const childMap = mapsById.get(node.child_map_id);
     const isBusinessNode = map.map_kind === "branch" || (map.map_kind === "overview" && node.node_kind !== "root" && childMap?.map_kind !== "global_constraints");
-    const isLevelOneProjectLink = data.outline_maturity === "explore" &&
+    const isLevelOneProjectLink = data.schema_version === 3 && data.outline_maturity === "explore" &&
       map.map_kind === "overview" &&
       node.parent_node_id === overviewRoot?.node_id &&
       node.node_kind === "map_link" &&
@@ -222,25 +222,50 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
     if (isOverviewBusinessMapLink && (!Array.isArray(node.capability_atom_refs) || !node.capability_atom_refs.length)) {
       return "总图业务分图入口必须拥有至少一个业务能力原子。";
     }
+    if (node.aggregation_basis !== undefined && !isLevelOneProjectLink) {
+      return "aggregation_basis 只能用于旧版 Level 1 候选项目入口。";
+    }
     if (isLevelOneProjectLink) {
-      if (!Array.isArray(node.business_chain_refs) || node.business_chain_refs.length !== 1) {
-        return "Level 1 候选项目必须且只能引用一条主要业务链。";
-      } else if (businessChainProjectOwnerCounts.has(node.business_chain_refs[0])) {
-        const chainId = node.business_chain_refs[0];
-        businessChainProjectOwnerCounts.set(chainId, businessChainProjectOwnerCounts.get(chainId) + 1);
+      if (!Array.isArray(node.business_chain_refs) || !node.business_chain_refs.length ||
+          new Set(node.business_chain_refs).size !== node.business_chain_refs.length) {
+        return "Level 1 候选项目必须引用一组不重复的业务链。";
       }
-      if (!Array.isArray(node.capability_atom_refs) || node.capability_atom_refs.length !== 1) {
-        return "Level 1 候选项目必须且只能引用一个业务能力原子。";
+      if (!Array.isArray(node.capability_atom_refs) || !node.capability_atom_refs.length ||
+          new Set(node.capability_atom_refs).size !== node.capability_atom_refs.length) {
+        return "Level 1 候选项目必须引用一组不重复的业务能力原子。";
       }
-      const primaryChainId = node.business_chain_refs[0];
+      for (const chainId of node.business_chain_refs) {
+        if (businessChainProjectOwnerCounts.has(chainId)) {
+          businessChainProjectOwnerCounts.set(chainId, businessChainProjectOwnerCounts.get(chainId) + 1);
+        }
+      }
+      const atomChainRefs = new Set();
       for (const atomId of node.capability_atom_refs) {
         const atom = capabilityAtomsById.get(atomId);
         if (capabilityAtomOwnerCounts.has(atomId)) {
           capabilityAtomOwnerCounts.set(atomId, capabilityAtomOwnerCounts.get(atomId) + 1);
         }
-        if (atom && (atom.business_chain_refs?.length !== 1 || atom.business_chain_refs[0] !== primaryChainId)) {
-          return "Level 1 候选项目的能力原子必须属于同一条主要业务链。";
+        for (const chainId of atom?.business_chain_refs || []) atomChainRefs.add(chainId);
+      }
+      if (atomChainRefs.size !== node.business_chain_refs.length ||
+          node.business_chain_refs.some((chainId) => !atomChainRefs.has(chainId))) {
+        return "Level 1 候选项目的业务链必须等于其能力原子引用的业务链。";
+      }
+      if (node.capability_atom_refs.length === 1 && node.aggregation_basis !== undefined) {
+        return "单能力 Level 1 候选项目不能声明 aggregation_basis。";
+      }
+      if (node.capability_atom_refs.length > 1) {
+        const basis = node.aggregation_basis;
+        if (!basis || typeof basis !== "object" || Array.isArray(basis)) {
+          return "多能力 Level 1 候选项目必须提供文档或人工依据的 aggregation_basis。";
         }
+        if (!new Set(["doc", "user", "user-confirmed"]).has(basis.authority)) {
+          return "aggregation_basis.authority 必须是 doc、user 或 user-confirmed。";
+        }
+        for (const key of ["shared_business_goal", "shared_lifecycle_or_owner", "split_acceptance_harm"]) {
+          if (String(basis[key] || "").trim().length < 20) return `aggregation_basis.${key} 必须包含具体业务理由。`;
+        }
+        if (!Array.isArray(basis.source_refs) || !basis.source_refs.length) return "aggregation_basis 必须提供来源引用。";
       }
     }
     if (node.constitution_clause_refs !== undefined &&
@@ -273,8 +298,19 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
     }
   }
   const sourcesByPath = new Map((data.source_snapshot || []).map((source) => [String(source?.path || "").replace(/\\/g, "/"), source]));
+  const isRecursiveDecompose = data.schema_version === 4 && data.decomposition_window?.generation_mode === "decompose";
+  const recursiveUnitNodeIds = new Set(
+    (data.decomposition_window?.units || []).map((unit) => unit?.outline_node_id)
+  );
   for (const map of data.maps) {
     if (map.map_kind !== "branch") continue;
+    const branchBusinessNodes = (nodesByMap.get(map.map_id) || []).filter((node) => node.node_id !== map.root_node_id);
+    if (isRecursiveDecompose) {
+      if (branchBusinessNodes.some((node) => !recursiveUnitNodeIds.has(node.node_id))) {
+        return "v4 分解分图中的业务节点必须登记为本轮 Outline 单元；详细说明只能在终端单元的 detail 窗口生成。";
+      }
+      continue;
+    }
     const directFacts = (nodesByMap.get(map.map_id) || []).filter(
       (node) => node.parent_node_id === map.root_node_id && node.node_kind !== "map_link"
     );
@@ -293,13 +329,187 @@ function validateOutlineDiscoveryTopologyRuntime(data) {
       }
     }
   }
-  if (data.outline_maturity === "explore" && [...capabilityAtomOwnerCounts.values()].some((ownerCount) => ownerCount !== 1)) {
+  if (data.schema_version === 3 && data.outline_maturity === "explore" && [...capabilityAtomOwnerCounts.values()].some((ownerCount) => ownerCount !== 1)) {
     return "每个业务能力原子必须且只能归属一个 Level 1 候选项目。";
   }
-  if (data.outline_maturity === "explore" && [...businessChainProjectOwnerCounts.values()].some((ownerCount) => ownerCount !== 1)) {
+  if (data.schema_version === 3 && data.outline_maturity === "explore" && [...businessChainProjectOwnerCounts.values()].some((ownerCount) => ownerCount !== 1)) {
     return "每条 Level 1 业务链必须且只能归属一个候选项目。";
   }
   return { mapsById, nodesById };
+}
+
+function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
+  if (data.schema_version === 3) return "";
+  const window = data.decomposition_window;
+  if (!window || typeof window !== "object" || Array.isArray(window)) return "Outline v4 缺少递归分解窗口。";
+  if (window.root_project_feature !== data.project?.feature) return "分解窗口的根项目必须与当前 feature 一致。";
+  if (!Number.isInteger(window.root_project_depth) || window.root_project_depth < 0) return "分解窗口根深度无效。";
+  if (!new Set(["decompose", "detail"]).has(window.generation_mode)) return "分解窗口 generation_mode 无效。";
+  const expectedMode = data.outline_maturity === "explore" ? "decompose" : "detail";
+  if (window.generation_mode !== expectedMode) return `当前 Outline 成熟度要求 generation_mode=${expectedMode}。`;
+  if (!Number.isInteger(window.generated_depth) || window.generated_depth < 0 || window.generated_depth > 3) {
+    return "单次 Outline 只能生成 0-3 个后代层级。";
+  }
+  if (String(window.depth_decision_reason || "").trim().length < 20) return "分解窗口必须说明本轮生成深度的业务理由。";
+  if (!Array.isArray(window.parent_path) || window.parent_path.length !== window.root_project_depth) {
+    return "分解窗口必须保留从顶级节点到当前根节点的完整父路径。";
+  }
+  for (let index = 0; index < window.parent_path.length; index += 1) {
+    const entry = window.parent_path[index];
+    if (!String(entry?.unit_id || "").trim() || !String(entry?.label || "").trim() || entry?.project_depth !== index) {
+      return "分解窗口父路径的身份、名称或深度无效。";
+    }
+  }
+  if (!Array.isArray(window.units) || !window.units.length) return "分解窗口至少需要一个 Outline 单元。";
+  const atomsById = new Map((data.business_context?.capability_atoms || []).map((atom) => [atom.atom_id, atom]));
+  const chainsById = new Map((data.business_context?.business_chains || []).map((chain) => [chain.chain_id, chain]));
+  const sources = new Map((data.source_snapshot || []).map((source) => [String(source?.path || "").replace(/\\/g, "/"), source]));
+  const statuses = new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]);
+  const unitsById = new Map();
+  const childrenById = new Map();
+  const refsError = (refs) => {
+    if (!Array.isArray(refs) || !refs.length || new Set(refs).size !== refs.length) return true;
+    return refs.some((rawRef) => {
+      const ref = String(rawRef || "").replace(/\\/g, "/");
+      const hash = ref.indexOf("#");
+      const source = sources.get(hash < 0 ? ref : ref.slice(0, hash));
+      const anchor = hash < 0 ? "" : ref.slice(hash + 1);
+      return !source || (anchor && (!Array.isArray(source.anchors) || !source.anchors.includes(anchor)));
+    });
+  };
+  const basisError = (basis, textFields, statusKey) => {
+    if (!basis || typeof basis !== "object" || Array.isArray(basis) || !statuses.has(basis[statusKey])) return true;
+    if (textFields.some((key) => String(basis[key] || "").trim().length < 20)) return true;
+    return refsError(basis.source_refs);
+  };
+  for (const unit of window.units) {
+    if (!String(unit?.unit_id || "").trim() || unitsById.has(unit.unit_id)) return "Outline unit_id 必须非空且唯一。";
+    unitsById.set(unit.unit_id, unit);
+    const node = topology.nodesById.get(unit.outline_node_id);
+    if (!node || topology.mapsById.get(node.map_id)?.map_kind === "global_constraints") return "Outline 单元必须引用业务导图节点。";
+    if (!(typeof unit.parent_unit_id === "string" || unit.parent_unit_id === null)) return "Outline 单元 parent_unit_id 无效。";
+    if (!Number.isInteger(unit.project_depth) || unit.project_depth < 0) return "Outline 单元 project_depth 无效。";
+    if (!new Set(["expanded", "frontier", "terminal"]).has(unit.decomposition_state)) return "Outline 单元 decomposition_state 无效。";
+    if (String(unit.business_goal || "").trim().length < 20 || String(unit.overall_outcome || "").trim().length < 20) {
+      return "每个 Outline 单元都必须保留自己的业务目标和整体结果。";
+    }
+    if (!statuses.has(unit.source_status) || refsError(unit.source_refs)) return "Outline 单元的来源状态或引用无效。";
+    const atomRefs = unit.capability_atom_refs;
+    const chainRefs = unit.business_chain_refs;
+    if (!Array.isArray(atomRefs) || !atomRefs.length || new Set(atomRefs).size !== atomRefs.length || atomRefs.some((id) => !atomsById.has(id))) {
+      return "Outline 单元必须引用有效且不重复的能力原子。";
+    }
+    if (!Array.isArray(chainRefs) || !chainRefs.length || new Set(chainRefs).size !== chainRefs.length || chainRefs.some((id) => !chainsById.has(id))) {
+      return "Outline 单元必须引用有效且不重复的业务链。";
+    }
+    const atomChains = new Set(atomRefs.flatMap((id) => atomsById.get(id)?.business_chain_refs || []));
+    if (atomChains.size !== chainRefs.length || chainRefs.some((id) => !atomChains.has(id))) return "Outline 单元的业务链必须与能力原子完全一致。";
+    if (atomRefs.length > 1 && basisError(unit.grouping_basis,
+      ["shared_business_goal", "shared_lifecycle_or_owner", "parent_cohesion"], "authority")) {
+      return "多能力 Outline 单元必须提供完整 grouping_basis。";
+    }
+    if (atomRefs.length === 1 && unit.grouping_basis !== undefined) return "单能力 Outline 单元不能声明 grouping_basis。";
+    if (unit.decomposition_state === "expanded" && basisError(unit.decomposition_basis,
+      ["complexity_reduction", "child_boundary_summary", "coordination_cost"], "source_status")) {
+      return "已展开 Outline 单元必须说明分解如何降低复杂度及其协调成本。";
+    }
+    if (unit.decomposition_state === "terminal" && basisError(unit.terminal_basis,
+      ["indivisible_business_goal", "split_complexity_cost", "manageable_implementation_scope"], "source_status")) {
+      return "终端 Outline 单元必须说明为何继续拆分会增加复杂度。";
+    }
+    if (unit.decomposition_state === "frontier" && (unit.decomposition_basis !== undefined || unit.terminal_basis !== undefined)) {
+      return "待继续展开的 Outline 单元不能提前声明分解或终止结论。";
+    }
+  }
+  for (const unit of window.units) {
+    if (unit.parent_unit_id === null) continue;
+    const parent = unitsById.get(unit.parent_unit_id);
+    if (!parent) return "Outline 单元的父节点必须位于当前分解窗口。";
+    const children = childrenById.get(parent.unit_id) || [];
+    children.push(unit);
+    childrenById.set(parent.unit_id, children);
+  }
+  let containsParentCycle = false;
+  const visitState = new Map();
+  const visitUnit = (unit) => {
+    const state = visitState.get(unit.unit_id) || 0;
+    if (state === 1) {
+      containsParentCycle = true;
+      return;
+    }
+    if (state === 2) return;
+    visitState.set(unit.unit_id, 1);
+    for (const child of childrenById.get(unit.unit_id) || []) visitUnit(child);
+    visitState.set(unit.unit_id, 2);
+  };
+  for (const unit of window.units) visitUnit(unit);
+  if (containsParentCycle) return "分解窗口的 Outline 单元不能形成父子循环。";
+
+  const roots = window.units.filter((unit) => unit.parent_unit_id === null);
+  if (roots.length !== 1) return "分解窗口必须且只能有一个根 Outline 单元。";
+  const root = roots[0];
+  const reachable = new Set();
+  const markReachable = (unit) => {
+    if (reachable.has(unit.unit_id)) return;
+    reachable.add(unit.unit_id);
+    for (const child of childrenById.get(unit.unit_id) || []) markReachable(child);
+  };
+  markReachable(root);
+  if (reachable.size !== window.units.length) return "分解窗口的所有 Outline 单元必须连接到展开根。";
+  if (window.units.some((unit) => unit.parent_unit_id !== null
+      && unit.project_depth !== unitsById.get(unit.parent_unit_id).project_depth + 1)) {
+    return "Outline 单元的项目深度必须比父单元大一。";
+  }
+  if (root.outline_node_id !== window.expansion_root_node_id || root.project_depth !== window.root_project_depth) {
+    return "分解窗口根节点身份或深度不一致。";
+  }
+  if (root.capability_atom_refs.length !== atomsById.size || [...atomsById.keys()].some((id) => !root.capability_atom_refs.includes(id))) {
+    return "分解窗口根单元必须覆盖当前业务上下文的全部能力原子。";
+  }
+  for (const unit of window.units) {
+    const children = childrenById.get(unit.unit_id) || [];
+    if (unit.decomposition_state === "expanded" && !children.length) return "expanded Outline 单元必须拥有直接子单元。";
+    if (unit.decomposition_state !== "expanded" && children.length) return "frontier 或 terminal Outline 单元不能拥有子单元。";
+    if (!children.length) continue;
+    const atoms = [];
+    const chains = [];
+    children.forEach((child) => { atoms.push(...child.capability_atom_refs); chains.push(...child.business_chain_refs); });
+    if (new Set(atoms).size !== atoms.length || new Set(chains).size !== chains.length) return "同级 Outline 单元不能重叠拥有能力原子或业务链。";
+    if (atoms.length !== unit.capability_atom_refs.length || unit.capability_atom_refs.some((id) => !atoms.includes(id)) ||
+        chains.length !== unit.business_chain_refs.length || unit.business_chain_refs.some((id) => !chains.includes(id))) {
+      return "已展开 Outline 单元的直接子单元必须完整覆盖父单元。";
+    }
+  }
+  if (!Array.isArray(window.frontier_unit_ids) || !Array.isArray(window.terminal_unit_ids)) {
+    return "分解窗口必须提供 frontier_unit_ids 和 terminal_unit_ids 数组。";
+  }
+  const frontier = new Set(window.frontier_unit_ids);
+  const terminal = new Set(window.terminal_unit_ids);
+  if (frontier.size !== window.frontier_unit_ids.length || terminal.size !== window.terminal_unit_ids.length) {
+    return "frontier_unit_ids 和 terminal_unit_ids 不能包含重复单元。";
+  }
+  const expectedFrontier = new Set(window.units.filter((unit) => unit.decomposition_state === "frontier").map((unit) => unit.unit_id));
+  const expectedTerminal = new Set(window.units.filter((unit) => unit.decomposition_state === "terminal").map((unit) => unit.unit_id));
+  if (frontier.size !== expectedFrontier.size || [...frontier].some((id) => !expectedFrontier.has(id))) return "frontier_unit_ids 与单元状态不一致。";
+  if (terminal.size !== expectedTerminal.size || [...terminal].some((id) => !expectedTerminal.has(id))) return "terminal_unit_ids 与单元状态不一致。";
+  const maxDepth = Math.max(...window.units.map((unit) => unit.project_depth));
+  if (window.generated_depth !== maxDepth - window.root_project_depth) return "generated_depth 必须等于实际生成的最深后代层数。";
+  if (/^000(?:-|$)/.test(data.project.feature) && window.generation_mode === "decompose") {
+    if (window.generated_depth !== 1 || root.decomposition_state !== "expanded") return "000 顶级 Outline 每次必须只生成一个直接后代层级。";
+  } else if (window.generation_mode === "decompose" && ![2, 3].includes(window.generated_depth)) {
+    const endedEarly = frontier.size === 0 && window.units.filter((unit) => unit.project_depth === maxDepth)
+      .every((unit) => unit.decomposition_state === "terminal");
+    if (!endedEarly) return "普通 Outline 分解每轮应生成两层或三层，除非所有分支提前到达末端。";
+  }
+  if (window.generation_mode === "detail") {
+    if (window.generated_depth !== 0 || window.units.length !== 1 || root.decomposition_state !== "terminal") {
+      return "详细编译只能从一个已确认的终端 Outline 单元开始。";
+    }
+    if (!new Set(["doc", "user", "user-confirmed"]).has(root.terminal_basis?.source_status)) {
+      return "进入详细编译前必须正式确认 terminal_basis。";
+    }
+  }
+  return "";
 }
 
 function validateOutlineDiscoveryBusinessRuntime(data) {
@@ -432,7 +642,7 @@ function validateReviewData(data) {
     return "review data 必须是 JSON object。";
   }
   if (!SUPPORTED_SCHEMA_VERSIONS.has(data.schema_version)) {
-    return `schema_version 必须是 1、2 或 ${SUPPORTED_SCHEMA_VERSION}，当前为 ${data.schema_version ?? "未提供"}。`;
+    return `schema_version 必须是 1、2、3 或 4，当前为 ${data.schema_version ?? "未提供"}。`;
   }
   if (!new Set(["flow", "ui", "outline", "outline_discovery"]).has(data.review_type)) {
     return "review_type 必须是 flow、ui、outline 或 outline_discovery。";
@@ -443,7 +653,7 @@ function validateReviewData(data) {
       document.body.classList.remove("outline-adjustment-mode");
       $("review-mode-switch")?.classList.add("hidden");
     }
-    if (data.schema_version !== 3) return "outline_discovery 必须使用 schema_version 3。";
+    if (![3, 4].includes(data.schema_version)) return "outline_discovery 必须使用 schema_version 3 或 4。";
     if (data.interaction_mode !== "discovery") return "outline_discovery 的 interaction_mode 必须是 discovery。";
     if (!new Set(["explore", "frame"]).has(data.outline_maturity)) return "outline_maturity 必须是 explore 或 frame。";
     if (data.authorization_effect !== "none" || data.next_route !== "/sp.prd") {
@@ -473,6 +683,8 @@ function validateReviewData(data) {
     if (discoveryError) return discoveryError;
     const topology = validateOutlineDiscoveryTopologyRuntime(data);
     if (typeof topology === "string") return topology;
+    discoveryError = validateOutlineDiscoveryDecompositionWindowRuntime(data, topology);
+    if (discoveryError) return discoveryError;
     if (!Array.isArray(data.question_groups) || !data.question_groups.length) return "Outline 探索至少需要一个问题组。";
     const groupIds = new Set();
     const questionIds = new Set();
@@ -494,7 +706,7 @@ function validateReviewData(data) {
         if (!questionNode || questionNode.map_id !== group.map_id) return "Outline 探索问题必须绑定当前导图中的现有节点。";
         const questionMap = topology.mapsById.get(questionNode.map_id);
         if (questionMap?.map_kind === "global_constraints" || Array.isArray(questionNode.constitution_clause_refs)) return "Constitution 只读节点不能绑定确认问题。";
-        const currentLevelOneProject = data.outline_maturity === "explore"
+        const currentLevelOneProject = data.schema_version === 3 && data.outline_maturity === "explore"
           ? (questionMap?.map_kind === "branch"
             ? data.outline_nodes.find((node) => node?.child_map_id === questionMap.map_id)
             : (questionMap?.map_kind === "overview" && questionNode?.node_kind === "map_link" ? questionNode : null))
@@ -515,7 +727,7 @@ function validateReviewData(data) {
               candidate.business_chain_refs.some((id) => !businessChainIds.has(id))) {
             return "Outline 探索候选必须引用有效业务链作为依据。";
           }
-          if (data.outline_maturity === "explore" && candidate.business_chain_refs.length !== 1) {
+          if (data.schema_version === 3 && data.outline_maturity === "explore" && candidate.business_chain_refs.length !== 1) {
             return "Level 1 候选必须且只能引用一条主要业务链。";
           }
           if (!Array.isArray(candidate.capability_atom_refs) || !candidate.capability_atom_refs.length ||
@@ -523,7 +735,7 @@ function validateReviewData(data) {
               candidate.capability_atom_refs.some((id) => !capabilityAtomsById.has(id))) {
             return "Outline 探索候选必须引用有效业务能力原子作为依据。";
           }
-          if (data.outline_maturity === "explore") {
+          if (data.schema_version === 3 && data.outline_maturity === "explore") {
             if (candidate.capability_atom_refs.length !== 1 ||
                 !currentLevelOneAtomId || candidate.capability_atom_refs[0] !== currentLevelOneAtomId) {
               return "Level 1 候选项只能引用当前候选项目的业务能力原子。";

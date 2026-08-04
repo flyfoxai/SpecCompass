@@ -116,18 +116,12 @@ flow, UI, API, database, plan, tasks, or implementation design. `sp.outline` or
 PRD-embedded outline logic must not replace `sp.specify`; it only decides
 whether `sp.specify` may start.
 
-Before formal Outline confirmation, `sp.prd` must record the orthogonal
-`outline_maturity` field in `spec-outline.md`. Its only values are `explore`,
-`frame`, and `specify_ready`. Level 1 owns portfolio decomposition: `explore`
-decides whether the portfolio needs one implementation product or several
-cohesive implementation products with independently verifiable outcomes and
-named business handoffs. The `000-*` parent remains the portfolio/coordinator
-root in both cases; a one-product decision means one explicit `001+`
-implementation boundary.
-It requires a real product subject, a named role performing a domain action,
-and the failing or changing business object, operation, or result; generic
-goal/user/problem headings are not sufficient. Every source-backed capability
-must have exactly one owner or explicit disposition before Level 1 completes.
+Before formal Outline confirmation, `sp.prd` records the orthogonal
+`outline_maturity` field in `spec-outline.md`. Its values are `explore`, `frame`,
+and `specify_ready`. Maturity is not project-tree depth. `explore` recursively
+decomposes the current Outline unit at any depth. `frame` writes detailed
+business Outline for one formally confirmed terminal unit without adding project
+levels. `specify_ready` is a source-preserving compilation of confirmed material.
 
 The repository-root `prd/` directory is the default business-source corpus for
 design-stage commands. A human may add or explicitly replace source directories
@@ -140,139 +134,62 @@ plus confirmed Outline; UI reads PRD sources plus confirmed Outline and
 confirmed Flow. Stable Spec, clarifications, and design authority add compiled
 constraints but never replace those inputs.
 
-Level 2 owns child-project framing: `frame` defines one confirmed `001+`
-implementation child's scope, non-goals, first slice, actors, business chains,
-acceptance intent, source authority, rules, exceptions, and named handoffs.
-Whether the portfolio has one implementation child or several, Level 2 uses
-exactly one confirmed `Subproject Handoff` to constrain direction, ownership,
-inherited constraints, and named handoffs, then scans the default `prd/`, every
-human-specified source root, the feature-local PRD, and accepted child-local
-deltas for detailed child facts. The handoff is a priority source, not a
-whitelist or complete child specification. A sole child's handoff is the real
-ownership contract from coordinator to implementation boundary, not a
-fabricated sibling split. Parent-child reconciliation checks direction, scope,
-ownership, outcomes, handoffs, and inherited constraints; it does not compare
-node names, counts, or prose. Level 2 does not rerun portfolio grouping. Level 3 is a source-preserving compilation:
-`specify_ready` compiles confirmed PRD and ledger material into formal Outline
-artifacts without creating, merging, splitting, promoting, or reinterpreting
-business facts. Constitution content remains display-only in `sp.prd`; formal
-governance decisions belong to `sp.constitution`.
+Every `explore` window uses three internal compilation stages. Stage A extracts
+the current root unit's source-backed `business_context`, capability atoms,
+business chains, and evidence gaps. It starts from the confirmed parent path and
+handoff, then rereads the default `prd/`, all human-specified source roots, the
+feature-local PRD, accepted intent events, and parent-referenced sources. A
+handoff is a direction and ownership contract, not a complete specification or
+source allowlist. Missing real business facts remain evidence gaps; low-impact,
+reversible model additions are marked `ai-proposed`.
+The structured context contains `product_subject`, `business_objects`,
+`operations`, `outcomes`, `source_capability_coverage`, `capability_atoms`, and
+complete `business_chains`. Each atom has one trigger/input, owned state,
+primary outcome, downstream handoff, and matching chain.
 
-Maturity falls back to the narrowest affected level. A contradicted child chain
-returns from Level 3 to Level 2. A conflict in one named handoff or capability
-owner reopens only that boundary for Level 1 resolution while confirmed
-siblings remain stable. The complete portfolio returns to Level 1 only when
-the one-versus-many implementation-boundary decision is reversed or the
-complete portfolio identity or ownership model is contradicted. Wording,
-ordering, formatting, and
-source-preserving summaries do not change maturity. Maturity is independent
-from readiness, `review_level`, and `confirmation_priority`.
+Stage B recursively partitions the current root. Every Outline unit retains its
+own `business_goal`, `overall_outcome`, capability/chain references, and sources;
+a parent never becomes an empty directory merely because it has children.
+Direct children must be non-overlapping and exactly cover the parent's atoms and
+chains. Capabilities with independently owned state, outcome, or named handoff
+default to separate, loosely coupled units. A multi-atom unit carries
+`grouping_basis` explaining its shared business goal, lifecycle/owner, and
+cohesion inside the parent branch. Grouping is not a terminal claim.
 
-Level 1 generation is a three-stage compilation. Stage A extracts source-backed
-capability atoms and a structured `business_context` from user input, the
-current PRD, accepted intent events, and formal business sources:
-`product_subject`, `business_objects`, `operations`, `outcomes`, complete
-`business_chains`, and `evidence_gaps`. A capability atom names a business
-object, action or control, and observable result. It explicitly owns one
-trigger/input, one business state, one primary result, and one downstream
-handoff. A complete business chain carries those same semantics and source
-references. An explicit user root,
-correction, or confirmed business structure outranks model regrouping. An
-unconfirmed split must also pass the product-boundary gate; otherwise preserve
-it beside a source-backed business alternative and ask the user rather than
-silently rewriting or canonizing it. Capability coverage tables, stage labels,
-quality checklists, and model self-review are private compilation work and must
-not appear in maps, questions, recommendations, or user-facing responses.
+The unique `000-*` top unit generates exactly one descendant level in its first
+window. Any ordinary non-root `decompose` window normally generates two or three
+descendant levels, chosen by the model from business complexity. It may stop
+earlier only when every branch reaches a real terminal unit. The whole tree may
+be four or more levels deep. The renderer's three-layer capacity is only a
+window and presentation limit; it must never cause merging, omission, or
+truncation, and the model must not fabricate nodes merely to fill a window.
 
-Before Stage B, enumerate every source-backed atom without grouping and pair
-each atom with exactly one business chain. Stage B groups complete atom/chain
-pairs into direct candidate projects. One atom and chain have exactly one Level
-1 project owner; one direct project may own one or more atom/chain pairs. Its
-`business_chain_refs` must equal the chains named by its
-`capability_atom_refs`. Capability atoms remain separate coverage records and
-never become projects merely because they are atomic. Each candidate has one
-cohesive business goal, an independently verifiable overall project outcome,
-and explicit business input/output contracts with adjacent candidates. The
-initial grouping is a model proposal confirmed in Discovery; later merge,
-split, defer, exclude, or owner-change options are generated only for concrete
-unresolved project boundaries, never once per atom.
-There is no fixed candidate count. Retain one project when a split cannot close
-independent outcomes or candidates require each other's private internals with
-no stable business contract. Product boundaries are independent from runtime
-topology: low latency, shared storage, sequential processing, and deployment
-convenience are delivery risks, not standalone reasons to retain or merge one
-product. Transactional consistency and bidirectional business exchange require
-classification. When regulation, contract, or multi-party legal duty imposes
-them, preserve them as business invariants and show affected ownership and
-handoffs; when they only simplify internal implementation, record delivery risk.
-Candidates may share a process, repository, database, or deployment. Never use
-runtime topology as an advantage, disadvantage, option-comparison dimension,
-recommendation reason, or maturity plan in a user-visible product-boundary
-decision. Never split by frontend, backend, database, API,
-adapter, engine, message queue, repository, deployment unit, or team. Team
-ownership may corroborate but cannot create a business boundary. Product-visible
-copy uses business objects and domain actions; generic implementation components
-are removed. Treat a candidate-project title whose distinguishing noun is only
-center/中心, hub/枢纽, platform/平台, engine/引擎, service/服务,
-system/系统, module/模块, workbench/工作台, network/网络, API/接口,
-adapter/适配器, database/数据库, queue/队列, UI/界面, or BI/报表 as a
-warning signal, not a boundary decision. Evaluate its owned state, independent
-outcome, capability allocation, and handoff contract; reject or regroup when
-those fail, and otherwise rename only the visible label. Prefixing a domain word
-does not cure a missing boundary. Name the candidate for its independently
-verifiable business responsibility and outcome.
-This does not rename the formal product root or a formally named external
-system; the latter may appear only as a business dependency or handoff endpoint.
-When a user-proposed business split is source-backed and every candidate passes
-the boundary gate, make confirmation of that split the default recommendation.
-Do not reopen a generic one-product-versus-many choice because candidates are
-sequential or share a runtime. Ask only about a specific responsibility that
-may merge, split, defer, or change owner.
-The Overview is named for the real product portfolio, business system, or
-controlled business loop; its business capability branches are candidate
-direct subprojects. A Level 1 branch map contains only the goal, owned scope,
-overall outcome, named handoffs, source basis, and unresolved boundary needed to
-judge that direct project. These nodes are analytical boundary notes, not
-lower-level projects. Internal modules, detailed scenarios, step-by-step flows,
-screens, fields, APIs, and implementation structure belong to the corresponding
-`001+` Outline and later stages.
+Each generated unit has `expanded`, `frontier`, or `terminal` state. An expanded
+unit provides `decomposition_basis` explaining how children reduce internal
+state, rule, role, or acceptance complexity and what coordination remains. A
+frontier unit makes no premature split/terminal claim. A terminal unit provides
+`terminal_basis` explaining the indivisible business goal, the complexity added
+by another split, and why the remaining implementation scope is manageable.
+During v4 `decompose`, every business node below a branch map's structural root
+must be registered as a unit in the current decomposition window. Unregistered
+goal, capability, or acceptance notes are detail, not child projects, and may be
+generated only by the later `detail` window of a confirmed terminal unit.
+Only a formally confirmed terminal unit may enter `frame`; `frame` generates no
+new project levels. `specify_ready` then compiles confirmed sources without
+inventing, merging, splitting, or reinterpreting business facts.
 
-Stage C runs a semantic quality gate before Discovery data is written. It checks
-source coverage, candidate independence, responsibility purity, loose coupling,
-business-lifecycle coverage, source terminology, product subject, decision
-quality, implementation-language removal, and private-reasoning non-disclosure.
-Product-visible copy must name the domain object, action/control, and observable
-result. Generic implementation components, SP workflow, renderer instructions,
-Stage A/C work, maturity commentary, generic overview copy, and mechanical
-keep/remove questions are not product content. A failed gate triggers one
-re-extraction or regrouping pass; a second failure remains in `explore` and asks
-about the exact evidence, outcome, ownership boundary, or handoff gap. `frame`
-requires at least one complete chain backed by a user-confirmed or
-formal-document source; AI-only chains remain questioned candidates.
-Before emitting, run a final visible-copy sanitization pass over titles,
-summaries, nodes, questions, candidates, recommendations, and the user-facing
-response. Remove stage names, coverage tables, quality checks, self-review,
-file or feature-directory permission narration, SP routing, renderer behavior,
-and generation commentary. Replace generic labels such as engine/引擎,
-center/中心, hub/枢纽, platform/平台, service/服务, system/系统,
-module/模块, workbench/工作台, network/网络, API/接口, adapter/适配器,
-database/数据库, queue/队列, UI/界面, or BI/报表 with source-backed
-business objects, actions, controls, or outcomes; do not announce that
-sanitization occurred. Apply a cross-domain substitution test to every visible
-Level 1 statement and every Level 2 chain: if it can move unchanged to an
-unrelated domain after replacing only the product name, replace it with
-source-backed domain objects, actions, controls, outcomes, handoffs, or an
-explicit evidence gap. Re-run the semantic gate after this pass.
-
-The Level 2 compiler builds concrete first-slice chains, not candidate-project
-groups. Every chain names its actor or external trigger, input, business object
-and starting state, action or control, resulting state or observable outcome,
-exception path, sources, and upstream/downstream handoff. AI-proposed chains may
-remain candidates but cannot pass the Level 2 gate. A local gap stays on the
-framed product branch. An ownership contradiction marks only the affected named
-boundary or pair of boundaries unresolved and routes only those boundaries to
-Level 1; unaffected siblings stay stable, and Level 2 neither reopens every
-candidate nor silently merges confirmed children.
+Stage C validates source coverage, parent-child coverage, sibling ownership,
+loose coupling, explicit handoffs, terminal reasoning, source terminology, and
+non-disclosure of internal reasoning. Visible copy must name concrete business
+objects, actions/controls, outcomes, and handoffs. Never split by frontend,
+backend, database, API, adapter, engine, message queue, repository, deployment,
+or team. Shared runtime, page, phase, storage, latency, or team is not a business
+boundary. A failed gate triggers one re-extraction or regrouping pass; a second
+failure stays in `explore` and exposes the exact evidence or boundary decision.
+Run a final visible-copy sanitization pass and a cross-domain substitution test:
+if a statement can move unchanged to an unrelated domain after replacing only
+the product name, rewrite it with source-backed domain facts or an evidence gap.
+Do not announce that sanitization occurred.
 
 `sp.prd` reads Constitution content separately into `constitution_snapshot`
 with `display_mode: read_only` and `application_scope: governance_only`.
@@ -286,18 +203,14 @@ in `business_context.business_chains`. This provenance is required for all
 candidates, including the recommended one, so Constitution prose cannot become
 a recommendation source without a real business-evidence chain.
 
-After a validated response confirms project boundaries, the parent PRD records
-`Project Decomposition` and emits one `Subproject Handoff` per confirmed
-implementation child, including the sole child selected by a one-product
-decision.
-Each handoff carries one business goal, roles, owned capabilities and objects,
-scope/non-goals, upstream inputs, downstream outputs, inherited global business
-gates, sources, and unresolved questions. Level 1 does not create child feature
-directories or authorize `sp.specify`. A confirmed parent must not continue to
-`sp.specify` as one product; each child starts its own feature-local `sp.prd`
-and Outline confirmation. A confirmed single-product portfolio establishes one
-`001+` child and a real handoff rather than turning `000` into an implementation
-feature.
+After a validated response confirms direct children, the parent PRD records
+`Project Decomposition` and emits one `Subproject Handoff` per child. Each
+handoff carries stable identity, business goal, overall outcome, roles, owned
+capabilities and objects, scope/non-goals, upstream/downstream contracts,
+inherited constraints, sources, and unresolved questions. Each child continues
+recursive Outline generation from its own window and full source scan. Detailed
+function, Flow/UI, task, and code preparation starts only after terminal
+confirmation.
 
 Model candidate generation and the confirmed authority baseline are separate
 phases, not two permanent project structures. Analytical Outline nodes use
@@ -436,8 +349,9 @@ route. Failed exclusive creation also reports any claim-cleanup failure instead
 of hiding it. Only cleanup of an already isolated unique `.stale` file may
 degrade to a warning.
 
-Level 1 and Level 2 use `interaction_mode: discovery`; Level 3 uses
-`interaction_mode: confirmation`. Discovery writes
+Every recursive decomposition window and every terminal-detail window uses
+`interaction_mode: discovery`; only the formal review of a confirmed terminal
+Outline uses `interaction_mode: confirmation`. Discovery writes
 `specs/<feature>/prd/review/outline-discovery-data.json` and offers 2-4 candidates
 with a recommendation, none of the above, and free-form input. Its primary page
 action mechanically writes
@@ -450,7 +364,7 @@ artifacts. The reviewer returns to Codex and reruns `/sp.prd`, which validates
 and consumes the pending response. Discovery must never advance the Outline to
 `AWAITING_OUTLINE_CONFIRMATION` or `READY_FOR_SPECIFY` and never authorizes
 `sp.specify`.
-Keep Level 1 and Level 2 candidate-boundary decisions in this graphical
+Keep candidate-boundary decisions at any tree depth in this graphical
 Discovery. Do not route them to `/sp.clarify` merely because the split is
 unconfirmed, high-impact, `SPLIT_REQUIRED`, or `NEEDS_DECISION`. After creating
 or refreshing Discovery, use `NEXT_COMMAND_EXEC: None` until the pending
@@ -517,8 +431,8 @@ consumed delta appears in the intended section with a stable
 and `[src:ai-proposed]` for unaccepted candidates. Discovery schemas, response
 packages, and ledgers must not accept or emit the formal
 `outline-review-data.json` confirmation contract, and the formal confirmation
-consumer must not accept discovery artifacts. Level 3 review data is compiled
-one way by `sp.prd` from validated ledger state plus the current PRD/Outline; it
+consumer must not accept discovery artifacts. Formal terminal review data is
+compiled one way by `sp.prd` from validated ledger state plus the current PRD/Outline; it
 is not produced by a confirmation consumer reading a discovery package.
 Existing replaceable PRD entries use `<!-- intent-target:<id> -->`; replacement
 and exclusion blocks use `<!-- intent-ref:<delta-id>:<target-or-candidate-id> -->`.

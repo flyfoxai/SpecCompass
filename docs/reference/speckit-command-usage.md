@@ -198,13 +198,13 @@ DO_NOT_RUN: <当前不要运行的命令或 None>
 
 该入口只读取当前结构化 review data，逐项采用 `recommended_option`，通过正式 validator 后原子写入固定的 `*-confirmation.md`。它会在确认文档中记录 `authorization_source: explicit_recommended_command`、接受数量和 critical 数量；不会补造缺失推荐、改写 review data 或接受仍以 `needs-decision` 开头的出口。`critical` 推荐项只有在这条明确命令中才会逐项纳入授权；Outline boundary adjustment/adoption 仍必须走专用 digest-bound owner decision。默认只保存确认文档，`--advance` 才会先消费当前阶段确认，再推进到非根 `outline -> specify`、`flow -> ui` 或 `ui -> gate`。`000-*` 顶层组合根的 Outline 确认消费后改走 `/sp.route all` 选择明确的 `001+` 实施子项目，绝不运行 `/sp.specify 000-*`；任一阶段门禁失败都会停止。
 
-`000-*` 固定为 Portfolio/统筹根，只负责 PRD、Outline、全局约束、子项目交接、跨项目依赖和影响记录。即使项目最终只保留一个实施产品，也要建立一个明确的 `001+` 实施边界及其 `Subproject Handoff`；`000` 不能生成或消费 Spec、Flow、UI、Bundle、Plan、Tasks、analysis、gate 和实现产物，也不能在 review index 中声明 Flow/UI 可用。统一壳、组合控制台或跨项目旅程需要 Flow/UI 时，必须归属到可独立验收的 `001+` 子项目。
+`000-*` 是唯一顶级 Outline 单元，同时保留自己的目标、范围、整体结果、来源和全局约束。它第一次只生成一个直接后代层；后续普通单元每轮生成两层或三层，所有分支提前到达功能末端时可以提前停止。三层只表示当前导图显示窗口，不是整棵树的深度上限。拥有孩子的父单元仍然是完整 Outline 单元，不是空壳；只有确认到达 terminal 后，才进入详细功能、Flow/UI 和实现准备。
 
-默认业务资料根是仓库根 `prd/`。人工可以为具体项目或当前运行追加、或明确替换资料目录；`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。父级 handoff 和它引用的文档优先读取，但不是白名单。`001+` 生成自己的详细 Outline 时，必须在父级方向和边界内重新读取资料根中的角色、对象、规则、场景、异常、验收和风险。父子核对看范围、责任、结果、交接和全局约束，不要求两边写出相同节点。
+默认业务资料根是仓库根 `prd/`。人工可以为具体项目或当前运行追加、或明确替换资料目录；`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。父级 handoff 和它引用的文档优先读取，但不是白名单。每个子单元生成自己的 Outline 时，必须重新读取默认 `prd/`、人工指定目录、当前 feature PRD、父级引用和本地确认资料，寻找角色、对象、规则、场景、异常、验收和风险。父子核对看范围、责任、结果、交接、来源和全局约束，不要求两边写出相同节点。
 
-`000` 可以用能力原子保证来源覆盖，但不能把每个原子自动变成真实子项目。一个能力原子只归属一个直接子项目，一个直接子项目可以拥有多个能力原子和业务链。`000` 的分图只展示直接子项目的目标、拥有范围、整体结果、命名交接、来源和未决边界；内部模块、详细 Flow 和 UI 交给对应 `001/002` 自己生成。
+能力原子用于来源覆盖，不是项目数量配额。具有独立状态、独立结果或明确 handoff 的能力默认保持为松散耦合的独立候选；多个原子必须有 `grouping_basis` 说明共同目标、共同生命周期/责任主体和当前父分支内的内聚理由。每个父单元还要说明 `decomposition_basis` 或 `terminal_basis`，直接子单元必须不重叠且完整覆盖父单元的能力和业务链；不能因共享页面、数据库、运行时、阶段或团队而合并。
 
-三个设计阶段按输入递增：Outline 基于 PRD 资料；Flow 基于 PRD 资料和已确认 Outline；UI 基于 PRD 资料、已确认 Outline 和已确认 Flow。低影响、可逆选择由模型记录后继续；会改变范围、权限、安全、真实资金/数据、合规、不可逆行为、关键验收或大范围返工的决定，必须进入所属 Outline/Flow/UI Web 审核页。三层确认后，Plan、Tasks、Implement 应在框架内提高自主性，只在发现新的重大决定、上游冲突或 stale 确认时回退。
+三个设计阶段按输入递增：Outline 基于 PRD 资料；Flow 基于 PRD 资料和已确认 Outline；UI 基于 PRD 资料、已确认 Outline 和已确认 Flow。低影响、可逆选择由模型记录后继续；会改变范围、权限、安全、真实资金/数据、合规、不可逆行为、关键验收或大范围返工的决定，必须进入所属 Outline/Flow/UI Web 审核页。三阶段确认后，Plan、Tasks、Implement 应在框架内提高自主性，只在发现新的重大决定、上游冲突或 stale 确认时回退。
 
 停止规则：
 

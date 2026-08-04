@@ -1035,6 +1035,23 @@ def test_writeback_rejects_response_identity_and_source_mismatches(tmp_path, mut
     assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
 
 
+def test_writeback_rejects_schema_v4_source_without_decomposition_window(tmp_path):
+    paths = _prepare_project(tmp_path)
+    response = json.loads(paths["response"].read_text(encoding="utf-8"))
+    source = json.loads(paths["source"].read_text(encoding="utf-8"))
+    response["schema_version"] = 4
+    source["schema_version"] = 4
+    _write_json(paths["response"], response)
+    _write_json(paths["source"], source)
+
+    result = _run_writeback(tmp_path, paths)
+
+    assert result.returncode != 0
+    assert "decomposition_window" in _output(result)
+    assert not paths["ledger"].exists()
+    assert paths["prd"].read_text(encoding="utf-8") == _current_prd()
+
+
 def test_writeback_rejects_formal_outline_confirmation_package(tmp_path):
     paths = _prepare_project(tmp_path)
     formal_confirmation = {

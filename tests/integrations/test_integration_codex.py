@@ -81,7 +81,7 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert skill_file.exists()
         content = skill_file.read_text(encoding="utf-8")
         assert "Stage C - run the semantic quality gate" in content
-        assert "candidate subprojects" in content
+        assert "child Outline units" in content
         assert "Subproject Handoff" in content
         assert "Product decomposition is independent from runtime topology" in content
         assert "Transactional consistency or bidirectional business exchange requires classification" in content
@@ -89,35 +89,26 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "published service commitment" not in content
         assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in content
         assert "make confirmation of that split the default recommendation" in content
-        assert "private compilation work" in content
-        assert "source_capability_coverage serialized in this Stage is NOT private" in content
+        assert "source_capability_coverage" in content
+        assert "complete `decomposition_window`" in content
+        assert "schema version 4" in content
         assert "Generic implementation components" in content
         assert "final visible-copy sanitization pass" in content
         assert "do not announce that sanitization occurred" in content
         assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in content
-        assert "use `NEXT_COMMAND_EXEC: None` until the page has written the pending response" in content
-        assert "do not silently replace it and do not canonize it" in content
-        assert "show the original proposal beside one source-backed business alternative" in content
+        assert "use `NEXT_COMMAND_EXEC: None` until the page writes the pending response" in content
         assert "must not use Constitution content as business evidence" in content
-        assert "Level 1 owns portfolio decomposition" in content
-        assert "Allocate every source-backed capability atom exactly once" in content
-        assert "one atom may belong to only one direct project, while one direct project may own multiple atom/chain pairs" in content
-        assert "Project grouping never merges or deletes atoms" in content
-        assert "Do not generate a keep/merge question for every atom" in content
-        assert "normal fact capture and interruption recovery remain separate atom/chain pairs" in content.lower()
-        assert "parameter or rule-change governance remains a separate atom/chain pair" in content.lower()
-        assert "primary_outcome_ref" in content
-        assert "trigger_kind" in content
-        assert "Level 2 owns child-project framing" in content
-        assert "one explicit `001+` implementation boundary" in content
-        assert "Consume exactly one confirmed `Subproject Handoff`" in content
-        assert "sole implementation child is a real coordinator-to-child ownership contract" in content
-        assert "silently merge children in Level 2" in content
-        assert "exactly one confirmed `Subproject Handoff`" in content
-        assert "Level 3 is a source-preserving compilation" in content
-        assert "must not create, merge, split, or reinterpret business facts" in content
+        assert "`explore` recursively decomposes the current Outline unit" in content
+        assert "never an empty coordinator placeholder" in content
+        assert "An atom may belong to only one direct child" in content
+        assert "grouping_basis" in content
+        assert "decomposition_basis" in content
+        assert "terminal_basis" in content
+        assert "`frame` writes detailed business Outline" in content
+        assert "generates no new project levels" in content
+        assert "source-preserving formal Outline preparation" in content
+        assert "without discovering, merging, splitting, or reinterpreting business facts" in content
         assert "cross-domain substitution test" in content
-        assert "Apply the cross-domain substitution test to every chain" in content
         assert "warning signal, not a boundary decision" in content
         assert "external business obligation" in content
         assert "QMT" not in content

@@ -15,7 +15,7 @@ const write = flags.includes("--write");
 const forceLevelOne = flags.includes("--level-one");
 const data = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 if (data?.review_type !== "outline_discovery" || data?.schema_version !== 3) {
-  throw new Error("repair requires schema_version 3 outline_discovery data");
+  throw new Error("repair only supports legacy schema_version 3 outline_discovery data; regenerate schema v4 instead");
 }
 
 const asArray = (value) => Array.isArray(value) ? value : [];

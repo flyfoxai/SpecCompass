@@ -2,11 +2,14 @@
 
 import fs from "node:fs/promises";
 import { randomUUID } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 
 const OPERATIONS = new Set(["confirm_candidate", "add", "replace", "exclude", "context_note"]);
 const MATURITIES = new Set(["explore", "frame"]);
+const DISCOVERY_SCHEMA_VERSIONS = new Set([3, 4]);
 const SOURCE_TAGS = new Set(["user", "user-confirmed"]);
 const OUTLINE_MAP_KINDS = new Set(["overview", "branch", "global_constraints"]);
 const OUTLINE_NODE_KINDS = new Set([
@@ -113,7 +116,7 @@ function requireNullableString(value, label) {
 
 function validateResponseEnvelope(response) {
   requireObject(response, "response");
-  if (response.schema_version !== 3) fail("response schema_version must be 3");
+  if (!DISCOVERY_SCHEMA_VERSIONS.has(response.schema_version)) fail("response schema_version must be 3 or 4");
   if (response.format !== "speccompass-outline-discovery-response") fail("response format is not an Outline discovery response");
   if (response.review_type !== "outline_discovery") fail("response review_type must be outline_discovery");
   for (const key of ["response_id", "batch_id", "feature", "source_review_data", "generated_at"]) {
@@ -455,7 +458,7 @@ function validateBusinessAndConstitution(root, source) {
 
 function validateSourceIdentity(root, source, response, expectedSourcePath) {
   requireObject(source, "source discovery data");
-  if (source.schema_version !== 3) fail("source schema_version must be 3");
+  if (!DISCOVERY_SCHEMA_VERSIONS.has(source.schema_version)) fail("source schema_version must be 3 or 4");
   if (source.review_type !== "outline_discovery" || source.interaction_mode !== "discovery") {
     fail("source must be Outline discovery data");
   }
@@ -465,6 +468,7 @@ function validateSourceIdentity(root, source, response, expectedSourcePath) {
     requireString(source.project[key], `source project ${key}`);
   }
   if (source.project?.feature !== response.feature) fail("source feature does not match response feature");
+  if (source.schema_version !== response.schema_version) fail("source schema_version does not match response schema_version");
   if (source.batch_id !== response.batch_id) fail("source batch_id does not match response batch_id");
   if (source.outline_maturity !== response.outline_maturity) fail("source maturity does not match response maturity");
   if (source.authorization_effect !== "none" || source.next_route !== "/sp.prd") {
@@ -480,6 +484,21 @@ function validateSourceIdentity(root, source, response, expectedSourcePath) {
   }
   validateBusinessAndConstitution(root, source);
   return validateSourceTopology(source);
+}
+
+function validateV4SourceWithCanonicalValidator(root, source, sourcePath) {
+  if (source.schema_version !== 4) return;
+  const validatorPath = fileURLToPath(new URL("./validate-review-data.mjs", import.meta.url));
+  const result = spawnSync(process.execPath, [validatorPath, sourcePath], {
+    cwd: root,
+    encoding: "utf8",
+    maxBuffer: 4 * 1024 * 1024,
+  });
+  if (result.error) fail(`schema v4 source validator could not run: ${result.error.message}`);
+  if (result.status !== 0) {
+    const detail = text(result.stderr) || text(result.stdout) || `exit ${result.status}`;
+    fail(`schema v4 source failed canonical validation: ${detail}`);
+  }
 }
 
 function present(value) {
@@ -960,6 +979,7 @@ async function main() {
   const releaseLock = await acquireFeatureLock(featureRoot, response.feature);
   try {
     const source = await readJson(sourcePath.resolved, "source discovery data");
+    validateV4SourceWithCanonicalValidator(root, source, sourcePath.resolved);
     const topology = validateSourceIdentity(root, source, response, expectedSource);
     const questions = buildQuestionIndex(source, topology);
     const seenDeltaIds = new Set();

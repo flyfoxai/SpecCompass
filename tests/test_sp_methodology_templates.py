@@ -1993,7 +1993,7 @@ def test_prd_outline_graphical_confirmation_is_a_fresh_authorization_gate():
     assert "do not route directly to `/sp.specify`" in prd
     assert "encode product-boundary choices in graphical Discovery" in prd
     assert "classify the blocker before choosing its route" in prd
-    assert "changes a Level 1/2 project boundary or capability ownership" in prd
+    assert "changes a project boundary or capability ownership at any tree depth" in prd
     assert "classify missing split or human-choice evidence before recommending a route" in prd
     assert "unresolved product boundary or scope fork questions were not turned into guessed features" in prd
     assert "Requirement growth in `sp.prd` should be top-down" in command_spec
@@ -2074,7 +2074,7 @@ def test_prd_outline_graphical_confirmation_is_a_fresh_authorization_gate():
 
 
 def test_prd_outline_maturity_discovery_contract_is_documented_across_templates():
-    """Stage 1/2 discovery must stay distinct from Stage 3 authorization."""
+    """Recursive discovery must stay distinct from terminal authorization."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     design = (
         PROJECT_ROOT
@@ -2154,11 +2154,11 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "temporary" in prd
     assert "fail closed" in prd.lower()
     assert "must not invent target users, product goals, business rules, or scope" in prd
-    assert "source-backed or explicitly unresolved product subject" in prd
-    assert "at least one named role with a domain action" in prd
-    assert "failing or changing business object, operation, or result" in prd
-    assert "return the whole portfolio to `explore` only" in prd
-    assert "From `specify_ready`, return to `frame`" in prd
+    assert "recursively decomposes the current Outline unit at any project depth" in prd
+    assert "unique top unit and retains its own business goal" in prd
+    assert "formally confirmed `terminal` unit" in prd
+    assert "schema version 4" in prd
+    assert "complete `decomposition_window`" in prd
     assert "model-owned compilation step" in prd
     assert "not cross-consumption by the confirmation package parser" in prd
     assert "validator or helper is missing, crashes, or returns an invalid result" in prd
@@ -2173,26 +2173,26 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "one concrete `outline_node_id`" in prd
     assert "max_visible_nodes_per_map: 18" in prd
     assert "max_depth: 3" in prd
-    assert "Direct child count is deliberately not part of the density budget" in prd
-    assert "Level 1 boundary-note rule" in prd
-    assert "complete atom/chain allocation" in prd
-    assert "Do not expand every trigger, operation, exception, recovery step" in prd
-    assert "internal module tree, detailed scenarios, step-by-step flow" in prd
-    assert "Every visible boundary note must have a non-empty `source_refs`" in prd
-    assert "Do not emit the deprecated `density_budget.max_children_per_node` field" in prd
+    assert "`max_depth: 3` is a presentation-window limit" in prd
+    assert "Window boundary-note rule" in prd
+    assert "atom/chain allocation" in prd
+    assert "Every visible boundary note needs valid `source_refs`" in prd
+    assert "deprecated `density_budget.max_children_per_node`" in prd
     assert "max_layer_share: 0.6" in prd
     assert "affected business `node_id` values" in prd
 
     for content in (methodology, design):
         assert "XMind 风格" in content
-        assert "全局总图" in content
         assert "全局约束" in content
         assert "稳定 ID" in content
         assert "最多 18 个可见节点" in content
         assert "最多 3 层" in content
-        assert "最多 4 个直接子节点" in content
         assert "60%" in content
-    assert "候选子项目边界分图" in methodology
+    assert "当前展开根" in methodology
+    assert "不设固定子单元数量" in methodology
+    assert "全局总图" in design
+    assert "最多 4 个直接子节点" in design
+    assert "直接子单元" in methodology
     assert "业务分图" in design
     assert "do not guess or silently upcast it" in prd
     assert "do not downgrade it to an incompatible earlier contract" in prd
@@ -2202,12 +2202,12 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "installed discovery schemas, renderer modules, or launcher support are missing" in prd
     assert "specify init --force" in prd
 
-    assert "一级：项目组合边界" in methodology
-    assert "二级：单项目业务框架" in methodology
-    assert "三级：正式 Outline 编译" in methodology
-    assert "成熟度只回退到受影响的最窄层级" in methodology
+    assert "`explore` 表示当前展开窗口仍在做项目单元拆分" in methodology
+    assert "`frame` 表示一个已确认的终端单元" in methodology
+    assert "`specify_ready` 表示来源保真的正式编译" in methodology
+    assert "不存在固定的“一级/二级/三级项目”语义" in methodology
     assert "不能授权 `/sp.specify`" in methodology
-    assert "从账本生成三级正式 review data 是 `/sp.prd` 的单向编译步骤" in methodology
+    assert "从账本生成正式 review data 是 `/sp.prd` 的单向编译步骤" in methodology
     assert "不是 confirmation consumer 读取 discovery package" in methodology
     assert "连续两次临时文档验证失败" in methodology
 
@@ -2221,8 +2221,8 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "do not receive new templates automatically" in renderer_readme
 
 
-def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only():
-    """Level 1 must compile evidence into candidate product boundaries, not generic copy."""
+def test_prd_recursive_outline_uses_business_semantics_and_keeps_constitution_read_only():
+    """Every recursive window compiles business evidence instead of generic copy."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     prd = _command("prd")
     command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
@@ -2248,31 +2248,29 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
         assert "governance_only" in content
 
     assert "Stage A - extract source-backed capability atoms" in prd
-    assert "Stage B - propose candidate subprojects and compile business maps" in prd
+    assert "Stage B - recursively propose child Outline units and compile the current window" in prd
     assert "Stage C - run the semantic quality gate" in prd
     assert "capability_atoms" in prd
-    assert "normal fact capture and interruption recovery remain separate atom/chain pairs" in prd.lower()
-    assert "parameter or rule-change governance remains a separate atom/chain pair" in prd.lower()
-    assert "primary_outcome_ref" in prd
-    assert "trigger_kind" in prd
-    assert "one atom may belong to only one direct project, while one direct project may own multiple atom/chain pairs" in prd
-    assert "Project grouping never merges or deletes atoms" in prd
-    assert "Do not generate a keep/merge question for every atom" in prd
-    assert "independently verifiable overall outcome" in prd
+    assert "Each atom has exactly one matching business chain" in prd
+    assert "An atom may belong to only one direct child" in prd
+    assert "grouping_basis" in prd
+    assert "decomposition_basis" in prd
+    assert "terminal_basis" in prd
+    assert "Direct children must be non-overlapping and exactly cover their parent" in prd
+    assert "root_project_depth: 0" in prd
+    assert "generated_depth: 1" in prd
     assert "frontend, backend, database" in prd
-    assert "Do not impose a fixed project count" in prd
+    assert "Do not impose a fixed unit count" in prd
     assert "Project Decomposition" in prd
     assert "Subproject Handoff" in prd
-    assert "must not continue to `/sp.specify` as one parent product" in prd
     assert "Product decomposition is independent from runtime topology" in prd
     assert "Transactional consistency or bidirectional business exchange requires classification" in prd
     assert "regulation, contract, or multi-party legal duty" in prd
     assert "published service commitment" not in prd
     assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in prd
     assert "make confirmation of that split the default recommendation" in prd
-    assert "private compilation work" in prd
-    assert "Stage C check results and quality checklist remain private compilation work" in prd
-    assert "source_capability_coverage serialized in this Stage is NOT private" in prd
+    assert "Stage C results remain private" in prd
+    assert "`source_capability_coverage` remains required JSON evidence" in prd
     assert "Generic implementation components" in prd
     assert "is a warning signal, not a boundary decision" in prd
     assert "center/中心" in prd
@@ -2281,42 +2279,33 @@ def test_prd_level_one_uses_business_semantics_and_keeps_constitution_read_only(
     assert "final visible-copy sanitization pass" in prd
     assert "do not announce that sanitization occurred" in prd
     assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in prd
-    assert "use `NEXT_COMMAND_EXEC: None` until the page has written the pending response" in prd
-    assert "do not silently replace it and do not canonize it" in prd
-    assert "show the original proposal beside one source-backed business alternative" in prd
-    assert "complete business chain" in prd
+    assert "use `NEXT_COMMAND_EXEC: None` until the page writes the pending response" in prd
+    assert "`business_chains`" in prd
+    assert "one matching business chain" in prd
     assert "must not use Constitution content as business evidence" in prd
     assert "must not create discovery questions from Constitution clauses" in prd
     assert "must not write Constitution clauses into the PRD" in prd
     assert "must not target Constitution clauses with discovery deltas" in prd
-    assert "business capability branches" in command_spec
-    assert "candidate direct subprojects" in command_spec_text
-    assert "independently verifiable overall project outcome" in command_spec
+    assert "Direct children must be non-overlapping" in command_spec
+    assert "Every Outline unit retains its own" in command_spec_text
+    assert "business_goal" in command_spec
     assert "Subproject Handoff" in command_spec
-    assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in command_spec_text
-    assert "make confirmation of that split the default recommendation" in command_spec_text
-    assert "center/中心" in command_spec_text
-    assert "Prefixing a domain word" in command_spec_text
     assert "final visible-copy sanitization pass" in command_spec_text
-    assert "do not announce that sanitization occurred" in command_spec_text
-    assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in command_spec_text
-    assert "use `NEXT_COMMAND_EXEC: None` until the pending response or an explicit fallback file exists" in command_spec_text
+    assert "Do not announce that sanitization occurred" in command_spec_text
     assert "Constitution is displayed only as a read-only governance snapshot" in command_spec
     assert "三阶段" in methodology
     assert "能力原子" in methodology
-    assert "一个能力原子只归属一个直接子项目" in methodology
-    assert "一个直接子项目可以拥有多个能力原子和业务链" in methodology
-    assert "候选子项目" in methodology
-    assert "中心、枢纽、平台、系统、模块、工作台、网络" in methodology
-    assert "前面加上领域词" in methodology
-    assert "独立核验" in methodology
-    assert "子项目交接" in methodology
-    assert "事务一致性或双向业务交接必须先分类" in methodology
-    assert "法规、合同或多方法律义务" in methodology
-    assert "不能悄悄改写，也不能直接定案" in methodology
+    assert "一个能力原子只归属一个直接子单元" in methodology
+    assert "父单元只有在聚合依据成立时才可以包含多个能力原子和业务链" in methodology
+    assert "默认拆分、显式交接、单一业务职责、松散耦合" in methodology
+    assert "grouping_basis" in methodology
+    assert "decomposition_basis" in methodology
+    assert "terminal_basis" in methodology
+    assert "不设固定子单元数量或整棵树的最大深度" in methodology
+    assert "`000-*` 是唯一树根" in methodology
     assert "只用于内部编译" in methodology
     assert "不能仅因为拆分未确认" in methodology
-    assert "可见文本清洗" in methodology
+    assert "跨领域替换测试" in methodology
     assert "完整业务链" in methodology
 
 
@@ -2333,19 +2322,21 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
 
     assert "默认业务资料根是仓库根目录 `prd/`" in product_prd
     assert "人工可以为当前仓库或当前运行明确指定一个或多个其他资料目录" in product_prd
-    assert "一个直接子项目可以拥有多个能力原子和业务链" in product_prd
-    assert "父子核对检查的是方向、范围、归属和交接是否一致" in product_prd
+    assert "`000-*` 是唯一顶级 Outline 单元，但不是空壳协调器" in product_prd
+    assert "Outline 的树深和一次生成窗口分开管理" in product_prd
+    assert "直接子单元必须不重叠且完整覆盖父单元" in product_prd
     assert "Outline、Flow、UI 已有的图形审核" in product_prd
     assert "Plan、Tasks 和 Implement 在已确认 Outline、Flow、UI 框架内提高模型自主性" in product_prd
 
     assert "仓库根 `prd/` 是默认业务资料根" in methodology
     assert "Outline 读取 PRD 资料；Flow 读取 PRD 资料和已确认 Outline；UI 读取 PRD 资料、已确认 Outline 和已确认 Flow" in methodology
-    assert "父子核对只检查方向、范围、责任、结果、交接和全局约束" in methodology
+    assert "父子核对检查方向、范围、责任、结果、交接、来源和全局约束" in methodology
 
     assert "repository-root `prd/` directory is the default business-source corpus" in prd
     assert "Parent-child reconciliation checks direction, scope, ownership, outcomes, handoffs" in prd
-    assert "one direct project may own multiple atom/chain pairs" in prd
-    assert "Do not generate the candidate's internal module tree" in prd
+    assert "A multi-atom unit requires `grouping_basis`" in prd
+    assert "Mark a unit `expanded` only when `decomposition_basis`" in prd
+    assert "Mark it `terminal` only when `terminal_basis`" in prd
 
     assert "Stable Flow input is `PRD sources + confirmed Outline + stable Spec/clarifications`" in flow
     assert "Flow Web review" in flow
@@ -2357,11 +2348,13 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "make reversible code-level choices" in implement
 
     assert "The layered input contract is: Outline reads PRD sources" in command_spec
-    assert "one direct project may own one or more atom/chain pairs" in command_spec
+    assert "A multi-atom unit carries" in command_spec
+    assert "`grouping_basis`" in command_spec
+    assert "Only a formally confirmed terminal unit may enter `frame`" in command_spec
 
 
-def test_prd_outline_levels_have_non_overlapping_executable_contracts():
-    """Each maturity level must have one verifiable job and a narrow fallback."""
+def test_prd_recursive_outline_windows_have_non_overlapping_executable_contracts():
+    """Tree depth, generation windows, and maturity have distinct contracts."""
     methodology = METHODOLOGY_DOC.read_text(encoding="utf-8")
     prd = _command("prd")
     command_spec = COMMAND_SPEC.read_text(encoding="utf-8")
@@ -2374,50 +2367,43 @@ def test_prd_outline_levels_have_non_overlapping_executable_contracts():
         / "speckit-command-usage.md"
     ).read_text(encoding="utf-8")
 
-    assert "Level 1 owns portfolio decomposition" in prd
-    assert "Allocate every source-backed capability atom exactly once" in prd
-    assert "owned business state" in prd
-    assert "all candidate boundaries are resolved" in prd
-    assert "Level 2 owns child-project framing" in prd
-    assert "one explicit `001+` implementation boundary" in prd
-    assert "Consume exactly one confirmed `Subproject Handoff`" in prd
-    assert "sole implementation child is a real coordinator-to-child ownership contract" in prd
-    assert "silently merge children in Level 2" in prd
-    assert "exactly one confirmed `Subproject Handoff`" in prd
-    assert "must not reopen the full portfolio decomposition" in prd
-    assert "Use Level 1/2 graphical Discovery with `NEXT_COMMAND_EXEC: None`" in prd
-    assert "focused non-boundary decision that Discovery cannot express" in prd
-    assert "starting state" in prd
-    assert "resulting state or observable outcome" in prd
-    assert "Level 3 is a source-preserving compilation" in prd
-    assert "must not create, merge, split, or reinterpret business facts" in prd
-    assert "return the whole portfolio to `explore` only" in prd
-    assert "route only those boundaries for Level 1 resolution" in prd
-    assert "never implementation in `000`" in prd
+    assert "Outline Maturity` independently from project-tree depth" in prd
+    assert "`explore` recursively decomposes the current Outline unit" in prd
+    assert "never an empty coordinator placeholder" in prd
+    assert "`frame` writes detailed business Outline" in prd
+    assert "generates no new project levels" in prd
+    assert "New Outline Discovery data MUST use schema version 4" in prd
+    assert "The `000-*` decompose window MUST have" in prd
+    assert "A non-root decompose window normally has `generated_depth: 2` or `3`" in prd
+    assert "Never generate filler nodes" in prd
+    assert "Do not create a whole tree in one invocation" in prd
+    assert "every business node below a branch map's structural root MUST correspond" in prd
+    assert "generate such functional detail only in the later `detail` window" in prd
+    assert "source-preserving formal Outline preparation" in prd
+    assert "without discovering, merging, splitting, or reinterpreting business facts" in prd
 
     assert "cross-domain substitution test" in prd
-    assert "Apply the cross-domain substitution test to every chain" in prd
     assert "source-backed domain object" in prd
     assert "warning signal, not a boundary decision" in prd
     assert "external business obligation" in prd
 
-    for content in (command_spec,):
-        assert "Level 1 owns portfolio decomposition" in content
-        assert "Level 2 owns child-project framing" in content
-        assert "Level 3 is a source-preserving compilation" in content
-        assert "cross-domain substitution test" in content
+    assert "Maturity is not project-tree depth" in command_spec
+    assert "unique `000-*` top unit generates exactly one descendant level" in command_spec
+    assert "ordinary non-root `decompose` window normally generates two or three" in command_spec
+    assert "three-layer capacity is only a" in command_spec
 
-    assert "一级只负责项目组合拆分" in methodology
-    assert "一级只负责项目组合和直接子项目" in usage
+    assert "项目树深度、review level" in methodology
+    assert "第一次窗口只生成一个直接后代层" in methodology
+    assert "未登记的目标、能力、验收和其他详细说明不能伪装" in methodology
+    assert "三层仅是界面显示窗口" in usage
+    assert "普通说明节点不是下一级项目" in usage
     for content in (methodology, usage):
-        assert "二级只负责单个已确认 `001+` 实施子项目的业务闭环" in content
-        assert "三级只负责保留来源身份的正式编译" in content
+        assert "terminal" in content
         assert "跨领域替换测试" in content
-    assert "一级和二级均执行跨领域替换测试" in usage
     assert "只读治理快照" in methodology
-    assert "直接子项目" in usage
-    assert "禁止按前端、后端、数据库、API、引擎、消息队列、仓库、部署或团队拆分" in usage
-    assert "子项目交接" in usage
+    assert "直接子单元" in usage
+    assert "不能因共享页面、数据库、运行时、阶段或团队而合并" in usage
+    assert "Subproject Handoff" in usage
     assert "不能仅因为拆分未确认" in usage
     assert "可见文本清洗" in usage
 
@@ -7144,6 +7130,135 @@ def _outline_discovery_validator_sample() -> dict:
     }
 
 
+def _outline_discovery_v4_root_sample() -> dict:
+    sample = _outline_discovery_validator_sample()
+    sample = json.loads(json.dumps(sample).replace("001-outline", "000-outline"))
+    sample["schema_version"] = 4
+    source_ref = "specs/000-outline/prd.md#Core Trading Loop"
+    detail_node_ids = {"node-data", "node-strategy-risk", "node-order"}
+    sample["outline_nodes"] = [
+        node for node in sample["outline_nodes"] if node["node_id"] not in detail_node_ids
+    ]
+    constraint = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-constitution-rule")
+    constraint["affected_node_ids"] = ["node-trading-root"]
+    sample["question_groups"][0]["map_id"] = "map-overview"
+    sample["question_groups"][0]["questions"][0]["outline_node_id"] = "node-trading-entry"
+    sample["decomposition_window"] = {
+        "expansion_root_node_id": "node-project",
+        "root_project_feature": "000-outline",
+        "root_project_depth": 0,
+        "generation_mode": "decompose",
+        "generated_depth": 1,
+        "depth_decision_reason": "顶级 Outline 本轮只确认直接业务子单元，后续细节分别在子单元自己的窗口继续生成。",
+        "parent_path": [],
+        "units": [
+            {
+                "unit_id": "unit-root",
+                "outline_node_id": "node-project",
+                "parent_unit_id": None,
+                "project_depth": 0,
+                "decomposition_state": "expanded",
+                "business_goal": "把市场与账户变化组织为风险受控且可以独立核验的量化交易业务结果。",
+                "overall_outcome": "产品形成从交易事实进入到受控订单交付的完整顶级业务责任和结果边界。",
+                "capability_atom_refs": ["atom-controlled-order"],
+                "business_chain_refs": ["chain-trading-loop"],
+                "source_status": "user-confirmed",
+                "source_refs": [source_ref],
+                "decomposition_basis": {
+                    "complexity_reduction": "把顶级交易目标交给直接业务单元后，后续模型只需处理该单元拥有的状态和验收结果。",
+                    "child_boundary_summary": "直接子单元拥有从行情和账户变化到受控订单形成的完整业务责任。",
+                    "coordination_cost": "父级只保留全局约束和命名交接，子单元通过稳定订单事实与其他责任协作。",
+                    "source_status": "doc",
+                    "source_refs": [source_ref],
+                },
+            },
+            {
+                "unit_id": "unit-trading-loop",
+                "outline_node_id": "node-trading-entry",
+                "parent_unit_id": "unit-root",
+                "project_depth": 1,
+                "decomposition_state": "terminal",
+                "business_goal": "接收行情和账户变化，形成经过策略判断与风险约束的可执行交易订单。",
+                "overall_outcome": "合规意图形成可执行订单，超限意图形成带原因的风险阻断事实。",
+                "capability_atom_refs": ["atom-controlled-order"],
+                "business_chain_refs": ["chain-trading-loop"],
+                "source_status": "user-confirmed",
+                "source_refs": [source_ref],
+                "terminal_basis": {
+                    "indivisible_business_goal": "该单元围绕一个从市场变化到受控订单结果的连续业务目标完成验收。",
+                    "split_complexity_cost": "继续拆分会增加策略决定与风险结果之间的交接和重复状态管理成本。",
+                    "manageable_implementation_scope": "当前范围只包含一个触发、一个受控订单状态和一个可观察结果，模型可以独立实现。",
+                    "source_status": "doc",
+                    "source_refs": [source_ref],
+                },
+            },
+        ],
+        "frontier_unit_ids": [],
+        "terminal_unit_ids": ["unit-trading-loop"],
+    }
+    return sample
+
+
+def _outline_discovery_v4_non_root_sample() -> dict:
+    sample = json.loads(json.dumps(_outline_discovery_v4_root_sample()).replace("000-outline", "001-outline"))
+    source_ref = "specs/001-outline/prd.md#Core Trading Loop"
+    detail_source = _outline_discovery_validator_sample()
+    detail_node = json.loads(json.dumps(next(
+        node for node in detail_source["outline_nodes"] if node["node_id"] == "node-data"
+    )))
+    sample["outline_nodes"].append(detail_node)
+    root, child = sample["decomposition_window"]["units"]
+    root.update({"unit_id": "unit-current", "project_depth": 1})
+    child.update({
+        "unit_id": "unit-child",
+        "parent_unit_id": "unit-current",
+        "project_depth": 2,
+        "decomposition_state": "expanded",
+        "decomposition_basis": {
+            "complexity_reduction": "把订单形成责任继续聚焦到策略与风险结果后，单个模型上下文只维护一种业务状态。",
+            "child_boundary_summary": "下一层只拥有交易意图裁定和受控订单结果之间的业务责任。",
+            "coordination_cost": "子层通过风险决定和订单事实交接，不读取相邻责任的内部实现。",
+            "source_status": "doc",
+            "source_refs": [source_ref],
+        },
+    })
+    child.pop("terminal_basis")
+    sample["decomposition_window"].update({
+        "root_project_feature": "001-outline",
+        "root_project_depth": 1,
+        "generated_depth": 2,
+        "depth_decision_reason": "当前普通单元仍包含可继续聚焦的业务责任，本轮生成两层即可在界面中完整判断其末端。",
+        "parent_path": [{"unit_id": "unit-portfolio", "label": "量化交易工作台", "project_depth": 0}],
+        "units": [
+            root,
+            child,
+            {
+                "unit_id": "unit-leaf",
+                "outline_node_id": "node-data",
+                "parent_unit_id": "unit-child",
+                "project_depth": 3,
+                "decomposition_state": "terminal",
+                "business_goal": "根据行情和账户事实裁定交易意图，并输出经过风险约束的订单结果。",
+                "overall_outcome": "交易意图得到可执行订单或带明确原因的阻断事实，能够独立验收。",
+                "capability_atom_refs": ["atom-controlled-order"],
+                "business_chain_refs": ["chain-trading-loop"],
+                "source_status": "user-confirmed",
+                "source_refs": [source_ref],
+                "terminal_basis": {
+                    "indivisible_business_goal": "该叶子只负责一次交易意图裁定和一个受控订单结果，业务目标已经单一。",
+                    "split_complexity_cost": "继续拆会把一次裁定拆成相互等待的状态和人工交接，增加管理复杂度。",
+                    "manageable_implementation_scope": "单一触发、单一状态和单一结果已足够小，适合模型独立生成详细功能和代码。",
+                    "source_status": "doc",
+                    "source_refs": [source_ref],
+                },
+            },
+        ],
+        "frontier_unit_ids": [],
+        "terminal_unit_ids": ["unit-leaf"],
+    })
+    return sample
+
+
 def _add_second_atom_to_current_level_one_project(sample: dict) -> None:
     """Add a second atom/chain pair owned by the existing direct project."""
     source_ref = "specs/001-outline/prd.md#Core Trading Loop"
@@ -7207,6 +7322,13 @@ def _add_second_atom_to_current_level_one_project(sample: dict) -> None:
     project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
     project["business_chain_refs"].append("chain-risk-decision")
     project["capability_atom_refs"].append("atom-risk-decision")
+    project["aggregation_basis"] = {
+        "authority": "doc",
+        "shared_business_goal": "两个能力共同完成从交易意图到受控订单的单一业务目标。",
+        "shared_lifecycle_or_owner": "同一交易控制责任在订单形成生命周期内持续拥有两项业务状态。",
+        "split_acceptance_harm": "拆开后风险决定与订单结果无法通过独立业务交接完成整体业务验收。",
+        "source_refs": [source_ref],
+    }
     branch_root = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-root")
     branch_root["business_chain_refs"].append("chain-risk-decision")
     for candidate in sample["question_groups"][0]["questions"][0]["candidates"]:
@@ -7316,12 +7438,19 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         assert path.is_file(), path
 
     discovery = json.loads(OUTLINE_DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
-    assert discovery["properties"]["schema_version"] == {"const": 3}
+    assert discovery["properties"]["schema_version"] == {"const": 4}
     assert discovery["properties"]["review_type"] == {"const": "outline_discovery"}
     assert discovery["properties"]["interaction_mode"] == {"const": "discovery"}
     assert discovery["properties"]["outline_maturity"]["enum"] == ["explore", "frame"]
     assert discovery["properties"]["authorization_effect"] == {"const": "none"}
-    assert {"business_context", "constitution_snapshot", "density_budget", "maps", "outline_nodes"} <= set(discovery["required"])
+    assert {
+        "decomposition_window",
+        "business_context",
+        "constitution_snapshot",
+        "density_budget",
+        "maps",
+        "outline_nodes",
+    } <= set(discovery["required"])
     assert "capability_atoms" in discovery["properties"]["business_context"]["required"]
     assert "trigger_kind" in discovery["$defs"]["capability_atom"]["required"]
     assert discovery["$defs"]["capability_atom"]["properties"]["trigger_kind"]["enum"] == [
@@ -7348,6 +7477,52 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert constitution_path["pattern"] == r"^(?!/)(?![A-Za-z]:/)(?!\.\.?(?:/|$))(?!.*\/\.\.?(?:/|$))(?!.*//)[^/]+(?:/[^/]+)*$"
     assert "business_chain_refs" in discovery["$defs"]["outline_node"]["properties"]
     assert "capability_atom_refs" in discovery["$defs"]["outline_node"]["properties"]
+    assert "aggregation_basis" not in discovery["$defs"]["outline_node"]["properties"]
+    decomposition_window = discovery["$defs"]["decomposition_window"]
+    assert set(decomposition_window["required"]) == {
+        "expansion_root_node_id",
+        "root_project_feature",
+        "root_project_depth",
+        "generation_mode",
+        "generated_depth",
+        "depth_decision_reason",
+        "parent_path",
+        "units",
+        "frontier_unit_ids",
+        "terminal_unit_ids",
+    }
+    outline_unit = discovery["$defs"]["outline_unit"]
+    assert {
+        "unit_id",
+        "outline_node_id",
+        "parent_unit_id",
+        "project_depth",
+        "decomposition_state",
+        "business_goal",
+        "overall_outcome",
+        "capability_atom_refs",
+        "business_chain_refs",
+        "source_status",
+        "source_refs",
+    } <= set(outline_unit["required"])
+    grouping_basis = discovery["$defs"]["grouping_basis"]
+    assert set(grouping_basis["required"]) == {
+        "authority",
+        "shared_business_goal",
+        "shared_lifecycle_or_owner",
+        "parent_cohesion",
+        "source_refs",
+    }
+    assert grouping_basis["properties"]["authority"]["enum"] == [
+        "user",
+        "user-confirmed",
+        "doc",
+        "ai-proposed",
+        "unresolved",
+    ]
+    assert grouping_basis["properties"]["parent_cohesion"]["minLength"] == 20
+    assert "decomposition_basis" in discovery["$defs"]
+    assert "terminal_basis" in discovery["$defs"]
     assert "constitution_clause_refs" in discovery["$defs"]["outline_node"]["properties"]
     assert discovery["properties"]["density_budget"]["properties"] == {
         "max_visible_nodes_per_map": {"const": 18},
@@ -7382,7 +7557,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     }
 
     response = json.loads(OUTLINE_DISCOVERY_RESPONSE_SCHEMA.read_text(encoding="utf-8"))
-    assert response["properties"]["schema_version"] == {"const": 3}
+    assert response["properties"]["schema_version"] == {"enum": [3, 4]}
     assert response["properties"]["format"] == {"const": "speccompass-outline-discovery-response"}
     assert response["properties"]["authorization_effect"] == {"const": "none"}
     assert response["properties"]["next_route"] == {"const": "/sp.prd"}
@@ -7394,6 +7569,14 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "context_note",
     ]
     assert "outline_node_id" in response["$defs"]["delta"]["required"]
+    response_package = (
+        REVIEW_ROOT / "renderer" / "scripts" / "discovery-response-package.js"
+    ).read_text(encoding="utf-8")
+    assert "schema_version: reviewData.schema_version" in response_package
+    simple_overlays = (
+        REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js"
+    ).read_text(encoding="utf-8")
+    assert "new Set([1, 2, 3, 4])" in simple_overlays
 
     ledger = json.loads(OUTLINE_INTENT_LEDGER_SCHEMA.read_text(encoding="utf-8"))
     assert ledger["properties"]["schema_version"] == {"const": 3}
@@ -7404,6 +7587,260 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
 
     accepted = _run_review_validator(_outline_discovery_validator_sample(), tmp_path / "discovery-valid.json")
     assert accepted.returncode == 0, _review_validator_output(accepted)
+
+
+def test_outline_discovery_v4_accepts_top_level_one_layer_window(tmp_path):
+    result = _run_review_validator(
+        _outline_discovery_v4_root_sample(),
+        tmp_path / "discovery-v4-root-valid.json",
+    )
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v4_accepts_non_root_two_layer_window(tmp_path):
+    result = _run_review_validator(
+        _outline_discovery_v4_non_root_sample(),
+        tmp_path / "discovery-v4-non-root-valid.json",
+    )
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v4_rejects_top_level_grandchildren(tmp_path):
+    sample = _outline_discovery_v4_root_sample()
+    window = sample["decomposition_window"]
+    child = window["units"][1]
+    child["decomposition_state"] = "expanded"
+    child["decomposition_basis"] = json.loads(json.dumps(window["units"][0]["decomposition_basis"]))
+    child.pop("terminal_basis")
+    leaf = json.loads(json.dumps(child))
+    leaf.update(
+        {
+            "unit_id": "unit-grandchild",
+            "outline_node_id": "node-trading-root",
+            "parent_unit_id": child["unit_id"],
+            "project_depth": 2,
+            "decomposition_state": "terminal",
+            "terminal_basis": json.loads(json.dumps(_outline_discovery_v4_non_root_sample()["decomposition_window"]["units"][-1]["terminal_basis"])),
+        }
+    )
+    leaf.pop("decomposition_basis")
+    window["units"].append(leaf)
+    window["generated_depth"] = 2
+    window["terminal_unit_ids"] = [leaf["unit_id"]]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-root-too-deep.json")
+    assert result.returncode != 0
+    assert "000 top Outline unit must generate exactly one direct descendant level" in _review_validator_output(result)
+
+
+def test_outline_discovery_v4_rejects_short_non_root_window_with_frontier(tmp_path):
+    sample = _outline_discovery_v4_non_root_sample()
+    window = sample["decomposition_window"]
+    window["units"] = window["units"][:2]
+    child = window["units"][1]
+    child["decomposition_state"] = "frontier"
+    child.pop("decomposition_basis")
+    window["generated_depth"] = 1
+    window["frontier_unit_ids"] = [child["unit_id"]]
+    window["terminal_unit_ids"] = []
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-non-root-too-shallow.json")
+    assert result.returncode != 0
+    assert "must generate two or three levels unless every branch terminates earlier" in _review_validator_output(result)
+
+
+def test_outline_discovery_v4_allows_early_stop_when_current_root_is_terminal(tmp_path):
+    sample = _outline_discovery_v4_non_root_sample()
+    window = sample["decomposition_window"]
+    root = window["units"][0]
+    root["decomposition_state"] = "terminal"
+    root["terminal_basis"] = json.loads(json.dumps(window["units"][-1]["terminal_basis"]))
+    root.pop("decomposition_basis")
+    window["units"] = [root]
+    window["generated_depth"] = 0
+    window["frontier_unit_ids"] = []
+    window["terminal_unit_ids"] = [root["unit_id"]]
+    sample["outline_nodes"] = [
+        node for node in sample["outline_nodes"] if node["node_id"] != "node-data"
+    ]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-early-terminal.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected"),
+    [
+        (
+            lambda sample: sample["decomposition_window"]["units"][0].update({"business_goal": ""}),
+            "business_goal is required",
+        ),
+        (
+            lambda sample: sample["decomposition_window"]["units"][1].pop("terminal_basis"),
+            "terminal_basis is required",
+        ),
+    ],
+)
+def test_outline_discovery_v4_requires_unit_content_and_state_basis(tmp_path, mutation, expected):
+    sample = _outline_discovery_v4_root_sample()
+    mutation(sample)
+    result = _run_review_validator(sample, tmp_path / f"discovery-v4-required-{expected.split()[0]}.json")
+    assert result.returncode != 0
+    assert expected in _review_validator_output(result)
+
+
+def test_outline_discovery_v4_rejects_frontier_with_premature_terminal_basis(tmp_path):
+    sample = _outline_discovery_v4_root_sample()
+    window = sample["decomposition_window"]
+    child = window["units"][1]
+    child["decomposition_state"] = "frontier"
+    window["frontier_unit_ids"] = [child["unit_id"]]
+    window["terminal_unit_ids"] = []
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-frontier-basis.json")
+    assert result.returncode != 0
+    assert "frontier units must not claim a decomposition or terminal decision" in _review_validator_output(result)
+
+
+def test_outline_discovery_v4_rejects_overlapping_sibling_coverage(tmp_path):
+    sample = _outline_discovery_v4_root_sample()
+    window = sample["decomposition_window"]
+    sibling = json.loads(json.dumps(window["units"][1]))
+    sibling.update({"unit_id": "unit-overlap", "outline_node_id": "node-trading-root"})
+    window["units"].append(sibling)
+    window["terminal_unit_ids"].append(sibling["unit_id"])
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-overlap.json")
+    assert result.returncode != 0
+    assert "must not overlap capability atom" in _review_validator_output(result)
+
+
+def test_outline_discovery_v4_requires_grouping_basis_for_multi_atom_unit(tmp_path):
+    sample = _outline_discovery_v4_root_sample()
+    _add_second_atom_to_current_level_one_project(sample)
+    project_link = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project_link.pop("aggregation_basis")
+    for unit in sample["decomposition_window"]["units"]:
+        unit["capability_atom_refs"].append("atom-risk-decision")
+        unit["business_chain_refs"].append("chain-risk-decision")
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-missing-grouping.json")
+    assert result.returncode != 0
+    assert "grouping_basis is required" in _review_validator_output(result)
+
+
+def test_outline_discovery_v4_accepts_detail_only_for_confirmed_terminal(tmp_path):
+    sample = _outline_discovery_v4_non_root_sample()
+    window = sample["decomposition_window"]
+    root = json.loads(json.dumps(window["units"][-1]))
+    root["parent_unit_id"] = None
+    window.update(
+        {
+            "expansion_root_node_id": root["outline_node_id"],
+            "root_project_depth": 3,
+            "generation_mode": "detail",
+            "generated_depth": 0,
+            "parent_path": [
+                {"unit_id": "unit-portfolio", "label": "量化交易工作台", "project_depth": 0},
+                {"unit_id": "unit-current", "label": "交易闭环", "project_depth": 1},
+                {"unit_id": "unit-child", "label": "交易意图裁定", "project_depth": 2},
+            ],
+            "units": [root],
+            "frontier_unit_ids": [],
+            "terminal_unit_ids": [root["unit_id"]],
+        }
+    )
+    sample["outline_maturity"] = "frame"
+
+    accepted = _run_review_validator(sample, tmp_path / "discovery-v4-detail-valid.json")
+    assert accepted.returncode == 0, _review_validator_output(accepted)
+
+    sample["decomposition_window"]["units"][0]["terminal_basis"]["source_status"] = "ai-proposed"
+    rejected = _run_review_validator(sample, tmp_path / "discovery-v4-detail-unconfirmed.json")
+    assert rejected.returncode != 0
+    assert "detail framing requires a documented or human-confirmed terminal_basis" in _review_validator_output(rejected)
+
+
+def test_outline_discovery_v4_rejects_unit_source_ref_outside_snapshot(tmp_path):
+    sample = _outline_discovery_v4_root_sample()
+    sample["decomposition_window"]["units"][1]["source_refs"] = [
+        "specs/000-outline/prd.md#Missing Heading"
+    ]
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-invalid-source-ref.json")
+    assert result.returncode != 0
+    assert "source_refs must reference source_snapshot and its declared anchors" in _review_validator_output(result)
+
+
+def test_outline_discovery_v4_rejects_detail_nodes_hidden_in_decompose_maps(tmp_path):
+    sample = _outline_discovery_v4_root_sample()
+    source = _outline_discovery_validator_sample()
+    detail_node = json.loads(json.dumps(next(
+        node for node in source["outline_nodes"] if node["node_id"] == "node-data"
+    )).replace("001-outline", "000-outline"))
+    sample["outline_nodes"].append(detail_node)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-hidden-detail.json")
+    assert result.returncode != 0
+    assert "move detail node node-data to the terminal unit's detail window" in _review_validator_output(result)
+
+
+def test_outline_discovery_v4_rejects_cycles_and_browser_duplicate_window_ids(tmp_path):
+    sample = _outline_discovery_v4_root_sample()
+    root, child = sample["decomposition_window"]["units"]
+    root["parent_unit_id"] = child["unit_id"]
+    root["project_depth"] = 2
+    child["parent_unit_id"] = root["unit_id"]
+    child["project_depth"] = 3
+    result = _run_review_validator(sample, tmp_path / "discovery-v4-cycle.json")
+    assert result.returncode != 0
+    assert "must not contain parent cycles" in _review_validator_output(result)
+
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer runtime tests")
+    overlays = REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js"
+    state_store = REVIEW_ROOT / "renderer" / "scripts" / "state-store.js"
+    data_validator = REVIEW_ROOT / "renderer" / "scripts" / "data-validator.js"
+    valid_sample = _outline_discovery_v4_root_sample()
+    detail_source = _outline_discovery_validator_sample()
+    forbidden_detail = json.loads(json.dumps(next(
+        node for node in detail_source["outline_nodes"] if node["node_id"] == "node-data"
+    )).replace("001-outline", "000-outline"))
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = [
+  {json.dumps(str(overlays))},
+  {json.dumps(str(state_store))},
+  {json.dumps(str(data_validator))}
+].map((path) => fs.readFileSync(path, "utf8")).join(String.fromCharCode(10));
+const context = {{
+  window: {{ SpecCompassDom: {{}} }},
+  localStorage: {{ setItem: () => undefined, removeItem: () => undefined, getItem: () => null }},
+  console
+}};
+vm.createContext(context);
+vm.runInContext(source, context);
+const valid = {json.dumps(valid_sample, ensure_ascii=False)};
+if (context.validateReviewData(valid) !== "") throw new Error("valid v4 discovery rejected");
+const duplicateIds = structuredClone(valid);
+duplicateIds.decomposition_window.terminal_unit_ids.push("unit-trading-loop");
+const duplicateError = context.validateReviewData(duplicateIds);
+if (!duplicateError.includes("重复")) throw new Error("duplicate window ID was not rejected: " + duplicateError);
+const cyclic = structuredClone(valid);
+const units = cyclic.decomposition_window.units;
+units[0].parent_unit_id = units[1].unit_id;
+units[0].project_depth = 2;
+units[1].parent_unit_id = units[0].unit_id;
+units[1].project_depth = 3;
+const cycleError = context.validateReviewData(cyclic);
+if (!cycleError.includes("循环")) throw new Error("parent cycle was not rejected: " + cycleError);
+const hiddenDetail = structuredClone(valid);
+hiddenDetail.outline_nodes.push({json.dumps(forbidden_detail, ensure_ascii=False)});
+const detailError = context.validateReviewData(hiddenDetail);
+if (!detailError.includes("detail")) throw new Error("decompose detail node was not rejected: " + detailError);
+"""
+    browser = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
+    assert browser.returncode == 0, browser.stderr or browser.stdout
 
 
 def test_outline_discovery_rejects_generic_two_node_branch_skeleton(tmp_path):
@@ -7620,14 +8057,79 @@ def test_outline_discovery_structure_repair_restores_source_when_validation_fail
     assert review_path.read_text(encoding="utf-8") == original
 
 
-def test_outline_discovery_accepts_multiple_atom_chain_pairs_in_one_direct_project(tmp_path):
-    """A direct project may own multiple complete atom/chain pairs."""
+def test_outline_discovery_accepts_evidence_backed_multiple_atom_project(tmp_path):
+    """A direct project may aggregate atoms only with formal business evidence."""
     sample = _outline_discovery_validator_sample()
     _add_second_atom_to_current_level_one_project(sample)
 
     result = _run_review_validator(sample, tmp_path / "discovery-multi-atom-project.json")
 
     assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_multiple_atom_project_without_aggregation_basis(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    _add_second_atom_to_current_level_one_project(sample)
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    del project["aggregation_basis"]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-multi-atom-without-basis.json")
+
+    assert result.returncode != 0
+    assert "groups multiple capability atoms without a documented or human-supplied aggregation_basis" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_ai_proposed_multi_atom_aggregation(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    _add_second_atom_to_current_level_one_project(sample)
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project["aggregation_basis"]["authority"] = "ai-proposed"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-ai-proposed-aggregation.json")
+
+    assert result.returncode != 0
+    assert "aggregation_basis.authority must be doc, user, or user-confirmed" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_multi_atom_project_with_ai_proposed_status(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    _add_second_atom_to_current_level_one_project(sample)
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project["source_status"] = "ai-proposed"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-ai-proposed-project-status.json")
+
+    assert result.returncode != 0
+    assert "requires documented or human-supplied source_status" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_multi_atom_aggregation_with_unknown_source(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    _add_second_atom_to_current_level_one_project(sample)
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project["aggregation_basis"]["source_refs"] = ["specs/001-outline/prd.md#Missing Aggregation Decision"]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-aggregation-unknown-source.json")
+
+    assert result.returncode != 0
+    assert "aggregation_basis: source_refs must reference source_snapshot and its declared anchors" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_aggregation_basis_on_single_atom_project(tmp_path):
+    sample = _outline_discovery_validator_sample()
+    project = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    project["aggregation_basis"] = {
+        "authority": "doc",
+        "shared_business_goal": "这个单一能力已经独立完成受控订单形成的完整业务目标。",
+        "shared_lifecycle_or_owner": "同一交易控制责任独立拥有该能力对应的完整业务生命周期。",
+        "split_acceptance_harm": "当前只有一个能力原子，因此不存在需要说明的跨原子拆分影响。",
+        "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
+    }
+
+    result = _run_review_validator(sample, tmp_path / "discovery-single-atom-with-basis.json")
+
+    assert result.returncode != 0
+    assert "must not declare aggregation_basis when it owns one capability atom" in _review_validator_output(result)
 
 
 def test_outline_discovery_rejects_project_chain_set_that_does_not_match_owned_atoms(tmp_path):
@@ -8340,6 +8842,7 @@ def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_sele
         "outlineDiscoveryNodesForMap",
         "outlineDiscoveryMapRootChildren",
         "outlineDiscoveryOverviewPreviewEntries",
+        "outlineDiscoveryVisibleNodeOrdinal",
         "captureOutlineDiscoveryViewport",
         "restoreOutlineDiscoveryViewport",
         "renderOutlineDiscoveryMindmap",
@@ -8419,6 +8922,12 @@ if (JSON.stringify(counts) !== JSON.stringify({{"link-a": 2, "link-b": 0, "link-
 if (entries.some((entry) => entry.node.node_id === "a-deep")) throw new Error("deep descendants leaked into overview preview");
 if (new Set(entries.map((entry) => entry.key)).size !== entries.length) throw new Error("preview render keys are not unique");
 if (entries.some((entry) => !entry.key.startsWith("preview:" + entry.parentId + ":"))) throw new Error("preview key lost map-link ownership");
+data.schema_version = 4;
+data.decomposition_window = {{ units: [{{ outline_node_id: "a-1" }}] }};
+const recursiveEntries = context.outlineDiscoveryOverviewPreviewEntries(overview, data);
+if (recursiveEntries.length !== 1 || recursiveEntries[0].node.node_id !== "a-1") {{
+  throw new Error("v4 overview projected explanatory nodes as project units: " + JSON.stringify(recursiveEntries.map((entry) => entry.node.node_id)));
+}}
 """
     result = subprocess.run(["node", "-e", node_program], capture_output=True, text=True, check=False)
     assert result.returncode == 0, result.stderr or result.stdout
@@ -8488,6 +8997,7 @@ def test_outline_discovery_renderer_uses_business_context_and_shows_constitution
         "parentNodeId",
         "childNodeId",
         "总图第三列是各分图根节点的直接子节点预览",
+        "普通说明节点留在所属分图",
         'relationshipType: options.previewMapId ? "child_map_preview" : "in_map_parent"',
         "previewNodeCount",
         "thirdLevelNodeCount",

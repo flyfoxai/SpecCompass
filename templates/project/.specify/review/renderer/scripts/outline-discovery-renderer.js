@@ -133,6 +133,9 @@ function outlineDiscoverySemanticNodeOrdinal(node, map, data = reviewData) {
 
 function outlineDiscoveryOverviewPreviewEntries(map, data = reviewData) {
   if (map?.map_kind !== "overview") return [];
+  const recursiveUnitNodeIds = data?.schema_version === 4
+    ? new Set((data?.decomposition_window?.units || []).map((unit) => unit.outline_node_id))
+    : null;
   const overviewNodes = outlineDiscoveryNodesForMap(map.map_id, data);
   const rootLinks = overviewNodes.filter(
     (node) => node.parent_node_id === map.root_node_id && node.node_kind === "map_link" && node.child_map_id
@@ -140,18 +143,29 @@ function outlineDiscoveryOverviewPreviewEntries(map, data = reviewData) {
   return rootLinks.flatMap((mapLink) => {
     const childMap = outlineDiscoveryMap(mapLink.child_map_id, data);
     if (!childMap) return [];
-    return outlineDiscoveryMapRootChildren(childMap.map_id, data).map((node) => ({
+    return outlineDiscoveryMapRootChildren(childMap.map_id, data)
+      .filter((node) => !recursiveUnitNodeIds || recursiveUnitNodeIds.has(node.node_id))
+      .map((node) => ({
       node,
       key: `preview:${mapLink.node_id}:${node.node_id}`,
       parentId: mapLink.node_id,
       previewMapId: childMap.map_id,
       previewMapTitle: childMap.title
-    }));
+      }));
   });
 }
 
 function outlineDiscoveryNode(nodeId, data = reviewData) {
   return outlineDiscoveryNodes(data).find((node) => node.node_id === nodeId) || null;
+}
+
+function outlineDiscoveryUnitForNode(nodeId, data = reviewData) {
+  return (data?.decomposition_window?.units || []).find((unit) => unit.outline_node_id === nodeId) || null;
+}
+
+function outlineDiscoveryVisibleNodeOrdinal(node, ordinal, data = reviewData) {
+  if (data?.schema_version === 4 && !outlineDiscoveryUnitForNode(node?.node_id, data)) return "";
+  return ordinal || "";
 }
 
 function outlineDiscoveryQuestions(data = reviewData) {
@@ -248,8 +262,11 @@ function normalizeOutlineDiscoveryDraftForOperation(response) {
 function updateOutlineDiscoveryProgress() {
   const questions = outlineDiscoveryQuestions();
   const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
+  const window = reviewData?.decomposition_window;
   $("rail-summary").textContent = `已回应 ${completed}/${questions.length} 个探索问题。先看导图，再按节点补充；每次输出都只回到 /sp.prd。`;
-  $("live-status").textContent = `探索成熟度：${reviewData?.outline_maturity || "explore"}；授权效果：none。`;
+  $("live-status").textContent = window
+    ? `当前窗口向下生成 ${window.generated_depth} 层；待继续 ${window.frontier_unit_ids?.length || 0} 项；末端 ${window.terminal_unit_ids?.length || 0} 项。`
+    : `探索成熟度：${reviewData?.outline_maturity || "explore"}；授权效果：none。`;
 }
 
 function leaveOutlineDiscoveryMode() {
@@ -285,7 +302,7 @@ function renderOutlineDiscovery(data = reviewData) {
   steps.replaceChildren();
   for (const text of [
     "先核对业务闭环和能力分支，再点击节点查看与该业务有关的问题。",
-    "一级、二级需要你确认或补充；更细内容只能依据已确认业务事实继续展开。",
+    "任意树深的项目边界都需要你确认或补充；普通说明节点不代表下一级项目。",
     "保存后把结构化探索响应写入项目，再回到 /sp.prd；本页没有授权能力。"
   ]) appendText(steps, "li", text);
   renderOutlineDiscoveryMaps();
@@ -811,7 +828,9 @@ function renderOutlineDiscoveryMindmap(map) {
   canvas.dataset.connectionCount = String(connections.length);
   const hint = create("p", "discovery-mindmap-hint");
   hint.textContent = map.map_kind === "overview"
-    ? "总图第三列是各分图根节点的直接子节点预览；预览线按分图入口建立，点击节点可进入对应分图。"
+    ? reviewData?.schema_version === 4
+      ? "总图只把本轮分解窗口登记的 Outline 单元投影为项目层级；普通说明节点留在所属分图。"
+      : "总图第三列是各分图根节点的直接子节点预览；预览线按分图入口建立，点击节点可进入对应分图。"
     : "连线按 parent_node_id 展示当前导图内的真实父子关系；第三列按第二列父节点归组。";
   canvas.appendChild(hint);
   scheduleOutlineDiscoveryConnectors(canvas, connections, nodeElements);
@@ -923,10 +942,12 @@ function outlineDiscoveryNodePresentation(node, map = outlineDiscoveryMap(outlin
 }
 
 function outlineDiscoveryNodeLevelLabel(node, depth, map = outlineDiscoveryMap(outlineDiscoveryActiveMapId)) {
-  if (depth <= 1) return map?.map_kind === "overview" ? "总图顶层" : "分图总项";
-  if (depth === 2) return node?.child_map_id ? "一级总项 / 分图入口" : "一级分支";
-  if (depth === 3) return "下级分项";
-  return `第 ${depth} 级节点`;
+  const outlineUnit = outlineDiscoveryUnitForNode(node?.node_id);
+  if (outlineUnit) return `项目树深 ${outlineUnit.project_depth} · Outline 单元`;
+  if (depth <= 1) return map?.map_kind === "overview" ? "总图根单元" : "本图主题";
+  if (depth === 2) return node?.child_map_id ? "本图单元 / 分图入口" : "本图分支";
+  if (depth === 3) return "本图下级说明";
+  return `本图第 ${depth} 层节点`;
 }
 
 function outlineDiscoveryNodeAncestry(node, presentation) {
@@ -945,6 +966,7 @@ function renderOutlineDiscoveryNode(node, options = {}) {
   const questions = outlineDiscoveryQuestionsForNode(node.node_id);
   const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
   const isPreview = Boolean(options.previewMapId);
+  const outlineUnit = outlineDiscoveryUnitForNode(node.node_id);
   const visualState = outlineDiscoveryQuestionState(node, completed, questions.length);
   const button = create("button", [
     "discovery-mindmap-node",
@@ -963,7 +985,8 @@ function renderOutlineDiscoveryNode(node, options = {}) {
     button.classList.add("is-map-preview");
   }
   const title = create("strong", "discovery-node-title");
-  appendText(title, "span", options.ordinal || "", "discovery-node-ordinal");
+  const visibleOrdinal = outlineDiscoveryVisibleNodeOrdinal(node, options.ordinal);
+  appendText(title, "span", visibleOrdinal, "discovery-node-ordinal");
   appendText(title, "span", node.label || node.node_id);
   button.appendChild(title);
   appendText(button, "span", node.summary || "");
@@ -971,6 +994,10 @@ function renderOutlineDiscoveryNode(node, options = {}) {
   const meta = create("small", "discovery-node-meta");
   appendText(meta, "span", outlineDiscoverySourceStatusLabel(node.source_status || "unresolved"), `discovery-source-status source-${safeClassToken(node.source_status || "unresolved")}`);
   appendText(meta, "span", questions.length ? `${completed}/${questions.length} 个问题` : "无待回应问题");
+  if (outlineUnit) {
+    const unitStateLabels = { expanded: "已展开", frontier: "待继续", terminal: "功能末端" };
+    appendText(meta, "span", `树深 ${outlineUnit.project_depth} · ${unitStateLabels[outlineUnit.decomposition_state] || outlineUnit.decomposition_state}`);
+  }
   footer.appendChild(meta);
   if (isPreview) appendText(footer, "span", `来自分图：${options.previewMapTitle || "进入查看"}`, "discovery-map-preview-badge");
   if (node.child_map_id) appendText(footer, "span", "进入分图 ↗", "discovery-map-link");
@@ -1015,9 +1042,10 @@ function renderOutlineDiscoveryRail() {
   panel.classList.add(`is-${visualState}`);
   panel.dataset.reviewState = visualState;
   panel.dataset.depth = String(presentation.depth);
-  panel.dataset.nodeOrdinal = presentation.ordinal;
+  const visibleOrdinal = outlineDiscoveryVisibleNodeOrdinal(node, presentation.ordinal);
+  panel.dataset.nodeOrdinal = visibleOrdinal;
   const header = create("div", "discovery-node-panel-header");
-  appendText(header, "span", presentation.ordinal || "--", "discovery-node-panel-ordinal");
+  appendText(header, "span", visibleOrdinal || "说明", "discovery-node-panel-ordinal");
   const heading = create("div", "discovery-node-panel-heading");
   appendText(heading, "span", outlineDiscoveryNodeLevelLabel(node, presentation.depth, activeMap), "discovery-node-level-label");
   appendText(heading, "h3", node.label || node.node_id);
@@ -1035,7 +1063,12 @@ function renderOutlineDiscoveryRail() {
       const parentDepth = presentation.visualDepthById.get(parent.node_id) || 1;
       const item = create("li");
       item.dataset.depth = String(parentDepth);
-      appendText(item, "span", presentation.ordinalById.get(parent.node_id) || "", "discovery-node-trail-ordinal");
+      appendText(
+        item,
+        "span",
+        outlineDiscoveryVisibleNodeOrdinal(parent, presentation.ordinalById.get(parent.node_id)) || "说明",
+        "discovery-node-trail-ordinal"
+      );
       appendText(item, "span", parent.label || parent.node_id, "discovery-node-trail-label");
       trail.appendChild(item);
     }
@@ -1069,7 +1102,7 @@ function renderOutlineDiscoveryNodeQuestions(node, nodeList = $("node-list"), pr
   const questionPanel = create("section", "discovery-question-panel");
   appendText(questionPanel, "h3", "只确认这个节点");
   appendText(questionPanel, "p", "候选只是模型建议。请选择、排除或直接输入；未被选择的候选仍是 [src:ai-proposed]。", "discovery-panel-note");
-  const baseOrdinal = presentation?.ordinal || "";
+  const baseOrdinal = outlineDiscoveryVisibleNodeOrdinal(node, presentation?.ordinal);
   for (const [index, question] of questions.entries()) {
     const questionOrdinal = baseOrdinal ? `${baseOrdinal}-Q${index + 1}` : `Q${index + 1}`;
     questionPanel.appendChild(renderOutlineDiscoveryQuestion(question, questionOrdinal));

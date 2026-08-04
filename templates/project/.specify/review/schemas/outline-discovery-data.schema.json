@@ -6,13 +6,13 @@
   "additionalProperties": false,
   "required": [
     "schema_version", "review_type", "interaction_mode", "artifact_path",
-    "outline_maturity", "batch_id", "project", "source_snapshot",
+    "outline_maturity", "batch_id", "project", "decomposition_window", "source_snapshot",
     "business_context", "constitution_snapshot",
     "density_budget", "maps", "outline_nodes", "question_groups",
     "authorization_effect", "next_route"
   ],
   "properties": {
-    "schema_version": {"const": 3},
+    "schema_version": {"const": 4},
     "review_type": {"const": "outline_discovery"},
     "interaction_mode": {"const": "discovery"},
     "artifact_path": {"type": "string", "pattern": "^specs/[^/]+/prd/review/outline-discovery-data\\.json$"},
@@ -28,6 +28,9 @@
         "current_understanding": {"type": "string", "minLength": 1},
         "discovery_goal": {"type": "string", "minLength": 1}
       }
+    },
+    "decomposition_window": {
+      "$ref": "#/$defs/decomposition_window"
     },
     "source_snapshot": {
       "type": "array",
@@ -133,6 +136,143 @@
     "next_route": {"const": "/sp.prd"}
   },
   "$defs": {
+    "decomposition_window": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "expansion_root_node_id", "root_project_feature", "root_project_depth",
+        "generation_mode", "generated_depth", "depth_decision_reason", "parent_path",
+        "units", "frontier_unit_ids", "terminal_unit_ids"
+      ],
+      "properties": {
+        "expansion_root_node_id": {"type": "string", "minLength": 1},
+        "root_project_feature": {"type": "string", "minLength": 1},
+        "root_project_depth": {"type": "integer", "minimum": 0},
+        "generation_mode": {"enum": ["decompose", "detail"]},
+        "generated_depth": {"type": "integer", "minimum": 0, "maximum": 3},
+        "depth_decision_reason": {"type": "string", "minLength": 20},
+        "parent_path": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/outline_path_entry"}
+        },
+        "units": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/outline_unit"}
+        },
+        "frontier_unit_ids": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "terminal_unit_ids": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "outline_path_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_id", "label", "project_depth"],
+      "properties": {
+        "unit_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "project_depth": {"type": "integer", "minimum": 0}
+      }
+    },
+    "outline_unit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "unit_id", "outline_node_id", "parent_unit_id", "project_depth",
+        "decomposition_state", "business_goal", "overall_outcome",
+        "capability_atom_refs", "business_chain_refs", "source_status", "source_refs"
+      ],
+      "properties": {
+        "unit_id": {"type": "string", "minLength": 1},
+        "outline_node_id": {"type": "string", "minLength": 1},
+        "parent_unit_id": {"type": ["string", "null"]},
+        "project_depth": {"type": "integer", "minimum": 0},
+        "decomposition_state": {"enum": ["expanded", "frontier", "terminal"]},
+        "business_goal": {"type": "string", "minLength": 20},
+        "overall_outcome": {"type": "string", "minLength": 20},
+        "capability_atom_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "business_chain_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "grouping_basis": {"$ref": "#/$defs/grouping_basis"},
+        "decomposition_basis": {"$ref": "#/$defs/decomposition_basis"},
+        "terminal_basis": {"$ref": "#/$defs/terminal_basis"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"decomposition_state": {"const": "expanded"}}},
+          "then": {"required": ["decomposition_basis"]}
+        },
+        {
+          "if": {"properties": {"decomposition_state": {"const": "terminal"}}},
+          "then": {"required": ["terminal_basis"]}
+        },
+        {
+          "if": {"properties": {"capability_atom_refs": {"minItems": 2}}},
+          "then": {"required": ["grouping_basis"]}
+        }
+      ]
+    },
+    "grouping_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["authority", "shared_business_goal", "shared_lifecycle_or_owner", "parent_cohesion", "source_refs"],
+      "properties": {
+        "authority": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "shared_business_goal": {"type": "string", "minLength": 20},
+        "shared_lifecycle_or_owner": {"type": "string", "minLength": 20},
+        "parent_cohesion": {"type": "string", "minLength": 20},
+        "source_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "decomposition_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["complexity_reduction", "child_boundary_summary", "coordination_cost", "source_status", "source_refs"],
+      "properties": {
+        "complexity_reduction": {"type": "string", "minLength": 20},
+        "child_boundary_summary": {"type": "string", "minLength": 20},
+        "coordination_cost": {"type": "string", "minLength": 20},
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "terminal_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["indivisible_business_goal", "split_complexity_cost", "manageable_implementation_scope", "source_status", "source_refs"],
+      "properties": {
+        "indivisible_business_goal": {"type": "string", "minLength": 20},
+        "split_complexity_cost": {"type": "string", "minLength": 20},
+        "manageable_implementation_scope": {"type": "string", "minLength": 20},
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
     "map": {
       "type": "object",
       "additionalProperties": false,
