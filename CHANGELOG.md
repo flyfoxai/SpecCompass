@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.40] - 2026-08-04
+
+### Changed
+
+- Added recursive Outline decomposition windows: `000` generates one direct descendant layer, ordinary units generate two or three bounded layers, and detailed functional nodes are deferred until a confirmed terminal unit enters its own detail window.
+- Added schema-v4 topology validation, source-preserving parent/child coverage, terminal/decomposition evidence, cycle and connectivity rejection, and renderer labels that distinguish real Outline units from explanatory map nodes.
+- feat: enforce recursive outline decomposition windows
+- chore: begin 0.11.40.dev0 development
+
 ## [0.11.39] - 2026-08-03
 
 ### Changed
