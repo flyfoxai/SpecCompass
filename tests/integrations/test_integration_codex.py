@@ -91,7 +91,7 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "make confirmation of that split the default recommendation" in content
         assert "source_capability_coverage" in content
         assert "complete `decomposition_window`" in content
-        assert "schema version 5" in content
+        assert "schema version 6" in content
         assert "Generic implementation components" in content
         assert "final visible-copy sanitization pass" in content
         assert "do not announce that sanitization occurred" in content

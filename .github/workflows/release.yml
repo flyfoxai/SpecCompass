@@ -44,18 +44,18 @@ jobs:
           VERSION="${{ steps.version.outputs.tag }}"
 
           cat > release_notes.md << NOTES_EOF
-          ## Evidence-driven recursive Outline boundaries
+          ## Source-authoritative Outline evidence
 
-          This release makes recursive project decomposition follow business complexity instead of a fixed node count or a one-atom-per-project rule:
+          This release closes the generation and validation gap that could make an under-explored Outline decomposition look source-complete:
 
-          - \`/sp.prd\` rereads the repository's default \`prd/\` source root, the current feature PRD, accepted decisions, parent handoffs, and any user-supplied source directories for every child window.
-          - Capability atoms prove source coverage and unique ownership; their count does not determine how many child projects must be generated.
-          - The model compares candidate partitions by coherent business responsibility, complexity reduction, stable handoffs, coordination cost, duplicated state, and acceptance fragmentation.
-          - Independently owned state, outcome, role, rule set, or named handoff is a split signal, not an automatic boundary. Keeping related capabilities together is valid when it produces the lower-complexity single-responsibility unit.
-          - A reasoned \`ai-proposed\` grouping can enter Discovery when PRD sources provide business facts without prescribing project architecture. An \`unresolved\` grouping cannot masquerade as a chosen child boundary.
-          - There is no fixed child count, preferred range, or requirement to split as finely as possible. \`000-*\` still generates one direct layer per root window, while deeper windows remain bounded presentation slices of the recursive tree.
-          - Schema, CLI, and browser validation remain strict about complete coverage, unique ownership, business-chain consistency, topology, and explicit grouping/decomposition/terminal evidence.
-          - Material scope, ownership, safety, money, compliance, irreversible, critical-acceptance, or broad-rework decisions remain human-confirmed through the owning Web Discovery page.
+          - \`/sp.prd\` rebuilds capability evidence from original business sources, accepted user decisions, and confirmed parent handoffs before considering earlier generated candidates.
+          - A feature PRD is treated as a mixed-authority synthesis. Its \`[src:ai-proposed]\` boundaries, owners, states, lifecycles, and grouping reasons remain proposals on reruns; citing the whole file cannot promote them to \`doc\` authority.
+          - Every source inventory entry marked \`used\` must provide structured \`evidence_refs\` to the exact source-backed capability, owner, lifecycle, state, object, operation, outcome, atom, chain, or constraint, with a reverse citation to that file. A read file that supplies no business fact is \`reviewed_no_capability\`.
+          - Capability coverage now preserves source authority and explains why each result can be accepted independently, so broad wrapper capabilities cannot hide omitted states, writers, or outcomes.
+          - A child that groups multiple capability atoms must cite at least one source-backed coupling invariant that crosses the proposed split. Generic claims that separation is expensive are not enough.
+          - Stable-handoff evidence identifies the source atom, destination atom, exact business fact, authority, and source citation. The validator rejects self-links and handoffs that do not cross two different sibling partitions.
+          - Outline Discovery schema v6 carries these contracts. Versions 3 through 5 remain readable for existing reviews but cannot be generated as current evidence.
+          - CLI and browser validators enforce the same evidence authority, reverse links, coupling invariants, atomic handoff direction, and exact partition coverage.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.
 
           ## Install

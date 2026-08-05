@@ -93,7 +93,7 @@ const allowedOutlineNodeKinds = new Set([
   "capability", "acceptance", "risk", "constraint", "map_link",
 ]);
 const allowedOutlineSourceStatuses = new Set(["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]);
-const supportedOutlineDiscoverySchemaVersions = new Set([3, 4, 5]);
+const supportedOutlineDiscoverySchemaVersions = new Set([3, 4, 5, 6]);
 const allowedAggregationAuthorities = new Set(["doc", "user", "user-confirmed"]);
 const allowedAggregationBasisKeys = new Set([
   "authority", "shared_business_goal", "shared_lifecycle_or_owner",
@@ -446,8 +446,17 @@ function warnIfAtomTooCoarse(atomLabel, atom, data) {
     (atom.label ?? "").toLowerCase().includes(w.toLowerCase())
   );
   if (hasMultipleOps && hasMultipleObjs && labelHasAggregateWord) {
-    warn(`${atomLabel}: label "${atom.label}" with multiple operations and objects looks like a pre-merged capability group; consider splitting into separate atoms for each independently verifiable responsibility`);
+    const message = `${atomLabel}: label "${atom.label}" with multiple operations and objects looks like a pre-merged capability group; split independently verifiable responsibilities before grouping Outline units`;
+    if (data.schema_version >= 6) fail(message);
+    else warn(message);
   }
+}
+
+function looksLikeCompoundResponsibility(value) {
+  const text = compactText(value);
+  const punctuationCount = (text.match(/[、,，;；]/g) || []).length;
+  const conjunctionCount = (text.match(/(?:与|和|及|以及|\band\b)/gi) || []).length;
+  return punctuationCount + conjunctionCount >= 2;
 }
 
 function fail(message) {
@@ -599,8 +608,16 @@ function validateOutlineDiscoveryProjectAuthority(data) {
     const section = sourceSectionsByPath.get(normalized.slice(0, hash))?.get(normalized.slice(hash + 1));
     return /\[src:ai-proposed\]/i.test(section || "");
   });
+  const featurePrdPath = `specs/${feature}/prd.md`;
   const validateEntryAuthority = (entry, label) => {
     if (!entry?.source_status || new Set(["ai-proposed", "unresolved"]).has(entry.source_status)) return;
+    const unanchoredFeaturePrdRef = asArray(entry.source_refs).find((ref) => {
+      const normalized = String(ref || "").replace(/\\/g, "/");
+      return normalized === featurePrdPath;
+    });
+    if (unanchoredFeaturePrdRef) {
+      fail(`${label} cannot claim source_status ${entry.source_status} from the whole feature PRD; cite an exact Markdown heading so proposal authority cannot be promoted: ${unanchoredFeaturePrdRef}`);
+    }
     const proposalRefs = proposalEvidenceRefs(entry.source_refs);
     if (proposalRefs.length) {
       fail(`${label} cannot claim source_status ${entry.source_status}; referenced Markdown section contains [src:ai-proposed]: ${proposalRefs[0]}`);
@@ -621,6 +638,12 @@ function validateOutlineDiscoveryProjectAuthority(data) {
         { ...unit.grouping_basis, source_status: unit.grouping_basis.authority },
         `decomposition unit[${index}] grouping_basis`,
       );
+      asArray(unit.grouping_basis.coupling_invariants).forEach((invariant, invariantIndex) => {
+        validateEntryAuthority(invariant, `decomposition unit[${index}] coupling_invariants[${invariantIndex}]`);
+      });
+      asArray(unit.grouping_basis.separation_test?.stable_handoffs).forEach((handoff, handoffIndex) => {
+        validateEntryAuthority(handoff, `decomposition unit[${index}] stable_handoffs[${handoffIndex}]`);
+      });
     }
   });
 
@@ -645,7 +668,7 @@ function validateOutlineDiscoverySourceInventory(data) {
   if (data.schema_version < 5) return;
   const inventory = data.source_inventory;
   if (!inventory || typeof inventory !== "object" || Array.isArray(inventory)) {
-    fail("outline discovery schema_version 5 requires source_inventory");
+    fail("outline discovery schema_version 5 or later requires source_inventory");
     return;
   }
   const roots = asArray(inventory.roots);
@@ -671,6 +694,32 @@ function validateOutlineDiscoverySourceInventory(data) {
   const entryByPath = new Map();
   const evidenceGapById = new Map(asArray(data.business_context?.evidence_gaps).map((gap) => [gap?.gap_id, gap]));
   const sourceSnapshotPaths = new Set(asArray(data.source_snapshot).map((source) => String(source?.path || "").replace(/\\/g, "/")));
+  const entityCollections = [
+    ["responsibility_owner", data.business_context?.responsibility_owners, "owner_id"],
+    ["business_lifecycle", data.business_context?.business_lifecycles, "lifecycle_id"],
+    ["business_state", data.business_context?.business_states, "state_id"],
+    ["business_object", data.business_context?.business_objects, "object_id"],
+    ["operation", data.business_context?.operations, "operation_id"],
+    ["outcome", data.business_context?.outcomes, "outcome_id"],
+    ["source_capability", data.business_context?.source_capability_coverage, "source_capability_id"],
+    ["capability_atom", data.business_context?.capability_atoms, "atom_id"],
+    ["business_chain", data.business_context?.business_chains, "chain_id"],
+    ["outline_node", asArray(data.outline_nodes).filter((node) => node?.node_kind === "constraint"), "node_id"],
+  ];
+  const evidenceEntities = new Map();
+  const sourceBackedEntityPaths = new Set();
+  for (const [kind, values, idKey] of entityCollections) {
+    for (const entity of asArray(values)) {
+      const entityId = String(entity?.[idKey] || "");
+      if (!entityId) continue;
+      evidenceEntities.set(`${kind}:${entityId}`, entity);
+      if (!["doc", "user", "user-confirmed"].includes(entity?.source_status)) continue;
+      for (const ref of asArray(entity?.source_refs)) {
+        const normalized = String(ref || "").replace(/\\/g, "/");
+        sourceBackedEntityPaths.add(normalized.split("#", 1)[0]);
+      }
+    }
+  }
   const belongsToRoot = (entryPath, root) => root.kind === "file"
     ? entryPath === root.path
     : (entryPath === root.path || entryPath.startsWith(`${root.path}/`));
@@ -688,6 +737,38 @@ function validateOutlineDiscoverySourceInventory(data) {
     }
     if (entry?.disposition === "used" && !sourceSnapshotPaths.has(entryPath)) {
       fail(`source_inventory used entry ${entryPath} must appear in source_snapshot`);
+    }
+    if (entry?.disposition === "used" && !sourceBackedEntityPaths.has(entryPath)) {
+      fail(`source_inventory used entry ${entryPath} has no source-backed business evidence; add an entity source_ref or mark the file reviewed_no_capability`);
+    }
+    if (data.schema_version >= 6) {
+      const evidenceRefs = asArray(entry?.evidence_refs);
+      if (entry?.disposition === "used" && !evidenceRefs.length) {
+        fail(`source_inventory used entry ${entryPath} requires non-empty evidence_refs in schema_version 6`);
+      }
+      if (entry?.disposition !== "used" && entry?.evidence_refs !== undefined) {
+        fail(`source_inventory entry ${entryPath} may declare evidence_refs only with used disposition`);
+      }
+      const seenEvidenceRefs = new Set();
+      for (const [evidenceIndex, evidenceRef] of evidenceRefs.entries()) {
+        const refKey = `${evidenceRef?.entity_kind || ""}:${evidenceRef?.entity_id || ""}`;
+        if (seenEvidenceRefs.has(refKey)) fail(`source_inventory entry ${entryPath} contains duplicate evidence_ref ${refKey}`);
+        seenEvidenceRefs.add(refKey);
+        const entity = evidenceEntities.get(refKey);
+        if (!entity) {
+          fail(`source_inventory entry ${entryPath} evidence_refs[${evidenceIndex}] does not reference an existing business entity: ${refKey}`);
+          continue;
+        }
+        if (!["doc", "user", "user-confirmed"].includes(entity?.source_status)) {
+          fail(`source_inventory entry ${entryPath} evidence_ref ${refKey} must point to documented or human-confirmed evidence`);
+        }
+        const entityPaths = new Set(asArray(entity.source_refs).map((ref) => String(ref || "").replace(/\\/g, "/").split("#", 1)[0]));
+        if (!entityPaths.has(entryPath)) {
+          fail(`source_inventory entry ${entryPath} evidence_ref ${refKey} is not backed by that entity's source_refs`);
+        }
+      }
+    } else if (entry?.evidence_refs !== undefined) {
+      fail(`source_inventory evidence_refs require schema_version 6`);
     }
     if (entry?.disposition === "duplicate") {
       const duplicateOf = String(entry?.duplicate_of || "").replace(/\\/g, "/");
@@ -2556,8 +2637,10 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
   const businessChainsById = new Map(asArray(data.business_context?.business_chains).map((chain) => [chain?.chain_id, chain]));
   const businessChainIds = new Set(businessChainsById.keys());
   const businessStatesById = new Map(asArray(data.business_context?.business_states).map((state) => [state?.state_id, state]));
-  const responsibilityOwnerIds = new Set(asArray(data.business_context?.responsibility_owners).map((owner) => owner?.owner_id));
-  const businessLifecycleIds = new Set(asArray(data.business_context?.business_lifecycles).map((lifecycle) => lifecycle?.lifecycle_id));
+  const responsibilityOwnersById = new Map(asArray(data.business_context?.responsibility_owners).map((owner) => [owner?.owner_id, owner]));
+  const businessLifecyclesById = new Map(asArray(data.business_context?.business_lifecycles).map((lifecycle) => [lifecycle?.lifecycle_id, lifecycle]));
+  const responsibilityOwnerIds = new Set(responsibilityOwnersById.keys());
+  const businessLifecycleIds = new Set(businessLifecyclesById.keys());
   const units = asArray(window.units);
   if (!units.length) {
     fail("decomposition_window.units must contain at least one Outline unit");
@@ -2586,7 +2669,8 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     const atomStates = atomStateRefs.map((stateId) => businessStatesById.get(stateId)).filter(Boolean);
     const sharedOwnerRef = basis?.shared_responsibility_owner_ref;
     const sharedLifecycleRef = basis?.shared_lifecycle_ref;
-    if (unit.project_depth > 0 && sharedOwnerRef === null && sharedLifecycleRef === null) {
+    const isGeneratedChild = unit.project_depth > window.root_project_depth;
+    if (isGeneratedChild && sharedOwnerRef === null && sharedLifecycleRef === null) {
       fail(`${label} must name a responsibility owner or lifecycle shared by every grouped atom`);
     }
     if (sharedOwnerRef !== null) {
@@ -2599,6 +2683,15 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
       if (!businessLifecycleIds.has(sharedLifecycleRef)) fail(`${label}.shared_lifecycle_ref must reference business_lifecycles`);
       if (atomStates.length !== atomRefs.length || atomStates.some((state) => state.lifecycle_ref !== sharedLifecycleRef)) {
         fail(`${label}.shared_lifecycle_ref must be shared by every grouped atom`);
+      }
+    }
+    if (data.schema_version >= 6 && isGeneratedChild) {
+      const sharedAuthorities = [
+        sharedOwnerRef === null ? null : responsibilityOwnersById.get(sharedOwnerRef)?.source_status,
+        sharedLifecycleRef === null ? null : businessLifecyclesById.get(sharedLifecycleRef)?.source_status,
+      ].filter(Boolean);
+      if (!sharedAuthorities.some((status) => ["doc", "user", "user-confirmed"].includes(status))) {
+        fail(`${label} must use a documented or human-confirmed shared owner or lifecycle; ai-proposed umbrella entities cannot justify grouping`);
       }
     }
     const test = basis?.separation_test;
@@ -2628,8 +2721,36 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         || [...alternativeAtomCounts.keys()].some((atomId) => !atomRefs.includes(atomId))) {
       fail(`${label}.separation_test alternative groups must partition every grouped atom exactly once`);
     }
+    const groupIdByAtom = new Map();
+    for (const group of alternativeGroups) {
+      for (const atomId of asArray(group?.capability_atom_refs)) groupIdByAtom.set(atomId, group.group_id);
+    }
+    if (data.schema_version >= 6 && isGeneratedChild) {
+      const invariants = asArray(basis?.coupling_invariants);
+      if (!invariants.length) fail(`${label}.coupling_invariants must contain source-backed cross-partition evidence for a generated grouped child`);
+      const invariantIds = new Set();
+      const invariantKinds = new Set(["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle"]);
+      for (const [invariantIndex, invariant] of invariants.entries()) {
+        const invariantLabel = `${label}.coupling_invariants[${invariantIndex}]`;
+        if (!String(invariant?.invariant_id || "").trim() || invariantIds.has(invariant?.invariant_id)) fail(`${invariantLabel}.invariant_id must be non-empty and unique`);
+        invariantIds.add(invariant?.invariant_id);
+        if (!invariantKinds.has(invariant?.invariant_kind)) fail(`${invariantLabel}.invariant_kind is invalid`);
+        if (String(invariant?.business_rule || "").trim().length < 20) fail(`${invariantLabel}.business_rule must contain at least 20 characters`);
+        if (!["doc", "user", "user-confirmed"].includes(invariant?.source_status)) fail(`${invariantLabel}.source_status must be documented or human-confirmed`);
+        validateOutlineDiscoverySourceRefs(data, invariant?.source_refs, invariantLabel);
+        const invariantAtoms = asArray(invariant?.capability_atom_refs);
+        if (invariantAtoms.length < 2 || new Set(invariantAtoms).size !== invariantAtoms.length || invariantAtoms.some((atomId) => !atomRefs.includes(atomId))) {
+          fail(`${invariantLabel}.capability_atom_refs must name at least two atoms in the grouped unit`);
+        }
+        if (new Set(invariantAtoms.map((atomId) => groupIdByAtom.get(atomId))).size < 2) {
+          fail(`${invariantLabel} must cross at least two alternative groups; an internal rule does not justify keeping the groups together`);
+        }
+      }
+    } else if (data.schema_version >= 6 && basis?.coupling_invariants !== undefined && !Array.isArray(basis.coupling_invariants)) {
+      fail(`${label}.coupling_invariants must be an array`);
+    }
     if (!Array.isArray(test.stable_handoffs)) fail(`${label}.separation_test.stable_handoffs must be an array`);
-    if (unit.project_depth > 0 && asArray(test.stable_handoffs).length === 0) {
+    if ((data.schema_version >= 6 ? isGeneratedChild : unit.project_depth > 0) && asArray(test.stable_handoffs).length === 0) {
       fail(`${label}.separation_test.stable_handoffs must contain at least one stable business handoff for a non-root grouped unit`);
     }
     for (const [handoffIndex, handoff] of asArray(test.stable_handoffs).entries()) {
@@ -2638,11 +2759,32 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         fail(`${handoffLabel} must connect two different alternative groups`);
       }
       if (String(handoff?.business_fact || "").trim().length < 12) fail(`${handoffLabel}.business_fact must name the exchanged business fact`);
+      if (data.schema_version >= 6) {
+        const fromAtomId = handoff?.from_atom_ref;
+        const toAtomId = handoff?.to_atom_ref;
+        if (groupIdByAtom.get(fromAtomId) !== handoff?.from_group_id || groupIdByAtom.get(toAtomId) !== handoff?.to_group_id) {
+          fail(`${handoffLabel} atom direction must match from_group_id and to_group_id`);
+        }
+        const fromAtom = capabilityAtomsById.get(fromAtomId);
+        if (!fromAtom || !capabilityAtomsById.has(toAtomId)) fail(`${handoffLabel} must reference existing grouped atoms`);
+        if (fromAtom && String(handoff?.business_fact || "").trim() !== String(fromAtom.downstream_handoff || "").trim()) {
+          fail(`${handoffLabel}.business_fact must exactly match from_atom_ref.downstream_handoff`);
+        }
+        if (!allowedOutlineSourceStatuses.has(handoff?.source_status)) fail(`${handoffLabel}.source_status is invalid`);
+        validateOutlineDiscoverySourceRefs(data, handoff?.source_refs, handoffLabel);
+        if (fromAtom && sourceStatusExceedsEvidence(handoff?.source_status, [fromAtom.source_status])) {
+          fail(`${handoffLabel}.source_status cannot exceed from_atom_ref evidence`);
+        }
+      }
     }
     const duplicatedStateRefs = asArray(test.duplicated_state_refs);
     if (!Array.isArray(test.duplicated_state_refs) || new Set(duplicatedStateRefs).size !== duplicatedStateRefs.length
         || duplicatedStateRefs.some((stateId) => !atomStateRefs.includes(stateId))) {
       fail(`${label}.separation_test.duplicated_state_refs must be unique states owned by the grouped atoms`);
+    }
+    if (data.schema_version >= 6 && duplicatedStateRefs.length === 0
+        && /(?:重复.{0,8}状态|状态.{0,8}重复|duplicat(?:e|ed|ion).{0,16}state)/i.test(String(test.split_coordination_cost || ""))) {
+      fail(`${label}.separation_test cannot claim duplicated state cost when duplicated_state_refs is empty`);
     }
   };
 
@@ -3081,6 +3223,10 @@ function validateSourceCapabilityCoverage(data) {
 
     validateOutlineDiscoverySourceRefs(data, entry?.source_refs, entryLabel);
 
+    if (data.schema_version >= 6 && !allowedOutlineSourceStatuses.has(entry?.source_status)) {
+      fail(`${entryLabel}: source_status is required and must be valid in schema_version 6`);
+    }
+
     const allowedDispositions = new Set(["atom", "evidence_gap", "excluded_by_source"]);
     if (!allowedDispositions.has(entry?.disposition)) {
       fail(`${entryLabel}: disposition must be one of atom, evidence_gap, excluded_by_source`);
@@ -3104,6 +3250,12 @@ function validateSourceCapabilityCoverage(data) {
       if (entry?.evidence_gap_ref !== undefined) {
         fail(`${entryLabel}: disposition=atom may not reference an evidence gap`);
       }
+      if (data.schema_version >= 6 && String(entry?.independent_acceptance_reason || "").trim().length < 20) {
+        fail(`${entryLabel}: disposition=atom requires a concrete independent_acceptance_reason of at least 20 characters`);
+      }
+      if (data.schema_version >= 6 && looksLikeCompoundResponsibility(entry?.label) && looksLikeCompoundResponsibility(entry?.owned_state)) {
+        fail(`${entryLabel}: label and owned_state enumerate multiple responsibilities; extract each independently changing state or accepted result before grouping`);
+      }
     }
 
     if (entry?.disposition === "evidence_gap") {
@@ -3126,7 +3278,7 @@ function validateSourceCapabilityCoverage(data) {
   if (data.schema_version >= 5) {
     for (const [atomId, count] of atomRefCounts.entries()) {
       if (count !== 1) {
-        fail(`capability atom ${atomId} is referenced by ${count} source capabilities; every v5 atom requires exactly one source capability coverage entry`);
+        fail(`capability atom ${atomId} is referenced by ${count} source capabilities; every v5 atom requires exactly one source capability coverage entry (also required in v6)`);
       }
     }
 
@@ -3372,6 +3524,14 @@ function validateOutlineDiscoveryBusinessContext(data) {
       if (atom && asArray(atom.owned_state_refs)[0] !== capability?.business_state_ref) {
         fail(`${label}: business_state_ref must match its capability atom`);
       }
+      if (data.schema_version >= 6 && atom) {
+        const state = businessStatesById.get(capability?.business_state_ref);
+        const owner = responsibilityOwners.values.find((entry) => entry.owner_id === capability?.responsibility_owner_ref);
+        const lifecycle = businessLifecycles.values.find((entry) => entry.lifecycle_id === capability?.lifecycle_ref);
+        if (sourceStatusExceedsEvidence(capability?.source_status, [atom.source_status, state?.source_status, owner?.source_status, lifecycle?.source_status].filter(Boolean))) {
+          fail(`${label}: source_status cannot exceed its atom, state, owner, or lifecycle evidence`);
+        }
+      }
     }
   }
   if (data.outline_maturity === "frame" && !chains.values.some((chain) => ["user", "user-confirmed", "doc"].includes(chain.source_status))) {
@@ -3411,19 +3571,19 @@ function validateOutlineDiscovery(data) {
     if (data[key] === undefined || data[key] === null || data[key] === "") fail(`missing ${key}`);
   }
   if (!supportedOutlineDiscoverySchemaVersions.has(data.schema_version)) {
-    fail("outline discovery requires supported schema_version 3, 4, or 5");
+    fail("outline discovery requires supported schema_version 3, 4, 5, or 6");
   }
   if (supportedOutlineDiscoverySchemaVersions.has(data.schema_version) && data.schema_version < 5) {
     warn(
       `outline discovery schema_version ${data.schema_version} received compatibility validation only; ` +
-      "source-root completeness, single-state ownership, and separation-test quality require regeneration as schema_version 5",
+      "source-root completeness, single-state ownership, and separation-test quality require regeneration as schema_version 6",
     );
   }
   if (data.schema_version >= 4 && !data.decomposition_window) {
-    fail("outline discovery schema_version 4 or 5 requires decomposition_window");
+    fail("outline discovery schema_version 4 or later requires decomposition_window");
   }
   if (data.schema_version >= 5 && !data.source_inventory) {
-    fail("outline discovery schema_version 5 requires source_inventory");
+    fail("outline discovery schema_version 5 or later requires source_inventory");
   }
   if (data.interaction_mode !== "discovery") fail("outline discovery interaction_mode must be discovery");
   if (!new Set(["explore", "frame"]).has(data.outline_maturity)) {
@@ -3592,7 +3752,7 @@ function validateOutlineDiscovery(data) {
 
 function validateOutlineDiscoveryResponse(data) {
   if (!supportedOutlineDiscoverySchemaVersions.has(data.schema_version)) {
-    fail("outline discovery response requires supported schema_version 3, 4, or 5");
+    fail("outline discovery response requires supported schema_version 3, 4, 5, or 6");
   }
   if (data.review_type !== "outline_discovery") fail("outline discovery response review_type must be outline_discovery");
   if (data.authorization_effect !== "none") fail("outline discovery response authorization_effect must be none");

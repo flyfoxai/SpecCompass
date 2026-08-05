@@ -31,22 +31,24 @@ def test_project_version_matches_latest_changelog_entry():
 
 
 def test_release_notes_publish_user_facing_release_theme():
-    """GitHub Release notes should describe evidence-driven Outline boundaries."""
+    """GitHub Release notes should describe source-authoritative Outline evidence."""
     release_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
-    assert "## Evidence-driven recursive Outline boundaries" in release_workflow
-    assert r"\`/sp.prd\` rereads" in release_workflow
-    assert "repository's default" in release_workflow
-    assert r"\`prd/\` source root" in release_workflow
-    assert "Capability atoms prove source coverage and unique ownership" in release_workflow
-    assert "their count does not determine how many child projects" in release_workflow
-    assert "complexity reduction, stable handoffs, coordination cost" in release_workflow
-    assert "a split signal, not an automatic boundary" in release_workflow
-    assert r"A reasoned \`ai-proposed\` grouping can enter Discovery" in release_workflow
-    assert r"An \`unresolved\` grouping cannot masquerade" in release_workflow
-    assert "no fixed child count, preferred range" in release_workflow
-    assert "Schema, CLI, and browser validation remain strict" in release_workflow
-    assert "remain human-confirmed through the owning Web Discovery page" in release_workflow
+    assert "## Source-authoritative Outline evidence" in release_workflow
+    assert r"\`/sp.prd\` rebuilds capability evidence from original business sources" in release_workflow
+    assert "accepted user decisions, and confirmed parent handoffs" in release_workflow
+    assert "feature PRD is treated as a mixed-authority synthesis" in release_workflow
+    assert r"\`[src:ai-proposed]\` boundaries" in release_workflow
+    assert r"cannot promote them to \`doc\` authority" in release_workflow
+    assert r"marked \`used\` must provide structured \`evidence_refs\`" in release_workflow
+    assert "with a reverse citation to that file" in release_workflow
+    assert r"supplies no business fact is \`reviewed_no_capability\`" in release_workflow
+    assert "explains why each result can be accepted independently" in release_workflow
+    assert "source-backed coupling invariant that crosses the proposed split" in release_workflow
+    assert "identifies the source atom, destination atom, exact business fact" in release_workflow
+    assert "schema v6 carries these contracts" in release_workflow
+    assert "Versions 3 through 5 remain readable" in release_workflow
+    assert "CLI and browser validators enforce the same evidence authority" in release_workflow
     assert "Existing projects must refresh their installed templates" in release_workflow
     assert "docs/reference/sp-project-methodology.md" not in release_workflow
     assert "## What's Changed" not in release_workflow
@@ -54,16 +56,17 @@ def test_release_notes_publish_user_facing_release_theme():
     assert "specify init . --integration <agent> --force" in release_workflow
 
 
-def test_release_changelog_summary_matches_outline_boundary_focus():
-    """The generated changelog should lead with evidence-driven boundary selection."""
+def test_release_changelog_summary_matches_outline_evidence_focus():
+    """The generated changelog should lead with source-authoritative evidence."""
     trigger_workflow = (PROJECT_ROOT / ".github" / "workflows" / "release-trigger.yml").read_text(
         encoding="utf-8"
     )
 
-    assert "evidence-driven recursive Outline boundaries" in trigger_workflow
-    assert "capability atoms prove source coverage without setting project count" in trigger_workflow
-    assert "models compare complexity reduction with coordination cost" in trigger_workflow
-    assert "reasoned project partitions remain human-confirmed through Discovery" in trigger_workflow
+    assert "source-authoritative Outline evidence" in trigger_workflow
+    assert "used PRD sources require structured, reversible business evidence" in trigger_workflow
+    assert "ai-proposed feature-PRD content cannot promote itself to doc authority" in trigger_workflow
+    assert "schema v6 aligns CLI and browser checks" in trigger_workflow
+    assert "cross-partition coupling and directional handoffs" in trigger_workflow
 
 
 def test_release_trigger_rejects_non_incrementing_manual_versions():

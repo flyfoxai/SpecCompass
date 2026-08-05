@@ -2157,7 +2157,7 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "recursively decomposes the current Outline unit at any project depth" in prd
     assert "unique top unit and retains its own business goal" in prd
     assert "formally confirmed `terminal` unit" in prd
-    assert "schema version 5" in prd
+    assert "schema version 6" in prd
     assert "complete `decomposition_window`" in prd
     assert "model-owned compilation step" in prd
     assert "not cross-consumption by the confirmation package parser" in prd
@@ -2377,7 +2377,7 @@ def test_prd_recursive_outline_windows_have_non_overlapping_executable_contracts
     assert "never an empty coordinator placeholder" in prd
     assert "`frame` writes detailed business Outline" in prd
     assert "generates no new project levels" in prd
-    assert "New Outline Discovery data MUST use schema version 5" in prd
+    assert "New Outline Discovery data MUST use schema version 6" in prd
     assert "The `000-*` decompose window MUST have" in prd
     assert "A non-root decompose window normally has `generated_depth: 2` or `3`" in prd
     assert "Never generate filler nodes" in prd
@@ -7370,6 +7370,60 @@ def _outline_discovery_v5_non_root_multi_atom_sample() -> dict:
     return sample
 
 
+def _outline_discovery_v6_multi_atom_child_sample() -> dict:
+    """Latest positive fixture: every generated merge has source-backed coupling evidence."""
+    sample = _outline_discovery_v5_multi_atom_child_sample()
+    sample["schema_version"] = 6
+    context = sample["business_context"]
+    for coverage in context["source_capability_coverage"]:
+        coverage["source_status"] = coverage.get("source_status", "doc")
+        coverage["independent_acceptance_reason"] = "该能力拥有独立输入、状态变化、验收结果和后续业务交接，可以单独核对完成。"
+    inventory_entry = sample["source_inventory"]["entries"][0]
+    inventory_entry["evidence_refs"] = [
+        {"entity_kind": "source_capability", "entity_id": "source-controlled-order"},
+        {"entity_kind": "source_capability", "entity_id": "source-risk-decision"},
+        {"entity_kind": "business_state", "entity_id": "state-controlled-order"},
+        {"entity_kind": "business_state", "entity_id": "state-risk-decision"},
+    ]
+    risk_atom = next(atom for atom in context["capability_atoms"] if atom["atom_id"] == "atom-risk-decision")
+    child = next(
+        unit
+        for unit in sample["decomposition_window"]["units"]
+        if len(unit["capability_atom_refs"]) > 1
+        and unit["project_depth"] > sample["decomposition_window"]["root_project_depth"]
+    )
+    child["grouping_basis"]["coupling_invariants"] = [
+        {
+            "invariant_id": "invariant-risk-order-acceptance",
+            "invariant_kind": "atomic_acceptance",
+            "business_rule": "风险放行决定必须在订单形成前保持同一笔意图的可追溯关联，两个结果共同完成受控订单验收。",
+            "capability_atom_refs": ["atom-risk-decision", "atom-controlled-order"],
+            "source_status": "doc",
+            "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+        }
+    ]
+    handoff = child["grouping_basis"]["separation_test"]["stable_handoffs"][0]
+    handoff.update({
+        "from_atom_ref": "atom-risk-decision",
+        "to_atom_ref": "atom-controlled-order",
+        "business_fact": risk_atom["downstream_handoff"],
+        "source_status": "doc",
+        "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+    })
+    for unit in sample["decomposition_window"]["units"]:
+        if len(unit.get("capability_atom_refs", [])) < 2:
+            continue
+        root_handoff = unit["grouping_basis"]["separation_test"]["stable_handoffs"][0]
+        root_handoff.update({
+            "from_atom_ref": "atom-risk-decision",
+            "to_atom_ref": "atom-controlled-order",
+            "business_fact": risk_atom["downstream_handoff"],
+            "source_status": "doc",
+            "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+        })
+    return sample
+
+
 def _outline_discovery_v4_non_root_sample() -> dict:
     sample = json.loads(json.dumps(_outline_discovery_v4_root_sample()).replace("000-outline", "001-outline"))
     source_ref = "specs/001-outline/prd.md#Core Trading Loop"
@@ -7642,7 +7696,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         assert path.is_file(), path
 
     discovery = json.loads(OUTLINE_DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
-    assert discovery["properties"]["schema_version"] == {"const": 5}
+    assert discovery["properties"]["schema_version"] == {"const": 6}
     assert discovery["properties"]["review_type"] == {"const": "outline_discovery"}
     assert discovery["properties"]["interaction_mode"] == {"const": "discovery"}
     assert discovery["properties"]["outline_maturity"]["enum"] == ["explore", "frame"]
@@ -7769,7 +7823,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     }
 
     response = json.loads(OUTLINE_DISCOVERY_RESPONSE_SCHEMA.read_text(encoding="utf-8"))
-    assert response["properties"]["schema_version"] == {"enum": [3, 4, 5]}
+    assert response["properties"]["schema_version"] == {"enum": [3, 4, 5, 6]}
     assert response["properties"]["format"] == {"const": "speccompass-outline-discovery-response"}
     assert response["properties"]["authorization_effect"] == {"const": "none"}
     assert response["properties"]["next_route"] == {"const": "/sp.prd"}
@@ -7788,7 +7842,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     simple_overlays = (
         REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js"
     ).read_text(encoding="utf-8")
-    assert "new Set([1, 2, 3, 4, 5])" in simple_overlays
+    assert "new Set([1, 2, 3, 4, 5, 6])" in simple_overlays
 
     ledger = json.loads(OUTLINE_INTENT_LEDGER_SCHEMA.read_text(encoding="utf-8"))
     assert ledger["properties"]["schema_version"] == {"const": 3}
@@ -7818,12 +7872,103 @@ def test_outline_discovery_v5_accepts_complete_source_state_and_separation_evide
     assert result.returncode == 0, _review_validator_output(result)
 
 
+def test_outline_discovery_v6_accepts_source_backed_coupling_contract(tmp_path):
+    result = _run_review_validator(
+        _outline_discovery_v6_multi_atom_child_sample(),
+        tmp_path / "discovery-v6-valid.json",
+    )
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_used_source_without_structured_evidence(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    sample["source_inventory"]["entries"][0].pop("evidence_refs")
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-no-evidence.json")
+    assert result.returncode != 0
+    assert "evidence_refs" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_group_without_cross_partition_invariant(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(
+        unit
+        for unit in sample["decomposition_window"]["units"]
+        if unit["project_depth"] > sample["decomposition_window"]["root_project_depth"]
+        and len(unit["capability_atom_refs"]) > 1
+    )
+    child["grouping_basis"].pop("coupling_invariants")
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-no-invariant.json")
+    assert result.returncode != 0
+    assert "coupling_invariants" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_inconsistent_handoff_atom_direction(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(
+        unit
+        for unit in sample["decomposition_window"]["units"]
+        if unit["project_depth"] > sample["decomposition_window"]["root_project_depth"]
+        and len(unit["capability_atom_refs"]) > 1
+    )
+    child["grouping_basis"]["separation_test"]["stable_handoffs"][0]["to_atom_ref"] = "atom-risk-decision"
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-wrong-handoff.json")
+    assert result.returncode != 0
+    assert "atom direction" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_compound_capability_atom(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    atom = next(atom for atom in sample["business_context"]["capability_atoms"] if atom["atom_id"] == "atom-controlled-order")
+    atom["label"] = "订单、成交与持仓风险保护"
+    atom["owned_state"] = "订单、成交与持仓风险状态"
+    coverage = next(item for item in sample["business_context"]["source_capability_coverage"] if item["capability_atom_ref"] == atom["atom_id"])
+    coverage["label"] = atom["label"]
+    coverage["owned_state"] = atom["owned_state"]
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-compound-atom.json")
+    assert result.returncode != 0
+    assert "enumerate multiple responsibilities" in _review_validator_output(result)
+
+
+def test_outline_discovery_rejects_feature_prd_proposal_authority_laundering(tmp_path):
+    sample = _outline_discovery_v5_root_sample()
+    project_root = tmp_path / "project"
+    feature_prd = project_root / "specs" / "000-outline" / "prd.md"
+    feature_prd.parent.mkdir(parents=True)
+    feature_prd.write_text(
+        "# PRD\n\n## Core Trading Loop\n\n正式交易事实。[src:doc]\n\n"
+        "## Proposed Owner\n\n模型建议由宽泛交易负责人统一拥有。[src:ai-proposed]\n",
+        encoding="utf-8",
+    )
+    sample["source_snapshot"][0]["anchors"].append("Proposed Owner")
+    owner = sample["business_context"]["responsibility_owners"][0]
+    owner["source_status"] = "doc"
+    owner["source_refs"] = ["specs/000-outline/prd.md#Proposed Owner"]
+    review_path = project_root / sample["artifact_path"]
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+
+    result = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=project_root,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    output = _review_validator_output(result)
+    assert "contains [src:ai-proposed]" in output
+    assert "responsibility_owners" in output
+
+
 def test_outline_discovery_v5_requires_source_inventory(tmp_path):
     sample = _outline_discovery_v5_root_sample()
     sample.pop("source_inventory")
     result = _run_review_validator(sample, tmp_path / "discovery-v5-no-inventory.json")
     assert result.returncode != 0
-    assert "schema_version 5 requires source_inventory" in _review_validator_output(result)
+    assert "schema_version 5 or later requires source_inventory" in _review_validator_output(result)
 
 
 def test_outline_discovery_v5_rejects_atom_with_multiple_owned_states(tmp_path):
@@ -8323,6 +8468,25 @@ const v5Grouping = {json.dumps(v5_grouping, ensure_ascii=False)};
 const nestedV5Grouping = {json.dumps(nested_v5_grouping, ensure_ascii=False)};
 const v5Error = context.validateReviewData(v5Grouping);
 if (v5Error !== "") throw new Error("valid v5 discovery rejected: " + v5Error);
+const unanchoredFeatureAuthority = structuredClone(v5Grouping);
+unanchoredFeatureAuthority.business_context.responsibility_owners[0].source_refs = ["specs/000-outline/prd.md"];
+const unanchoredFeatureAuthorityError = context.validateReviewData(unanchoredFeatureAuthority);
+if (!unanchoredFeatureAuthorityError.includes("feature PRD")) throw new Error("unanchored feature PRD authority was not rejected: " + unanchoredFeatureAuthorityError);
+const v6Grouping = {json.dumps(_outline_discovery_v6_multi_atom_child_sample(), ensure_ascii=False)};
+const v6Error = context.validateReviewData(v6Grouping);
+if (v6Error !== "") throw new Error("valid v6 discovery rejected: " + v6Error);
+const v6NoEvidence = structuredClone(v6Grouping);
+v6NoEvidence.source_inventory.entries[0].evidence_refs = [];
+const v6NoEvidenceError = context.validateReviewData(v6NoEvidence);
+if (!v6NoEvidenceError.includes("evidence_refs")) throw new Error("v6 source evidence omission was not rejected: " + v6NoEvidenceError);
+const v6NoInvariant = structuredClone(v6Grouping);
+const v6GroupedChild = v6NoInvariant.decomposition_window.units.find((unit) =>
+  unit.project_depth > v6NoInvariant.decomposition_window.root_project_depth && unit.capability_atom_refs.length > 1
+);
+if (!v6GroupedChild) throw new Error("v6 fixture is missing a generated grouped child");
+v6GroupedChild.grouping_basis.coupling_invariants = [];
+const v6NoInvariantError = context.validateReviewData(v6NoInvariant);
+if (!v6NoInvariantError.includes("耦合不变量")) throw new Error("v6 missing coupling invariant was not rejected: " + v6NoInvariantError);
 const incompleteV5 = structuredClone(v5Grouping);
 incompleteV5.decomposition_window.units[1].grouping_basis.separation_test.alternative_groups[1].capability_atom_refs = ["atom-controlled-order"];
 const incompleteV5Error = context.validateReviewData(incompleteV5);

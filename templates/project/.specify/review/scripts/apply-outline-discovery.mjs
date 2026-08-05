@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const OPERATIONS = new Set(["confirm_candidate", "add", "replace", "exclude", "context_note"]);
 const MATURITIES = new Set(["explore", "frame"]);
-const DISCOVERY_SCHEMA_VERSIONS = new Set([3, 4, 5]);
+const DISCOVERY_SCHEMA_VERSIONS = new Set([3, 4, 5, 6]);
 const SOURCE_TAGS = new Set(["user", "user-confirmed"]);
 const OUTLINE_MAP_KINDS = new Set(["overview", "branch", "global_constraints"]);
 const OUTLINE_NODE_KINDS = new Set([
@@ -116,7 +116,7 @@ function requireNullableString(value, label) {
 
 function validateResponseEnvelope(response) {
   requireObject(response, "response");
-  if (!DISCOVERY_SCHEMA_VERSIONS.has(response.schema_version)) fail("response schema_version must be 3, 4, or 5");
+  if (!DISCOVERY_SCHEMA_VERSIONS.has(response.schema_version)) fail("response schema_version must be 3, 4, 5, or 6");
   if (response.format !== "speccompass-outline-discovery-response") fail("response format is not an Outline discovery response");
   if (response.review_type !== "outline_discovery") fail("response review_type must be outline_discovery");
   for (const key of ["response_id", "batch_id", "feature", "source_review_data", "generated_at"]) {
@@ -458,7 +458,7 @@ function validateBusinessAndConstitution(root, source) {
 
 function validateSourceIdentity(root, source, response, expectedSourcePath) {
   requireObject(source, "source discovery data");
-  if (!DISCOVERY_SCHEMA_VERSIONS.has(source.schema_version)) fail("source schema_version must be 3, 4, or 5");
+  if (!DISCOVERY_SCHEMA_VERSIONS.has(source.schema_version)) fail("source schema_version must be 3, 4, 5, or 6");
   if (source.review_type !== "outline_discovery" || source.interaction_mode !== "discovery") {
     fail("source must be Outline discovery data");
   }

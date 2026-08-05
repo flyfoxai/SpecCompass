@@ -126,7 +126,7 @@ jobs:
               "" \
               "### Changed" \
               "" \
-              "- Added evidence-driven recursive Outline boundaries: capability atoms prove source coverage without setting project count, models compare complexity reduction with coordination cost, and reasoned project partitions remain human-confirmed through Discovery." \
+              "- Added source-authoritative Outline evidence: used PRD sources require structured, reversible business evidence; ai-proposed feature-PRD content cannot promote itself to doc authority; and schema v6 aligns CLI and browser checks for cross-partition coupling and directional handoffs." \
               "$COMMITS")
 
             awk -v entry="$NEW_ENTRY" '/<!-- insert new changelog below this comment -->/ { print; print entry; next } {print}' CHANGELOG.md > CHANGELOG.md.tmp
