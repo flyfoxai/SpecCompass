@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const OPERATIONS = new Set(["confirm_candidate", "add", "replace", "exclude", "context_note"]);
 const MATURITIES = new Set(["explore", "frame"]);
-const DISCOVERY_SCHEMA_VERSIONS = new Set([3, 4]);
+const DISCOVERY_SCHEMA_VERSIONS = new Set([3, 4, 5]);
 const SOURCE_TAGS = new Set(["user", "user-confirmed"]);
 const OUTLINE_MAP_KINDS = new Set(["overview", "branch", "global_constraints"]);
 const OUTLINE_NODE_KINDS = new Set([
@@ -116,7 +116,7 @@ function requireNullableString(value, label) {
 
 function validateResponseEnvelope(response) {
   requireObject(response, "response");
-  if (!DISCOVERY_SCHEMA_VERSIONS.has(response.schema_version)) fail("response schema_version must be 3 or 4");
+  if (!DISCOVERY_SCHEMA_VERSIONS.has(response.schema_version)) fail("response schema_version must be 3, 4, or 5");
   if (response.format !== "speccompass-outline-discovery-response") fail("response format is not an Outline discovery response");
   if (response.review_type !== "outline_discovery") fail("response review_type must be outline_discovery");
   for (const key of ["response_id", "batch_id", "feature", "source_review_data", "generated_at"]) {
@@ -458,7 +458,7 @@ function validateBusinessAndConstitution(root, source) {
 
 function validateSourceIdentity(root, source, response, expectedSourcePath) {
   requireObject(source, "source discovery data");
-  if (!DISCOVERY_SCHEMA_VERSIONS.has(source.schema_version)) fail("source schema_version must be 3 or 4");
+  if (!DISCOVERY_SCHEMA_VERSIONS.has(source.schema_version)) fail("source schema_version must be 3, 4, or 5");
   if (source.review_type !== "outline_discovery" || source.interaction_mode !== "discovery") {
     fail("source must be Outline discovery data");
   }
@@ -486,8 +486,8 @@ function validateSourceIdentity(root, source, response, expectedSourcePath) {
   return validateSourceTopology(source);
 }
 
-function validateV4SourceWithCanonicalValidator(root, source, sourcePath) {
-  if (source.schema_version !== 4) return;
+function validateRecursiveSourceWithCanonicalValidator(root, source, sourcePath) {
+  if (source.schema_version < 4) return;
   const validatorPath = fileURLToPath(new URL("./validate-review-data.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [validatorPath, sourcePath], {
     cwd: root,
@@ -979,7 +979,7 @@ async function main() {
   const releaseLock = await acquireFeatureLock(featureRoot, response.feature);
   try {
     const source = await readJson(sourcePath.resolved, "source discovery data");
-    validateV4SourceWithCanonicalValidator(root, source, sourcePath.resolved);
+    validateRecursiveSourceWithCanonicalValidator(root, source, sourcePath.resolved);
     const topology = validateSourceIdentity(root, source, response, expectedSource);
     const questions = buildQuestionIndex(source, topology);
     const seenDeltaIds = new Set();

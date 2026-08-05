@@ -2157,7 +2157,7 @@ def test_prd_outline_maturity_discovery_contract_is_documented_across_templates(
     assert "recursively decomposes the current Outline unit at any project depth" in prd
     assert "unique top unit and retains its own business goal" in prd
     assert "formally confirmed `terminal` unit" in prd
-    assert "schema version 4" in prd
+    assert "schema version 5" in prd
     assert "complete `decomposition_window`" in prd
     assert "model-owned compilation step" in prd
     assert "not cross-consumption by the confirmation package parser" in prd
@@ -2377,7 +2377,7 @@ def test_prd_recursive_outline_windows_have_non_overlapping_executable_contracts
     assert "never an empty coordinator placeholder" in prd
     assert "`frame` writes detailed business Outline" in prd
     assert "generates no new project levels" in prd
-    assert "New Outline Discovery data MUST use schema version 4" in prd
+    assert "New Outline Discovery data MUST use schema version 5" in prd
     assert "The `000-*` decompose window MUST have" in prd
     assert "A non-root decompose window normally has `generated_depth: 2` or `3`" in prd
     assert "Never generate filler nodes" in prd
@@ -7204,6 +7204,172 @@ def _outline_discovery_v4_root_sample() -> dict:
     return sample
 
 
+def _outline_discovery_v5_root_sample() -> dict:
+    sample = _outline_discovery_v4_root_sample()
+    sample["schema_version"] = 5
+    source_path = "specs/000-outline/prd.md"
+    sample["source_inventory"] = {
+        "roots": [
+            {
+                "path": source_path,
+                "root_kind": "file",
+                "source_origin": "feature-prd",
+            }
+        ],
+        "entries": [
+            {
+                "path": source_path,
+                "disposition": "used",
+                "rationale": "该功能 PRD 定义当前交易能力、业务状态、责任所有者、生命周期和验收结果。",
+            }
+        ],
+    }
+    context = sample["business_context"]
+    context["responsibility_owners"] = [
+        {
+            "owner_id": "owner-trading-control",
+            "label": "交易控制责任",
+            "accountability": "负责把市场与账户变化裁定为经过风险约束的订单结果。",
+            "source_status": "user-confirmed",
+            "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+        }
+    ]
+    context["business_lifecycles"] = [
+        {
+            "lifecycle_id": "lifecycle-controlled-order",
+            "label": "受控订单形成生命周期",
+            "trigger_or_input": "新行情、持仓或资金变化到达",
+            "completion_condition": "形成可执行订单或带原因的风险阻断事实。",
+            "source_status": "user-confirmed",
+            "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+        }
+    ]
+    context["business_states"] = [
+        {
+            "state_id": "state-controlled-order",
+            "label": "经过风险约束、等待执行的交易订单",
+            "responsibility_owner_ref": "owner-trading-control",
+            "lifecycle_ref": "lifecycle-controlled-order",
+            "acceptance_outcome_ref": "outcome-controlled-order",
+            "source_status": "user-confirmed",
+            "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+        }
+    ]
+    atom = context["capability_atoms"][0]
+    chain = context["business_chains"][0]
+    atom["owned_state_refs"] = ["state-controlled-order"]
+    chain["owned_state_refs"] = ["state-controlled-order"]
+    coverage = context["source_capability_coverage"][0]
+    coverage.update(
+        {
+            "business_state_ref": "state-controlled-order",
+            "responsibility_owner_ref": "owner-trading-control",
+            "lifecycle_ref": "lifecycle-controlled-order",
+        }
+    )
+    return sample
+
+
+def _v5_separation_test() -> dict:
+    return {
+        "alternative_groups": [
+            {
+                "group_id": "group-order-result",
+                "business_responsibility": "独立形成经过风险约束并可继续执行的交易订单结果。",
+                "capability_atom_refs": ["atom-controlled-order"],
+            },
+            {
+                "group_id": "group-risk-decision",
+                "business_responsibility": "独立裁定交易意图并交付可追溯的放行或阻断决定。",
+                "capability_atom_refs": ["atom-risk-decision"],
+            },
+        ],
+        "stable_handoffs": [
+            {
+                "from_group_id": "group-risk-decision",
+                "to_group_id": "group-order-result",
+                "business_fact": "交付风险放行决定或带原因的阻断事实",
+            }
+        ],
+        "duplicated_state_refs": [],
+        "keep_together_complexity": "保留共同父级时模型同时维护两个状态，但共享同一交易控制责任与订单形成生命周期。",
+        "split_coordination_cost": "拆分后需要新增风险决定到订单结果的可靠业务交接，并分别维护失败恢复验收。",
+        "decision_reason": "当前共同责任和生命周期使合并后的模型上下文小于新增交接与重复恢复验收成本。",
+    }
+
+
+def _outline_discovery_v5_multi_atom_child_sample() -> dict:
+    sample = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="ai-proposed")
+    base = _outline_discovery_v5_root_sample()
+    sample["schema_version"] = 5
+    sample["source_inventory"] = base["source_inventory"]
+    context = sample["business_context"]
+    context["responsibility_owners"] = base["business_context"]["responsibility_owners"]
+    context["business_lifecycles"] = base["business_context"]["business_lifecycles"]
+    context["business_states"] = base["business_context"]["business_states"] + [
+        {
+            "state_id": "state-risk-decision",
+            "label": "已经过风险规则裁定的交易意图",
+            "responsibility_owner_ref": "owner-trading-control",
+            "lifecycle_ref": "lifecycle-controlled-order",
+            "acceptance_outcome_ref": "outcome-risk-decision",
+            "source_status": "doc",
+            "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+        }
+    ]
+    atoms = {atom["atom_id"]: atom for atom in context["capability_atoms"]}
+    chains = {chain["chain_id"]: chain for chain in context["business_chains"]}
+    atoms["atom-controlled-order"]["owned_state_refs"] = ["state-controlled-order"]
+    chains["chain-trading-loop"]["owned_state_refs"] = ["state-controlled-order"]
+    atoms["atom-risk-decision"]["owned_state_refs"] = ["state-risk-decision"]
+    chains["chain-risk-decision"]["owned_state_refs"] = ["state-risk-decision"]
+    coverage_by_atom = {
+        item.get("capability_atom_ref"): item
+        for item in context["source_capability_coverage"]
+    }
+    coverage_by_atom["atom-controlled-order"].update(
+        {
+            "business_state_ref": "state-controlled-order",
+            "responsibility_owner_ref": "owner-trading-control",
+            "lifecycle_ref": "lifecycle-controlled-order",
+        }
+    )
+    coverage_by_atom["atom-risk-decision"].update(
+        {
+            "business_state_ref": "state-risk-decision",
+            "responsibility_owner_ref": "owner-trading-control",
+            "lifecycle_ref": "lifecycle-controlled-order",
+        }
+    )
+    for unit in sample["decomposition_window"]["units"]:
+        if len(unit["capability_atom_refs"]) < 2:
+            continue
+        unit["grouping_basis"] = {
+            "authority": "ai-proposed",
+            "shared_business_goal": "风险裁定和订单形成共同完成从交易意图到受控订单结果的单一业务目标。",
+            "shared_responsibility_owner_ref": "owner-trading-control",
+            "shared_lifecycle_ref": "lifecycle-controlled-order",
+            "parent_cohesion": "分开后必须新增风险决定交接、失败恢复和两边一致性验收，超过当前共同状态的维护成本。",
+            "separation_test": _v5_separation_test(),
+            "source_refs": unit["source_refs"],
+        }
+    return sample
+
+
+def _outline_discovery_v5_non_root_multi_atom_sample() -> dict:
+    sample = json.loads(
+        json.dumps(_outline_discovery_v5_multi_atom_child_sample()).replace("000-outline", "001-outline")
+    )
+    window = sample["decomposition_window"]
+    window["root_project_depth"] = 1
+    window["parent_path"] = [
+        {"unit_id": "unit-portfolio", "label": "量化交易工作台", "project_depth": 0}
+    ]
+    for unit in window["units"]:
+        unit["project_depth"] += 1
+    return sample
+
+
 def _outline_discovery_v4_non_root_sample() -> dict:
     sample = json.loads(json.dumps(_outline_discovery_v4_root_sample()).replace("000-outline", "001-outline"))
     source_ref = "specs/001-outline/prd.md#Core Trading Loop"
@@ -7476,13 +7642,14 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         assert path.is_file(), path
 
     discovery = json.loads(OUTLINE_DISCOVERY_SCHEMA.read_text(encoding="utf-8"))
-    assert discovery["properties"]["schema_version"] == {"const": 4}
+    assert discovery["properties"]["schema_version"] == {"const": 5}
     assert discovery["properties"]["review_type"] == {"const": "outline_discovery"}
     assert discovery["properties"]["interaction_mode"] == {"const": "discovery"}
     assert discovery["properties"]["outline_maturity"]["enum"] == ["explore", "frame"]
     assert discovery["properties"]["authorization_effect"] == {"const": "none"}
     assert {
         "decomposition_window",
+        "source_inventory",
         "business_context",
         "constitution_snapshot",
         "density_budget",
@@ -7490,6 +7657,11 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "outline_nodes",
     } <= set(discovery["required"])
     assert "capability_atoms" in discovery["properties"]["business_context"]["required"]
+    assert {
+        "responsibility_owners",
+        "business_lifecycles",
+        "business_states",
+    } <= set(discovery["properties"]["business_context"]["required"])
     assert "trigger_kind" in discovery["$defs"]["capability_atom"]["required"]
     assert discovery["$defs"]["capability_atom"]["properties"]["trigger_kind"]["enum"] == [
         "business_event",
@@ -7547,8 +7719,10 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert set(grouping_basis["required"]) == {
         "authority",
         "shared_business_goal",
-        "shared_lifecycle_or_owner",
+        "shared_responsibility_owner_ref",
+        "shared_lifecycle_ref",
         "parent_cohesion",
+        "separation_test",
         "source_refs",
     }
     assert grouping_basis["properties"]["authority"]["enum"] == [
@@ -7595,7 +7769,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     }
 
     response = json.loads(OUTLINE_DISCOVERY_RESPONSE_SCHEMA.read_text(encoding="utf-8"))
-    assert response["properties"]["schema_version"] == {"enum": [3, 4]}
+    assert response["properties"]["schema_version"] == {"enum": [3, 4, 5]}
     assert response["properties"]["format"] == {"const": "speccompass-outline-discovery-response"}
     assert response["properties"]["authorization_effect"] == {"const": "none"}
     assert response["properties"]["next_route"] == {"const": "/sp.prd"}
@@ -7614,7 +7788,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     simple_overlays = (
         REVIEW_ROOT / "renderer" / "scripts" / "simple-overlays.js"
     ).read_text(encoding="utf-8")
-    assert "new Set([1, 2, 3, 4])" in simple_overlays
+    assert "new Set([1, 2, 3, 4, 5])" in simple_overlays
 
     ledger = json.loads(OUTLINE_INTENT_LEDGER_SCHEMA.read_text(encoding="utf-8"))
     assert ledger["properties"]["schema_version"] == {"const": 3}
@@ -7633,6 +7807,252 @@ def test_outline_discovery_v4_accepts_top_level_one_layer_window(tmp_path):
         tmp_path / "discovery-v4-root-valid.json",
     )
     assert result.returncode == 0, _review_validator_output(result)
+    assert "compatibility validation only" in _review_validator_output(result)
+
+
+def test_outline_discovery_v5_accepts_complete_source_state_and_separation_evidence(tmp_path):
+    result = _run_review_validator(
+        _outline_discovery_v5_multi_atom_child_sample(),
+        tmp_path / "discovery-v5-valid.json",
+    )
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v5_requires_source_inventory(tmp_path):
+    sample = _outline_discovery_v5_root_sample()
+    sample.pop("source_inventory")
+    result = _run_review_validator(sample, tmp_path / "discovery-v5-no-inventory.json")
+    assert result.returncode != 0
+    assert "schema_version 5 requires source_inventory" in _review_validator_output(result)
+
+
+def test_outline_discovery_v5_rejects_atom_with_multiple_owned_states(tmp_path):
+    sample = _outline_discovery_v5_multi_atom_child_sample()
+    atom = next(atom for atom in sample["business_context"]["capability_atoms"] if atom["atom_id"] == "atom-controlled-order")
+    atom["owned_state_refs"] = ["state-controlled-order", "state-risk-decision"]
+    result = _run_review_validator(sample, tmp_path / "discovery-v5-mixed-state-atom.json")
+    assert result.returncode != 0
+    assert "must reference exactly one business_state" in _review_validator_output(result)
+
+
+def test_outline_discovery_v5_rejects_group_without_shared_owner_or_lifecycle(tmp_path):
+    sample = _outline_discovery_v5_multi_atom_child_sample()
+    context = sample["business_context"]
+    context["responsibility_owners"].append(
+        {
+            "owner_id": "owner-risk-review",
+            "label": "风险审核责任",
+            "accountability": "独立裁定交易意图是否满足风险规则并记录拒绝原因。",
+            "source_status": "doc",
+            "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    context["business_lifecycles"].append(
+        {
+            "lifecycle_id": "lifecycle-risk-review",
+            "label": "交易意图风险审核生命周期",
+            "trigger_or_input": "交易意图进入独立风险审核",
+            "completion_condition": "形成可追溯的风险放行决定或阻断事实。",
+            "source_status": "doc",
+            "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+        }
+    )
+    risk_state = next(state for state in context["business_states"] if state["state_id"] == "state-risk-decision")
+    risk_state["responsibility_owner_ref"] = "owner-risk-review"
+    risk_state["lifecycle_ref"] = "lifecycle-risk-review"
+    coverage = next(item for item in context["source_capability_coverage"] if item["capability_atom_ref"] == "atom-risk-decision")
+    coverage["responsibility_owner_ref"] = "owner-risk-review"
+    coverage["lifecycle_ref"] = "lifecycle-risk-review"
+    result = _run_review_validator(sample, tmp_path / "discovery-v5-no-shared-boundary.json")
+    assert result.returncode != 0
+    assert "must be shared by every grouped atom" in _review_validator_output(result)
+
+
+def test_outline_discovery_v5_rejects_incomplete_separation_partition(tmp_path):
+    sample = _outline_discovery_v5_multi_atom_child_sample()
+    child = sample["decomposition_window"]["units"][1]
+    groups = child["grouping_basis"]["separation_test"]["alternative_groups"]
+    groups[1]["capability_atom_refs"] = ["atom-controlled-order"]
+    result = _run_review_validator(sample, tmp_path / "discovery-v5-incomplete-separation.json")
+    assert result.returncode != 0
+    assert "must partition every grouped atom exactly once" in _review_validator_output(result)
+
+
+def test_outline_discovery_v5_rejects_incomplete_source_capability_coverage(tmp_path):
+    def duplicate_id(sample):
+        duplicate = json.loads(json.dumps(sample["business_context"]["source_capability_coverage"][0]))
+        sample["business_context"]["source_capability_coverage"].append(duplicate)
+
+    def unknown_evidence_gap(sample):
+        coverage = sample["business_context"]["source_capability_coverage"][0]
+        coverage["disposition"] = "evidence_gap"
+        coverage["evidence_gap_ref"] = "gap-missing"
+        for key in ("capability_atom_ref", "business_state_ref", "responsibility_owner_ref", "lifecycle_ref"):
+            coverage.pop(key, None)
+
+    cases = (
+        ("duplicate-id", duplicate_id, "duplicate source_capability_id"),
+        (
+            "unknown-source-ref",
+            lambda sample: sample["business_context"]["source_capability_coverage"][0].update(
+                {"source_refs": ["specs/000-outline/missing.md#Unknown"]}
+            ),
+            "source_refs must reference source_snapshot and its declared anchors",
+        ),
+        ("unknown-gap", unknown_evidence_gap, "does not reference a known evidence gap"),
+    )
+    for name, mutate, expected in cases:
+        sample = _outline_discovery_v5_root_sample()
+        mutate(sample)
+        result = _run_review_validator(sample, tmp_path / f"discovery-v5-coverage-{name}.json")
+        assert result.returncode != 0, name
+        assert expected in _review_validator_output(result), name
+
+
+def test_outline_discovery_v5_requires_exact_atom_coverage_at_frame_maturity(tmp_path):
+    sample = _outline_discovery_v5_root_sample()
+    sample["outline_maturity"] = "frame"
+    duplicate = json.loads(json.dumps(sample["business_context"]["source_capability_coverage"][0]))
+    duplicate["source_capability_id"] = "source-controlled-order-duplicate"
+    sample["business_context"]["source_capability_coverage"].append(duplicate)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v5-frame-duplicate-coverage.json")
+
+    assert result.returncode != 0
+    assert "every v5 atom requires exactly one source capability coverage entry" in _review_validator_output(result)
+
+
+def test_outline_discovery_v5_requires_handoffs_for_every_non_root_multi_atom_unit(tmp_path):
+    child_sample = _outline_discovery_v5_multi_atom_child_sample()
+    child_sample["decomposition_window"]["units"][1]["grouping_basis"]["separation_test"]["stable_handoffs"] = []
+    child_result = _run_review_validator(child_sample, tmp_path / "discovery-v5-child-no-handoff.json")
+    assert child_result.returncode != 0
+    assert "at least one stable business handoff" in _review_validator_output(child_result)
+
+    top_level_sample = _outline_discovery_v5_multi_atom_child_sample()
+    top_level_sample["decomposition_window"]["units"][0]["grouping_basis"]["separation_test"]["stable_handoffs"] = []
+    top_level_result = _run_review_validator(top_level_sample, tmp_path / "discovery-v5-root-no-handoff.json")
+    assert top_level_result.returncode == 0, _review_validator_output(top_level_result)
+
+    nested_sample = _outline_discovery_v5_non_root_multi_atom_sample()
+    window = nested_sample["decomposition_window"]
+    window["units"][0]["grouping_basis"]["separation_test"]["stable_handoffs"] = []
+    nested_result = _run_review_validator(nested_sample, tmp_path / "discovery-v5-nested-root-no-handoff.json")
+    assert nested_result.returncode != 0
+    assert "at least one stable business handoff" in _review_validator_output(nested_result)
+
+
+def test_outline_discovery_v5_duplicate_source_must_point_directly_to_canonical_entry(tmp_path):
+    sample = _outline_discovery_v5_root_sample()
+    sample["source_inventory"]["roots"].append(
+        {"path": "prd", "root_kind": "directory", "source_origin": "human-specified"}
+    )
+    sample["source_inventory"]["entries"].extend(
+        [
+            {
+                "path": "prd/canonical.md",
+                "disposition": "reviewed_no_capability",
+                "rationale": "该文件已完整检查，内容与当前业务边界无关，可作为重复文件的规范来源。",
+            },
+            {
+                "path": "prd/duplicate-a.md",
+                "disposition": "duplicate",
+                "rationale": "该文件与已检查的规范来源逐段一致，不产生新的业务能力或约束。",
+                "duplicate_of": "prd/canonical.md",
+            },
+        ]
+    )
+    valid_result = _run_review_validator(sample, tmp_path / "discovery-v5-direct-duplicate.json")
+    assert valid_result.returncode == 0, _review_validator_output(valid_result)
+
+    chained = json.loads(json.dumps(sample))
+    chained["source_inventory"]["entries"].append(
+        {
+            "path": "prd/duplicate-b.md",
+            "disposition": "duplicate",
+            "rationale": "该文件虽然内容重复，但这里故意指向另一个重复项以验证链式引用会被拒绝。",
+            "duplicate_of": "prd/duplicate-a.md",
+        }
+    )
+    chained_result = _run_review_validator(chained, tmp_path / "discovery-v5-chained-duplicate.json")
+    assert chained_result.returncode != 0
+    assert "must point directly to a used or reviewed_no_capability entry" in _review_validator_output(chained_result)
+
+
+def test_outline_discovery_v5_normalizes_inventory_paths_in_evidence_gaps(tmp_path):
+    sample = _outline_discovery_v5_root_sample()
+    sample["source_inventory"]["roots"].append(
+        {"path": "prd", "root_kind": "directory", "source_origin": "human-specified"}
+    )
+    sample["source_inventory"]["entries"].append(
+        {
+            "path": "prd/unreadable.md",
+            "disposition": "unreadable",
+            "rationale": "该文件当前无法读取，必须保留证据缺口并等待人工恢复来源后重新分析。",
+            "evidence_gap_ref": "gap-unreadable-source",
+        }
+    )
+    sample["business_context"]["evidence_gaps"].append(
+        {
+            "gap_id": "gap-unreadable-source",
+            "summary": "等待恢复无法读取的业务来源文件。",
+            "source_inventory_refs": ["prd\\unreadable.md"],
+        }
+    )
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v5-normalized-gap-path.json")
+
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v5_rejects_density_merge_reason_inside_grouping_basis(tmp_path):
+    sample = _outline_discovery_v5_multi_atom_child_sample()
+    sample["decomposition_window"]["units"][1]["grouping_basis"]["separation_test"]["decision_reason"] = (
+        "为满足密度预算，当前只提出三个候选并把独立能力合并为一个分支。"
+    )
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v5-density-in-grouping.json")
+
+    assert result.returncode != 0
+    assert "density-merge boilerplate" in _review_validator_output(result)
+
+
+def test_outline_discovery_v5_cli_rejects_file_omitted_from_effective_source_root(tmp_path):
+    sample = _outline_discovery_v5_root_sample()
+    project_root = tmp_path / "project"
+    source_dir = project_root / "prd"
+    source_dir.mkdir(parents=True)
+    (source_dir / "included.md").write_text("# Included\n", encoding="utf-8")
+    (source_dir / "omitted.md").write_text("# Omitted\n", encoding="utf-8")
+    feature_prd = project_root / "specs" / "000-outline" / "prd.md"
+    feature_prd.parent.mkdir(parents=True)
+    feature_prd.write_text("# PRD\n\n## Core Trading Loop\n\n受控交易闭环。\n", encoding="utf-8")
+    sample["source_inventory"]["roots"].insert(
+        0,
+        {"path": "prd", "root_kind": "directory", "source_origin": "default-prd"},
+    )
+    sample["source_inventory"]["entries"].insert(
+        0,
+        {
+            "path": "prd/included.md",
+            "disposition": "reviewed_no_capability",
+            "rationale": "该文件只有测试标题，不包含当前产品范围内可形成业务能力的事实。",
+        },
+    )
+    review_path = project_root / sample["artifact_path"]
+    review_path.parent.mkdir(parents=True)
+    review_path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+    result = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=project_root,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert "source_inventory omitted file from effective source roots: prd/omitted.md" in _review_validator_output(result)
 
 
 def test_outline_discovery_v4_accepts_documented_multi_atom_child(tmp_path):
@@ -7867,6 +8287,8 @@ def test_outline_discovery_v4_rejects_cycles_and_browser_duplicate_window_ids(tm
     documented_grouping = _outline_discovery_v4_multi_atom_child_sample()
     model_grouping = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="ai-proposed")
     unresolved_grouping = _outline_discovery_v4_multi_atom_child_sample(grouping_authority="unresolved")
+    v5_grouping = _outline_discovery_v5_multi_atom_child_sample()
+    nested_v5_grouping = _outline_discovery_v5_non_root_multi_atom_sample()
     detail_source = _outline_discovery_validator_sample()
     forbidden_detail = json.loads(json.dumps(next(
         node for node in detail_source["outline_nodes"] if node["node_id"] == "node-data"
@@ -7897,6 +8319,74 @@ const groupingError = context.validateReviewData(unresolvedGrouping);
 if (!groupingError.includes("unresolved") || !groupingError.includes("Web Discovery")) {{
   throw new Error("unresolved multi-atom grouping was not rejected: " + groupingError);
 }}
+const v5Grouping = {json.dumps(v5_grouping, ensure_ascii=False)};
+const nestedV5Grouping = {json.dumps(nested_v5_grouping, ensure_ascii=False)};
+const v5Error = context.validateReviewData(v5Grouping);
+if (v5Error !== "") throw new Error("valid v5 discovery rejected: " + v5Error);
+const incompleteV5 = structuredClone(v5Grouping);
+incompleteV5.decomposition_window.units[1].grouping_basis.separation_test.alternative_groups[1].capability_atom_refs = ["atom-controlled-order"];
+const incompleteV5Error = context.validateReviewData(incompleteV5);
+if (!incompleteV5Error.includes("完整且不重叠")) throw new Error("incomplete v5 separation was not rejected: " + incompleteV5Error);
+const missingInventoryV5 = structuredClone(v5Grouping);
+missingInventoryV5.source_inventory.entries = [];
+const missingInventoryError = context.validateReviewData(missingInventoryV5);
+if (!missingInventoryError.includes("来源清单")) throw new Error("missing v5 source inventory was not rejected: " + missingInventoryError);
+const duplicateCoverageId = structuredClone(v5Grouping);
+duplicateCoverageId.business_context.source_capability_coverage[1].source_capability_id = duplicateCoverageId.business_context.source_capability_coverage[0].source_capability_id;
+const duplicateCoverageIdError = context.validateReviewData(duplicateCoverageId);
+if (!duplicateCoverageIdError.includes("覆盖 ID")) throw new Error("duplicate source capability ID was not rejected: " + duplicateCoverageIdError);
+const invalidCoverageDisposition = structuredClone(v5Grouping);
+invalidCoverageDisposition.business_context.source_capability_coverage[0].disposition = "merged";
+const invalidCoverageDispositionError = context.validateReviewData(invalidCoverageDisposition);
+if (!invalidCoverageDispositionError.includes("处置类型")) throw new Error("invalid source capability disposition was not rejected: " + invalidCoverageDispositionError);
+const missingAtomCoverage = structuredClone(v5Grouping);
+missingAtomCoverage.business_context.source_capability_coverage.pop();
+const missingAtomCoverageError = context.validateReviewData(missingAtomCoverage);
+if (!missingAtomCoverageError.includes("必须且只能")) throw new Error("missing atom coverage was not rejected: " + missingAtomCoverageError);
+const duplicateAtomCoverage = structuredClone(v5Grouping);
+const duplicateAtomEntry = duplicateAtomCoverage.business_context.source_capability_coverage[1];
+duplicateAtomEntry.capability_atom_ref = "atom-controlled-order";
+duplicateAtomEntry.business_state_ref = "state-controlled-order";
+const duplicateAtomCoverageError = context.validateReviewData(duplicateAtomCoverage);
+if (!duplicateAtomCoverageError.includes("必须且只能")) throw new Error("duplicate atom coverage was not rejected: " + duplicateAtomCoverageError);
+const unknownGapCoverage = structuredClone(v5Grouping);
+const unknownGapEntry = unknownGapCoverage.business_context.source_capability_coverage[0];
+unknownGapEntry.disposition = "evidence_gap";
+unknownGapEntry.evidence_gap_ref = "gap-missing";
+delete unknownGapEntry.capability_atom_ref;
+delete unknownGapEntry.business_state_ref;
+delete unknownGapEntry.responsibility_owner_ref;
+delete unknownGapEntry.lifecycle_ref;
+const unknownGapCoverageError = context.validateReviewData(unknownGapCoverage);
+if (!unknownGapCoverageError.includes("现有证据缺口")) throw new Error("unknown evidence gap coverage was not rejected: " + unknownGapCoverageError);
+const badCoverageSource = structuredClone(v5Grouping);
+badCoverageSource.business_context.source_capability_coverage[0].source_refs = ["specs/000-outline/missing.md#Unknown"];
+const badCoverageSourceError = context.validateReviewData(badCoverageSource);
+if (!badCoverageSourceError.includes("来源快照")) throw new Error("bad coverage source ref was not rejected: " + badCoverageSourceError);
+const densityInGrouping = structuredClone(v5Grouping);
+densityInGrouping.decomposition_window.units[1].grouping_basis.separation_test.decision_reason = "为满足密度预算，当前只提出三个候选并把独立能力合并为一个分支。";
+const densityInGroupingError = context.validateReviewData(densityInGrouping);
+if (!densityInGroupingError.includes("界面密度")) throw new Error("density merge in grouping evidence was not rejected: " + densityInGroupingError);
+const childWithoutHandoff = structuredClone(v5Grouping);
+childWithoutHandoff.decomposition_window.units[1].grouping_basis.separation_test.stable_handoffs = [];
+const childWithoutHandoffError = context.validateReviewData(childWithoutHandoff);
+if (!childWithoutHandoffError.includes("至少声明一个")) throw new Error("non-root child without handoff was not rejected: " + childWithoutHandoffError);
+const topRootWithoutHandoff = structuredClone(v5Grouping);
+topRootWithoutHandoff.decomposition_window.units[0].grouping_basis.separation_test.stable_handoffs = [];
+const topRootWithoutHandoffError = context.validateReviewData(topRootWithoutHandoff);
+if (topRootWithoutHandoffError !== "") throw new Error("top-level expansion root without handoff was rejected: " + topRootWithoutHandoffError);
+const nestedRootWithoutHandoff = structuredClone(nestedV5Grouping);
+nestedRootWithoutHandoff.decomposition_window.units[0].grouping_basis.separation_test.stable_handoffs = [];
+const nestedRootWithoutHandoffError = context.validateReviewData(nestedRootWithoutHandoff);
+if (!nestedRootWithoutHandoffError.includes("至少声明一个")) throw new Error("non-root expansion root without handoff was not rejected: " + nestedRootWithoutHandoffError);
+const chainedDuplicate = structuredClone(v5Grouping);
+chainedDuplicate.source_inventory.roots.push({{path: "prd", root_kind: "directory", source_origin: "human-specified"}});
+chainedDuplicate.source_inventory.entries.push(
+  {{path: "prd/duplicate-a.md", disposition: "duplicate", rationale: "该文件与功能 PRD 内容一致，用于验证规范来源直接引用规则。", duplicate_of: "specs/000-outline/prd.md"}},
+  {{path: "prd/duplicate-b.md", disposition: "duplicate", rationale: "该文件故意指向另一个重复来源，用于验证链式重复引用会被拒绝。", duplicate_of: "prd/duplicate-a.md"}}
+);
+const chainedDuplicateError = context.validateReviewData(chainedDuplicate);
+if (!chainedDuplicateError.includes("直接指向")) throw new Error("chained duplicate source was not rejected: " + chainedDuplicateError);
 const duplicateIds = structuredClone(valid);
 duplicateIds.decomposition_window.terminal_unit_ids.push("unit-trading-loop");
 const duplicateError = context.validateReviewData(duplicateIds);

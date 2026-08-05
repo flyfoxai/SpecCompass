@@ -91,7 +91,7 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "make confirmation of that split the default recommendation" in content
         assert "source_capability_coverage" in content
         assert "complete `decomposition_window`" in content
-        assert "schema version 4" in content
+        assert "schema version 5" in content
         assert "Generic implementation components" in content
         assert "final visible-copy sanitization pass" in content
         assert "do not announce that sanitization occurred" in content
@@ -102,7 +102,8 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "never an empty coordinator placeholder" in content
         assert "may belong to only one direct child" in content
         assert "Atom count is not child count" in content
-        assert "a reasoned model partition is valid Discovery input" in content
+        assert "separation_test" in content
+        assert "must partition every grouped atom exactly once" in content
         assert "a requirement to split as finely as possible" in content
         assert "grouping_basis" in content
         assert "decomposition_basis" in content

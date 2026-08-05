@@ -1360,7 +1360,7 @@ async function processWriteback(payload, context) {
     if (discovery.source_review_data !== context.dataPath || discovery.authorization_effect !== "none" || discovery.next_route !== "/sp.prd") {
       throw new WritebackError(400, "INVALID_DISCOVERY_ROUTE", "Discovery response source or routing contract is invalid.");
     }
-    if (![3, 4].includes(discovery.schema_version) || discovery.schema_version !== reviewData.schema_version ||
+    if (![3, 4, 5].includes(discovery.schema_version) || discovery.schema_version !== reviewData.schema_version ||
         discovery.outline_maturity !== reviewData.outline_maturity || !cleanText(discovery.response_id)) {
       throw new WritebackError(400, "INVALID_DISCOVERY_IDENTITY", "Discovery response identity or schema is invalid.");
     }

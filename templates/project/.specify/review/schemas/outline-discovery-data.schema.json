@@ -6,13 +6,13 @@
   "additionalProperties": false,
   "required": [
     "schema_version", "review_type", "interaction_mode", "artifact_path",
-    "outline_maturity", "batch_id", "project", "decomposition_window", "source_snapshot",
+    "outline_maturity", "batch_id", "project", "decomposition_window", "source_snapshot", "source_inventory",
     "business_context", "constitution_snapshot",
     "density_budget", "maps", "outline_nodes", "question_groups",
     "authorization_effect", "next_route"
   ],
   "properties": {
-    "schema_version": {"const": 4},
+    "schema_version": {"const": 5},
     "review_type": {"const": "outline_discovery"},
     "interaction_mode": {"const": "discovery"},
     "artifact_path": {"type": "string", "pattern": "^specs/[^/]+/prd/review/outline-discovery-data\\.json$"},
@@ -37,15 +37,31 @@
       "minItems": 1,
       "items": {"$ref": "#/$defs/source"}
     },
+    "source_inventory": {
+      "$ref": "#/$defs/source_inventory"
+    },
     "business_context": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "product_subject", "business_objects", "operations", "outcomes",
+        "product_subject", "responsibility_owners", "business_lifecycles", "business_states",
+        "business_objects", "operations", "outcomes",
         "source_capability_coverage", "capability_atoms", "business_chains", "evidence_gaps"
       ],
       "properties": {
         "product_subject": {"$ref": "#/$defs/sourced_semantic"},
+        "responsibility_owners": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/responsibility_owner"}
+        },
+        "business_lifecycles": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/business_lifecycle"}
+        },
+        "business_states": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/business_state"}
+        },
         "business_objects": {
           "type": "array", "minItems": 1,
           "items": {"$ref": "#/$defs/business_object"}
@@ -249,16 +265,69 @@
     "grouping_basis": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["authority", "shared_business_goal", "shared_lifecycle_or_owner", "parent_cohesion", "source_refs"],
+      "required": [
+        "authority", "shared_business_goal", "shared_responsibility_owner_ref",
+        "shared_lifecycle_ref", "parent_cohesion", "separation_test", "source_refs"
+      ],
       "properties": {
         "authority": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
         "shared_business_goal": {"type": "string", "minLength": 20},
-        "shared_lifecycle_or_owner": {"type": "string", "minLength": 20},
+        "shared_responsibility_owner_ref": {"type": ["string", "null"]},
+        "shared_lifecycle_ref": {"type": ["string", "null"]},
         "parent_cohesion": {"type": "string", "minLength": 20},
+        "separation_test": {"$ref": "#/$defs/separation_test"},
         "source_refs": {
           "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         }
+      }
+    },
+    "separation_test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "alternative_groups", "stable_handoffs", "duplicated_state_refs",
+        "keep_together_complexity", "split_coordination_cost", "decision_reason"
+      ],
+      "properties": {
+        "alternative_groups": {
+          "type": "array", "minItems": 2,
+          "items": {"$ref": "#/$defs/separation_group"}
+        },
+        "stable_handoffs": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/separation_handoff"}
+        },
+        "duplicated_state_refs": {
+          "type": "array", "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "keep_together_complexity": {"type": "string", "minLength": 20},
+        "split_coordination_cost": {"type": "string", "minLength": 20},
+        "decision_reason": {"type": "string", "minLength": 20}
+      }
+    },
+    "separation_group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group_id", "business_responsibility", "capability_atom_refs"],
+      "properties": {
+        "group_id": {"type": "string", "minLength": 1},
+        "business_responsibility": {"type": "string", "minLength": 20},
+        "capability_atom_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "separation_handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_group_id", "to_group_id", "business_fact"],
+      "properties": {
+        "from_group_id": {"type": "string", "minLength": 1},
+        "to_group_id": {"type": "string", "minLength": 1},
+        "business_fact": {"type": "string", "minLength": 12}
       }
     },
     "decomposition_basis": {
@@ -369,6 +438,48 @@
         "source_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
       }
     },
+    "responsibility_owner": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["owner_id", "label", "accountability", "source_status", "source_refs"],
+      "properties": {
+        "owner_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 2},
+        "accountability": {"type": "string", "minLength": 12},
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "business_lifecycle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["lifecycle_id", "label", "trigger_or_input", "completion_condition", "source_status", "source_refs"],
+      "properties": {
+        "lifecycle_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 4},
+        "trigger_or_input": {"type": "string", "minLength": 8},
+        "completion_condition": {"type": "string", "minLength": 12},
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "business_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state_id", "label", "responsibility_owner_ref", "lifecycle_ref",
+        "acceptance_outcome_ref", "source_status", "source_refs"
+      ],
+      "properties": {
+        "state_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 4},
+        "responsibility_owner_ref": {"type": "string", "minLength": 1},
+        "lifecycle_ref": {"type": "string", "minLength": 1},
+        "acceptance_outcome_ref": {"type": "string", "minLength": 1},
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
     "business_object": {
       "type": "object",
       "additionalProperties": false,
@@ -411,7 +522,7 @@
       "additionalProperties": false,
       "required": [
         "atom_id", "label", "trigger_kind", "trigger_or_input", "owned_state",
-        "object_refs", "operation_refs", "outcome_refs", "primary_outcome_ref",
+        "owned_state_refs", "object_refs", "operation_refs", "outcome_refs", "primary_outcome_ref",
         "downstream_handoff", "business_chain_refs", "source_status", "source_refs"
       ],
       "properties": {
@@ -420,6 +531,7 @@
         "trigger_kind": {"enum": ["business_event", "exception_or_interruption", "governance_change"]},
         "trigger_or_input": {"type": "string", "minLength": 1},
         "owned_state": {"type": "string", "minLength": 1},
+        "owned_state_refs": {"type": "array", "minItems": 1, "maxItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "object_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "operation_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "outcome_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
@@ -435,7 +547,7 @@
       "additionalProperties": false,
       "required": [
         "chain_id", "label", "chain_kind", "trigger_kind", "trigger_or_input", "owned_state",
-        "object_refs", "operation_refs", "outcome_refs", "primary_outcome_ref",
+        "owned_state_refs", "object_refs", "operation_refs", "outcome_refs", "primary_outcome_ref",
         "downstream_handoff", "source_status", "source_refs"
       ],
       "properties": {
@@ -445,6 +557,7 @@
         "trigger_kind": {"enum": ["business_event", "exception_or_interruption", "governance_change"]},
         "trigger_or_input": {"type": "string", "minLength": 1},
         "owned_state": {"type": "string", "minLength": 1},
+        "owned_state_refs": {"type": "array", "minItems": 1, "maxItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "object_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "operation_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
         "outcome_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
@@ -457,12 +570,17 @@
     "evidence_gap": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["gap_id", "summary", "business_chain_refs"],
+      "required": ["gap_id", "summary"],
       "properties": {
         "gap_id": {"type": "string", "minLength": 1},
         "summary": {"type": "string", "minLength": 1},
-        "business_chain_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
-      }
+        "business_chain_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "source_inventory_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      },
+      "anyOf": [
+        {"required": ["business_chain_refs"]},
+        {"required": ["source_inventory_refs"]}
+      ]
     },
     "constitution_clause": {
       "type": "object",
@@ -485,6 +603,53 @@
         "source_type": {"type": "string", "minLength": 1},
         "anchors": {"type": "array", "items": {"type": "string"}}
       }
+    },
+    "source_inventory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roots", "entries"],
+      "properties": {
+        "roots": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/source_inventory_root"}
+        },
+        "entries": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/source_inventory_entry"}
+        }
+      }
+    },
+    "source_inventory_root": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "root_kind", "source_origin"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "root_kind": {"enum": ["directory", "file"]},
+        "source_origin": {"enum": ["default-prd", "feature-prd", "parent-reference", "human-specified"]}
+      }
+    },
+    "source_inventory_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "disposition", "rationale"],
+      "properties": {
+        "path": {"type": "string", "minLength": 1},
+        "disposition": {"enum": ["used", "reviewed_no_capability", "duplicate", "deferred", "unreadable"]},
+        "rationale": {"type": "string", "minLength": 20},
+        "duplicate_of": {"type": "string", "minLength": 1},
+        "evidence_gap_ref": {"type": "string", "minLength": 1}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"disposition": {"const": "duplicate"}}},
+          "then": {"required": ["duplicate_of"]}
+        },
+        {
+          "if": {"properties": {"disposition": {"enum": ["deferred", "unreadable"]}}},
+          "then": {"required": ["evidence_gap_ref"]}
+        }
+      ]
     },
     "question_group": {
       "type": "object",
@@ -572,6 +737,9 @@
         "trigger_or_input": {"type": "string", "minLength": 8},
         "owned_state": {"type": "string", "minLength": 10},
         "observable_outcome": {"type": "string", "minLength": 10},
+        "business_state_ref": {"type": "string", "minLength": 1},
+        "responsibility_owner_ref": {"type": "string", "minLength": 1},
+        "lifecycle_ref": {"type": "string", "minLength": 1},
         "independent_acceptance_reason": {"type": "string"},
         "disposition": {
           "type": "string",
@@ -580,18 +748,35 @@
         "capability_atom_ref": {"type": "string", "minLength": 1},
         "evidence_gap_ref": {"type": "string", "minLength": 1},
         "source_refs": {
-          "type": "array", "minItems": 1,
+          "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         }
       },
       "allOf": [
         {
           "if": {"properties": {"disposition": {"const": "atom"}}},
-          "then": {"required": ["capability_atom_ref"]}
+          "then": {
+            "required": ["capability_atom_ref", "business_state_ref", "responsibility_owner_ref", "lifecycle_ref"],
+            "not": {"required": ["evidence_gap_ref"]}
+          }
         },
         {
           "if": {"properties": {"disposition": {"const": "evidence_gap"}}},
-          "then": {"required": ["evidence_gap_ref"]}
+          "then": {
+            "required": ["evidence_gap_ref"],
+            "not": {"required": ["capability_atom_ref"]}
+          }
+        },
+        {
+          "if": {"properties": {"disposition": {"const": "excluded_by_source"}}},
+          "then": {
+            "not": {
+              "anyOf": [
+                {"required": ["capability_atom_ref"]},
+                {"required": ["evidence_gap_ref"]}
+              ]
+            }
+          }
         }
       ]
     }

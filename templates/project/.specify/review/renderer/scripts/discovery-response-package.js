@@ -41,8 +41,8 @@
     if (reviewData.interaction_mode !== "discovery") {
       throw new Error("outline_discovery interaction_mode must be discovery");
     }
-    if (![3, 4].includes(reviewData.schema_version)) {
-      throw new Error("outline_discovery schema_version must be 3 or 4");
+    if (![3, 4, 5].includes(reviewData.schema_version)) {
+      throw new Error("outline_discovery schema_version must be 3, 4, or 5");
     }
     if (!new Set(["explore", "frame"]).has(reviewData.outline_maturity)) {
       throw new Error("outline_discovery outline_maturity must be explore or frame");

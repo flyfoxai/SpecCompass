@@ -133,7 +133,7 @@ function outlineDiscoverySemanticNodeOrdinal(node, map, data = reviewData) {
 
 function outlineDiscoveryOverviewPreviewEntries(map, data = reviewData) {
   if (map?.map_kind !== "overview") return [];
-  const recursiveUnitNodeIds = data?.schema_version === 4
+  const recursiveUnitNodeIds = data?.schema_version >= 4
     ? new Set((data?.decomposition_window?.units || []).map((unit) => unit.outline_node_id))
     : null;
   const overviewNodes = outlineDiscoveryNodesForMap(map.map_id, data);
@@ -164,7 +164,7 @@ function outlineDiscoveryUnitForNode(nodeId, data = reviewData) {
 }
 
 function outlineDiscoveryVisibleNodeOrdinal(node, ordinal, data = reviewData) {
-  if (data?.schema_version === 4 && !outlineDiscoveryUnitForNode(node?.node_id, data)) return "";
+  if (data?.schema_version >= 4 && !outlineDiscoveryUnitForNode(node?.node_id, data)) return "";
   return ordinal || "";
 }
 
@@ -828,7 +828,7 @@ function renderOutlineDiscoveryMindmap(map) {
   canvas.dataset.connectionCount = String(connections.length);
   const hint = create("p", "discovery-mindmap-hint");
   hint.textContent = map.map_kind === "overview"
-    ? reviewData?.schema_version === 4
+    ? reviewData?.schema_version >= 4
       ? "总图只把本轮分解窗口登记的 Outline 单元投影为项目层级；普通说明节点留在所属分图。"
       : "总图第三列是各分图根节点的直接子节点预览；预览线按分图入口建立，点击节点可进入对应分图。"
     : "连线按 parent_node_id 展示当前导图内的真实父子关系；第三列按第二列父节点归组。";
