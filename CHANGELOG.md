@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.42] - 2026-08-05
+
+### Changed
+
+- Enforced source-complete Outline Discovery with schema v5 source inventories, explicit ownership/lifecycle/state evidence, and exact capability coverage.
+- Aligned CLI and browser validation for decomposition partitions, stable business handoffs, duplicate-source canonicalization, source references, and density-merge rejection.
+- Added regression coverage for malformed coverage maps, incomplete separation evidence, nested decomposition windows, and normalized source paths.
+- fix: enforce outline source and decomposition evidence
+
 ## [0.11.41] - 2026-08-04
 
 ### Changed
