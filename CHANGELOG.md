@@ -2,6 +2,16 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.43] - 2026-08-05
+
+### Changed
+
+- Required every `used` PRD source to carry structured, reverse-linked business evidence instead of accepting generic file-level citations.
+- Prevented model-generated `[src:ai-proposed]` content in a feature PRD from promoting itself to authoritative `doc` evidence during Outline reruns.
+- Added schema v6 contracts for independent acceptance evidence, cross-partition coupling invariants, and directional stable handoffs.
+- Aligned CLI and browser validation so incomplete source accounting, self-links, same-side handoffs, and unsupported grouping claims are rejected consistently.
+- fix: prevent outline evidence authority laundering
+
 ## [0.11.42] - 2026-08-05
 
 ### Changed
