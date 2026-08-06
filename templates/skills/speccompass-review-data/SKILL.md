@@ -138,14 +138,23 @@ the serialized split alternative; `stable_handoffs` must connect that complete
 alternative as well. Document-backed invariants and any documented shared
 owner/lifecycle require an exact anchored `evidence_ref` and verbatim
 `evidence_quote`. When the source does not name the common owner/lifecycle,
-leave that architecture entity `ai-proposed` and provide a complete Web
-keep/split decision. Each sibling group needs its own state/rule/owner/
-acceptance/coordination comparison; repeated generic prose is invalid. In
-schema v6, an unconfirmed `ai-proposed` or `unresolved` grouping, owner, or
-lifecycle is Web-only: it must not be emitted as a non-root generated unit.
-Generate source-backed independent units until the shared boundary is
-documented or human-confirmed. This prevents a prior feature-PRD candidate
-list from becoming self-confirming structure.
+leave that architecture entity `ai-proposed`, set `proposal_origin:
+current-discovery`, and provide a complete Web keep/split decision. A fresh
+current-run proposal may be emitted as a Discovery candidate unit so the
+candidate tree can represent the lower-complexity architecture; it is not a
+confirmed boundary and must never be treated as evidence by a later run. Its
+grouping, coupling, and handoff refs must come from original business-source
+roots, human-specified roots, or confirmed parent references, never the current
+feature PRD, project memory, feature memory, feature map, or prior generated
+Outline. Each sibling group needs its own state/rule/owner/acceptance/
+coordination comparison; repeated generic prose is invalid. In schema v6,
+`unresolved` remains Web-only and cannot authorize a generated non-root unit.
+Do not fall back to one atom per project merely because an inferred boundary
+needs confirmation: preserve a complete proposed grouping in the Web review
+and keep the original atoms as coverage evidence. A shared database product is
+not merge evidence; a shared governed domain-data lifecycle is, when it owns
+intake, normalization, quality/version/lineage, retention, and trusted delivery
+as one business responsibility.
 
 ```bash
 node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature> --intent regenerate --stage <prd|flow|ui>

@@ -655,21 +655,11 @@ function validateOutlineDiscoveryProjectAuthority(data) {
     value.forEach((entry, index) => validateEntryAuthority(entry, `business_context.${key}[${index}]`));
   }
   asArray(data.outline_nodes).forEach((node) => validateEntryAuthority(node, `outline node ${node.node_id}`));
-  const generatedGroupedUnits = asArray(data.decomposition_window?.units).filter((unit) =>
-    unit?.project_depth > 0
-      && asArray(unit?.capability_atom_refs).length > 1,
-  );
-  const groupedOwnerRefs = new Set(generatedGroupedUnits.map((unit) => unit?.grouping_basis?.shared_responsibility_owner_ref).filter(Boolean));
-  const groupedLifecycleRefs = new Set(generatedGroupedUnits.map((unit) => unit?.grouping_basis?.shared_lifecycle_ref).filter(Boolean));
   asArray(data.business_context?.responsibility_owners).forEach((owner, index) => {
-    if (groupedOwnerRefs.has(owner?.owner_id)) {
-      validateQuotedDocumentEvidence(owner, `business_context.responsibility_owners[${index}]`, { requireNamedLabel: true });
-    }
+    validateQuotedDocumentEvidence(owner, `business_context.responsibility_owners[${index}]`, { requireNamedLabel: true });
   });
   asArray(data.business_context?.business_lifecycles).forEach((lifecycle, index) => {
-    if (groupedLifecycleRefs.has(lifecycle?.lifecycle_id)) {
-      validateQuotedDocumentEvidence(lifecycle, `business_context.business_lifecycles[${index}]`, { requireNamedLabel: true });
-    }
+    validateQuotedDocumentEvidence(lifecycle, `business_context.business_lifecycles[${index}]`, { requireNamedLabel: true });
   });
   asArray(data.decomposition_window?.units).forEach((unit, index) => {
     validateEntryAuthority(unit, `decomposition unit[${index}]`);
@@ -2686,6 +2676,23 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
   const businessLifecyclesById = new Map(asArray(data.business_context?.business_lifecycles).map((lifecycle) => [lifecycle?.lifecycle_id, lifecycle]));
   const responsibilityOwnerIds = new Set(responsibilityOwnersById.keys());
   const businessLifecycleIds = new Set(businessLifecyclesById.keys());
+  const currentProposalSourceRoots = asArray(data.source_inventory?.roots)
+    .filter((root) => root?.source_origin !== "feature-prd")
+    .map((root) => ({
+      path: String(root?.path || "").replace(/\\/g, "/").replace(/\/$/, ""),
+      kind: root?.root_kind,
+    }))
+    .filter((root) => root.path);
+  const isCurrentProposalSourceRef = (rawRef) => {
+    const normalized = String(rawRef || "").replace(/\\/g, "/");
+    const hash = normalized.indexOf("#");
+    const sourcePath = hash < 0 ? normalized : normalized.slice(0, hash);
+    return currentProposalSourceRoots.some((root) =>
+      root.kind === "file"
+        ? sourcePath === root.path
+        : sourcePath === root.path || sourcePath.startsWith(`${root.path}/`),
+    );
+  };
   const units = asArray(window.units);
   if (!units.length) {
     fail("decomposition_window.units must contain at least one Outline unit");
@@ -2765,11 +2772,32 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         sharedLifecycleRef === null ? null : businessLifecyclesById.get(sharedLifecycleRef)?.source_status,
       ].filter(Boolean);
       const hasStrongSharedAuthority = sharedAuthorities.some((status) => ["doc", "user", "user-confirmed"].includes(status));
-      if (basis?.authority === "ai-proposed" || sharedAuthorities.some((status) => status === "ai-proposed" || status === "unresolved")) {
-        fail(`${label} cannot place an unconfirmed model grouping in the generated tree; expose keep/split candidates in Web Discovery and generate source-backed independent units`);
-      }
-      if (!hasStrongSharedAuthority || !["doc", "user", "user-confirmed"].includes(basis?.authority)) {
-        fail(`${label} must use a documented or human-confirmed shared boundary; model grouping is Web Discovery-only`);
+      const hasProposedSharedAuthority = sharedAuthorities.some((status) => status === "ai-proposed");
+      const hasUnresolvedSharedAuthority = sharedAuthorities.some((status) => status === "unresolved");
+      const isCurrentModelProposal = basis?.authority === "ai-proposed" || hasProposedSharedAuthority;
+      if (hasUnresolvedSharedAuthority) {
+        fail(`${label} cannot use an unresolved shared owner or lifecycle for a generated grouped child`);
+      } else if (isCurrentModelProposal) {
+        if (basis?.authority !== "ai-proposed") {
+          fail(`${label}.authority must remain ai-proposed when its shared owner or lifecycle is model-proposed`);
+        }
+        if (basis?.proposal_origin !== "current-discovery") {
+          fail(`${label}.proposal_origin must be current-discovery for a generated ai-proposed grouping`);
+        }
+        const proposalRefs = [
+          ...asArray(basis?.source_refs),
+          ...asArray(sharedOwnerRef === null ? [] : responsibilityOwnersById.get(sharedOwnerRef)?.source_refs),
+          ...asArray(sharedLifecycleRef === null ? [] : businessLifecyclesById.get(sharedLifecycleRef)?.source_refs),
+          ...asArray(basis?.coupling_invariants).flatMap((invariant) => asArray(invariant?.source_refs)),
+          ...asArray(basis?.separation_test?.stable_handoffs).flatMap((handoff) => asArray(handoff?.source_refs)),
+        ];
+        if (!proposalRefs.length || proposalRefs.some((ref) => !isCurrentProposalSourceRef(ref))) {
+          fail(`${label} current-discovery proposal evidence must come from original business sources, human-specified roots, or confirmed parent references; feature PRD and memory output cannot certify a new grouping`);
+        }
+      } else if (!hasStrongSharedAuthority || !["doc", "user", "user-confirmed"].includes(basis?.authority)) {
+        fail(`${label} must use a documented, human-supplied, or fresh current-discovery shared boundary`);
+      } else if (basis?.proposal_origin !== undefined) {
+        fail(`${label}.proposal_origin is only allowed for ai-proposed current-discovery grouping`);
       }
     }
     const test = basis?.separation_test;
@@ -2809,7 +2837,7 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
       const invariantIds = new Set();
       const invariantAtomCoverage = new Set();
       const invariantGroupGraph = new Map([...groupIds].map((groupId) => [groupId, new Set()]));
-      const invariantKinds = new Set(["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle"]);
+      const invariantKinds = new Set(["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle", "cohesive_data_lifecycle"]);
       for (const [invariantIndex, invariant] of invariants.entries()) {
         const invariantLabel = `${label}.coupling_invariants[${invariantIndex}]`;
         if (!String(invariant?.invariant_id || "").trim() || invariantIds.has(invariant?.invariant_id)) fail(`${invariantLabel}.invariant_id must be non-empty and unique`);
@@ -2985,7 +3013,10 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
       if (unit.project_depth <= window.root_project_depth || asArray(unit.capability_atom_refs).length < 2) continue;
       const ownerStatus = responsibilityOwnersById.get(unit.grouping_basis?.shared_responsibility_owner_ref)?.source_status;
       const lifecycleStatus = businessLifecyclesById.get(unit.grouping_basis?.shared_lifecycle_ref)?.source_status;
-      if ([ownerStatus, lifecycleStatus].some((status) => ["doc", "user", "user-confirmed"].includes(status))) continue;
+      const requiresGroupingDecision = unit.grouping_basis?.authority === "ai-proposed"
+        || [ownerStatus, lifecycleStatus].some((status) => ["ai-proposed", "unresolved"].includes(status))
+        || ![ownerStatus, lifecycleStatus].some((status) => ["doc", "user", "user-confirmed"].includes(status));
+      if (!requiresGroupingDecision) continue;
       const question = questions.find((entry) => entry?.outline_node_id === unit.outline_node_id);
       const completeCandidates = asArray(question?.candidates).filter((candidate) =>
         asArray(candidate?.capability_atom_refs).length === unit.capability_atom_refs.length
@@ -3439,6 +3470,9 @@ function validateOutlineDiscoveryBusinessContext(data) {
     if (!allowedOutlineSourceStatuses.has(entry?.source_status)) fail(`${label}: unsupported source_status`);
     const refs = asArray(entry?.source_refs);
     if (!refs.length) fail(`${label}: source_refs must not be empty`);
+    if (new Set(refs.map((ref) => String(ref || "").replace(/\\/g, "/"))).size !== refs.length) {
+      fail(`${label}: source_refs must be unique`);
+    }
     for (const ref of refs) {
       const normalized = String(ref || "").replace(/\\/g, "/");
       const hash = normalized.indexOf("#");

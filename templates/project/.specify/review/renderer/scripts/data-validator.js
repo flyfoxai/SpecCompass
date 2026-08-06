@@ -386,6 +386,23 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
   const unitsById = new Map();
   const childrenById = new Map();
   const featurePrdPath = `specs/${data.project?.feature || ""}/prd.md`;
+  const currentProposalSourceRoots = (data.source_inventory?.roots || [])
+    .filter((root) => root?.source_origin !== "feature-prd")
+    .map((root) => ({
+      path: String(root?.path || "").replace(/\\/g, "/").replace(/\/$/, ""),
+      kind: root?.root_kind,
+    }))
+    .filter((root) => root.path);
+  const isCurrentProposalSourceRef = (rawRef) => {
+    const normalized = String(rawRef || "").replace(/\\/g, "/");
+    const hash = normalized.indexOf("#");
+    const sourcePath = hash < 0 ? normalized : normalized.slice(0, hash);
+    return currentProposalSourceRoots.some((root) =>
+      root.kind === "file"
+        ? sourcePath === root.path
+        : sourcePath === root.path || sourcePath.startsWith(`${root.path}/`),
+    );
+  };
   const refsError = (refs, sourceStatus = null) => {
     if (!Array.isArray(refs) || !refs.length || new Set(refs).size !== refs.length) return true;
     return refs.some((rawRef) => {
@@ -450,11 +467,27 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
       const sharedEntities = [ownersById.get(ownerRef), lifecyclesById.get(lifecycleRef)].filter(Boolean);
       const sharedAuthorities = sharedEntities.map((entry) => entry.source_status);
       const hasStrongSharedAuthority = sharedAuthorities.some((status) => ["doc", "user", "user-confirmed"].includes(status));
-      if (basis?.authority === "ai-proposed" || sharedAuthorities.some((status) => status === "ai-proposed" || status === "unresolved")) {
-        return "未确认的模型归组不能进入生成树；请把保留/拆分方案放入 Web Discovery 候选，并按来源支持的独立能力生成子单元。";
-      }
-      if (!hasStrongSharedAuthority || !["doc", "user", "user-confirmed"].includes(basis?.authority)) {
-        return "生成树中的多能力子单元必须有文档或人工确认的共同责任；模型归组只能作为 Web Discovery 候选。";
+      const hasProposedSharedAuthority = sharedAuthorities.some((status) => status === "ai-proposed");
+      const hasUnresolvedSharedAuthority = sharedAuthorities.some((status) => status === "unresolved");
+      const isCurrentModelProposal = basis?.authority === "ai-proposed" || hasProposedSharedAuthority;
+      if (hasUnresolvedSharedAuthority) return "未解决的共同负责人或生命周期不能支撑已生成的多能力子项目。";
+      if (isCurrentModelProposal) {
+        if (basis?.authority !== "ai-proposed") return "共同负责人或生命周期由模型提出时，归组权威必须保持 ai-proposed。";
+        if (basis?.proposal_origin !== "current-discovery") return "本轮模型归组必须声明 proposal_origin: current-discovery。";
+        const proposalRefs = [
+          ...(basis?.source_refs || []),
+          ...(ownerRef === null ? [] : ownersById.get(ownerRef)?.source_refs || []),
+          ...(lifecycleRef === null ? [] : lifecyclesById.get(lifecycleRef)?.source_refs || []),
+          ...(basis?.coupling_invariants || []).flatMap((invariant) => invariant?.source_refs || []),
+          ...(basis?.separation_test?.stable_handoffs || []).flatMap((handoff) => handoff?.source_refs || []),
+        ];
+        if (!proposalRefs.length || proposalRefs.some((ref) => !isCurrentProposalSourceRef(ref))) {
+          return "本轮模型归组只能使用原始业务资料、人工指定资料或已确认父级引用；feature PRD 和 memory 不能为新归组自证。";
+        }
+      } else if (!hasStrongSharedAuthority || !["doc", "user", "user-confirmed"].includes(basis?.authority)) {
+        return "多能力子单元必须有文档、人工或本轮重新推导的共同责任依据。";
+      } else if (basis?.proposal_origin !== undefined) {
+        return "proposal_origin 只能用于 ai-proposed 的本轮 Discovery 归组。";
       }
       for (const entity of sharedEntities.filter((entry) => entry.source_status === "doc")) {
         if (!String(entity.evidence_ref || "").trim() || String(entity.evidence_quote || "").trim().length < 8
@@ -493,7 +526,7 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
       const invariantIds = new Set();
       const invariantAtomCoverage = new Set();
       const invariantGroupGraph = new Map([...groupIds].map((groupId) => [groupId, new Set()]));
-      const invariantKinds = new Set(["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle"]);
+      const invariantKinds = new Set(["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle", "cohesive_data_lifecycle"]);
       for (const invariant of basis.coupling_invariants) {
         const invariantAtoms = invariant?.capability_atom_refs;
         if (!String(invariant?.invariant_id || "").trim() || invariantIds.has(invariant.invariant_id)
@@ -590,11 +623,6 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
         ? ["shared_business_goal", "parent_cohesion"]
         : ["shared_business_goal", "shared_lifecycle_or_owner", "parent_cohesion"];
       if (basisError(unit.grouping_basis, textFields, "authority")) return "多能力 Outline 单元必须提供完整 grouping_basis。";
-      if (data.schema_version >= 6
-          && unit.project_depth > 0
-          && ["ai-proposed", "unresolved"].includes(unit.grouping_basis?.authority)) {
-        return "未确认的模型归组不能进入生成树；请把保留/拆分方案放入 Web Discovery 候选，并按来源支持的独立能力生成子单元。";
-      }
       if (data.schema_version >= 5) {
         const groupingError = v5GroupingError(unit.grouping_basis, unit, atomRefs);
         if (groupingError) return groupingError;
@@ -602,7 +630,10 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
       if (data.schema_version >= 6 && unit.project_depth > 0) {
         const ownerStatus = ownersById.get(unit.grouping_basis?.shared_responsibility_owner_ref)?.source_status;
         const lifecycleStatus = lifecyclesById.get(unit.grouping_basis?.shared_lifecycle_ref)?.source_status;
-        if (![ownerStatus, lifecycleStatus].some((status) => ["doc", "user", "user-confirmed"].includes(status))) {
+        const requiresGroupingDecision = unit.grouping_basis?.authority === "ai-proposed"
+          || [ownerStatus, lifecycleStatus].some((status) => ["ai-proposed", "unresolved"].includes(status))
+          || ![ownerStatus, lifecycleStatus].some((status) => ["doc", "user", "user-confirmed"].includes(status));
+        if (requiresGroupingDecision) {
           const questions = (data.question_groups || []).flatMap((group) => group?.questions || []);
           const question = questions.find((entry) => entry?.outline_node_id === unit.outline_node_id);
           const completeCandidates = (question?.candidates || []).filter((candidate) =>
@@ -790,6 +821,14 @@ function validateOutlineDiscoveryBusinessRuntime(data) {
     responsibilityOwners = collect("responsibility_owners", "owner_id", ["label", "accountability"]); if (responsibilityOwners.error) return responsibilityOwners.error;
     businessLifecycles = collect("business_lifecycles", "lifecycle_id", ["label", "trigger_or_input", "completion_condition"]); if (businessLifecycles.error) return businessLifecycles.error;
     businessStates = collect("business_states", "state_id", ["label"]); if (businessStates.error) return businessStates.error;
+    for (const entity of [...responsibilityOwners.values, ...businessLifecycles.values].filter((entry) => entry?.source_status === "doc")) {
+      const evidenceRef = String(entity?.evidence_ref || "").replace(/\\/g, "/");
+      const evidenceQuote = String(entity?.evidence_quote || "").trim();
+      const normalizedRefs = (entity?.source_refs || []).map((ref) => String(ref || "").replace(/\\/g, "/"));
+      if (!evidenceRef || evidenceQuote.length < 8 || !normalizedRefs.includes(evidenceRef) || !evidenceQuote.includes(String(entity.label || "").trim())) {
+        return "文档责任主体和生命周期必须提供包含来源原名的 evidence_quote，并让 evidence_ref 同时出现在 source_refs 中。";
+      }
+    }
     businessStatesById = new Map(businessStates.values.map((state) => [state.state_id, state]));
     for (const state of businessStates.values) {
       if (!responsibilityOwners.ids.has(state.responsibility_owner_ref) || !businessLifecycles.ids.has(state.lifecycle_ref) || !outcomes.ids.has(state.acceptance_outcome_ref)) {

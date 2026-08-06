@@ -271,6 +271,10 @@
       ],
       "properties": {
         "authority": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "proposal_origin": {
+          "description": "Required by runtime validation when a generated child uses a fresh ai-proposed grouping, owner, or lifecycle.",
+          "enum": ["current-discovery"]
+        },
         "shared_business_goal": {"type": "string", "minLength": 20},
         "shared_responsibility_owner_ref": {"type": ["string", "null"]},
         "shared_lifecycle_ref": {"type": ["string", "null"]},
@@ -293,7 +297,7 @@
       "required": ["invariant_id", "invariant_kind", "business_rule", "capability_atom_refs", "source_status", "source_refs"],
       "properties": {
         "invariant_id": {"type": "string", "minLength": 1},
-        "invariant_kind": {"enum": ["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle"]},
+        "invariant_kind": {"enum": ["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle", "cohesive_data_lifecycle"]},
         "business_rule": {"type": "string", "minLength": 20},
         "capability_atom_refs": {
           "type": "array", "minItems": 2, "uniqueItems": true,

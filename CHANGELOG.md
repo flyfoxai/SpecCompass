@@ -2,6 +2,15 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.45] - 2026-08-06
+
+### Changed
+
+- Allowed a fresh current-run `ai-proposed` multi-atom Outline grouping to enter Discovery when it is derived from original PRD evidence and declares `proposal_origin: current-discovery`.
+- Added `cohesive_data_lifecycle` evidence so one governed business-data lifecycle can remain one candidate responsibility when it owns intake, normalization, quality, freshness, version, lineage, retention, and trusted delivery.
+- Kept shared databases, runtimes, pages, teams, and ordinary handoffs from becoming merge evidence; validators still require complete coupling and stable-handoff coverage for every grouped atom and split alternative.
+- Aligned CLI and browser validators, schemas, templates, methodology references, and regression tests with the fresh-proposal and cohesive-data rules.
+
 ## [0.11.44] - 2026-08-06
 
 ### Changed

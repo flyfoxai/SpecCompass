@@ -163,15 +163,21 @@ connect every alternative responsibility group; stable business handoffs must
 also connect the complete split alternative. A local relationship between two
 atoms cannot justify a larger bucket, and sibling groupings cannot reuse one
 generic complexity comparison. A documented shared owner/lifecycle preserves
-the source-named label, exact heading, and verbatim quote. Its authority may be
-`ai-proposed` when product sources provide the business facts but not the project
-architecture; inferred ownership remains proposed and the complete keep/split
-choice must remain on the Web Discovery page until human confirmation. In schema
-v6 this proposal cannot be serialized as a generated non-root child before that
-confirmation; default generation keeps the source-backed atoms independent.
+the source-named label, exact heading, and verbatim quote. When product sources
+provide the business facts but not the project architecture, the model may
+create a reusable `ai-proposed` owner/lifecycle and emit the proposed grouping
+as a current Discovery candidate. It sets `proposal_origin:
+current-discovery`, cites only original business-source roots, human-specified
+roots, or confirmed parent references for grouping/coupling/handoff evidence,
+and provides a complete Web keep/split decision. The current feature PRD,
+project memory, feature memory, feature map, and prior generated Outline cannot
+support that proposal, so a previous partition cannot certify itself on rerun.
 `unresolved` cannot authorize an already grouped non-root unit and must instead
-produce named partition options. Grouping is not a terminal claim, no fixed
-child count applies, and finer is not automatically better.
+produce named partition options. A shared database technology does not justify
+merging projects; one governed domain-data lifecycle can justify a data
+responsibility boundary when it owns intake, normalization, quality, version,
+lineage, retention, and trusted delivery. Grouping is not a terminal claim, no
+fixed child count applies, and finer is not automatically better.
 
 The unique `000-*` top unit generates exactly one descendant level in its first
 window. Any ordinary non-root `decompose` window normally generates two or three

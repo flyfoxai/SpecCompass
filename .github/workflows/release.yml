@@ -46,14 +46,15 @@ jobs:
           cat > release_notes.md << NOTES_EOF
           ## Source-authoritative Outline evidence
 
-          This release closes the generation and validation gap that could make an under-explored Outline decomposition look source-complete:
+          This release closes the generation and validation gap that could make an under-explored Outline decomposition look source-complete, while keeping coherent business-data responsibilities together:
 
-          - \`/sp.prd\` rebuilds capability evidence from original business sources, accepted user decisions, and confirmed parent handoffs before considering earlier generated candidates.
+          - \`/sp.prd\` rebuilds capability evidence from original business sources, accepted user decisions, and confirmed parent handoffs before considering earlier generated candidates. Old feature PRD, memory, feature-map, and Outline partitions cannot certify themselves.
           - A feature PRD is treated as a mixed-authority synthesis. Its \`[src:ai-proposed]\` boundaries, owners, states, lifecycles, and grouping reasons remain proposals on reruns; citing the whole file cannot promote them to \`doc\` authority.
           - Every source inventory entry marked \`used\` must provide structured \`evidence_refs\` to the exact source-backed capability, owner, lifecycle, state, object, operation, outcome, atom, chain, or constraint, with a reverse citation to that file. A read file that supplies no business fact is \`reviewed_no_capability\`.
           - Capability coverage now preserves source authority and explains why each result can be accepted independently, so broad wrapper capabilities cannot hide omitted states, writers, or outcomes.
           - A child that groups multiple capability atoms must cite at least one source-backed coupling invariant that crosses the proposed split. Generic claims that separation is expensive are not enough.
           - Stable-handoff evidence identifies the source atom, destination atom, exact business fact, authority, and source citation. The validator rejects self-links and handoffs that do not cross two different sibling partitions.
+          - A \`cohesive_data_lifecycle\` can keep one business-data responsibility together across intake, normalization, quality/freshness, version/lineage, retention, and trusted delivery. Sharing a database or runtime is never enough.
           - Outline Discovery schema v6 carries these contracts. Versions 3 through 5 remain readable for existing reviews but cannot be generated as current evidence.
           - CLI and browser validators enforce the same evidence authority, reverse links, coupling invariants, atomic handoff direction, and exact partition coverage.
           - Existing projects must refresh their installed templates after upgrading the CLI: \`specify init . --integration <agent> --force\`.

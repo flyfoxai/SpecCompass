@@ -2341,8 +2341,9 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "Parent-child reconciliation checks direction, scope, ownership, outcomes, handoffs" in prd
     assert "A multi-atom unit requires `grouping_basis`" in prd
     assert "One local relationship between two atoms can never justify a larger bucket" in prd
-    assert "For a generated child, grouping authority must be `doc`, `user`, or `user-confirmed`" in prd
-    assert "`ai-proposed` and `unresolved` remain Web-only candidates" in prd
+    assert "A complete current-run `ai-proposed` grouping may enter the Discovery candidate tree" in prd
+    assert "`unresolved` still cannot authorize an already grouped child" in prd
+    assert "cohesive_data_lifecycle" in prd
     assert "Mark a unit `expanded` only when `decomposition_basis`" in prd
     assert "Mark it `terminal` only when `terminal_basis`" in prd
 
@@ -2358,8 +2359,8 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "The layered input contract is: Outline reads PRD sources" in command_spec
     assert "multi-atom unit carries" in command_spec
     assert "`grouping_basis`" in command_spec
-    assert "authority may be" in command_spec
-    assert "`ai-proposed` when product sources provide the business facts" in command_spec
+    assert "current Discovery candidate" in command_spec
+    assert "emit the proposed grouping" in command_spec
     assert "automatically better" in command_spec
     assert "Only a formally confirmed terminal unit may enter `frame`" in command_spec
 
@@ -7433,6 +7434,68 @@ def _outline_discovery_v6_multi_atom_child_sample() -> dict:
     return sample
 
 
+def _outline_discovery_v6_current_model_grouping_sample() -> dict:
+    """A fresh model grouping backed by a non-feature business source."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    original_ref = "prd/core-trading-loop.md#Core Trading Loop"
+    sample["source_inventory"]["roots"].append(
+        {"path": "prd", "root_kind": "directory", "source_origin": "default-prd"}
+    )
+    sample["source_inventory"]["entries"].append(
+        {
+            "path": "prd/core-trading-loop.md",
+            "disposition": "used",
+            "rationale": "该原始业务资料同时描述交易意图、风险裁定和订单结果的共同数据与生命周期事实。",
+            "evidence_refs": [
+                {"entity_kind": "source_capability", "entity_id": "source-controlled-order"},
+                {"entity_kind": "source_capability", "entity_id": "source-risk-decision"},
+                {"entity_kind": "business_state", "entity_id": "state-controlled-order"},
+                {"entity_kind": "business_state", "entity_id": "state-risk-decision"},
+            ],
+        }
+    )
+    sample["source_snapshot"].append(
+        {
+            "path": "prd/core-trading-loop.md",
+            "source_type": "prd",
+            "anchors": ["Core Trading Loop"],
+        }
+    )
+    context = sample["business_context"]
+    for entity in context["responsibility_owners"] + context["business_lifecycles"]:
+        entity["source_status"] = "ai-proposed"
+        entity["source_refs"] = [original_ref]
+    for entity in context["business_states"] + context["business_chains"] + context["source_capability_coverage"]:
+        entity["source_refs"] = list(dict.fromkeys(entity.get("source_refs", []) + [original_ref]))
+    for atom in context["capability_atoms"]:
+        atom["source_refs"] = list(dict.fromkeys(atom["source_refs"] + [original_ref]))
+    child = next(
+        unit
+        for unit in sample["decomposition_window"]["units"]
+        if unit["project_depth"] > 0 and len(unit["capability_atom_refs"]) > 1
+    )
+    child["source_status"] = "ai-proposed"
+    basis = child["grouping_basis"]
+    basis["authority"] = "ai-proposed"
+    basis["proposal_origin"] = "current-discovery"
+    basis["source_refs"] = [original_ref]
+    question = sample["question_groups"][0]["questions"][0]
+    question["target_kind"] = "project_boundary"
+    question["candidates"][0]["label"] = "保留风险裁定与受控订单的共同边界"
+    question["candidates"][1]["label"] = "拆分风险裁定和受控订单形成责任"
+    basis["coupling_invariants"][0].update(
+        {
+            "source_status": "doc",
+            "evidence_ref": original_ref,
+            "evidence_quote": "风险放行决定必须在订单形成前保持同一笔意图的可追溯关联",
+            "source_refs": [original_ref],
+        }
+    )
+    handoff = basis["separation_test"]["stable_handoffs"][0]
+    handoff["source_refs"] = [original_ref]
+    return sample
+
+
 def _outline_discovery_v4_non_root_sample() -> dict:
     sample = json.loads(json.dumps(_outline_discovery_v4_root_sample()).replace("000-outline", "001-outline"))
     source_ref = "specs/001-outline/prd.md#Core Trading Loop"
@@ -7795,8 +7858,10 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "ai-proposed",
         "unresolved",
     ]
+    assert grouping_basis["properties"]["proposal_origin"]["enum"] == ["current-discovery"]
     assert grouping_basis["properties"]["parent_cohesion"]["minLength"] == 20
     coupling_invariant = discovery["$defs"]["coupling_invariant"]
+    assert "cohesive_data_lifecycle" in coupling_invariant["properties"]["invariant_kind"]["enum"]
     assert coupling_invariant["properties"]["evidence_ref"]["minLength"] == 1
     assert coupling_invariant["properties"]["evidence_quote"]["minLength"] == 8
     assert "evidence_ref" in discovery["$defs"]["responsibility_owner"]["properties"]
@@ -7894,20 +7959,19 @@ def test_outline_discovery_v6_accepts_source_backed_coupling_contract(tmp_path):
     assert result.returncode == 0, _review_validator_output(result)
 
 
-def test_outline_discovery_v6_rejects_ai_proposed_shared_boundary_even_with_web_partition_choice(tmp_path):
-    sample = _outline_discovery_v6_multi_atom_child_sample()
-    context = sample["business_context"]
-    context["responsibility_owners"][0]["source_status"] = "ai-proposed"
-    context["business_lifecycles"][0]["source_status"] = "ai-proposed"
-    question = sample["question_groups"][0]["questions"][0]
-    question["target_kind"] = "project_boundary"
-    question["candidates"][0]["label"] = "保留风险裁定与受控订单的共同边界"
-    question["candidates"][1]["label"] = "拆分风险裁定和受控订单形成责任"
-
+def test_outline_discovery_v6_accepts_fresh_ai_proposed_shared_boundary_with_web_partition_choice(tmp_path):
+    sample = _outline_discovery_v6_current_model_grouping_sample()
     result = _run_review_validator(sample, tmp_path / "discovery-v6-ai-shared-boundary.json")
+    assert result.returncode == 0, _review_validator_output(result)
 
+
+def test_outline_discovery_v6_requires_current_discovery_marker_for_ai_grouping(tmp_path):
+    sample = _outline_discovery_v6_current_model_grouping_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["project_depth"] > 0 and len(unit["capability_atom_refs"]) > 1)
+    child["grouping_basis"].pop("proposal_origin")
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-ai-shared-boundary-without-origin.json")
     assert result.returncode != 0
-    assert "cannot place an unconfirmed model grouping" in _review_validator_output(result)
+    assert "proposal_origin" in _review_validator_output(result)
 
 
 def test_outline_discovery_v6_rejects_partial_coupling_evidence_for_large_group(tmp_path):
@@ -8162,6 +8226,13 @@ def test_outline_discovery_v5_rejects_incomplete_source_capability_coverage(tmp_
                 {"source_refs": ["specs/000-outline/missing.md#Unknown"]}
             ),
             "source_refs must reference source_snapshot and its declared anchors",
+        ),
+        (
+            "duplicate-source-ref",
+            lambda sample: sample["business_context"]["source_capability_coverage"][0].update(
+                {"source_refs": ["specs/000-outline/prd.md#Core Trading Loop"] * 2}
+            ),
+            "source_refs must be unique",
         ),
         ("unknown-gap", unknown_evidence_gap, "does not reference a known evidence gap"),
     )
@@ -8606,13 +8677,16 @@ if (!v6GroupedChild) throw new Error("v6 fixture is missing a generated grouped 
 v6GroupedChild.grouping_basis.coupling_invariants = [];
 const v6NoInvariantError = context.validateReviewData(v6NoInvariant);
 if (!v6NoInvariantError.includes("耦合不变量")) throw new Error("v6 missing coupling invariant was not rejected: " + v6NoInvariantError);
-const v6ModelGrouping = structuredClone(v6Grouping);
+const v6ModelGrouping = {json.dumps(_outline_discovery_v6_current_model_grouping_sample(), ensure_ascii=False)};
 const v6ModelChild = v6ModelGrouping.decomposition_window.units.find((unit) =>
   unit.project_depth > 0 && unit.capability_atom_refs.length > 1
 );
-v6ModelChild.grouping_basis.authority = "ai-proposed";
 const v6ModelGroupingError = context.validateReviewData(v6ModelGrouping);
-if (!v6ModelGroupingError.includes("不能进入生成树")) throw new Error("v6 ai-proposed grouping was not rejected: " + v6ModelGroupingError);
+if (v6ModelGroupingError !== "") throw new Error("fresh v6 ai-proposed grouping rejected: " + v6ModelGroupingError);
+const v6ModelMissingOrigin = structuredClone(v6ModelGrouping);
+v6ModelMissingOrigin.decomposition_window.units.find((unit) => unit.project_depth > 0 && unit.capability_atom_refs.length > 1).grouping_basis.proposal_origin = undefined;
+const v6ModelMissingOriginError = context.validateReviewData(v6ModelMissingOrigin);
+if (!v6ModelMissingOriginError.includes("proposal_origin")) throw new Error("v6 missing proposal origin was not rejected: " + v6ModelMissingOriginError);
 const v6PartialInvariant = structuredClone(v6Grouping);
 const v6PartialChild = v6PartialInvariant.decomposition_window.units.find((unit) =>
   unit.project_depth > v6PartialInvariant.decomposition_window.root_project_depth && unit.capability_atom_refs.length > 1
