@@ -2254,6 +2254,9 @@ def test_prd_recursive_outline_uses_business_semantics_and_keeps_constitution_re
     assert "Each atom has exactly one matching business chain" in prd
     assert "may belong to only one direct child" in prd
     assert "grouping_basis" in prd
+    assert "The union of those invariants must cover every grouped atom" in prd
+    assert "verbatim `evidence_quote`" in prd
+    assert "Reusing the same comparison prose across sibling groups is invalid" in prd
     assert "decomposition_basis" in prd
     assert "terminal_basis" in prd
     assert "Direct children must be non-overlapping and exactly cover their parent" in prd
@@ -2299,6 +2302,7 @@ def test_prd_recursive_outline_uses_business_semantics_and_keeps_constitution_re
     assert "能力原子负责来源覆盖，不负责决定项目数量" in methodology
     assert "目标仍是功能单一、松散耦合" in methodology
     assert "grouping_basis" in methodology
+    assert "耦合不变量的并集必须覆盖该单元全部能力原子" in methodology
     assert "decomposition_basis" in methodology
     assert "terminal_basis" in methodology
     assert "不设固定子单元数量、偏好区间、一个原子一个项目的映射或整棵树的最大深度" in methodology
@@ -2336,8 +2340,9 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "repository-root `prd/` directory is the default business-source corpus" in prd
     assert "Parent-child reconciliation checks direction, scope, ownership, outcomes, handoffs" in prd
     assert "A multi-atom unit requires `grouping_basis`" in prd
-    assert "The grouping authority may be `doc`, `user`, `user-confirmed`, or `ai-proposed`" in prd
-    assert "`unresolved` cannot authorize a grouped child" in prd
+    assert "One local relationship between two atoms can never justify a larger bucket" in prd
+    assert "For a generated child, grouping authority must be `doc`, `user`, or `user-confirmed`" in prd
+    assert "`ai-proposed` and `unresolved` remain Web-only candidates" in prd
     assert "Mark a unit `expanded` only when `decomposition_basis`" in prd
     assert "Mark it `terminal` only when `terminal_basis`" in prd
 
@@ -2353,7 +2358,8 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "The layered input contract is: Outline reads PRD sources" in command_spec
     assert "multi-atom unit carries" in command_spec
     assert "`grouping_basis`" in command_spec
-    assert "Its authority may be `ai-proposed`" in command_spec
+    assert "authority may be" in command_spec
+    assert "`ai-proposed` when product sources provide the business facts" in command_spec
     assert "automatically better" in command_spec
     assert "Only a formally confirmed terminal unit may enter `frame`" in command_spec
 
@@ -7399,6 +7405,8 @@ def _outline_discovery_v6_multi_atom_child_sample() -> dict:
             "business_rule": "风险放行决定必须在订单形成前保持同一笔意图的可追溯关联，两个结果共同完成受控订单验收。",
             "capability_atom_refs": ["atom-risk-decision", "atom-controlled-order"],
             "source_status": "doc",
+            "evidence_ref": "specs/000-outline/prd.md#Core Trading Loop",
+            "evidence_quote": "风险放行决定必须在订单形成前保持同一笔意图的可追溯关联",
             "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
         }
     ]
@@ -7413,6 +7421,7 @@ def _outline_discovery_v6_multi_atom_child_sample() -> dict:
     for unit in sample["decomposition_window"]["units"]:
         if len(unit.get("capability_atom_refs", [])) < 2:
             continue
+        unit["grouping_basis"]["authority"] = "doc"
         root_handoff = unit["grouping_basis"]["separation_test"]["stable_handoffs"][0]
         root_handoff.update({
             "from_atom_ref": "atom-risk-decision",
@@ -7787,6 +7796,11 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "unresolved",
     ]
     assert grouping_basis["properties"]["parent_cohesion"]["minLength"] == 20
+    coupling_invariant = discovery["$defs"]["coupling_invariant"]
+    assert coupling_invariant["properties"]["evidence_ref"]["minLength"] == 1
+    assert coupling_invariant["properties"]["evidence_quote"]["minLength"] == 8
+    assert "evidence_ref" in discovery["$defs"]["responsibility_owner"]["properties"]
+    assert "evidence_quote" in discovery["$defs"]["business_lifecycle"]["properties"]
     assert "decomposition_basis" in discovery["$defs"]
     assert "terminal_basis" in discovery["$defs"]
     assert "constitution_clause_refs" in discovery["$defs"]["outline_node"]["properties"]
@@ -7878,6 +7892,111 @@ def test_outline_discovery_v6_accepts_source_backed_coupling_contract(tmp_path):
         tmp_path / "discovery-v6-valid.json",
     )
     assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_ai_proposed_shared_boundary_even_with_web_partition_choice(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    context = sample["business_context"]
+    context["responsibility_owners"][0]["source_status"] = "ai-proposed"
+    context["business_lifecycles"][0]["source_status"] = "ai-proposed"
+    question = sample["question_groups"][0]["questions"][0]
+    question["target_kind"] = "project_boundary"
+    question["candidates"][0]["label"] = "保留风险裁定与受控订单的共同边界"
+    question["candidates"][1]["label"] = "拆分风险裁定和受控订单形成责任"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-ai-shared-boundary.json")
+
+    assert result.returncode != 0
+    assert "cannot place an unconfirmed model grouping" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_partial_coupling_evidence_for_large_group(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    context = sample["business_context"]
+    extra_atom = json.loads(json.dumps(next(
+        atom for atom in context["capability_atoms"] if atom["atom_id"] == "atom-risk-decision"
+    )))
+    extra_atom["atom_id"] = "atom-browser-control"
+    extra_atom["label"] = "浏览器授权交易控制"
+    context["capability_atoms"].append(extra_atom)
+    for unit in sample["decomposition_window"]["units"]:
+        unit["capability_atom_refs"].append(extra_atom["atom_id"])
+        alternative_groups = unit["grouping_basis"]["separation_test"]["alternative_groups"]
+        alternative_groups[-1]["capability_atom_refs"].append(extra_atom["atom_id"])
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-partial-coupling.json")
+
+    assert result.returncode != 0
+    assert "must cover every grouped capability atom" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_reused_sibling_complexity_comparison(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    window = sample["decomposition_window"]
+    child = next(unit for unit in window["units"] if unit["parent_unit_id"] is not None)
+    duplicate = json.loads(json.dumps(child))
+    duplicate["unit_id"] = "unit-trading-loop-copy"
+    window["units"].append(duplicate)
+    window["terminal_unit_ids"].append(duplicate["unit_id"])
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-repeated-comparison.json")
+
+    assert result.returncode != 0
+    assert "reuse the same complexity comparison" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_verifies_document_named_grouping_authority_quote(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    context = sample["business_context"]
+    owner = context["responsibility_owners"][0]
+    lifecycle = context["business_lifecycles"][0]
+    owner.update({
+        "source_status": "doc",
+        "evidence_ref": "specs/000-outline/prd.md#Core Trading Loop",
+        "evidence_quote": "交易控制责任负责业务裁定",
+    })
+    lifecycle.update({
+        "source_status": "doc",
+        "evidence_ref": "specs/000-outline/prd.md#Core Trading Loop",
+        "evidence_quote": "受控订单形成生命周期约束结果交付",
+    })
+    project_root = tmp_path / "project"
+    feature_prd = project_root / "specs" / "000-outline" / "prd.md"
+    feature_prd.parent.mkdir(parents=True)
+    feature_prd.write_text(
+        "# PRD\n\n## Core Trading Loop\n\n"
+        "交易控制责任负责业务裁定，受控订单形成生命周期约束结果交付。"
+        "风险放行决定必须在订单形成前保持同一笔意图的可追溯关联。\n",
+        encoding="utf-8",
+    )
+    review_path = project_root / sample["artifact_path"]
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+
+    valid = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=project_root,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+    )
+    assert valid.returncode == 0, _review_validator_output(valid)
+
+    owner["evidence_quote"] = "模型重新命名的宽泛交易负责人"
+    review_path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+    invalid = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=project_root,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+    )
+    assert invalid.returncode != 0
+    assert "evidence_quote must occur verbatim" in _review_validator_output(invalid)
 
 
 def test_outline_discovery_v6_rejects_used_source_without_structured_evidence(tmp_path):
@@ -8487,6 +8606,84 @@ if (!v6GroupedChild) throw new Error("v6 fixture is missing a generated grouped 
 v6GroupedChild.grouping_basis.coupling_invariants = [];
 const v6NoInvariantError = context.validateReviewData(v6NoInvariant);
 if (!v6NoInvariantError.includes("耦合不变量")) throw new Error("v6 missing coupling invariant was not rejected: " + v6NoInvariantError);
+const v6ModelGrouping = structuredClone(v6Grouping);
+const v6ModelChild = v6ModelGrouping.decomposition_window.units.find((unit) =>
+  unit.project_depth > 0 && unit.capability_atom_refs.length > 1
+);
+v6ModelChild.grouping_basis.authority = "ai-proposed";
+const v6ModelGroupingError = context.validateReviewData(v6ModelGrouping);
+if (!v6ModelGroupingError.includes("不能进入生成树")) throw new Error("v6 ai-proposed grouping was not rejected: " + v6ModelGroupingError);
+const v6PartialInvariant = structuredClone(v6Grouping);
+const v6PartialChild = v6PartialInvariant.decomposition_window.units.find((unit) =>
+  unit.project_depth > v6PartialInvariant.decomposition_window.root_project_depth && unit.capability_atom_refs.length > 1
+);
+const partialSourceAtom = v6PartialInvariant.business_context.capability_atoms.find((atom) => atom.atom_id === "atom-risk-decision");
+const partialSourceChain = v6PartialInvariant.business_context.business_chains.find((chain) => chain.chain_id === partialSourceAtom.business_chain_refs[0]);
+const partialSourceOutcome = v6PartialInvariant.business_context.outcomes.find((outcome) => outcome.outcome_id === partialSourceAtom.primary_outcome_ref);
+const partialSourceState = v6PartialInvariant.business_context.business_states.find((state) => state.state_id === partialSourceAtom.owned_state_refs[0]);
+const partialSourceCoverage = v6PartialInvariant.business_context.source_capability_coverage.find((entry) => entry.capability_atom_ref === partialSourceAtom.atom_id);
+const partialOutcome = structuredClone(partialSourceOutcome);
+partialOutcome.outcome_id = "outcome-browser-control";
+partialOutcome.label = "浏览器授权交易结果可独立核对";
+v6PartialInvariant.business_context.outcomes.push(partialOutcome);
+const partialState = structuredClone(partialSourceState);
+partialState.state_id = "state-browser-control";
+partialState.label = "已完成浏览器授权检查的交易命令";
+partialState.acceptance_outcome_ref = partialOutcome.outcome_id;
+v6PartialInvariant.business_context.business_states.push(partialState);
+const partialChain = structuredClone(partialSourceChain);
+partialChain.chain_id = "chain-browser-control";
+partialChain.label = "浏览器授权交易控制链";
+partialChain.primary_outcome_ref = partialOutcome.outcome_id;
+partialChain.outcome_refs = [partialOutcome.outcome_id];
+partialChain.owned_state_refs = [partialState.state_id];
+v6PartialInvariant.business_context.business_chains.push(partialChain);
+const partialAtom = structuredClone(partialSourceAtom);
+partialAtom.atom_id = "atom-browser-control";
+partialAtom.label = "浏览器授权交易控制";
+partialAtom.primary_outcome_ref = partialOutcome.outcome_id;
+partialAtom.outcome_refs = [partialOutcome.outcome_id];
+partialAtom.owned_state_refs = [partialState.state_id];
+partialAtom.business_chain_refs = [partialChain.chain_id];
+v6PartialInvariant.business_context.capability_atoms.push(partialAtom);
+const partialCoverage = structuredClone(partialSourceCoverage);
+partialCoverage.source_capability_id = "source-browser-control";
+partialCoverage.label = partialAtom.label;
+partialCoverage.capability_atom_ref = partialAtom.atom_id;
+partialCoverage.business_state_ref = partialState.state_id;
+partialCoverage.owned_state = partialAtom.owned_state;
+partialCoverage.observable_outcome = partialOutcome.label;
+v6PartialInvariant.business_context.source_capability_coverage.push(partialCoverage);
+v6PartialInvariant.source_inventory.entries[0].evidence_refs.push(
+  {{entity_kind: "source_capability", entity_id: partialCoverage.source_capability_id}},
+  {{entity_kind: "business_state", entity_id: partialState.state_id}}
+);
+for (const unit of v6PartialInvariant.decomposition_window.units) {{
+  unit.capability_atom_refs.push(partialAtom.atom_id);
+  unit.business_chain_refs.push(partialChain.chain_id);
+  unit.grouping_basis.separation_test.alternative_groups.at(-1).capability_atom_refs.push(partialAtom.atom_id);
+}}
+for (const node of v6PartialInvariant.outline_nodes) {{
+  if (node.capability_atom_refs?.includes(partialSourceAtom.atom_id)) node.capability_atom_refs.push(partialAtom.atom_id);
+  if (node.business_chain_refs?.includes(partialSourceChain.chain_id)) node.business_chain_refs.push(partialChain.chain_id);
+}}
+for (const group of v6PartialInvariant.question_groups) {{
+  for (const question of group.questions) {{
+    for (const candidate of question.candidates) {{
+      if (candidate.capability_atom_refs.includes(partialSourceAtom.atom_id)) candidate.capability_atom_refs.push(partialAtom.atom_id);
+      if (candidate.business_chain_refs.includes(partialSourceChain.chain_id)) candidate.business_chain_refs.push(partialChain.chain_id);
+    }}
+  }}
+}}
+const v6PartialInvariantError = context.validateReviewData(v6PartialInvariant);
+if (!v6PartialInvariantError.includes("全部能力原子")) throw new Error("partial coupling coverage was not rejected: " + v6PartialInvariantError);
+const repeatedComparison = structuredClone(v6Grouping);
+const repeatedChild = structuredClone(repeatedComparison.decomposition_window.units.find((unit) => unit.parent_unit_id !== null));
+repeatedChild.unit_id = "unit-trading-loop-copy";
+repeatedComparison.decomposition_window.units.push(repeatedChild);
+repeatedComparison.decomposition_window.terminal_unit_ids.push(repeatedChild.unit_id);
+const repeatedComparisonError = context.validateReviewData(repeatedComparison);
+if (!repeatedComparisonError.includes("复用同一套复杂度比较")) throw new Error("reused sibling comparison was not rejected: " + repeatedComparisonError);
 const incompleteV5 = structuredClone(v5Grouping);
 incompleteV5.decomposition_window.units[1].grouping_basis.separation_test.alternative_groups[1].capability_atom_refs = ["atom-controlled-order"];
 const incompleteV5Error = context.validateReviewData(incompleteV5);

@@ -158,12 +158,20 @@ acceptance fragmentation it introduces. It chooses the lower-complexity
 partition whose children have coherent responsibilities and stable handoffs. A
 multi-atom unit carries `grouping_basis` explaining its shared business goal,
 lifecycle/owner, and the concrete cost of separating it inside the parent
-branch. Its authority may be `ai-proposed` when product sources provide the
-business facts but not the project architecture; such a unit remains a Discovery
-candidate until human confirmation. `unresolved` cannot authorize an already
-grouped non-root unit and must instead produce named partition options. Grouping
-is not a terminal claim, no fixed child count applies, and finer is not
-automatically better.
+branch. Source-backed coupling invariants must cover every grouped atom and
+connect every alternative responsibility group; stable business handoffs must
+also connect the complete split alternative. A local relationship between two
+atoms cannot justify a larger bucket, and sibling groupings cannot reuse one
+generic complexity comparison. A documented shared owner/lifecycle preserves
+the source-named label, exact heading, and verbatim quote. Its authority may be
+`ai-proposed` when product sources provide the business facts but not the project
+architecture; inferred ownership remains proposed and the complete keep/split
+choice must remain on the Web Discovery page until human confirmation. In schema
+v6 this proposal cannot be serialized as a generated non-root child before that
+confirmation; default generation keeps the source-backed atoms independent.
+`unresolved` cannot authorize an already grouped non-root unit and must instead
+produce named partition options. Grouping is not a terminal claim, no fixed
+child count applies, and finer is not automatically better.
 
 The unique `000-*` top unit generates exactly one descendant level in its first
 window. Any ordinary non-root `decompose` window normally generates two or three

@@ -608,6 +608,32 @@ function validateOutlineDiscoveryProjectAuthority(data) {
     const section = sourceSectionsByPath.get(normalized.slice(0, hash))?.get(normalized.slice(hash + 1));
     return /\[src:ai-proposed\]/i.test(section || "");
   });
+  const validateQuotedDocumentEvidence = (entry, label, { requireNamedLabel = false } = {}) => {
+    if (data.schema_version < 6 || entry?.source_status !== "doc") return;
+    const evidenceRef = String(entry?.evidence_ref || "").replace(/\\/g, "/");
+    const evidenceQuote = compactText(entry?.evidence_quote);
+    if (!evidenceRef || evidenceQuote.length < 8) {
+      fail(`${label} with source_status doc requires evidence_ref and a verbatim evidence_quote`);
+      return;
+    }
+    if (!asArray(entry?.source_refs).map((ref) => String(ref || "").replace(/\\/g, "/")).includes(evidenceRef)) {
+      fail(`${label}.evidence_ref must also appear in source_refs`);
+      return;
+    }
+    const hash = evidenceRef.indexOf("#");
+    if (hash === -1) {
+      fail(`${label}.evidence_ref must cite an exact Markdown heading`);
+      return;
+    }
+    const section = sourceSectionsByPath.get(evidenceRef.slice(0, hash))?.get(evidenceRef.slice(hash + 1));
+    if (!section || !compactText(section).includes(evidenceQuote)) {
+      fail(`${label}.evidence_quote must occur verbatim in the evidence_ref Markdown section`);
+      return;
+    }
+    if (requireNamedLabel && !evidenceQuote.includes(compactText(entry?.label))) {
+      fail(`${label}.evidence_quote must contain the source-named label; inferred umbrella ownership must be ai-proposed`);
+    }
+  };
   const featurePrdPath = `specs/${feature}/prd.md`;
   const validateEntryAuthority = (entry, label) => {
     if (!entry?.source_status || new Set(["ai-proposed", "unresolved"]).has(entry.source_status)) return;
@@ -629,6 +655,22 @@ function validateOutlineDiscoveryProjectAuthority(data) {
     value.forEach((entry, index) => validateEntryAuthority(entry, `business_context.${key}[${index}]`));
   }
   asArray(data.outline_nodes).forEach((node) => validateEntryAuthority(node, `outline node ${node.node_id}`));
+  const generatedGroupedUnits = asArray(data.decomposition_window?.units).filter((unit) =>
+    unit?.project_depth > 0
+      && asArray(unit?.capability_atom_refs).length > 1,
+  );
+  const groupedOwnerRefs = new Set(generatedGroupedUnits.map((unit) => unit?.grouping_basis?.shared_responsibility_owner_ref).filter(Boolean));
+  const groupedLifecycleRefs = new Set(generatedGroupedUnits.map((unit) => unit?.grouping_basis?.shared_lifecycle_ref).filter(Boolean));
+  asArray(data.business_context?.responsibility_owners).forEach((owner, index) => {
+    if (groupedOwnerRefs.has(owner?.owner_id)) {
+      validateQuotedDocumentEvidence(owner, `business_context.responsibility_owners[${index}]`, { requireNamedLabel: true });
+    }
+  });
+  asArray(data.business_context?.business_lifecycles).forEach((lifecycle, index) => {
+    if (groupedLifecycleRefs.has(lifecycle?.lifecycle_id)) {
+      validateQuotedDocumentEvidence(lifecycle, `business_context.business_lifecycles[${index}]`, { requireNamedLabel: true });
+    }
+  });
   asArray(data.decomposition_window?.units).forEach((unit, index) => {
     validateEntryAuthority(unit, `decomposition unit[${index}]`);
     validateEntryAuthority(unit?.decomposition_basis, `decomposition unit[${index}] decomposition_basis`);
@@ -640,6 +682,9 @@ function validateOutlineDiscoveryProjectAuthority(data) {
       );
       asArray(unit.grouping_basis.coupling_invariants).forEach((invariant, invariantIndex) => {
         validateEntryAuthority(invariant, `decomposition unit[${index}] coupling_invariants[${invariantIndex}]`);
+        if (unit?.project_depth > 0) {
+          validateQuotedDocumentEvidence(invariant, `decomposition unit[${index}] coupling_invariants[${invariantIndex}]`);
+        }
       });
       asArray(unit.grouping_basis.separation_test?.stable_handoffs).forEach((handoff, handoffIndex) => {
         validateEntryAuthority(handoff, `decomposition unit[${index}] stable_handoffs[${handoffIndex}]`);
@@ -2664,12 +2709,41 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     }
     validateOutlineDiscoverySourceRefs(data, basis.source_refs, label);
   };
+  const connectGraphNodes = (graph, ids) => {
+    const values = [...new Set(ids)].filter(Boolean);
+    for (const id of values) {
+      if (!graph.has(id)) graph.set(id, new Set());
+    }
+    for (let left = 0; left < values.length; left += 1) {
+      for (let right = left + 1; right < values.length; right += 1) {
+        graph.get(values[left]).add(values[right]);
+        graph.get(values[right]).add(values[left]);
+      }
+    }
+  };
+  const graphCovers = (ids, graph) => {
+    const expected = [...new Set(ids)];
+    if (!expected.length) return true;
+    const visited = new Set();
+    const queue = [expected[0]];
+    while (queue.length) {
+      const current = queue.shift();
+      if (visited.has(current)) continue;
+      visited.add(current);
+      for (const neighbor of graph.get(current) || []) {
+        if (!visited.has(neighbor)) queue.push(neighbor);
+      }
+    }
+    return expected.every((id) => visited.has(id));
+  };
   const validateV5GroupingBasis = (basis, label, unit, atomRefs) => {
     const atomStateRefs = atomRefs.map((atomId) => asArray(capabilityAtomsById.get(atomId)?.owned_state_refs)[0]);
     const atomStates = atomStateRefs.map((stateId) => businessStatesById.get(stateId)).filter(Boolean);
     const sharedOwnerRef = basis?.shared_responsibility_owner_ref;
     const sharedLifecycleRef = basis?.shared_lifecycle_ref;
-    const isGeneratedChild = unit.project_depth > window.root_project_depth;
+    // The expansion root may be detached from its parent in a local window;
+    // absolute project depth is the stable non-root signal.
+    const isGeneratedChild = unit.project_depth > 0;
     if (isGeneratedChild && sharedOwnerRef === null && sharedLifecycleRef === null) {
       fail(`${label} must name a responsibility owner or lifecycle shared by every grouped atom`);
     }
@@ -2690,8 +2764,12 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         sharedOwnerRef === null ? null : responsibilityOwnersById.get(sharedOwnerRef)?.source_status,
         sharedLifecycleRef === null ? null : businessLifecyclesById.get(sharedLifecycleRef)?.source_status,
       ].filter(Boolean);
-      if (!sharedAuthorities.some((status) => ["doc", "user", "user-confirmed"].includes(status))) {
-        fail(`${label} must use a documented or human-confirmed shared owner or lifecycle; ai-proposed umbrella entities cannot justify grouping`);
+      const hasStrongSharedAuthority = sharedAuthorities.some((status) => ["doc", "user", "user-confirmed"].includes(status));
+      if (basis?.authority === "ai-proposed" || sharedAuthorities.some((status) => status === "ai-proposed" || status === "unresolved")) {
+        fail(`${label} cannot place an unconfirmed model grouping in the generated tree; expose keep/split candidates in Web Discovery and generate source-backed independent units`);
+      }
+      if (!hasStrongSharedAuthority || !["doc", "user", "user-confirmed"].includes(basis?.authority)) {
+        fail(`${label} must use a documented or human-confirmed shared boundary; model grouping is Web Discovery-only`);
       }
     }
     const test = basis?.separation_test;
@@ -2729,6 +2807,8 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
       const invariants = asArray(basis?.coupling_invariants);
       if (!invariants.length) fail(`${label}.coupling_invariants must contain source-backed cross-partition evidence for a generated grouped child`);
       const invariantIds = new Set();
+      const invariantAtomCoverage = new Set();
+      const invariantGroupGraph = new Map([...groupIds].map((groupId) => [groupId, new Set()]));
       const invariantKinds = new Set(["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle"]);
       for (const [invariantIndex, invariant] of invariants.entries()) {
         const invariantLabel = `${label}.coupling_invariants[${invariantIndex}]`;
@@ -2738,6 +2818,10 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         if (String(invariant?.business_rule || "").trim().length < 20) fail(`${invariantLabel}.business_rule must contain at least 20 characters`);
         if (!["doc", "user", "user-confirmed"].includes(invariant?.source_status)) fail(`${invariantLabel}.source_status must be documented or human-confirmed`);
         validateOutlineDiscoverySourceRefs(data, invariant?.source_refs, invariantLabel);
+        if (!String(invariant?.evidence_ref || "").trim() || String(invariant?.evidence_quote || "").trim().length < 8
+            || !asArray(invariant?.source_refs).includes(invariant?.evidence_ref)) {
+          fail(`${invariantLabel} must include evidence_ref in source_refs and a verbatim evidence_quote`);
+        }
         const invariantAtoms = asArray(invariant?.capability_atom_refs);
         if (invariantAtoms.length < 2 || new Set(invariantAtoms).size !== invariantAtoms.length || invariantAtoms.some((atomId) => !atomRefs.includes(atomId))) {
           fail(`${invariantLabel}.capability_atom_refs must name at least two atoms in the grouped unit`);
@@ -2745,20 +2829,35 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         if (new Set(invariantAtoms.map((atomId) => groupIdByAtom.get(atomId))).size < 2) {
           fail(`${invariantLabel} must cross at least two alternative groups; an internal rule does not justify keeping the groups together`);
         }
+        for (const atomId of invariantAtoms) {
+          invariantAtomCoverage.add(atomId);
+          if (!asArray(capabilityAtomsById.get(atomId)?.source_refs).includes(invariant?.evidence_ref)) {
+            fail(`${invariantLabel}.evidence_ref must directly support every capability atom named by the invariant`);
+          }
+        }
+        connectGraphNodes(invariantGroupGraph, invariantAtoms.map((atomId) => groupIdByAtom.get(atomId)));
+      }
+      if (atomRefs.some((atomId) => !invariantAtomCoverage.has(atomId))) {
+        fail(`${label}.coupling_invariants must cover every grouped capability atom; partial evidence cannot justify a larger bucket`);
+      }
+      if (!graphCovers(groupIds, invariantGroupGraph)) {
+        fail(`${label}.coupling_invariants must connect every alternative group into one cohesion graph`);
       }
     } else if (data.schema_version >= 6 && basis?.coupling_invariants !== undefined && !Array.isArray(basis.coupling_invariants)) {
       fail(`${label}.coupling_invariants must be an array`);
     }
     if (!Array.isArray(test.stable_handoffs)) fail(`${label}.separation_test.stable_handoffs must be an array`);
-    if ((data.schema_version >= 6 ? isGeneratedChild : unit.project_depth > 0) && asArray(test.stable_handoffs).length === 0) {
+    if (isGeneratedChild && asArray(test.stable_handoffs).length === 0) {
       fail(`${label}.separation_test.stable_handoffs must contain at least one stable business handoff for a non-root grouped unit`);
     }
+    const handoffGroupGraph = new Map([...groupIds].map((groupId) => [groupId, new Set()]));
     for (const [handoffIndex, handoff] of asArray(test.stable_handoffs).entries()) {
       const handoffLabel = `${label}.separation_test.stable_handoffs[${handoffIndex}]`;
       if (!groupIds.has(handoff?.from_group_id) || !groupIds.has(handoff?.to_group_id) || handoff?.from_group_id === handoff?.to_group_id) {
         fail(`${handoffLabel} must connect two different alternative groups`);
       }
       if (String(handoff?.business_fact || "").trim().length < 12) fail(`${handoffLabel}.business_fact must name the exchanged business fact`);
+      connectGraphNodes(handoffGroupGraph, [handoff?.from_group_id, handoff?.to_group_id]);
       if (data.schema_version >= 6) {
         const fromAtomId = handoff?.from_atom_ref;
         const toAtomId = handoff?.to_atom_ref;
@@ -2776,6 +2875,9 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
           fail(`${handoffLabel}.source_status cannot exceed from_atom_ref evidence`);
         }
       }
+    }
+    if (isGeneratedChild && !graphCovers(groupIds, handoffGroupGraph)) {
+      fail(`${label}.separation_test.stable_handoffs must connect every alternative group; disconnected responsibilities should be separate children`);
     }
     const duplicatedStateRefs = asArray(test.duplicated_state_refs);
     if (!Array.isArray(test.duplicated_state_refs) || new Set(duplicatedStateRefs).size !== duplicatedStateRefs.length
@@ -2877,6 +2979,29 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     }
   }
 
+  if (data.schema_version >= 6) {
+    const questions = asArray(data.question_groups).flatMap((group) => asArray(group?.questions));
+    for (const unit of units) {
+      if (unit.project_depth <= window.root_project_depth || asArray(unit.capability_atom_refs).length < 2) continue;
+      const ownerStatus = responsibilityOwnersById.get(unit.grouping_basis?.shared_responsibility_owner_ref)?.source_status;
+      const lifecycleStatus = businessLifecyclesById.get(unit.grouping_basis?.shared_lifecycle_ref)?.source_status;
+      if ([ownerStatus, lifecycleStatus].some((status) => ["doc", "user", "user-confirmed"].includes(status))) continue;
+      const question = questions.find((entry) => entry?.outline_node_id === unit.outline_node_id);
+      const completeCandidates = asArray(question?.candidates).filter((candidate) =>
+        asArray(candidate?.capability_atom_refs).length === unit.capability_atom_refs.length
+          && unit.capability_atom_refs.every((atomId) => candidate.capability_atom_refs.includes(atomId)),
+      );
+      const candidateCopy = completeCandidates.map((candidate) => compactText([
+        candidate?.label, candidate?.rationale, candidate?.detail,
+      ].join(" ")).toLowerCase());
+      const hasKeep = candidateCopy.some((copy) => /(?:保留|维持|保持分离|keep|retain)/i.test(copy));
+      const hasSplit = candidateCopy.some((copy) => /(?:拆分|分开|重新划分|split|separate|repartition)/i.test(copy));
+      if (!question || question.target_kind !== "project_boundary" || !hasKeep || !hasSplit || completeCandidates.length < 2) {
+        fail(`ai-proposed shared owner/lifecycle for ${unit.unit_id} requires a Web keep/split decision with complete atom coverage`);
+      }
+    }
+  }
+
   for (const unit of units) {
     if (unit.parent_unit_id !== null) {
       const parent = unitsById.get(unit.parent_unit_id);
@@ -2890,6 +3015,19 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
       const siblings = childrenByUnitId.get(parent.unit_id) || [];
       siblings.push(unit);
       childrenByUnitId.set(parent.unit_id, siblings);
+    }
+  }
+  for (const [parentUnitId, children] of childrenByUnitId.entries()) {
+    const signatures = new Map();
+    for (const child of children.filter((unit) => asArray(unit.capability_atom_refs).length > 1)) {
+      const test = child.grouping_basis?.separation_test;
+      const signature = [test?.keep_together_complexity, test?.split_coordination_cost, test?.decision_reason]
+        .map((value) => compactText(value).toLowerCase()).join("\n");
+      if (signatures.has(signature)) {
+        fail(`sibling grouped Outline units under ${parentUnitId} reuse the same complexity comparison; each allocation requires domain-specific evidence`);
+      } else {
+        signatures.set(signature, child.unit_id);
+      }
     }
   }
   const roots = units.filter((unit) => unit.parent_unit_id === null);
@@ -3526,10 +3664,8 @@ function validateOutlineDiscoveryBusinessContext(data) {
       }
       if (data.schema_version >= 6 && atom) {
         const state = businessStatesById.get(capability?.business_state_ref);
-        const owner = responsibilityOwners.values.find((entry) => entry.owner_id === capability?.responsibility_owner_ref);
-        const lifecycle = businessLifecycles.values.find((entry) => entry.lifecycle_id === capability?.lifecycle_ref);
-        if (sourceStatusExceedsEvidence(capability?.source_status, [atom.source_status, state?.source_status, owner?.source_status, lifecycle?.source_status].filter(Boolean))) {
-          fail(`${label}: source_status cannot exceed its atom, state, owner, or lifecycle evidence`);
+        if (sourceStatusExceedsEvidence(capability?.source_status, [atom.source_status, state?.source_status].filter(Boolean))) {
+          fail(`${label}: source_status cannot exceed its atom or state evidence; owner/lifecycle proposal authority is tracked separately`);
         }
       }
     }

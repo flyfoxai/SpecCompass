@@ -126,9 +126,12 @@ transition approval. `scan-outline-transition-impact.mjs` lists and hashes
 artifacts without inferring successors; `rollback-outline-transition.mjs`
 requires an empty live-write proof and never deletes working-tree content.
 
-Outline has two explicit modes. Level 1 `outline_maturity: explore` and Level 2
-`outline_maturity: frame` use `interaction_mode: discovery`; Level 3
-`outline_maturity: specify_ready` uses `interaction_mode: confirmation`.
+Outline maturity is independent from project-tree depth. `outline_maturity:
+explore` recursively decomposes the current unit at any depth, while
+`outline_maturity: frame` details one confirmed terminal unit; both use
+`interaction_mode: discovery`. `outline_maturity: specify_ready` uses
+`interaction_mode: confirmation`. These maturity values are not Level 1/2/3
+project types.
 Discovery shows 2-4 candidates, a recommendation and reason, none of the above,
 free-form input, and the operations `confirm_candidate`, `add`, `replace`,
 `exclude`, and `context_note`. Its primary action is `写入项目`; after success,

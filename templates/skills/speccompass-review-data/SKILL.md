@@ -131,6 +131,22 @@ information, mark the item blocked with a short reason and owner route.
 Before ordinary PRD, Flow, or UI review generation, run the boundary safety
 check with regeneration intent and the matching stage:
 
+For schema-v6 Outline Discovery, do not repair a rejected multi-atom unit by
+adding one token coupling statement or copying source unions. The union of
+`coupling_invariants` must cover every grouped atom and connect every group in
+the serialized split alternative; `stable_handoffs` must connect that complete
+alternative as well. Document-backed invariants and any documented shared
+owner/lifecycle require an exact anchored `evidence_ref` and verbatim
+`evidence_quote`. When the source does not name the common owner/lifecycle,
+leave that architecture entity `ai-proposed` and provide a complete Web
+keep/split decision. Each sibling group needs its own state/rule/owner/
+acceptance/coordination comparison; repeated generic prose is invalid. In
+schema v6, an unconfirmed `ai-proposed` or `unresolved` grouping, owner, or
+lifecycle is Web-only: it must not be emitted as a non-root generated unit.
+Generate source-backed independent units until the shared boundary is
+documented or human-confirmed. This prevents a prior feature-PRD candidate
+list from becoming self-confirming structure.
+
 ```bash
 node .specify/review/scripts/check-outline-boundary-gate.mjs specs/<root-feature>/outline-boundaries.json specs/review-index.json --feature <feature> --intent regenerate --stage <prd|flow|ui>
 ```
