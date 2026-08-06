@@ -2,6 +2,16 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.44] - 2026-08-06
+
+### Changed
+
+- Rebuilt Outline decomposition from original PRD evidence instead of reusing unconfirmed feature-PRD or memory groupings.
+- Kept schema-v6 `ai-proposed` and `unresolved` multi-atom boundaries in Web Discovery until a documented or human-confirmed shared responsibility exists.
+- Required coupling evidence and stable handoffs to cover and connect every grouped atom, with exact source quotes for documented shared owners and lifecycles.
+- Aligned CLI and browser validators for absolute project depth, complete grouping evidence, and sibling-specific complexity comparisons.
+- fix: require source-confirmed outline grouping
+
 ## [0.11.43] - 2026-08-05
 
 ### Changed
