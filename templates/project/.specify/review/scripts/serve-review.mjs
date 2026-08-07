@@ -104,7 +104,7 @@ function requireSupportedNodeRuntime() {
 
 function usageError(message) {
   throw new Error(
-    `${message}\nUsage: node .specify/review/scripts/serve-review.mjs (--flow <feature> | --ui <feature> | --outline <feature> | --outline-discovery <feature>) [--port <0-65535>] [--host <127.0.0.1|RFC1918 IPv4>] [--accept-recommended [--accept-advance]]`
+    `${message}\nUsage: node .specify/review/scripts/serve-review.mjs (--flow <feature> | --ui <feature> | --outline <feature> | --outline-discovery <feature>) [--port <0-65535>] [--host <127.0.0.1|RFC1918/Tailscale IPv4>] [--accept-recommended [--accept-advance]]`
   );
 }
 
@@ -116,7 +116,8 @@ function isPrivateIPv4(host) {
   }
   return octets[0] === 10
     || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
-    || (octets[0] === 192 && octets[1] === 168);
+    || (octets[0] === 192 && octets[1] === 168)
+    || (octets[0] === 100 && octets[1] >= 64 && octets[1] <= 127);
 }
 
 function isAllowedReviewHost(host) {
@@ -169,7 +170,7 @@ function parseArguments(argv) {
       const value = argv[index + 1];
       if (!value || value.startsWith("--")) usageError("--host requires an IPv4 address.");
       if (!isAllowedReviewHost(value)) {
-        usageError("--host must be 127.0.0.1 or an RFC1918 private IPv4 address (10/8, 172.16/12, or 192.168/16); 0.0.0.0, public addresses, and hostnames are not allowed.");
+        usageError("--host must be 127.0.0.1, an RFC1918 private IPv4 address, or a Tailscale 100.64/10 address; 0.0.0.0, public addresses, and hostnames are not allowed.");
       }
       host = value;
       sawHost = true;

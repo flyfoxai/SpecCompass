@@ -5,7 +5,6 @@ import { randomUUID } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import path from "node:path";
 import process from "node:process";
-import { fileURLToPath } from "node:url";
 
 const OPERATIONS = new Set(["confirm_candidate", "add", "replace", "exclude", "context_note"]);
 const MATURITIES = new Set(["explore", "frame"]);
@@ -23,6 +22,10 @@ const DENSITY_BUDGET = Object.freeze({
   layer_balance_min_nodes: 8,
   max_layer_share: 0.6,
 });
+// The Overview is the navigation index for the current window and may contain
+// more direct project links than a business detail map. Keep its safety cap in
+// sync with the CLI and browser validators; it is not a child-count quota.
+const OVERVIEW_SAFETY_LIMIT = 64;
 const SECTION_BY_TARGET_KIND = new Map([
   ["goal", "Strategic Goal"],
   ["user", "Target Users and Roles"],
@@ -282,7 +285,11 @@ function validateSourceTopology(source) {
   }
   for (const map of source.maps) {
     const mapNodes = nodesByMap.get(map.map_id);
-    if (mapNodes.length > DENSITY_BUDGET.max_visible_nodes_per_map) fail(`source map ${map.map_id} exceeds visible node budget`);
+    if (map.map_kind === "overview" && mapNodes.length > OVERVIEW_SAFETY_LIMIT) {
+      fail(`source overview map ${map.map_id} exceeds overview safety limit`);
+    } else if (map.map_kind !== "overview" && mapNodes.length > DENSITY_BUDGET.max_visible_nodes_per_map) {
+      fail(`source map ${map.map_id} exceeds visible node budget`);
+    }
     const root = nodesById.get(map.root_node_id);
     if (!root || root.map_id !== map.map_id || root.node_kind !== "root" || root.parent_node_id !== null ||
         mapNodes.filter((node) => node.parent_node_id === null).length !== 1) fail(`source map ${map.map_id} root is invalid`);
@@ -301,7 +308,7 @@ function validateSourceTopology(source) {
       if (depth > DENSITY_BUDGET.max_depth) fail(`source map ${map.map_id} exceeds depth budget`);
       layers.set(depth, (layers.get(depth) || 0) + 1);
     }
-    if (mapNodes.length >= DENSITY_BUDGET.layer_balance_min_nodes &&
+    if (map.map_kind !== "overview" && mapNodes.length >= DENSITY_BUDGET.layer_balance_min_nodes &&
         Math.max(...layers.values()) / mapNodes.length > DENSITY_BUDGET.max_layer_share) {
       fail(`source map ${map.map_id} exceeds layer balance budget`);
     }
@@ -488,7 +495,9 @@ function validateSourceIdentity(root, source, response, expectedSourcePath) {
 
 function validateRecursiveSourceWithCanonicalValidator(root, source, sourcePath) {
   if (source.schema_version < 4) return;
-  const validatorPath = fileURLToPath(new URL("./validate-review-data.mjs", import.meta.url));
+  // Resolve beside this script without relying on import.meta so the topology
+  // helper can also be loaded by the writeback regression harness.
+  const validatorPath = path.join(path.dirname(path.resolve(process.argv[1] || "apply-outline-discovery.mjs")), "validate-review-data.mjs");
   const result = spawnSync(process.execPath, [validatorPath, sourcePath], {
     cwd: root,
     encoding: "utf8",

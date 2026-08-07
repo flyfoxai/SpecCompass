@@ -763,7 +763,7 @@ instead.
   the exact emitted URL to the user. Do not guess a port or rewrite the URL.
   交互复核禁止使用 `file://`，并且 `localhost` 不接受；only the emitted
   `http://127.0.0.1:<port>/...` URL is the default interactive entry. For a
-  trusted LAN, use `--host <RFC1918-private-ip>` and return the exact emitted
+  trusted LAN or Tailscale network, use `--host <RFC1918-or-Tailscale-ip>` and return the exact emitted
   URL instead; never use `0.0.0.0`, a public address, or a guessed host. A LAN
   launcher prints a warning and must be stopped after review. A failed
   self-check is a model-fixable closeout failure, not a reason to return a file

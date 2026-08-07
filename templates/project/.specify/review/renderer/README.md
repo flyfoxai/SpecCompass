@@ -180,10 +180,11 @@ node .specify/review/scripts/serve-review.mjs --outline <feature>
 node .specify/review/scripts/serve-review.mjs --outline-discovery <feature>
 ```
 
-The launcher binds to `127.0.0.1` by default. For a trusted private network,
-the operator may explicitly pass `--host` with the machine's RFC1918 IPv4
-address, such as `10.0.0.209`, `172.16.0.20`, or `192.168.1.20`; public
-addresses, hostnames, and `0.0.0.0` are rejected. It chooses an available port
+The launcher binds to `127.0.0.1` by default. For a trusted private network or
+Tailscale, the operator may explicitly pass `--host` with the machine's RFC1918
+IPv4 or Tailscale `100.64.0.0/10` IPv4 address, such as `10.0.0.209`,
+`172.16.0.20`, `192.168.1.20`, or `100.64.0.5`; public addresses, hostnames,
+and `0.0.0.0` are rejected. It chooses an available port
 unless an explicit port is supplied, and emits `SPECCOMPASS_REVIEW_URL=` only
 after the renderer 和 review data 均返回 HTTP 200. The agent must return that
 exact emitted URL and must not guess a port. 交互复核禁止使用 `file://`，并且

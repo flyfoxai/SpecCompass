@@ -2,18 +2,18 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Distribute a self-contained review launcher that defaults to localhost, supports explicit RFC1918 LAN access, rejects unsupported renderer transports, and exposes view/module/requirement recommendation-save scopes.
+**Goal:** Distribute a self-contained review launcher that defaults to localhost, supports explicit RFC1918/Tailscale LAN access, rejects unsupported renderer transports, and exposes view/module/requirement recommendation-save scopes.
 
-**Architecture:** A Node.js standard-library server resolves the generated project root from its own installed path, serves repository files on `127.0.0.1` by default or an explicitly selected RFC1918 IPv4 address, and emits a ready URL only after renderer and review-data HTTP checks return 200. The fixed renderer independently enforces the same transport contract and reuses its existing recommendation completion state machine for three scope selectors. Command templates, the review-data skill, and methodology docs point agents to the launcher as the only interactive entry.
+**Architecture:** A Node.js standard-library server resolves the generated project root from its own installed path, serves repository files on `127.0.0.1` by default or an explicitly selected RFC1918/Tailscale IPv4 address, and emits a ready URL only after renderer and review-data HTTP checks return 200. The fixed renderer independently enforces the same transport contract and reuses its existing recommendation completion state machine for three scope selectors. Command templates, the review-data skill, and methodology docs point agents to the launcher as the only interactive entry.
 
 **Tech Stack:** Node.js ESM standard library, browser JavaScript/HTML/CSS, Python pytest contract and subprocess tests, Playwright browser verification.
 
 ## Global Constraints
 
 - The launcher is installed at `.specify/review/scripts/serve-review.mjs` and has no package dependencies.
-- Bind `127.0.0.1` by default; allow explicit RFC1918 IPv4 `--host` values only. Reject `0.0.0.0`, public addresses, hostnames, and environment overrides. Default port is `0`.
+- Bind `127.0.0.1` by default; allow explicit RFC1918 or Tailscale `100.64.0.0/10` IPv4 `--host` values only. Reject `0.0.0.0`, public addresses, hostnames, and environment overrides. Default port is `0`.
 - Emit `SPECCOMPASS_REVIEW_URL=` only after both the renderer and selected review-data URL return HTTP 200.
-- The renderer accepts only `http:` with hostname `127.0.0.1` or RFC1918 IPv4; `file:`, `localhost`, `::1`, public addresses, and other hosts remain blocked.
+- The renderer accepts only `http:` with hostname `127.0.0.1`, RFC1918 IPv4, or Tailscale `100.64.0.0/10` IPv4; `file:`, `localhost`, `::1`, public addresses, and other hosts remain blocked.
 - Recommendation completion writes only `MISSING` decision nodes with a valid `recommended_option`; it never overwrites drafts or saved choices.
 - The three scope labels are exactly `当前视图按推荐保存`, `当前模块按推荐保存`, and `当前需求按推荐保存`.
 - Keep the implementation generic; do not embed any project-specific module, flow, screen, or review-data content.
@@ -226,7 +226,7 @@ Create generic temporary flow review data under a temporary generated project, s
 
 - [ ] **Step 4: Verify unsupported transport behavior**
 
-Open the renderer through `file://` and through a public/hostname origin. Also open it through an RFC1918 LAN origin. Assert the first two are blocked, the LAN origin works, the launcher instruction is visible for blocked transports, and no package can be downloaded from blocked origins.
+Open the renderer through `file://` and through a public/hostname origin. Also open it through RFC1918 and Tailscale LAN origins. Assert the first two are blocked, both private origins work, the launcher instruction is visible for blocked transports, and no package can be downloaded from blocked origins.
 
 ### Task 5: Review, Commit, and Demonstration Server
 

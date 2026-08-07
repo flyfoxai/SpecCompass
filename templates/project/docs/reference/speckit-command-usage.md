@@ -217,6 +217,8 @@ export SPECIFY_FEATURE=001-photo-albums
 
 `/sp.prd` 使用递归 Outline 窗口，而不是固定三级项目职责。默认业务资料根是仓库根 `prd/`；人工可以追加或明确替换资料目录，命令必须记录实际来源根和锚点。`specs/<feature>/prd.md` 是当前 feature 的整理与决策落点，不是默认唯一资料。每轮先完整提取当前展开根的 `business_context`，包含 `product_subject`、`business_objects`、`operations`、`outcomes`、`capability_atoms`、`business_chains` 和证据缺口，再按业务责任分配直接子单元。`000` 是有目标、有结果和来源的顶级单元，第一次只生成一层；普通单元每轮生成两层或三层，提前到达 terminal 时可以少于两层。一个能力原子只归属一个直接子单元，但原子数量不决定项目数量。独立状态、结果、角色、规则或 handoff 是拆分信号；模型必须比较拆开后的复杂度下降与新增协调成本，选择功能单一、松散耦合且总复杂度更低的边界。多原子单元必须提供 `grouping_basis`；模型可以用 `ai-proposed` 提出 PRD 未明确规定的合理项目架构并交给 Web Discovery 确认。本轮提案必须声明 `proposal_origin: current-discovery`，归组、耦合和交接依据只能来自原始业务资料、人工指定资料或确认父级引用，不能复用当前 feature PRD、memory、feature map 或旧 Outline 自证；`unresolved` 不能支撑已经归组的子单元。不能因共享页面、数据库、运行时、阶段或团队而合并；同一业务数据责任完整拥有接收、标准化、质量/版本/血缘、留存和可信交付时可以作为一个数据边界。父单元必须提供 `decomposition_basis` 或 `terminal_basis`。不设固定数量，也不要求越细越好；三层仅是界面显示窗口，不是整棵树上限。
 
+schema v6 的每个 Outline 单元必须同时提供 `project_boundary` 项目边界合同：自有责任、范围、自有业务对象、非目标、上游输入、下游输出、独立验收和未决边界。自有业务对象必须与本单元能力原子实际使用的对象完全一致，不能夹带无关对象。上下游合同分别覆盖本单元全部业务链，并引用支持对应业务链的来源。`grouping_basis` 只解释能力原子为何归在一起，不能替代项目定义；写不出具体项目合同的抽象分组不能进入候选项目树。模型生成的完整边界仍是 `ai-proposed`，必须在 Web Discovery 中确认后才能成为基线。
+
 v4 `decompose` 分图除结构根外，只能展示已登记到本轮 `decomposition_window.units` 的 Outline 单元。普通说明节点不是下一级项目，不显示项目编号和树深；目标、能力、验收等功能细节只在已确认 terminal 单元的 `detail` 窗口生成。
 
 子单元生成自己的 Outline 时，使用已确认 `Subproject Handoff` 继承方向、责任和交接，同时重新读取默认 `prd/`、人工指定目录、当前 feature PRD、父级引用和本地确认资料。handoff 是优先来源，不是白名单，也不声称写全子单元细节。父子核对检查范围、责任、结果、交接、来源和全局约束，并检查子单元完整覆盖父单元，不比较节点名称、数量或文字是否相同。只有正式确认的 terminal 单元才进入详细功能 Outline；Flow 和 UI 继续分别消费 PRD、Outline 和 Flow。

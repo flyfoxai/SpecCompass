@@ -399,7 +399,10 @@ function openOutlineDiscoveryMap(mapId, nodeId = null, viewport = null) {
   outlineDiscoveryConstitutionOpen = false;
   outlineDiscoveryActiveMapId = mapId;
   const selectedNode = nodeId && outlineDiscoveryNode(nodeId);
-  outlineDiscoveryActiveNodeId = selectedNode?.map_id === mapId ? nodeId : map.root_node_id;
+  const selectedNodeOpensMap = selectedNode?.child_map_id === mapId;
+  outlineDiscoveryActiveNodeId = selectedNode?.map_id === mapId || selectedNodeOpensMap
+    ? nodeId
+    : map.root_node_id;
   saveOutlineDiscoveryState("已切换导图。");
   renderOutlineDiscoveryMaps();
   renderOutlineDiscoveryCurrentMap();
@@ -1012,7 +1015,7 @@ function renderOutlineDiscoveryNode(node, options = {}) {
   button.addEventListener("click", (event) => {
     const viewport = captureOutlineDiscoveryViewport(event.currentTarget);
     if (isPreview) openOutlineDiscoveryMap(options.previewMapId, node.node_id, viewport);
-    else if (node.child_map_id) openOutlineDiscoveryMap(node.child_map_id, null, viewport);
+    else if (node.child_map_id) openOutlineDiscoveryMap(node.child_map_id, node.node_id, viewport);
     else selectOutlineDiscoveryNode(node.node_id, viewport);
   });
   return button;
@@ -1035,6 +1038,7 @@ function renderOutlineDiscoveryRail() {
     return;
   }
   const activeMap = outlineDiscoveryMap(outlineDiscoveryActiveMapId);
+  const outlineUnit = outlineDiscoveryUnitForNode(node.node_id);
   const presentation = outlineDiscoveryNodePresentation(node, activeMap);
   const questions = outlineDiscoveryQuestionsForNode(node.node_id);
   const completed = questions.filter((question) => isMeaningfulOutlineDiscoveryResponse(outlineDiscoveryState.responses[question.id])).length;
@@ -1075,6 +1079,99 @@ function renderOutlineDiscoveryRail() {
     panel.appendChild(trail);
   }
   appendText(panel, "p", node.summary || "", "discovery-node-panel-summary");
+  if (outlineUnit) {
+    const context = outlineDiscoveryBusinessContext();
+    const atomLabels = new Map((context.capability_atoms || []).map((entry) => [entry.atom_id, entry.label]));
+    const ownerLabels = new Map((context.responsibility_owners || []).map((entry) => [entry.owner_id, entry.label]));
+    const lifecycleLabels = new Map((context.business_lifecycles || []).map((entry) => [entry.lifecycle_id, entry.label]));
+    const groupingPanel = create("section", "discovery-grouping-evidence");
+    appendText(groupingPanel, "h4", "项目目标与归组依据");
+    appendText(groupingPanel, "p", outlineUnit.business_goal || "", "discovery-unit-business-goal");
+    appendText(groupingPanel, "p", outlineUnit.overall_outcome || "", "discovery-unit-overall-outcome");
+    const ownedAtoms = create("ul", "discovery-boundary-list");
+    appendText(groupingPanel, "h5", "拥有能力");
+    for (const atomId of outlineUnit.capability_atom_refs || []) appendText(ownedAtoms, "li", atomLabels.get(atomId) || atomId);
+    groupingPanel.appendChild(ownedAtoms);
+    const basis = outlineUnit.grouping_basis;
+    if (basis) {
+      const groupingMeta = create("div", "discovery-boundary-meta");
+      appendText(groupingMeta, "span", `共同目标：${basis.shared_business_goal || "未提供"}`);
+      appendText(groupingMeta, "span", `共同责任：${ownerLabels.get(basis.shared_responsibility_owner_ref) || "未确认"}`);
+      appendText(groupingMeta, "span", `共同生命周期：${lifecycleLabels.get(basis.shared_lifecycle_ref) || "未确认"}`);
+      appendText(groupingMeta, "span", `父级内聚：${basis.parent_cohesion || "未提供"}`);
+      groupingPanel.appendChild(groupingMeta);
+      const invariants = basis.coupling_invariants || [];
+      if (invariants.length) {
+        appendText(groupingPanel, "h5", "耦合证据");
+        const invariantList = create("div", "discovery-boundary-contracts");
+        for (const invariant of invariants) {
+          const item = create("article", "discovery-boundary-contract-item");
+          appendText(item, "strong", invariant.business_rule || invariant.invariant_id);
+          appendText(item, "p", invariant.evidence_quote || "");
+          appendText(item, "small", `证据：${invariant.evidence_ref || "未提供"}`);
+          invariantList.appendChild(item);
+        }
+        groupingPanel.appendChild(invariantList);
+      }
+      const separation = basis.separation_test;
+      if (separation) {
+        appendText(groupingPanel, "h5", "备选拆分");
+        const groups = create("ul", "discovery-boundary-list");
+        for (const group of separation.alternative_groups || []) {
+          const names = (group.capability_atom_refs || []).map((atomId) => atomLabels.get(atomId) || atomId).join("、");
+          appendText(groups, "li", `${group.business_responsibility || group.group_id}（${names}）`);
+        }
+        groupingPanel.appendChild(groups);
+        appendText(groupingPanel, "h5", "稳定交接");
+        const handoffs = create("ul", "discovery-boundary-list");
+        for (const handoff of separation.stable_handoffs || []) {
+          appendText(handoffs, "li", `${handoff.from_group_id || "上游"} → ${handoff.to_group_id || "下游"}：${handoff.business_fact || "未提供"}`);
+        }
+        groupingPanel.appendChild(handoffs);
+        const comparison = create("div", "discovery-boundary-meta");
+        appendText(comparison, "span", `保持合并：${separation.keep_together_complexity || "未提供"}`);
+        appendText(comparison, "span", `拆分成本：${separation.split_coordination_cost || "未提供"}`);
+        appendText(comparison, "span", `当前判断：${separation.decision_reason || "未提供"}`);
+        groupingPanel.appendChild(comparison);
+      }
+    }
+    panel.appendChild(groupingPanel);
+  }
+  if (outlineUnit?.project_boundary) {
+    const boundary = outlineUnit.project_boundary;
+    const boundaryPanel = create("section", "discovery-project-boundary");
+    appendText(boundaryPanel, "h4", "项目边界合同");
+    appendText(boundaryPanel, "p", boundary.owned_responsibility || "", "discovery-boundary-responsibility");
+    appendText(boundaryPanel, "p", boundary.scope || "", "discovery-boundary-scope");
+    const boundaryMeta = create("div", "discovery-boundary-meta");
+    const context = outlineDiscoveryBusinessContext();
+    const objectLabels = new Map((context.business_objects || []).map((entry) => [entry.object_id, entry.label]));
+    appendText(boundaryMeta, "span", `拥有对象：${(boundary.owned_object_refs || []).map((id) => objectLabels.get(id) || id).join("、")}`);
+    appendText(boundaryMeta, "span", `独立验收：${boundary.independent_acceptance || "未提供"}`);
+    boundaryPanel.appendChild(boundaryMeta);
+    const nonGoals = create("ul", "discovery-boundary-list");
+    appendText(boundaryPanel, "h5", "非目标");
+    for (const value of boundary.non_goals || []) appendText(nonGoals, "li", value);
+    boundaryPanel.appendChild(nonGoals);
+    const contractList = create("div", "discovery-boundary-contracts");
+    for (const direction of ["upstream_contracts", "downstream_contracts"]) {
+      const contracts = boundary[direction] || [];
+      const section = create("section", "discovery-boundary-contract");
+      appendText(section, "h5", direction === "upstream_contracts" ? "上游输入合同" : "下游输出合同");
+      for (const contract of contracts) {
+        const item = create("article", "discovery-boundary-contract-item");
+        appendText(item, "strong", contract.counterparty || contract.contract_id);
+        appendText(item, "p", contract.business_fact || "");
+        appendText(item, "small", `对方责任：${contract.counterparty_responsibility || "未提供"}`);
+        section.appendChild(item);
+      }
+      contractList.appendChild(section);
+    }
+    boundaryPanel.appendChild(contractList);
+    appendText(boundaryPanel, "h5", "未决边界");
+    appendText(boundaryPanel, "p", boundary.unresolved_boundary || "", "discovery-boundary-unresolved");
+    panel.appendChild(boundaryPanel);
+  }
   if (Array.isArray(node.affected_node_ids) && node.affected_node_ids.length) {
     appendText(panel, "h4", "影响范围");
     const affected = create("div", "discovery-affected-nodes");

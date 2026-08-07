@@ -1059,7 +1059,7 @@ Outline 只确认产品意图、范围和进入规格前的就绪度。数据中
 node .specify/review/scripts/serve-review.mjs --outline <feature>
 ```
 
-launcher 只接受一个 review mode，并返回带 `?outline=<feature>` 的地址；默认是 `127.0.0.1`，需要内网访问时可显式使用 RFC1918 私网 IPv4 的 `--host`。`specs/review-index.json` 使用 `has_outline_review` 表示当前需求是否已有 Outline 确认数据。
+launcher 只接受一个 review mode，并返回带 `?outline=<feature>` 的地址；默认是 `127.0.0.1`，需要内网或 Tailscale 访问时可显式使用 RFC1918 私网 IPv4 或 `100.64.0.0/10` 的 `--host`。`specs/review-index.json` 使用 `has_outline_review` 表示当前需求是否已有 Outline 确认数据。
 
 ### 17.3 状态、摘要和授权边界
 

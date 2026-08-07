@@ -376,6 +376,7 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
   const atomsById = new Map((data.business_context?.capability_atoms || []).map((atom) => [atom.atom_id, atom]));
   const chainsById = new Map((data.business_context?.business_chains || []).map((chain) => [chain.chain_id, chain]));
   const statesById = new Map((data.business_context?.business_states || []).map((state) => [state.state_id, state]));
+  const objectsById = new Map((data.business_context?.business_objects || []).map((object) => [object.object_id, object]));
   const ownersById = new Map((data.business_context?.responsibility_owners || []).map((owner) => [owner.owner_id, owner]));
   const lifecyclesById = new Map((data.business_context?.business_lifecycles || []).map((lifecycle) => [lifecycle.lifecycle_id, lifecycle]));
   const ownerIds = new Set(ownersById.keys());
@@ -421,6 +422,59 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
     if (textFields.some((key) => String(basis[key] || "").trim().length < 20)) return true;
     return refsError(basis.source_refs, basis[statusKey]);
   };
+  const toArray = (value) => Array.isArray(value) ? value : [];
+  const projectBoundaryError = (boundary, atomRefs, chainRefs, unitSourceStatus) => {
+    if (data.schema_version < 6) return "";
+    if (!boundary || typeof boundary !== "object" || Array.isArray(boundary)) {
+      return "每个 schema-v6 Outline 单元都必须提供 project_boundary；grouping_basis 不能代替项目边界合同。";
+    }
+    for (const field of ["owned_responsibility", "scope", "independent_acceptance", "unresolved_boundary"]) {
+      const minimum = field === "unresolved_boundary" ? 12 : 20;
+      if (String(boundary[field] || "").trim().length < minimum) return `project_boundary.${field} 必须包含具体业务含义。`;
+    }
+    const ownedObjectRefs = toArray(boundary.owned_object_refs);
+    if (!ownedObjectRefs.length || new Set(ownedObjectRefs).size !== ownedObjectRefs.length
+        || ownedObjectRefs.some((objectId) => !objectsById.has(objectId))) {
+      return "project_boundary.owned_object_refs 必须引用不重复的现有业务对象。";
+    }
+    const atomObjectRefs = new Set(atomRefs.flatMap((atomId) => toArray(atomsById.get(atomId)?.object_refs)));
+    if (ownedObjectRefs.length !== atomObjectRefs.size
+        || [...atomObjectRefs].some((objectId) => !ownedObjectRefs.includes(objectId))) {
+      return "project_boundary.owned_object_refs 必须与该单元能力原子使用的业务对象完全一致。";
+    }
+    const nonGoals = toArray(boundary.non_goals);
+    if (!nonGoals.length || new Set(nonGoals).size !== nonGoals.length
+        || nonGoals.some((value) => String(value || "").trim().length < 12)) {
+      return "project_boundary.non_goals 必须至少列出一个具体的排除责任。";
+    }
+    const contractIds = new Set();
+    for (const direction of ["upstream_contracts", "downstream_contracts"]) {
+      const contracts = boundary[direction];
+      if (!Array.isArray(contracts) || !contracts.length) return `project_boundary.${direction} 必须至少包含一个业务交接合同。`;
+      const coveredChainRefs = new Set();
+      for (const contract of contracts) {
+        if (!String(contract?.contract_id || "").trim() || contractIds.has(contract?.contract_id)) return `上下游合同的 contract_id 必须非空且全局唯一。`;
+        contractIds.add(contract.contract_id);
+        if (String(contract?.counterparty || "").trim().length < 4
+            || String(contract?.business_fact || "").trim().length < 12
+            || String(contract?.counterparty_responsibility || "").trim().length < 12) {
+          return `${direction} 必须写明对方、业务事实和对方责任。`;
+        }
+        const contractChains = toArray(contract?.business_chain_refs);
+        if (!contractChains.length || new Set(contractChains).size !== contractChains.length
+            || contractChains.some((chainId) => !chainsById.has(chainId))) return `${direction} 必须引用不重复的现有业务链。`;
+        if (contractChains.some((chainId) => !chainRefs.includes(chainId))) return `${direction} 只能引用当前单元拥有的业务链。`;
+        contractChains.forEach((chainId) => coveredChainRefs.add(chainId));
+        if (refsError(contract?.source_refs, unitSourceStatus)) return `${direction} 的来源引用无效。`;
+        if (contractChains.some((chainId) => !(contract?.source_refs || []).some((sourceRef) =>
+          (chainsById.get(chainId)?.source_refs || []).includes(sourceRef)))) {
+          return `${direction} 的来源必须直接支持它引用的每条业务链。`;
+        }
+      }
+      if (chainRefs.some((chainId) => !coveredChainRefs.has(chainId))) return `${direction} 必须覆盖当前单元拥有的全部业务链。`;
+    }
+    return "";
+  };
   const connectGraphNodes = (graph, ids) => {
     const values = [...new Set(ids)].filter(Boolean);
     for (const id of values) {
@@ -455,7 +509,7 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
     const lifecycleRef = basis?.shared_lifecycle_ref;
     // The expansion root may be detached from its parent in a local window;
     // absolute project depth is the stable non-root signal.
-    const isGeneratedChild = unit.project_depth > 0;
+    const isGeneratedChild = unit.project_depth > window.root_project_depth;
     if (isGeneratedChild && ownerRef === null && lifecycleRef === null) return "多能力子项目必须具有所有原子真实共享的责任所有者或生命周期。";
     if (ownerRef !== null && (!ownerIds.has(ownerRef) || states.length !== atomRefs.length || states.some((state) => state.responsibility_owner_ref !== ownerRef))) {
       return "归组声明的责任所有者必须由每个能力原子共同拥有。";
@@ -618,6 +672,8 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
     }
     const atomChains = new Set(atomRefs.flatMap((id) => atomsById.get(id)?.business_chain_refs || []));
     if (atomChains.size !== chainRefs.length || chainRefs.some((id) => !atomChains.has(id))) return "Outline 单元的业务链必须与能力原子完全一致。";
+    const boundaryError = projectBoundaryError(unit?.project_boundary, atomRefs, chainRefs, unit?.source_status);
+    if (boundaryError) return boundaryError;
     if (atomRefs.length > 1) {
       const textFields = data.schema_version >= 5
         ? ["shared_business_goal", "parent_cohesion"]
@@ -650,7 +706,7 @@ function validateOutlineDiscoveryDecompositionWindowRuntime(data, topology) {
         }
       }
     }
-    if (unit.project_depth > 0 && atomRefs.length > 1
+    if (unit.project_depth > window.root_project_depth && atomRefs.length > 1
         && unit.grouping_basis?.authority === "unresolved") {
       return "非根多能力 Outline 单元不能用 unresolved 作为归组依据；请把不同划分方案交给 Web Discovery 决定。";
     }
@@ -1138,6 +1194,13 @@ function validateOutlineDiscoveryNoDensityMergeRuntime(data) {
     ...(data?.decomposition_window?.units || []).flatMap((unit) => [
       unit?.business_goal,
       unit?.overall_outcome,
+      unit?.project_boundary?.owned_responsibility,
+      unit?.project_boundary?.scope,
+      ...(unit?.project_boundary?.non_goals || []),
+      unit?.project_boundary?.independent_acceptance,
+      unit?.project_boundary?.unresolved_boundary,
+      ...(unit?.project_boundary?.upstream_contracts || []).flatMap((contract) => [contract?.business_fact, contract?.counterparty_responsibility]),
+      ...(unit?.project_boundary?.downstream_contracts || []).flatMap((contract) => [contract?.business_fact, contract?.counterparty_responsibility]),
       unit?.grouping_basis?.shared_business_goal,
       unit?.grouping_basis?.shared_lifecycle_or_owner,
       unit?.grouping_basis?.parent_cohesion,

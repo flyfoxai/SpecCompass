@@ -14,7 +14,8 @@ function isPrivateIPv4(host) {
   if (octets.some((value) => !Number.isInteger(value) || value < 0 || value > 255)) return false;
   return octets[0] === 10
     || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31)
-    || (octets[0] === 192 && octets[1] === 168);
+    || (octets[0] === 192 && octets[1] === 168)
+    || (octets[0] === 100 && octets[1] >= 64 && octets[1] <= 127);
 }
 
 function isAllowedReviewHost(host) {
@@ -28,7 +29,7 @@ function requireSupportedReviewTransport() {
     if (control) control.disabled = true;
   }
   setStatus(
-    "复核页必须通过 serve-review.mjs 的 HTTP 服务使用。默认使用 127.0.0.1；内网访问请显式使用 --host 10.x.x.x、172.16-31.x.x 或 192.168.x.x，并打开 SPECCOMPASS_REVIEW_URL= 输出的地址。",
+    "复核页必须通过 serve-review.mjs 的 HTTP 服务使用。默认使用 127.0.0.1；内网或 Tailscale 访问请显式使用 --host 10.x.x.x、172.16-31.x.x、192.168.x.x 或 100.64-127.x.x，并打开 SPECCOMPASS_REVIEW_URL= 输出的地址。",
     true
   );
   return false;

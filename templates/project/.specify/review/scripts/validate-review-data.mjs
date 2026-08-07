@@ -2276,7 +2276,7 @@ function validateItem(reviewType, schemaVersion, module, item, itemIndex, global
   }
 }
 
-function validateOutlineDiscoverySourceRefs(data, refs, label) {
+function validateOutlineDiscoverySourceRefs(data, refs, label, sourceStatus = null) {
   if (!Array.isArray(refs) || !refs.length) {
     fail(`${label}: source_refs must not be empty`);
     return;
@@ -2293,6 +2293,11 @@ function validateOutlineDiscoverySourceRefs(data, refs, label) {
     const hash = normalized.indexOf("#");
     const sourcePath = hash === -1 ? normalized : normalized.slice(0, hash);
     const anchor = hash === -1 ? "" : normalized.slice(hash + 1);
+    const featurePrdPath = `specs/${data.project?.feature || ""}/prd.md`;
+    if (["doc", "user", "user-confirmed"].includes(sourceStatus)
+        && sourcePath === featurePrdPath && !anchor) {
+      fail(`${label}: strong source authority cannot cite the feature PRD without an exact heading`);
+    }
     if (sourcePath === data.constitution_snapshot?.source_path || /(?:^|\/)constitution\.md$/i.test(sourcePath)) {
       fail(`${label}: Constitution cannot be business evidence`);
       continue;
@@ -2672,6 +2677,7 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
   const businessChainsById = new Map(asArray(data.business_context?.business_chains).map((chain) => [chain?.chain_id, chain]));
   const businessChainIds = new Set(businessChainsById.keys());
   const businessStatesById = new Map(asArray(data.business_context?.business_states).map((state) => [state?.state_id, state]));
+  const businessObjectsById = new Map(asArray(data.business_context?.business_objects).map((object) => [object?.object_id, object]));
   const responsibilityOwnersById = new Map(asArray(data.business_context?.responsibility_owners).map((owner) => [owner?.owner_id, owner]));
   const businessLifecyclesById = new Map(asArray(data.business_context?.business_lifecycles).map((lifecycle) => [lifecycle?.lifecycle_id, lifecycle]));
   const responsibilityOwnerIds = new Set(responsibilityOwnersById.keys());
@@ -2716,6 +2722,74 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     }
     validateOutlineDiscoverySourceRefs(data, basis.source_refs, label);
   };
+  const validateProjectBoundary = (boundary, label, unit, atomRefs, chainRefs) => {
+    if (data.schema_version < 6) return;
+    if (!boundary || typeof boundary !== "object" || Array.isArray(boundary)) {
+      fail(`${label}.project_boundary is required; grouping_basis is not a project boundary contract`);
+      return;
+    }
+    for (const field of ["owned_responsibility", "scope", "independent_acceptance", "unresolved_boundary"]) {
+      const minimum = field === "unresolved_boundary" ? 12 : 20;
+      if (String(boundary[field] || "").trim().length < minimum) {
+        fail(`${label}.project_boundary.${field} must contain concrete business meaning`);
+      }
+    }
+    const ownedObjectRefs = asArray(boundary.owned_object_refs);
+    if (!ownedObjectRefs.length || new Set(ownedObjectRefs).size !== ownedObjectRefs.length
+        || ownedObjectRefs.some((objectId) => !businessObjectsById.has(objectId))) {
+      fail(`${label}.project_boundary.owned_object_refs must contain unique existing business objects`);
+    }
+    const atomObjectRefs = new Set(atomRefs.flatMap((atomId) => asArray(capabilityAtomsById.get(atomId)?.object_refs)));
+    if (ownedObjectRefs.length !== atomObjectRefs.size
+        || [...atomObjectRefs].some((objectId) => !ownedObjectRefs.includes(objectId))) {
+      fail(`${label}.project_boundary.owned_object_refs must exactly match the business objects used by its capability atoms`);
+    }
+    const nonGoals = asArray(boundary.non_goals);
+    if (!nonGoals.length || new Set(nonGoals).size !== nonGoals.length
+        || nonGoals.some((value) => String(value || "").trim().length < 12)) {
+      fail(`${label}.project_boundary.non_goals must name at least one concrete excluded responsibility`);
+    }
+    const contractIds = new Set();
+    const validateContracts = (direction) => {
+      const contracts = boundary[direction];
+      if (!Array.isArray(contracts) || !contracts.length) {
+        fail(`${label}.project_boundary.${direction} must contain at least one business contract`);
+        return;
+      }
+      const coveredChainRefs = new Set();
+      for (const [index, contract] of contracts.entries()) {
+        const contractLabel = `${label}.project_boundary.${direction}[${index}]`;
+        if (!String(contract?.contract_id || "").trim() || contractIds.has(contract?.contract_id)) {
+          fail(`${contractLabel}.contract_id must be non-empty and unique across both contract directions`);
+        }
+        contractIds.add(contract?.contract_id);
+        for (const field of ["counterparty", "business_fact", "counterparty_responsibility"]) {
+          if (String(contract?.[field] || "").trim().length < (field === "counterparty" ? 4 : 12)) {
+            fail(`${contractLabel}.${field} must contain concrete business meaning`);
+          }
+        }
+        const refs = asArray(contract?.business_chain_refs);
+        if (!refs.length || new Set(refs).size !== refs.length || refs.some((chainId) => !businessChainIds.has(chainId))) {
+          fail(`${contractLabel}.business_chain_refs must reference unique existing business chains`);
+        } else if (refs.some((chainId) => !chainRefs.includes(chainId))) {
+          fail(`${contractLabel}.business_chain_refs may reference only this unit's business chains`);
+        }
+        refs.forEach((chainId) => coveredChainRefs.add(chainId));
+        validateOutlineDiscoverySourceRefs(data, contract?.source_refs, contractLabel, unit?.source_status);
+        for (const chainId of refs) {
+          const chainSourceRefs = asArray(businessChainsById.get(chainId)?.source_refs);
+          if (!asArray(contract?.source_refs).some((sourceRef) => chainSourceRefs.includes(sourceRef))) {
+            fail(`${contractLabel}.source_refs must directly support every referenced business chain`);
+          }
+        }
+      }
+      if (chainRefs.some((chainId) => !coveredChainRefs.has(chainId))) {
+        fail(`${label}.project_boundary.${direction} must cover every business chain owned by this unit`);
+      }
+    };
+    validateContracts("upstream_contracts");
+    validateContracts("downstream_contracts");
+  };
   const connectGraphNodes = (graph, ids) => {
     const values = [...new Set(ids)].filter(Boolean);
     for (const id of values) {
@@ -2750,7 +2824,7 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     const sharedLifecycleRef = basis?.shared_lifecycle_ref;
     // The expansion root may be detached from its parent in a local window;
     // absolute project depth is the stable non-root signal.
-    const isGeneratedChild = unit.project_depth > 0;
+    const isGeneratedChild = unit.project_depth > window.root_project_depth;
     if (isGeneratedChild && sharedOwnerRef === null && sharedLifecycleRef === null) {
       fail(`${label} must name a responsibility owner or lifecycle shared by every grouped atom`);
     }
@@ -2959,6 +3033,7 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     if (chainRefs.length !== atomChainRefs.size || chainRefs.some((chainId) => !atomChainRefs.has(chainId))) {
       fail(`${label}.business_chain_refs must equal the chains referenced by its capability atoms`);
     }
+    validateProjectBoundary(unit?.project_boundary, label, unit, atomRefs, chainRefs);
     if (sourceStatusExceedsEvidence(unit.source_status, [
       ...atomRefs.map((id) => capabilityAtomsById.get(id)?.source_status),
       ...chainRefs.map((id) => businessChainsById.get(id)?.source_status),
@@ -2977,7 +3052,7 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
           "authority",
         );
       }
-      if (unit.project_depth > 0 && unit.grouping_basis?.authority === "unresolved") {
+      if (unit.project_depth > window.root_project_depth && unit.grouping_basis?.authority === "unresolved") {
         fail(
           `${label}.grouping_basis.authority must not be unresolved for a non-root multi-atom unit; ` +
           "present the competing partitions as a Web Discovery decision instead of treating one grouping as chosen",
@@ -3269,6 +3344,13 @@ function validateOutlineDiscoveryNoDensityMerge(data) {
     ...(data?.decomposition_window?.units ?? []).flatMap(unit => [
       unit?.business_goal,
       unit?.overall_outcome,
+      unit?.project_boundary?.owned_responsibility,
+      unit?.project_boundary?.scope,
+      ...(unit?.project_boundary?.non_goals || []),
+      unit?.project_boundary?.independent_acceptance,
+      unit?.project_boundary?.unresolved_boundary,
+      ...(unit?.project_boundary?.upstream_contracts || []).flatMap(contract => [contract?.business_fact, contract?.counterparty_responsibility]),
+      ...(unit?.project_boundary?.downstream_contracts || []).flatMap(contract => [contract?.business_fact, contract?.counterparty_responsibility]),
       unit?.grouping_basis?.shared_business_goal,
       unit?.grouping_basis?.shared_lifecycle_or_owner,
       unit?.grouping_basis?.parent_cohesion,

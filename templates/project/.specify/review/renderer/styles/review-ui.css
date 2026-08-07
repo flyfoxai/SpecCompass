@@ -3683,6 +3683,71 @@ details {
   margin-left: 58px;
 }
 
+.discovery-grouping-evidence,
+.discovery-project-boundary {
+  display: grid;
+  gap: 7px;
+  margin: 12px 0 0 58px;
+  padding: 10px;
+  border: 1px solid var(--sc-border);
+  border-radius: 6px;
+  background: var(--sc-surface-subtle);
+}
+
+.discovery-grouping-evidence h4,
+.discovery-grouping-evidence h5,
+.discovery-project-boundary h4,
+.discovery-project-boundary h5 {
+  margin: 0;
+}
+
+.discovery-grouping-evidence p,
+.discovery-project-boundary p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.discovery-boundary-meta {
+  display: grid;
+  gap: 4px;
+  color: var(--sc-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.discovery-boundary-list {
+  display: grid;
+  gap: 3px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--sc-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.discovery-boundary-contracts {
+  display: grid;
+  gap: 8px;
+}
+
+.discovery-boundary-contract {
+  display: grid;
+  gap: 5px;
+}
+
+.discovery-boundary-contract-item {
+  display: grid;
+  gap: 3px;
+  padding: 5px 0 5px 8px;
+  border-left: 2px solid var(--sc-primary);
+}
+
+.discovery-boundary-contract-item small,
+.discovery-boundary-unresolved {
+  color: var(--sc-muted);
+  line-height: 1.45;
+}
+
 .discovery-node-panel p,
 .discovery-panel-note,
 .discovery-empty-copy {
@@ -3824,6 +3889,14 @@ details {
 }
 
 @media (max-width: 600px) {
+  .discovery-node-panel-meta,
+  .discovery-node-trail,
+  .discovery-node-panel-summary,
+  .discovery-grouping-evidence,
+  .discovery-project-boundary {
+    margin-left: 0;
+  }
+
   .discovery-mindmap {
     min-width: 760px;
     column-gap: 34px;

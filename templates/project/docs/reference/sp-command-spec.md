@@ -94,7 +94,8 @@ be only `NEEDS_PRD`, `NEEDS_CLARIFY`, `NEEDS_SOURCE`, `SPLIT_REQUIRED`,
 
 The shared Flow/UI/Outline/Discovery launcher requires Node.js 18 or newer. It
 binds to `127.0.0.1` by default; trusted same-LAN review may explicitly use
-`--host <RFC1918-private-ip>` such as `--host 10.0.0.209`. Public addresses,
+`--host <RFC1918-or-Tailscale-ip>` such as `--host 10.0.0.209` or
+`--host 100.64.0.5`. Public addresses,
 hostnames, and `0.0.0.0` are rejected, and LAN mode prints a warning because
 reachable devices may read or submit the current session. Static access is
 limited to the renderer, same-type structured review data used by feature
@@ -178,6 +179,17 @@ merging projects; one governed domain-data lifecycle can justify a data
 responsibility boundary when it owns intake, normalization, quality, version,
 lineage, retention, and trusted delivery. Grouping is not a terminal claim, no
 fixed child count applies, and finer is not automatically better.
+
+Every schema-v6 Outline unit also carries a complete `project_boundary`
+contract: owned responsibility, scope, owned business objects, non-goals,
+upstream inputs, downstream outputs, independent acceptance, and unresolved
+boundary. Its owned-object set must exactly match the objects used by the
+unit's capability atoms and must not claim unrelated objects. The upstream and downstream contracts must each cover all business
+chains owned by the unit, and their source references must support the chains
+they name. `grouping_basis` is evidence for keeping atoms together, not a
+project definition. An abstract grouping that cannot state this concrete
+contract must not enter the candidate project tree. A complete model-proposed
+boundary remains `ai-proposed` until the Web Discovery decision confirms it.
 
 The unique `000-*` top unit generates exactly one descendant level in its first
 window. Any ordinary non-root `decompose` window normally generates two or three

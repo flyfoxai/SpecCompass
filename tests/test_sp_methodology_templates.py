@@ -2342,6 +2342,8 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "A multi-atom unit requires `grouping_basis`" in prd
     assert "One local relationship between two atoms can never justify a larger bucket" in prd
     assert "A complete current-run `ai-proposed` grouping may enter the Discovery candidate tree" in prd
+    assert "grouping_basis` only explains why the listed atoms are kept together and never substitutes" in prd
+    assert "must each cover every business chain owned by the unit" in prd
     assert "`unresolved` still cannot authorize an already grouped child" in prd
     assert "cohesive_data_lifecycle" in prd
     assert "Mark a unit `expanded` only when `decomposition_basis`" in prd
@@ -2358,6 +2360,7 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
 
     assert "The layered input contract is: Outline reads PRD sources" in command_spec
     assert "multi-atom unit carries" in command_spec
+    assert "Every schema-v6 Outline unit also carries a complete `project_boundary`" in command_spec
     assert "`grouping_basis`" in command_spec
     assert "current Discovery candidate" in command_spec
     assert "emit the proposed grouping" in command_spec
@@ -4367,6 +4370,42 @@ def test_review_pages_use_short_url_parameters_as_primary_entry():
     assert "serve-review.mjs" in data_loader
     assert "path.sep" not in data_loader
     assert "\\\\" not in data_loader
+
+
+def test_review_renderer_transport_accepts_rfc1918_and_tailscale_ipv4():
+    """Renderer transport must preserve RFC1918 access while adding the exact Tailscale CGNAT range."""
+    if shutil.which("node") is None:
+        pytest.skip("node is required for renderer transport tests")
+
+    script = REVIEW_ROOT / "renderer" / "scripts" / "data-loader.js"
+    node_program = f"""
+const fs = require("fs");
+const vm = require("vm");
+const source = fs.readFileSync({json.dumps(str(script))}, "utf8");
+const transportSource = source.split("function requireSupportedReviewTransport()")[0];
+
+function supports(protocol, hostname) {{
+  const context = vm.createContext({{ window: {{ location: {{ protocol, hostname }} }} }});
+  vm.runInContext(`${{transportSource}}\\nglobalThis.__supported = isSupportedReviewTransport;`, context);
+  return context.__supported();
+}}
+
+for (const hostname of ["127.0.0.1", "10.0.0.209", "172.16.0.1", "192.168.1.20", "100.64.0.5", "100.127.255.255"]) {{
+  if (!supports("http:", hostname)) throw new Error(`expected accepted host: ${{hostname}}`);
+}}
+for (const hostname of ["100.63.255.255", "100.128.0.0", "8.8.8.8", "localhost"]) {{
+  if (supports("http:", hostname)) throw new Error(`expected rejected host: ${{hostname}}`);
+}}
+if (supports("https:", "100.64.0.5")) throw new Error("HTTPS must remain rejected");
+"""
+    result = subprocess.run(
+        ["node", "-e", node_program],
+        text=True,
+        encoding="utf-8",
+        capture_output=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 def test_review_renderer_exposes_view_module_and_requirement_recommendation_scopes():
@@ -7431,6 +7470,47 @@ def _outline_discovery_v6_multi_atom_child_sample() -> dict:
             "source_status": "doc",
             "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
         })
+    objects_by_id = {
+        item["object_id"]: item
+        for item in context["business_objects"]
+    }
+    atoms_by_id = {
+        item["atom_id"]: item
+        for item in context["capability_atoms"]
+    }
+    for unit in sample["decomposition_window"]["units"]:
+        atom_refs = unit["capability_atom_refs"]
+        object_refs = sorted({
+            object_id
+            for atom_id in atom_refs
+            for object_id in atoms_by_id[atom_id]["object_refs"]
+        })
+        object_labels = "、".join(objects_by_id[object_id]["label"] for object_id in object_refs)
+        chain_refs = list(unit["business_chain_refs"])
+        unit["project_boundary"] = {
+            "owned_responsibility": f"负责围绕{object_labels}完成本单元列出的业务责任，并维护其可独立验收的结果。",
+            "scope": f"接收本单元业务链的输入，处理{object_labels}中的状态变化，并只交付本单元声明的结果。",
+            "owned_object_refs": object_refs,
+            "non_goals": ["不拥有其他项目的内部状态，也不替代相邻责任完成它们自己的验收结果。"],
+            "upstream_contracts": [{
+                "contract_id": f"{unit['unit_id']}-upstream",
+                "counterparty": "行情与账户事实提供责任",
+                "business_fact": "交付本单元业务链所需的最新行情、持仓或资金事实。",
+                "counterparty_responsibility": "提供可追溯且带业务时间的输入事实，不裁定本单元的最终结果。",
+                "business_chain_refs": chain_refs,
+                "source_refs": unit["source_refs"],
+            }],
+            "downstream_contracts": [{
+                "contract_id": f"{unit['unit_id']}-downstream",
+                "counterparty": "订单执行与事实追溯责任",
+                "business_fact": "交付本单元声明的状态结果、验收结果和阻断原因。",
+                "counterparty_responsibility": "接收业务事实并继续完成自己的执行或对账责任，不读取本单元内部状态。",
+                "business_chain_refs": chain_refs,
+                "source_refs": unit["source_refs"],
+            }],
+            "independent_acceptance": "产品负责人能够根据本单元的输入、拥有状态和可观察结果单独验收，不需要读取相邻项目的内部实现。",
+            "unresolved_boundary": "尚未确认的边界仅限于相邻责任是否需要合并，具体保留与拆分方案在当前 Discovery 页面决定。",
+        }
     return sample
 
 
@@ -7840,6 +7920,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "business_chain_refs",
         "source_status",
         "source_refs",
+        "project_boundary",
     } <= set(outline_unit["required"])
     grouping_basis = discovery["$defs"]["grouping_basis"]
     assert set(grouping_basis["required"]) == {
@@ -7864,6 +7945,27 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert "cohesive_data_lifecycle" in coupling_invariant["properties"]["invariant_kind"]["enum"]
     assert coupling_invariant["properties"]["evidence_ref"]["minLength"] == 1
     assert coupling_invariant["properties"]["evidence_quote"]["minLength"] == 8
+    assert {"evidence_ref", "evidence_quote"} <= set(coupling_invariant["required"])
+    project_boundary = discovery["$defs"]["project_boundary"]
+    assert {
+        "owned_responsibility",
+        "scope",
+        "owned_object_refs",
+        "non_goals",
+        "upstream_contracts",
+        "downstream_contracts",
+        "independent_acceptance",
+        "unresolved_boundary",
+    } == set(project_boundary["required"])
+    boundary_contract = discovery["$defs"]["project_boundary_contract"]
+    assert {
+        "contract_id",
+        "counterparty",
+        "business_fact",
+        "counterparty_responsibility",
+        "business_chain_refs",
+        "source_refs",
+    } == set(boundary_contract["required"])
     assert "evidence_ref" in discovery["$defs"]["responsibility_owner"]["properties"]
     assert "evidence_quote" in discovery["$defs"]["business_lifecycle"]["properties"]
     assert "decomposition_basis" in discovery["$defs"]
@@ -7957,6 +8059,87 @@ def test_outline_discovery_v6_accepts_source_backed_coupling_contract(tmp_path):
         tmp_path / "discovery-v6-valid.json",
     )
     assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v6_accepts_non_root_window_root_without_new_merge_evidence(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    window = sample["decomposition_window"]
+    window["root_project_depth"] = 1
+    window["parent_path"] = [
+        {"unit_id": "unit-portfolio", "label": "量化交易工作台", "project_depth": 0}
+    ]
+    for unit in window["units"]:
+        unit["project_depth"] += 1
+    root = next(unit for unit in window["units"] if unit["parent_unit_id"] is None)
+    root["grouping_basis"].pop("coupling_invariants", None)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-non-root-window.json")
+
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected"),
+    [
+        (lambda unit, sample: unit.pop("project_boundary"), "project_boundary is required"),
+        (
+            lambda unit, sample: unit["project_boundary"].__setitem__("owned_object_refs", []),
+            "owned_object_refs",
+        ),
+        (
+            lambda unit, sample: (
+                sample["business_context"]["business_objects"].append({
+                    "object_id": "object-unrelated-boundary-claim",
+                    "label": "无关业务对象",
+                    "summary": "用于证明项目边界不能额外声称不属于其能力原子的业务对象。",
+                    "source_status": "doc",
+                    "source_refs": list(unit["source_refs"]),
+                }),
+                unit["project_boundary"]["owned_object_refs"].append("object-unrelated-boundary-claim"),
+            ),
+            "exactly match",
+        ),
+        (
+            lambda unit, sample: unit["project_boundary"].__setitem__("upstream_contracts", []),
+            "upstream_contracts",
+        ),
+        (
+            lambda unit, sample: unit["project_boundary"]["downstream_contracts"][0].__setitem__(
+                "business_chain_refs", ["chain-unknown"]
+            ),
+            "business_chain_refs",
+        ),
+        (
+            lambda unit, sample: unit["project_boundary"]["upstream_contracts"][0].__setitem__(
+                "source_refs", ["specs/000-outline/prd.md"]
+            ),
+            "exact heading",
+        ),
+    ],
+)
+def test_outline_discovery_v6_rejects_invalid_project_boundary_contract(tmp_path, mutation, expected):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    mutation(child, sample)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-invalid-project-boundary.json")
+
+    assert result.returncode != 0
+    assert expected in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_boundary_contract_source_unrelated_to_chain(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    sample["source_snapshot"].append(
+        {"path": "prd/unrelated.md", "source_type": "prd", "anchors": ["Other"]}
+    )
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child["project_boundary"]["downstream_contracts"][0]["source_refs"] = ["prd/unrelated.md#Other"]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-unrelated-contract-source.json")
+
+    assert result.returncode != 0
+    assert "directly support every referenced business chain" in _review_validator_output(result)
 
 
 def test_outline_discovery_v6_accepts_fresh_ai_proposed_shared_boundary_with_web_partition_choice(tmp_path):
@@ -8257,7 +8440,7 @@ def test_outline_discovery_v5_requires_exact_atom_coverage_at_frame_maturity(tmp
     assert "every v5 atom requires exactly one source capability coverage entry" in _review_validator_output(result)
 
 
-def test_outline_discovery_v5_requires_handoffs_for_every_non_root_multi_atom_unit(tmp_path):
+def test_outline_discovery_v5_requires_handoffs_for_generated_children_but_not_window_roots(tmp_path):
     child_sample = _outline_discovery_v5_multi_atom_child_sample()
     child_sample["decomposition_window"]["units"][1]["grouping_basis"]["separation_test"]["stable_handoffs"] = []
     child_result = _run_review_validator(child_sample, tmp_path / "discovery-v5-child-no-handoff.json")
@@ -8273,8 +8456,7 @@ def test_outline_discovery_v5_requires_handoffs_for_every_non_root_multi_atom_un
     window = nested_sample["decomposition_window"]
     window["units"][0]["grouping_basis"]["separation_test"]["stable_handoffs"] = []
     nested_result = _run_review_validator(nested_sample, tmp_path / "discovery-v5-nested-root-no-handoff.json")
-    assert nested_result.returncode != 0
-    assert "at least one stable business handoff" in _review_validator_output(nested_result)
+    assert nested_result.returncode == 0, _review_validator_output(nested_result)
 
 
 def test_outline_discovery_v5_duplicate_source_must_point_directly_to_canonical_entry(tmp_path):
@@ -8665,6 +8847,41 @@ if (!unanchoredFeatureAuthorityError.includes("feature PRD")) throw new Error("u
 const v6Grouping = {json.dumps(_outline_discovery_v6_multi_atom_child_sample(), ensure_ascii=False)};
 const v6Error = context.validateReviewData(v6Grouping);
 if (v6Error !== "") throw new Error("valid v6 discovery rejected: " + v6Error);
+const v6NonRootWindow = structuredClone(v6Grouping);
+v6NonRootWindow.decomposition_window.root_project_depth = 1;
+v6NonRootWindow.decomposition_window.parent_path = [{{unit_id: "unit-portfolio", label: "量化交易工作台", project_depth: 0}}];
+for (const unit of v6NonRootWindow.decomposition_window.units) unit.project_depth += 1;
+delete v6NonRootWindow.decomposition_window.units.find((unit) => unit.parent_unit_id === null).grouping_basis.coupling_invariants;
+const v6NonRootWindowError = context.validateReviewData(v6NonRootWindow);
+if (v6NonRootWindowError !== "") throw new Error("non-root expansion root was treated as a new merge: " + v6NonRootWindowError);
+const v6MissingBoundary = structuredClone(v6Grouping);
+delete v6MissingBoundary.decomposition_window.units.find((unit) => unit.parent_unit_id !== null).project_boundary;
+const v6MissingBoundaryError = context.validateReviewData(v6MissingBoundary);
+if (!v6MissingBoundaryError.includes("project_boundary")) throw new Error("missing project boundary was not rejected: " + v6MissingBoundaryError);
+const v6OverclaimedBoundaryObject = structuredClone(v6Grouping);
+v6OverclaimedBoundaryObject.business_context.business_objects.push({{
+  object_id: "object-unrelated-boundary-claim",
+  label: "无关业务对象",
+  summary: "用于证明项目边界不能额外声称不属于其能力原子的业务对象。",
+  source_status: "doc",
+  source_refs: ["specs/000-outline/prd.md#Core Trading Loop"]
+}});
+v6OverclaimedBoundaryObject.decomposition_window.units.find((unit) => unit.parent_unit_id !== null)
+  .project_boundary.owned_object_refs.push("object-unrelated-boundary-claim");
+const v6OverclaimedBoundaryObjectError = context.validateReviewData(v6OverclaimedBoundaryObject);
+if (!v6OverclaimedBoundaryObjectError.includes("完全一致")) throw new Error("overclaimed boundary object was not rejected: " + v6OverclaimedBoundaryObjectError);
+const v6MissingUpstream = structuredClone(v6Grouping);
+v6MissingUpstream.decomposition_window.units.find((unit) => unit.parent_unit_id !== null).project_boundary.upstream_contracts = [];
+const v6MissingUpstreamError = context.validateReviewData(v6MissingUpstream);
+if (!v6MissingUpstreamError.includes("upstream_contracts")) throw new Error("missing upstream contract was not rejected: " + v6MissingUpstreamError);
+const v6UnknownContractChain = structuredClone(v6Grouping);
+v6UnknownContractChain.decomposition_window.units.find((unit) => unit.parent_unit_id !== null).project_boundary.downstream_contracts[0].business_chain_refs = ["chain-unknown"];
+const v6UnknownContractChainError = context.validateReviewData(v6UnknownContractChain);
+if (!v6UnknownContractChainError.includes("业务链")) throw new Error("unknown contract chain was not rejected: " + v6UnknownContractChainError);
+const v6UnanchoredBoundarySource = structuredClone(v6Grouping);
+v6UnanchoredBoundarySource.decomposition_window.units.find((unit) => unit.parent_unit_id !== null).project_boundary.upstream_contracts[0].source_refs = ["specs/000-outline/prd.md"];
+const v6UnanchoredBoundarySourceError = context.validateReviewData(v6UnanchoredBoundarySource);
+if (!v6UnanchoredBoundarySourceError.includes("来源引用无效")) throw new Error("unanchored boundary source was not rejected: " + v6UnanchoredBoundarySourceError);
 const v6NoEvidence = structuredClone(v6Grouping);
 v6NoEvidence.source_inventory.entries[0].evidence_refs = [];
 const v6NoEvidenceError = context.validateReviewData(v6NoEvidence);
@@ -8736,6 +8953,9 @@ for (const unit of v6PartialInvariant.decomposition_window.units) {{
   unit.capability_atom_refs.push(partialAtom.atom_id);
   unit.business_chain_refs.push(partialChain.chain_id);
   unit.grouping_basis.separation_test.alternative_groups.at(-1).capability_atom_refs.push(partialAtom.atom_id);
+  for (const direction of ["upstream_contracts", "downstream_contracts"]) {{
+    unit.project_boundary[direction][0].business_chain_refs.push(partialChain.chain_id);
+  }}
 }}
 for (const node of v6PartialInvariant.outline_nodes) {{
   if (node.capability_atom_refs?.includes(partialSourceAtom.atom_id)) node.capability_atom_refs.push(partialAtom.atom_id);
@@ -8813,7 +9033,7 @@ if (topRootWithoutHandoffError !== "") throw new Error("top-level expansion root
 const nestedRootWithoutHandoff = structuredClone(nestedV5Grouping);
 nestedRootWithoutHandoff.decomposition_window.units[0].grouping_basis.separation_test.stable_handoffs = [];
 const nestedRootWithoutHandoffError = context.validateReviewData(nestedRootWithoutHandoff);
-if (!nestedRootWithoutHandoffError.includes("至少声明一个")) throw new Error("non-root expansion root without handoff was not rejected: " + nestedRootWithoutHandoffError);
+if (nestedRootWithoutHandoffError !== "") throw new Error("non-root expansion root was treated as a generated child: " + nestedRootWithoutHandoffError);
 const chainedDuplicate = structuredClone(v5Grouping);
 chainedDuplicate.source_inventory.roots.push({{path: "prd", root_kind: "directory", source_origin: "human-specified"}});
 chainedDuplicate.source_inventory.entries.push(
@@ -9829,6 +10049,56 @@ def test_outline_discovery_renderer_tracks_unexported_work_and_mobile_navigation
         re.DOTALL,
     )
     assert re.search(r"\.discovery-non-authorizing-banner\s+strong\s*\{[^}]*white-space:\s*nowrap", styles, re.DOTALL)
+
+
+def test_outline_discovery_renderer_exposes_project_boundary_and_grouping_evidence():
+    renderer = (REVIEW_ROOT / "renderer" / "scripts" / "outline-discovery-renderer.js").read_text(encoding="utf-8")
+    styles = (REVIEW_ROOT / "renderer" / "styles" / "review-ui.css").read_text(encoding="utf-8")
+
+    for token in (
+        "outlineDiscoveryUnitForNode(node.node_id)",
+        "selectedNode?.child_map_id === mapId",
+        "openOutlineDiscoveryMap(node.child_map_id, node.node_id, viewport)",
+        "项目目标与归组依据",
+        "项目边界合同",
+        "拥有能力",
+        "耦合证据",
+        "备选拆分",
+        "稳定交接",
+        "上游输入合同",
+        "下游输出合同",
+        "independent_acceptance",
+        "coupling_invariants",
+        "stable_handoffs",
+    ):
+        assert token in renderer, token
+
+    assert ".discovery-grouping-evidence" in styles
+    assert ".discovery-project-boundary" in styles
+    assert re.search(
+        r"@media\s*\(max-width:\s*600px\).*?\.discovery-grouping-evidence,\s*\.discovery-project-boundary\s*\{[^}]*margin-left:\s*0",
+        styles,
+        re.DOTALL,
+    )
+
+
+def test_outline_writeback_keeps_overview_safety_separate_from_detail_density():
+    """Writeback must accept a broad Overview while keeping detail maps bounded."""
+    apply_script = (REVIEW_ROOT / "scripts" / "apply-outline-discovery.mjs").read_text(encoding="utf-8")
+
+    assert "const OVERVIEW_SAFETY_LIMIT = 64" in apply_script
+    assert re.search(
+        r'if\s*\(map\.map_kind === "overview"\s*&& mapNodes\.length > OVERVIEW_SAFETY_LIMIT\)',
+        apply_script,
+    )
+    assert re.search(
+        r'else if\s*\(map\.map_kind !== "overview"\s*&& mapNodes\.length > DENSITY_BUDGET\.max_visible_nodes_per_map\)',
+        apply_script,
+    )
+    assert re.search(
+        r'if\s*\(map\.map_kind !== "overview" && mapNodes\.length >= DENSITY_BUDGET\.layer_balance_min_nodes',
+        apply_script,
+    )
 
 
 def test_outline_discovery_renderer_is_mindmap_first_and_keeps_questions_on_selected_node():
@@ -11449,6 +11719,7 @@ def test_review_launcher_and_private_lan_mode_are_documented():
         assert "SPECCOMPASS_REVIEW_URL=" in content, label
         assert "127.0.0.1" in content, label
         assert "RFC1918" in content or "私网" in content, label
+        assert "Tailscale" in content or "100.64.0.0/10" in content, label
         assert "renderer 和 review data 均返回 HTTP 200" in content, label
         assert "禁止使用 `file://`" in content, label
         assert "`localhost`" in content and "不接受" in content, label

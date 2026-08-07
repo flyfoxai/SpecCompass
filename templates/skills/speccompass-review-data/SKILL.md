@@ -72,7 +72,7 @@ node .specify/review/scripts/serve-review.mjs --outline-discovery <feature>
 ```
 
 Use only the command matching the generated review type. The launcher defaults
-to `127.0.0.1`. For trusted LAN review, pass the machine's exact RFC1918 IPv4
+to `127.0.0.1`. For trusted LAN or Tailscale review, pass the machine's exact RFC1918 or Tailscale IPv4
 address, for example `--host 10.0.0.209`; public addresses, hostnames, and
 `0.0.0.0` are rejected. It prints `SPECCOMPASS_REVIEW_URL=` only after the
 renderer 和 review data 均返回 HTTP 200. Keep the process running and return
