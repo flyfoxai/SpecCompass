@@ -2248,37 +2248,48 @@ def test_prd_recursive_outline_uses_business_semantics_and_keeps_constitution_re
         assert "governance_only" in content
 
     assert "Stage A - extract source-backed capability atoms" in prd
-    assert "Stage B - recursively propose child Outline units and compile the current window" in prd
+    assert "Stage B - hybrid partition: constrained + unconstrained" in prd
     assert "Stage C - run the semantic quality gate" in prd
+    assert "Step 0 - input contract and deterministic reference" in prd
+    assert "Step 1 - draft two partitions in parallel" in prd
+    assert "Step 2 - compare, analyze, and fuse or present options" in prd
+    assert "shared_responsibility_owner_ref` and `shared_lifecycle_ref" in prd
+    assert "model-grown relationship never overrides conflicting documented or human-confirmed identities" in prd
+    assert "Step 3 - hard rejects for constrained partition only" in prd
+    assert "Step 4 - emit the selected children and their evidence" in prd
+    assert "Stable Stage A input contract" in prd
+    assert "source-capability-baseline.json" in prd
+    assert "outline-stage-a-baseline.mjs verify" in prd
+    assert "outline-stage-a-baseline.mjs create" in prd
+    assert "neither model preference can displace the deterministic reference tree" in prd
+    assert "derive-outline-reference-partition.mjs" in prd
+    assert "reference_partition_id" in prd
     assert "capability_atoms" in prd
     assert "Each atom has exactly one matching business chain" in prd
     assert "may belong to only one direct child" in prd
     assert "grouping_basis" in prd
-    assert "The union of those invariants must cover every grouped atom" in prd
-    assert "verbatim `evidence_quote`" in prd
-    assert "Reusing the same comparison prose across sibling groups is invalid" in prd
+    assert "record `evidence_ref` plus an exact `evidence_quote`" in prd
+    assert "Every multi-atom child must include one `separation_test`" in prd
     assert "decomposition_basis" in prd
     assert "terminal_basis" in prd
-    assert "Direct children must be non-overlapping and exactly cover their parent" in prd
+    assert "assigns every parent atom exactly once to non-overlapping clusters" in prd
     assert "root_project_depth: 0" in prd
     assert "generated_depth: 1" in prd
     assert "frontend, backend, database" in prd
-    assert "Do not impose a fixed unit count" in prd
-    assert "Project Decomposition" in prd
-    assert "Subproject Handoff" in prd
-    assert "Product decomposition is independent from runtime topology" in prd
-    assert "Transactional consistency or bidirectional business exchange requires classification" in prd
-    assert "regulation, contract, or multi-party legal duty" in prd
+    assert "is justified by runtime topology" in prd
     assert "published service commitment" not in prd
-    assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in prd
-    assert "make confirmation of that split the default recommendation" in prd
+    assert "Record those concerns as delivery risks, not product boundaries" in prd
+    assert "use the reference as provisional until the user decides" in prd
+    assert "project_title" in prd
+    assert "ai-proposed-only" in prd
+    assert "Generate a Discovery question presenting both options" in prd
+    assert "unit-specific" in prd
+    assert "Reference Authority: model-proposed, unconfirmed" in prd
     assert "Stage C results remain private" in prd
     assert "`source_capability_coverage` remains required JSON evidence" in prd
-    assert "Generic implementation components" in prd
-    assert "is a warning signal, not a boundary decision" in prd
+    assert "uses a generic container or SP-internal classification as its **sole** distinguishing boundary noun" in prd
     assert "center/中心" in prd
-    assert "Prefixing a domain word" in prd
-    assert "formal product root" in prd
+    assert "Formal product roots" in prd
     assert "final visible-copy sanitization pass" in prd
     assert "do not announce that sanitization occurred" in prd
     assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in prd
@@ -2289,7 +2300,7 @@ def test_prd_recursive_outline_uses_business_semantics_and_keeps_constitution_re
     assert "must not create discovery questions from Constitution clauses" in prd
     assert "must not write Constitution clauses into the PRD" in prd
     assert "must not target Constitution clauses with discovery deltas" in prd
-    assert "Direct children must be non-overlapping" in command_spec
+    assert "direct children exactly cover the parent's atoms" in command_spec
     assert "Every Outline unit retains its own" in command_spec_text
     assert "business_goal" in command_spec
     assert "Subproject Handoff" in command_spec
@@ -2301,8 +2312,10 @@ def test_prd_recursive_outline_uses_business_semantics_and_keeps_constitution_re
     assert "一个能力原子只归属一个直接子单元" in methodology
     assert "能力原子负责来源覆盖，不负责决定项目数量" in methodology
     assert "目标仍是功能单一、松散耦合" in methodology
+    assert "source-capability-baseline.json" in methodology
+    assert "total_complexity_rank" in methodology
     assert "grouping_basis" in methodology
-    assert "耦合不变量的并集必须覆盖该单元全部能力原子" in methodology
+    assert "一句覆盖全部原子的自然语言业务不变量和一个 separation test" in methodology
     assert "decomposition_basis" in methodology
     assert "terminal_basis" in methodology
     assert "不设固定子单元数量、偏好区间、一个原子一个项目的映射或整棵树的最大深度" in methodology
@@ -2328,6 +2341,8 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "人工可以为当前仓库或当前运行明确指定一个或多个其他资料目录" in product_prd
     assert "`000-*` 是唯一顶级 Outline 单元，但不是空壳协调器" in product_prd
     assert "整个过程不设固定项目数量，也不追求越细越好" in product_prd
+    assert "不能要求 PRD 预先替 Outline 写好全部项目架构" in product_prd
+    assert "为什么是长期存在的同级子项目而不是一个事件、操作、规则、指标或信号" in product_prd
     assert "Outline 的树深和一次生成窗口分开管理" in product_prd
     assert "直接子单元必须不重叠且完整覆盖父单元" in product_prd
     assert "Outline、Flow、UI 已有的图形审核" in product_prd
@@ -2339,15 +2354,21 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
 
     assert "repository-root `prd/` directory is the default business-source corpus" in prd
     assert "Parent-child reconciliation checks direction, scope, ownership, outcomes, handoffs" in prd
-    assert "A multi-atom unit requires `grouping_basis`" in prd
-    assert "One local relationship between two atoms can never justify a larger bucket" in prd
-    assert "A complete current-run `ai-proposed` grouping may enter the Discovery candidate tree" in prd
+    assert "Every multi-atom child must include one `separation_test`" in prd
+    assert "Stage A preserves what the business needs" in prd
+    assert "Every non-root child, including a `terminal`, also requires `project_candidate_basis`" in prd
+    assert "Coordination cost is the cost of managing contracts between systems" in prd
+    assert "terminal state never bypasses it" in prd
+    assert "binding invariant does not cover every atom" in prd
+    assert "proposal_origin: current-discovery" in prd
     assert "grouping_basis` only explains why the listed atoms are kept together and never substitutes" in prd
     assert "must each cover every business chain owned by the unit" in prd
-    assert "`unresolved` still cannot authorize an already grouped child" in prd
-    assert "cohesive_data_lifecycle" in prd
-    assert "Mark a unit `expanded` only when `decomposition_basis`" in prd
-    assert "Mark it `terminal` only when `terminal_basis`" in prd
+    assert "other model proposals remain Web choices" in command_spec
+    assert "without source or" in command_spec
+    assert "human authority they are equal" in command_spec
+    assert "A governed domain-data responsibility is a valid business boundary" in prd
+    assert "Mark a unit `expanded` only after selecting a real child partition" in prd
+    assert "Mark it `terminal` only when another split would add more complexity" in prd
 
     assert "Stable Flow input is `PRD sources + confirmed Outline + stable Spec/clarifications`" in flow
     assert "Flow Web review" in flow
@@ -2359,11 +2380,11 @@ def test_layered_design_sources_parent_child_focus_and_decision_authority_are_do
     assert "make reversible code-level choices" in implement
 
     assert "The layered input contract is: Outline reads PRD sources" in command_spec
-    assert "multi-atom unit carries" in command_spec
+    assert "multi-atom unit records a shared responsibility owner and lifecycle" in command_spec
     assert "Every schema-v6 Outline unit also carries a complete `project_boundary`" in command_spec
     assert "`grouping_basis`" in command_spec
-    assert "current Discovery candidate" in command_spec
-    assert "emit the proposed grouping" in command_spec
+    assert "current-discovery" in command_spec
+    assert "A model-grown relationship sets `proposal_origin" in command_spec
     assert "automatically better" in command_spec
     assert "Only a formally confirmed terminal unit may enter `frame`" in command_spec
 
@@ -2388,19 +2409,19 @@ def test_prd_recursive_outline_windows_have_non_overlapping_executable_contracts
     assert "`frame` writes detailed business Outline" in prd
     assert "generates no new project levels" in prd
     assert "New Outline Discovery data MUST use schema version 6" in prd
-    assert "The `000-*` decompose window MUST have" in prd
-    assert "A non-root decompose window normally has `generated_depth: 2` or `3`" in prd
-    assert "Never generate filler nodes" in prd
+    assert "A `000-*` decompose window has `root_project_depth: 0`" in prd
+    assert "An ordinary non-root decompose window normally generates depth 2 or 3" in prd
+    assert "Never create filler nodes" in prd
     assert "Do not create a whole tree in one invocation" in prd
-    assert "every business node below a branch map's structural root MUST correspond" in prd
-    assert "generate such functional detail only in the later `detail` window" in prd
+    assert "Every business node below a decompose branch's structural root corresponds" in prd
+    assert "Do not number an explanation, capability, acceptance note" in prd
     assert "source-preserving formal Outline preparation" in prd
     assert "without discovering, merging, splitting, or reinterpreting business facts" in prd
 
     assert "cross-domain substitution test" in prd
     assert "source-backed domain object" in prd
-    assert "warning signal, not a boundary decision" in prd
-    assert "external business obligation" in prd
+    assert "presentation never changes an atom allocation" in prd
+    assert "never the database technology" in prd
 
     assert "Maturity is not project-tree depth" in command_spec
     assert "unique `000-*` top unit generates exactly one descendant level" in command_spec
@@ -6977,7 +6998,7 @@ def _outline_discovery_validator_sample() -> dict:
             "business_objects": [
                 {
                     "object_id": "object-market-account-data",
-                    "label": "行情与账户数据",
+                    "label": "行情与账户快照",
                     "summary": "策略判断和风险检查所依赖的业务事实。",
                     "source_status": "doc",
                     "source_refs": ["specs/001-outline/prd.md#Core Trading Loop"],
@@ -7486,6 +7507,7 @@ def _outline_discovery_v6_multi_atom_child_sample() -> dict:
             for object_id in atoms_by_id[atom_id]["object_refs"]
         })
         object_labels = "、".join(objects_by_id[object_id]["label"] for object_id in object_refs)
+        unit["project_title"] = object_labels
         chain_refs = list(unit["business_chain_refs"])
         unit["project_boundary"] = {
             "owned_responsibility": f"负责围绕{object_labels}完成本单元列出的业务责任，并维护其可独立验收的结果。",
@@ -7509,8 +7531,101 @@ def _outline_discovery_v6_multi_atom_child_sample() -> dict:
                 "source_refs": unit["source_refs"],
             }],
             "independent_acceptance": "产品负责人能够根据本单元的输入、拥有状态和可观察结果单独验收，不需要读取相邻项目的内部实现。",
-            "unresolved_boundary": "尚未确认的边界仅限于相邻责任是否需要合并，具体保留与拆分方案在当前 Discovery 页面决定。",
+            "unresolved_boundary": f"{unit['unit_id']} 的未决边界是相邻责任是否共享同一验收结果，具体保留与拆分方案在当前 Discovery 页面决定。",
+            "capability_summary": [
+                f"管理{object_labels}的核心业务状态并维护其可追溯版本。",
+                f"向下游交付本单元声明的可观察结果，不暴露内部实现细节。",
+                f"拒绝越权写入，保持本单元状态的单一事实源地位。",
+            ],
         }
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    root["decomposition_basis"]["partition_analysis"] = {
+        "reference_partition_id": "partition-together",
+        "selected_partition_id": "partition-together",
+        "reference_authority": "doc-user-anchored",
+        "partitions": [
+            {
+                "partition_id": "partition-together",
+                "label": "交易意图到受控订单的共同项目",
+                "business_reason": "把风险决定与受控订单结果放在同一业务项目中，直接验收从意图到订单的连续结果。",
+                "internal_complexity": "项目内部维护一条交易控制生命周期和同一笔意图的关联状态，不混入无关责任。",
+                "coordination_cost": "项目内部直接传递风险决定，跨项目只需向事实追溯责任交付最终订单结果。",
+                "total_complexity_rank": 1,
+                "groups": [{
+                    "group_id": "group-together",
+                    "business_responsibility": "独立完成交易意图风险裁定并形成经过约束的订单结果。",
+                    "capability_atom_refs": ["atom-controlled-order", "atom-risk-decision"],
+                }],
+                "source_status": "ai-proposed",
+                "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+            },
+            {
+                "partition_id": "partition-separate",
+                "label": "风险裁定与订单结果分开",
+                "business_reason": "把规则裁定和订单生命周期分别交给单一责任，降低每个子项目需要维护的状态与规则集合。",
+                "internal_complexity": "每个项目只处理一种独立结果，项目内部状态和规则较少。",
+                "coordination_cost": "必须维护风险决定到订单形成的稳定交接、失败恢复和跨项目验收关联。",
+                "total_complexity_rank": 2,
+                "groups": [
+                    {
+                        "group_id": "group-risk",
+                        "business_responsibility": "独立裁定交易意图是否满足规则并交付放行或阻断决定。",
+                        "capability_atom_refs": ["atom-risk-decision"],
+                    },
+                    {
+                        "group_id": "group-order",
+                        "business_responsibility": "接收已放行意图并形成可解释的受控订单结果。",
+                        "capability_atom_refs": ["atom-controlled-order"],
+                    },
+                ],
+                "source_status": "ai-proposed",
+                "source_refs": ["specs/000-outline/prd.md#Core Trading Loop"],
+            },
+        ],
+    }
+    root_question = json.loads(json.dumps(sample["question_groups"][0]["questions"][0]))
+    root_question["id"] = "root-partition-choice"
+    root_question["outline_node_id"] = root["outline_node_id"]
+    root_question["target_kind"] = "project_boundary"
+    root_question["prompt"] = "风险裁定与受控订单在当前根级窗口应采用哪种项目分区？"
+    root_question["context"] = "两个能力原子都有独立结果，但合并会减少协调；这里比较完整分区方案，而不是按原子数量机械生成项目。"
+    root_question["candidates"][0].update({
+        "id": "partition-together-choice",
+        "partition_ref": "partition-together",
+        "label": "保留共同交易控制项目",
+        "detail": "保留风险裁定与受控订单形成的共同项目，内部完成连续交易控制结果。",
+    })
+    root_question["candidates"][1].update({
+        "id": "partition-separate-choice",
+        "partition_ref": "partition-separate",
+        "label": "拆分风险裁定与订单结果",
+        "detail": "将风险裁定与订单结果分别作为项目，并通过明确风险放行事实交接。",
+    })
+    root_question["recommended_candidate_ids"] = ["partition-together-choice"]
+    root_question["recommendation_reason"] = "共同业务生命周期能够直接闭合交易控制结果，当前模型复杂度低于新增跨项目交接。"
+    sample["question_groups"].append({
+        "id": "root-partition-group",
+        "title": "根级项目分区比较",
+        "summary": "比较交易意图风险裁定与受控订单结果的完整项目分区。",
+        "map_id": "map-overview",
+        "questions": [root_question],
+    })
+    for unit in sample["decomposition_window"]["units"]:
+        basis = unit.get("grouping_basis")
+        if basis:
+            basis.pop("parent_cohesion", None)
+            for invariant in basis.get("coupling_invariants", []):
+                invariant.pop("invariant_kind", None)
+            basis["separation_test"].pop("keep_together_complexity", None)
+            basis["separation_test"].pop("split_coordination_cost", None)
+        if unit["parent_unit_id"] is not None:
+            unit["project_candidate_basis"] = {
+                "durable_business_responsibility": "持续拥有交易意图到受控订单结果的业务责任，并对该结果的完整性和可追溯性负责。",
+                "why_not_capability_step": "该单元不是一次风险检查或订单写入步骤，而是可以单独规划、验收和交付的完整子项目边界。",
+                "why_not_parent_bucket": "它不包含行情采集、账户事实维护或交易后对账，仅拥有受控订单形成这一有界业务结果。",
+                "source_status": "ai-proposed",
+                "source_refs": list(unit["source_refs"]),
+            }
     return sample
 
 
@@ -7545,6 +7660,8 @@ def _outline_discovery_v6_current_model_grouping_sample() -> dict:
     for entity in context["responsibility_owners"] + context["business_lifecycles"]:
         entity["source_status"] = "ai-proposed"
         entity["source_refs"] = [original_ref]
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    root["decomposition_basis"]["partition_analysis"]["reference_authority"] = "ai-proposed-only"
     for entity in context["business_states"] + context["business_chains"] + context["source_capability_coverage"]:
         entity["source_refs"] = list(dict.fromkeys(entity.get("source_refs", []) + [original_ref]))
     for atom in context["capability_atoms"]:
@@ -7558,6 +7675,8 @@ def _outline_discovery_v6_current_model_grouping_sample() -> dict:
     basis = child["grouping_basis"]
     basis["authority"] = "ai-proposed"
     basis["proposal_origin"] = "current-discovery"
+    basis["shared_responsibility_owner_ref"] = "owner-trading-control"
+    basis["shared_lifecycle_ref"] = "lifecycle-controlled-order"
     basis["source_refs"] = [original_ref]
     question = sample["question_groups"][0]["questions"][0]
     question["target_kind"] = "project_boundary"
@@ -7565,14 +7684,129 @@ def _outline_discovery_v6_current_model_grouping_sample() -> dict:
     question["candidates"][1]["label"] = "拆分风险裁定和受控订单形成责任"
     basis["coupling_invariants"][0].update(
         {
-            "source_status": "doc",
-            "evidence_ref": original_ref,
-            "evidence_quote": "风险放行决定必须在订单形成前保持同一笔意图的可追溯关联",
+            "source_status": "ai-proposed",
+            "proposal_basis": "两个来源能力共同围绕同一交易意图交付可验收的受控订单结果，因此模型建议在当前父级先作为一个项目，在下一层再拆内部裁定和订单形成责任。",
             "source_refs": [original_ref],
         }
     )
+    basis["coupling_invariants"][0].pop("evidence_ref", None)
+    basis["coupling_invariants"][0].pop("evidence_quote", None)
     handoff = basis["separation_test"]["stable_handoffs"][0]
     handoff["source_refs"] = [original_ref]
+    return sample
+
+
+def _outline_discovery_v6_unconfirmed_same_cell_split_sample() -> dict:
+    """The selected tree splits one responsibility cell into two singleton projects."""
+    sample = _outline_discovery_v6_current_model_grouping_sample()
+    window = sample["decomposition_window"]
+    root = next(unit for unit in window["units"] if unit["parent_unit_id"] is None)
+    original_child = next(unit for unit in window["units"] if unit["parent_unit_id"] == root["unit_id"])
+    risk_child = json.loads(json.dumps(original_child))
+    atoms = {atom["atom_id"]: atom for atom in sample["business_context"]["capability_atoms"]}
+    chains = {chain["chain_id"]: chain for chain in sample["business_context"]["business_chains"]}
+    objects = {obj["object_id"]: obj for obj in sample["business_context"]["business_objects"]}
+
+    def specialize(unit, *, atom_id, unit_id, node_id, responsibility, outcome):
+        atom = atoms[atom_id]
+        chain_id = atom["business_chain_refs"][0]
+        chain = chains[chain_id]
+        object_labels = "、".join(objects[oid]["label"] for oid in atom["object_refs"] if oid in objects)
+        unit.update({
+            "unit_id": unit_id,
+            "project_title": object_labels or atom["label"],
+            "outline_node_id": node_id,
+            "business_goal": responsibility,
+            "overall_outcome": outcome,
+            "capability_atom_refs": [atom_id],
+            "business_chain_refs": [chain_id],
+            "source_refs": list(atom["source_refs"]),
+        })
+        unit.pop("grouping_basis", None)
+        boundary = unit["project_boundary"]
+        boundary["owned_responsibility"] = responsibility
+        boundary["scope"] = f"只处理“{atom['label']}”拥有的业务状态、验收结果和下游事实交付。"
+        boundary["unresolved_boundary"] = f"{atom['label']}是否需要与相邻验收结果保持一个项目，仍由当前分区选择决定。"
+        boundary["owned_object_refs"] = list(atom["object_refs"])
+        boundary.setdefault("capability_summary", [
+            f"管理{atom['label']}的核心业务状态并维护其可追溯版本。",
+            f"向下游交付本单元声明的可观察结果，不暴露内部实现细节。",
+            f"拒绝越权写入，保持本单元状态的单一事实源地位。",
+        ])
+        for direction in ("upstream_contracts", "downstream_contracts"):
+            contract = boundary[direction][0]
+            contract["contract_id"] = f"{unit_id}-{direction}"
+            contract["business_chain_refs"] = [chain_id]
+            contract["source_refs"] = list(chain["source_refs"])
+        unit["terminal_basis"]["source_refs"] = list(atom["source_refs"])
+
+    specialize(
+        original_child,
+        atom_id="atom-controlled-order",
+        unit_id="unit-controlled-order",
+        node_id="node-trading-entry",
+        responsibility="接收已经完成风险裁定的交易意图，并独立形成带状态和原因的受控订单结果。",
+        outcome="每个已放行意图形成唯一受控订单结果，未形成订单时保留可追溯失败原因。",
+    )
+    specialize(
+        risk_child,
+        atom_id="atom-risk-decision",
+        unit_id="unit-risk-decision",
+        node_id="node-risk-entry",
+        responsibility="根据账户权限、交易规则和风险限额独立裁定交易意图，并交付放行或阻断事实。",
+        outcome="每个交易意图形成唯一可追溯的放行或阻断决定，并向订单形成责任交付结果。",
+    )
+    window["units"] = [root, original_child, risk_child]
+    window["frontier_unit_ids"] = []
+    window["terminal_unit_ids"] = [original_child["unit_id"], risk_child["unit_id"]]
+
+    analysis = root["decomposition_basis"]["partition_analysis"]
+    analysis["selected_partition_id"] = "partition-separate"
+    partitions = {partition["partition_id"]: partition for partition in analysis["partitions"]}
+    partitions["partition-together"]["total_complexity_rank"] = 2
+    partitions["partition-separate"]["total_complexity_rank"] = 1
+
+    overview_link = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-entry")
+    overview_link.update({
+        "label": "受控订单形成",
+        "capability_atom_refs": ["atom-controlled-order"],
+        "business_chain_refs": ["chain-trading-loop"],
+    })
+    risk_link = json.loads(json.dumps(overview_link))
+    risk_link.update({
+        "node_id": "node-risk-entry",
+        "label": "交易意图风险裁定",
+        "summary": "接收交易意图和账户事实，形成可追溯的放行或阻断决定。",
+        "child_map_id": "map-risk-decision",
+        "capability_atom_refs": ["atom-risk-decision"],
+        "business_chain_refs": ["chain-risk-decision"],
+    })
+    sample["outline_nodes"].append(risk_link)
+    trading_map = next(item for item in sample["maps"] if item["map_id"] == "map-trading-loop")
+    risk_map = json.loads(json.dumps(trading_map))
+    risk_map.update({
+        "map_id": "map-risk-decision",
+        "title": "交易意图风险裁定",
+        "summary": "根据账户权限、交易规则和限额形成放行或阻断事实。",
+        "root_node_id": "node-risk-root",
+    })
+    sample["maps"].append(risk_map)
+    trading_root = next(node for node in sample["outline_nodes"] if node["node_id"] == "node-trading-root")
+    risk_root = json.loads(json.dumps(trading_root))
+    risk_root.update({
+        "node_id": "node-risk-root",
+        "map_id": "map-risk-decision",
+        "label": "交易意图风险裁定",
+        "summary": "接收交易意图和账户事实，形成可追溯的放行或阻断决定。",
+        "capability_atom_refs": ["atom-risk-decision"],
+        "business_chain_refs": ["chain-risk-decision"],
+    })
+    sample["outline_nodes"].append(risk_root)
+
+    root_group = next(group for group in sample["question_groups"] if group["id"] == "root-partition-group")
+    root_question = root_group["questions"][0]
+    root_question["recommended_candidate_ids"] = ["partition-separate-choice"]
+    sample["question_groups"] = [root_group]
     return sample
 
 
@@ -7910,6 +8144,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     outline_unit = discovery["$defs"]["outline_unit"]
     assert {
         "unit_id",
+        "project_title",
         "outline_node_id",
         "parent_unit_id",
         "project_depth",
@@ -7922,13 +8157,11 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "source_refs",
         "project_boundary",
     } <= set(outline_unit["required"])
+    generated_multi_atom_grouping = outline_unit["allOf"][-1]["then"]["properties"]["grouping_basis"]
+    assert {"coupling_invariants"} == set(generated_multi_atom_grouping["required"])
     grouping_basis = discovery["$defs"]["grouping_basis"]
     assert set(grouping_basis["required"]) == {
         "authority",
-        "shared_business_goal",
-        "shared_responsibility_owner_ref",
-        "shared_lifecycle_ref",
-        "parent_cohesion",
         "separation_test",
         "source_refs",
     }
@@ -7940,12 +8173,22 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "unresolved",
     ]
     assert grouping_basis["properties"]["proposal_origin"]["enum"] == ["current-discovery"]
-    assert grouping_basis["properties"]["parent_cohesion"]["minLength"] == 20
+    assert "parent_cohesion" not in grouping_basis["properties"]
+    assert grouping_basis["properties"]["coupling_invariants"]["minItems"] == 1
+    assert grouping_basis["properties"]["coupling_invariants"]["maxItems"] == 1
     coupling_invariant = discovery["$defs"]["coupling_invariant"]
-    assert "cohesive_data_lifecycle" in coupling_invariant["properties"]["invariant_kind"]["enum"]
+    assert "invariant_kind" not in coupling_invariant["properties"]
+    assert "ai-proposed" in coupling_invariant["properties"]["source_status"]["enum"]
     assert coupling_invariant["properties"]["evidence_ref"]["minLength"] == 1
     assert coupling_invariant["properties"]["evidence_quote"]["minLength"] == 8
-    assert {"evidence_ref", "evidence_quote"} <= set(coupling_invariant["required"])
+    assert coupling_invariant["properties"]["proposal_basis"]["minLength"] == 20
+    assert {"evidence_ref", "evidence_quote"}.isdisjoint(coupling_invariant["required"])
+    assert set(discovery["$defs"]["separation_test"]["required"]) == {
+        "alternative_groups",
+        "stable_handoffs",
+        "duplicated_state_refs",
+        "decision_reason",
+    }
     project_boundary = discovery["$defs"]["project_boundary"]
     assert {
         "owned_responsibility",
@@ -7956,7 +8199,17 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
         "downstream_contracts",
         "independent_acceptance",
         "unresolved_boundary",
+        "capability_summary",
     } == set(project_boundary["required"])
+    project_candidate_basis = discovery["$defs"]["project_candidate_basis"]
+    assert {
+        "durable_business_responsibility",
+        "why_not_capability_step",
+        "why_not_parent_bucket",
+        "source_status",
+        "source_refs",
+    } == set(project_candidate_basis["required"])
+    assert project_candidate_basis["properties"]["next_decomposition_focus"]["minItems"] == 2
     boundary_contract = discovery["$defs"]["project_boundary_contract"]
     assert {
         "contract_id",
@@ -7969,6 +8222,33 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert "evidence_ref" in discovery["$defs"]["responsibility_owner"]["properties"]
     assert "evidence_quote" in discovery["$defs"]["business_lifecycle"]["properties"]
     assert "decomposition_basis" in discovery["$defs"]
+    partition_analysis = discovery["$defs"]["partition_analysis"]
+    assert set(partition_analysis["required"]) == {
+        "reference_partition_id",
+        "selected_partition_id",
+        "reference_authority",
+        "partitions",
+    }
+    assert partition_analysis["properties"]["partitions"]["minItems"] == 2
+    assert partition_analysis["properties"]["partitions"]["maxItems"] == 5
+    assert partition_analysis["properties"]["reference_authority"]["enum"] == [
+        "doc-user-anchored", "ai-proposed-only", "mixed"
+    ]
+    assert set(discovery["$defs"]["partition_option"]["required"]) == {
+        "partition_id",
+        "label",
+        "business_reason",
+        "internal_complexity",
+        "coordination_cost",
+        "total_complexity_rank",
+        "groups",
+        "source_status",
+        "source_refs",
+    }
+    partition_option = discovery["$defs"]["partition_option"]
+    assert partition_option["properties"]["evidence_ref"]["minLength"] == 1
+    assert partition_option["properties"]["evidence_quote"]["minLength"] == 8
+    assert partition_option["allOf"][0]["then"]["required"] == ["evidence_ref", "evidence_quote"]
     assert "terminal_basis" in discovery["$defs"]
     assert "constitution_clause_refs" in discovery["$defs"]["outline_node"]["properties"]
     assert discovery["properties"]["density_budget"]["properties"] == {
@@ -7984,6 +8264,7 @@ def test_outline_discovery_schemas_keep_discovery_non_authorizing_and_structured
     assert question["properties"]["candidates"]["maxItems"] == 4
     assert "business_chain_refs" in discovery["$defs"]["candidate"]["required"]
     assert "capability_atom_refs" in discovery["$defs"]["candidate"]["required"]
+    assert "partition_ref" in discovery["$defs"]["candidate"]["properties"]
     assert question["properties"]["recommended_candidate_ids"]["minItems"] == 1
     assert question["properties"]["recommended_candidate_ids"]["maxItems"] == 1
     assert {
@@ -8054,10 +8335,437 @@ def test_outline_discovery_v5_accepts_complete_source_state_and_separation_evide
 
 
 def test_outline_discovery_v6_accepts_source_backed_coupling_contract(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
     result = _run_review_validator(
-        _outline_discovery_v6_multi_atom_child_sample(),
+        sample,
         tmp_path / "discovery-v6-valid.json",
     )
+    assert result.returncode == 0, _review_validator_output(result)
+    assert all(
+        unit["overall_outcome"] != unit["business_goal"]
+        for unit in sample["decomposition_window"]["units"]
+    )
+
+
+def test_outline_discovery_v6_requires_concrete_project_title(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child["project_title"] = child["unit_id"]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-invalid-project-title.json")
+
+    assert result.returncode != 0
+    assert "project_title" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_responsibility_as_project_title(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child["project_title"] = "可信股票信息发布责任"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-responsibility-project-title.json")
+
+    assert result.returncode != 0
+    assert "not a responsibility or lifecycle label" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_activity_as_project_title(tmp_path):
+    """A title that ends with an activity/governance word not backed by an owned object names a process, not an entity."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child["project_title"] = "交易订单撮合与发布"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-activity-project-title.json")
+
+    assert result.returncode != 0
+    assert "names an activity" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_facet_umbrella_as_project_title(tmp_path):
+    """A title that ends with a vague facet noun (版本/特征/事实) not backed by an owned object is over-genericized."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child["project_title"] = "交易订单与行情视图版本"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-facet-umbrella-project-title.json")
+
+    assert result.returncode != 0
+    assert "abstract facet" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_activity_title_even_if_matches_owned_object_name(tmp_path):
+    """Zero-tolerance: activity/umbrella word fails even when owned object has same name (no exemption)."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    owned = next(
+        obj for obj in sample["business_context"]["business_objects"]
+        if obj["object_id"] in child["project_boundary"]["owned_object_refs"]
+    )
+    owned["label"] = "订单风险决定"
+    child["project_title"] = "订单风险决定"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-no-exemption-even-with-object-match.json")
+
+    assert result.returncode != 0
+    assert "names an activity" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_detached_project_title(tmp_path):
+    """A title sharing no domain noun with any owned object or outcome was invented from the activity, not the entity."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child["project_title"] = "调色板与画笔图层"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-detached-project-title.json")
+
+    assert result.returncode != 0
+    assert "detached from the unit's owned business objects" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_activity_in_non_last_segment(tmp_path):
+    """P2-a regression: all segments are now checked, not just the last one."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    owned = next(
+        obj for obj in sample["business_context"]["business_objects"]
+        if obj["object_id"] in child["project_boundary"]["owned_object_refs"]
+    )
+    # Make the last segment's anchor ("评测") present in owned objects so old code would skip it.
+    owned["label"] = "模型评测"
+    # First segment "策略知识发布" ends with activity "发布", which is NOT in owned objects.
+    child["project_title"] = "策略知识发布与模型评测档案"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-non-last-segment-activity.json")
+
+    assert result.returncode != 0
+    assert "names an activity" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_english_facet_umbrella_as_project_title(tmp_path):
+    """P2-b: English facet umbrella words (data/feature/version/…) are rejected like their Chinese equivalents."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    # "data" is an English facet umbrella; owned objects have Chinese labels so it is not in any object name.
+    child["project_title"] = "Order risk data"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-english-umbrella-project-title.json")
+
+    assert result.returncode != 0
+    assert "abstract facet" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_title_grounded_only_in_outcome_not_owned_objects(tmp_path):
+    """P1-b regression: grounding now uses only owned_object_refs, not overall_outcome."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    # Title shares 2-grams with overall_outcome ("合规意图形成…") but has zero overlap with owned objects
+    # ("行情与账户快照", "交易订单").  Old code included outcome in grounding and would pass; new code fails.
+    child["project_title"] = "合规意图形成"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-outcome-only-grounded-title.json")
+
+    assert result.returncode != 0
+    assert "detached from the unit's owned business objects" in _review_validator_output(result)
+
+
+def test_business_object_label_ending_in_activity_word_triggers_warn(tmp_path):
+    """Stage A quality: object label ending in governance word generates a warning."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    owned = next(
+        obj for obj in sample["business_context"]["business_objects"]
+        if obj["object_id"] in child["project_boundary"]["owned_object_refs"]
+    )
+    owned["label"] = "策略执行授权"
+    # Use a clean entity title that shares a 2-gram with the other owned object to avoid a detach error.
+    child["project_title"] = "行情与账户数据"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-object-label-activity-warn.json")
+
+    output = _review_validator_output(result)
+    assert "governance or umbrella word" in output
+
+
+def test_business_object_label_concrete_entity_no_activity_warn(tmp_path):
+    """Stage A quality: concrete object labels without governance words produce no such warning."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-object-label-clean.json")
+    output = _review_validator_output(result)
+    assert "governance or umbrella word" not in output
+
+
+def test_outline_discovery_v6_rejects_mirrored_unit_id_slug(tmp_path):
+    """A unit_id mirrored from owner/lifecycle tokens is a Stage A identity artifact, not a project code."""
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child["unit_id"] = "unit-owner-trading-control-lifecycle-trading-control"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-mirrored-unit-id.json")
+
+    assert result.returncode != 0
+    assert "mirrored owner/lifecycle slug" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_requires_sibling_specific_unresolved_boundaries(tmp_path):
+    sample = _outline_discovery_v6_unconfirmed_same_cell_split_sample()
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    children = [unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] == root["unit_id"]]
+    assert len(children) >= 2
+    duplicate = children[0]["project_boundary"]["unresolved_boundary"]
+    for child in children:
+        child["project_boundary"]["unresolved_boundary"] = duplicate
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-duplicate-unresolved-boundary.json")
+
+    assert result.returncode != 0
+    assert "pairwise-distinct unresolved boundaries" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_one_reused_boundary_among_other_siblings(tmp_path):
+    sample = _outline_discovery_v6_unconfirmed_same_cell_split_sample()
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    children = [unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] == root["unit_id"]]
+    assert len(children) == 2
+
+    duplicate = json.loads(json.dumps(children[0]))
+    duplicate["unit_id"] = "unit-duplicate-boundary-probe"
+    duplicate["outline_node_id"] = "node-duplicate-boundary-probe"
+    sample["decomposition_window"]["units"].append(duplicate)
+    source_node = next(node for node in sample["outline_nodes"] if node["node_id"] == children[0]["outline_node_id"])
+    duplicate_node = json.loads(json.dumps(source_node))
+    duplicate_node["node_id"] = duplicate["outline_node_id"]
+    duplicate_node["label"] = "重复边界探针"
+    sample["outline_nodes"].append(duplicate_node)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-one-reused-unresolved-boundary.json")
+
+    assert result.returncode != 0
+    assert "pairwise-distinct unresolved boundaries" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_marks_ai_proposed_reference_authority_and_partition_question(tmp_path):
+    sample = _outline_discovery_v6_current_model_grouping_sample()
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-ai-proposed-authority.json")
+
+    assert result.returncode == 0, _review_validator_output(result)
+    questions = [
+        question
+        for group in sample["question_groups"]
+        for question in group["questions"]
+        if question["outline_node_id"] == root["outline_node_id"]
+        and question["target_kind"] == "project_boundary"
+    ]
+    assert questions
+    assert any(candidate.get("partition_ref") for candidate in questions[0]["candidates"])
+
+
+def test_outline_discovery_v6_requires_reference_authority(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    root["decomposition_basis"]["partition_analysis"].pop("reference_authority", None)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-missing-reference-authority.json")
+
+    assert result.returncode != 0
+    assert "reference_authority is required" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_reference_authority_that_disagrees_with_stage_a(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    root["decomposition_basis"]["partition_analysis"]["reference_authority"] = "ai-proposed-only"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-wrong-reference-authority.json")
+
+    assert result.returncode != 0
+    assert "must equal doc-user-anchored" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_accepts_subtracted_grouping_contract(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    for unit in sample["decomposition_window"]["units"]:
+        basis = unit.get("grouping_basis")
+        if not basis:
+            continue
+        optional_fields = ["shared_business_goal", "parent_cohesion"]
+        if unit["parent_unit_id"] is None:
+            optional_fields.extend(["shared_responsibility_owner_ref", "shared_lifecycle_ref"])
+        for field in optional_fields:
+            basis.pop(field, None)
+        for invariant in basis.get("coupling_invariants", []):
+            invariant.pop("invariant_kind", None)
+        basis["separation_test"].pop("keep_together_complexity", None)
+        basis["separation_test"].pop("split_coordination_cost", None)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-subtracted-grouping.json")
+
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_multiple_parallel_invariants(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(
+        unit
+        for unit in sample["decomposition_window"]["units"]
+        if unit["parent_unit_id"] is not None
+    )
+    duplicate = json.loads(json.dumps(child["grouping_basis"]["coupling_invariants"][0]))
+    duplicate["invariant_id"] = "invariant-duplicate-taxonomy"
+    child["grouping_basis"]["coupling_invariants"].append(duplicate)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-parallel-invariants.json")
+
+    assert result.returncode != 0
+    assert "coupling_invariants" in _review_validator_output(result)
+
+
+def _make_v6_frontier_project_sample() -> tuple[dict, dict]:
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    window = sample["decomposition_window"]
+    child = next(unit for unit in window["units"] if unit["parent_unit_id"] is not None)
+    child["decomposition_state"] = "frontier"
+    child.pop("terminal_basis", None)
+    child["project_candidate_basis"] = {
+        "durable_business_responsibility": "持续拥有交易意图到受控订单结果的业务责任，并对该结果的完整性和可追溯性负责。",
+        "why_not_capability_step": "该单元不是一次风险检查或订单写入步骤，而是长期承接策略、风险和订单事实的完整子项目边界。",
+        "why_not_parent_bucket": "它不包含行情采集、账户事实维护或交易后对账，仅拥有受控订单形成这一有界业务结果。",
+        "next_decomposition_focus": [
+            "交易意图的身份、账户与授权受理责任",
+            "风险裁定结果到受控订单形成的责任",
+        ],
+        "source_status": "ai-proposed",
+        "source_refs": list(child["source_refs"]),
+    }
+    window["frontier_unit_ids"] = [child["unit_id"]]
+    window["terminal_unit_ids"] = []
+    return sample, child
+
+
+def test_outline_discovery_v6_accepts_frontier_with_project_granularity_basis(tmp_path):
+    sample, _ = _make_v6_frontier_project_sample()
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-frontier-project.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected"),
+    [
+        (lambda child: child.pop("project_candidate_basis"), "project_candidate_basis is required"),
+        (
+            lambda child: child["project_candidate_basis"].__setitem__(
+                "next_decomposition_focus", ["仅执行一次风险检查"]
+            ),
+            "at least two unique concrete business sub-responsibilities",
+        ),
+    ],
+)
+def test_outline_discovery_v6_rejects_frontier_without_project_granularity(tmp_path, mutation, expected):
+    sample, child = _make_v6_frontier_project_sample()
+    mutation(child)
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-invalid-frontier-project.json")
+    assert result.returncode != 0
+    assert expected in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_requires_project_granularity_for_terminal_child(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child.pop("project_candidate_basis")
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-terminal-without-project-basis.json")
+
+    assert result.returncode != 0
+    assert "project_candidate_basis is required for every non-root child" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_terminal_child_must_not_claim_future_split(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is not None)
+    child["project_candidate_basis"]["next_decomposition_focus"] = [
+        "风险裁定规则的独立业务责任",
+        "受控订单形成的独立业务责任",
+    ]
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-terminal-with-future-split.json")
+
+    assert result.returncode != 0
+    assert "next_decomposition_focus is allowed only for a frontier child" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_removed_invariant_taxonomy(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    child = next(
+        unit for unit in sample["decomposition_window"]["units"]
+        if unit["parent_unit_id"] is not None and len(unit["capability_atom_refs"]) > 1
+    )
+    child["grouping_basis"]["coupling_invariants"][0]["invariant_kind"] = "bounded_business_outcome"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-removed-invariant-taxonomy.json")
+
+    assert result.returncode != 0
+    assert "invariant_kind" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_requires_complete_partition_comparison_for_expanded_multi_atom_parent(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    root["decomposition_basis"].pop("partition_analysis")
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-missing-partition-analysis.json")
+    assert result.returncode != 0
+    assert "partition_analysis" in _review_validator_output(result)
+
+
+def _select_second_partition(sample: dict) -> None:
+    analysis = sample["decomposition_window"]["units"][0]["decomposition_basis"]["partition_analysis"]
+    analysis["selected_partition_id"] = "partition-separate"
+    analysis["partitions"][0]["total_complexity_rank"] = 2
+    analysis["partitions"][1]["total_complexity_rank"] = 1
+
+
+def _demote_selected_partition(sample: dict) -> None:
+    partitions = sample["decomposition_window"]["units"][0]["decomposition_basis"]["partition_analysis"]["partitions"]
+    partitions[0]["total_complexity_rank"] = 2
+    partitions[1]["total_complexity_rank"] = 1
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected"),
+    [
+        (
+            lambda sample: sample["decomposition_window"]["units"][0]["decomposition_basis"]["partition_analysis"]["partitions"][1]["groups"][0]["capability_atom_refs"].append("atom-controlled-order"),
+            "cover every parent capability atom exactly once",
+        ),
+        (
+            _select_second_partition,
+            "generated children must exactly match the selected partition",
+        ),
+        (
+            _demote_selected_partition,
+            "selected partition must have total_complexity_rank 1",
+        ),
+        (
+            lambda sample: sample["question_groups"][-1]["questions"][0]["candidates"][1].pop("partition_ref"),
+            "one candidate for every compared partition",
+        ),
+    ],
+)
+def test_outline_discovery_v6_rejects_incomplete_partition_comparison(tmp_path, mutation, expected):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    mutation(sample)
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-invalid-partition-analysis.json")
+    assert result.returncode != 0
+    assert expected in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_accepts_a_genuine_total_complexity_tie(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    analysis = sample["decomposition_window"]["units"][0]["decomposition_basis"]["partition_analysis"]
+    analysis["partitions"][1]["total_complexity_rank"] = 1
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-tied-partitions.json")
+
     assert result.returncode == 0, _review_validator_output(result)
 
 
@@ -8148,6 +8856,189 @@ def test_outline_discovery_v6_accepts_fresh_ai_proposed_shared_boundary_with_web
     assert result.returncode == 0, _review_validator_output(result)
 
 
+def test_outline_discovery_v6_rejects_model_selected_split_outside_reference_partition(tmp_path):
+    sample = _outline_discovery_v6_unconfirmed_same_cell_split_sample()
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-model-proposed-cell-split.json")
+
+    assert result.returncode != 0
+    assert "may not split a reference partition cell without document or human authority" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_unconfirmed_split_inside_shared_authoritative_identity(tmp_path):
+    sample = _outline_discovery_v6_unconfirmed_same_cell_split_sample()
+    for entity in [
+        *sample["business_context"]["responsibility_owners"],
+        *sample["business_context"]["business_lifecycles"],
+    ]:
+        entity["source_status"] = "user-confirmed"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-unconfirmed-authoritative-cell-split.json")
+
+    assert result.returncode != 0
+    assert "may not split a reference partition cell without document or human authority" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_accepts_human_confirmed_split_inside_responsibility_cell(tmp_path):
+    sample = _outline_discovery_v6_unconfirmed_same_cell_split_sample()
+    for entity in [
+        *sample["business_context"]["responsibility_owners"],
+        *sample["business_context"]["business_lifecycles"],
+    ]:
+        entity["source_status"] = "user-confirmed"
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    selected = next(
+        partition
+        for partition in root["decomposition_basis"]["partition_analysis"]["partitions"]
+        if partition["partition_id"] == "partition-separate"
+    )
+    selected["source_status"] = "user-confirmed"
+    root["decomposition_basis"]["partition_analysis"]["reference_authority"] = "doc-user-anchored"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-confirmed-cell-split.json")
+
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_document_claim_for_cell_split_without_exact_evidence(tmp_path):
+    sample = _outline_discovery_v6_unconfirmed_same_cell_split_sample()
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    selected = next(
+        partition
+        for partition in root["decomposition_basis"]["partition_analysis"]["partitions"]
+        if partition["partition_id"] == "partition-separate"
+    )
+    selected["source_status"] = "doc"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-doc-cell-split-without-evidence.json")
+
+    assert result.returncode != 0
+    assert "evidence_ref and a verbatim evidence_quote" in _review_validator_output(result)
+
+
+def _outline_discovery_v6_cross_proposed_cell_grouping_sample() -> dict:
+    sample = _outline_discovery_v6_current_model_grouping_sample()
+    context = sample["business_context"]
+    original_ref = "prd/core-trading-loop.md#Core Trading Loop"
+    context["responsibility_owners"].append({
+        "owner_id": "owner-risk-review",
+        "label": "独立风险复核责任",
+        "accountability": "独立裁定交易意图的风险结果，不负责形成受控订单结果。",
+        "source_status": "ai-proposed",
+        "source_refs": [original_ref],
+    })
+    context["business_lifecycles"].append({
+        "lifecycle_id": "lifecycle-risk-review",
+        "label": "独立风险复核生命周期",
+        "trigger_or_input": "待裁定的交易意图进入风险复核",
+        "completion_condition": "形成可追溯的放行或阻断决定。",
+        "source_status": "ai-proposed",
+        "source_refs": [original_ref],
+    })
+    risk_state = next(state for state in context["business_states"] if state["state_id"] == "state-risk-decision")
+    risk_state["responsibility_owner_ref"] = "owner-risk-review"
+    risk_state["lifecycle_ref"] = "lifecycle-risk-review"
+    coverage = next(
+        item
+        for item in context["source_capability_coverage"]
+        if item["capability_atom_ref"] == "atom-risk-decision"
+    )
+    coverage["responsibility_owner_ref"] = "owner-risk-review"
+    coverage["lifecycle_ref"] = "lifecycle-risk-review"
+    child = next(
+        unit
+        for unit in sample["decomposition_window"]["units"]
+        if unit["project_depth"] > 0 and len(unit["capability_atom_refs"]) > 1
+    )
+    child["grouping_basis"]["shared_responsibility_owner_ref"] = None
+    child["grouping_basis"]["shared_lifecycle_ref"] = None
+    root = next(unit for unit in sample["decomposition_window"]["units"] if unit["parent_unit_id"] is None)
+    root["grouping_basis"]["shared_responsibility_owner_ref"] = None
+    root["grouping_basis"]["shared_lifecycle_ref"] = None
+
+    return sample
+
+
+def test_outline_discovery_v6_rejects_model_selected_grouping_across_reference_cells(tmp_path):
+    sample = _outline_discovery_v6_cross_proposed_cell_grouping_sample()
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-cross-proposed-cells.json")
+
+    assert result.returncode != 0
+    assert "reference partition must exactly match" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_generated_child_crossing_authoritative_responsibility_cells(tmp_path):
+    sample = _outline_discovery_v6_cross_proposed_cell_grouping_sample()
+    context = sample["business_context"]
+    for entity in [*context["responsibility_owners"], *context["business_lifecycles"]]:
+        entity["source_status"] = "user-confirmed"
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-cross-authoritative-cells.json")
+
+    assert result.returncode != 0
+    assert "conflicting documented or human-confirmed responsibility identities" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_accepts_parallel_project_responsibilities_without_fake_internal_handoff(tmp_path):
+    sample = _outline_discovery_v6_current_model_grouping_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["project_depth"] > 0 and len(unit["capability_atom_refs"]) > 1)
+    child["grouping_basis"]["separation_test"]["stable_handoffs"] = []
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-parallel-project-responsibilities.json")
+    assert result.returncode == 0, _review_validator_output(result)
+
+
+@pytest.mark.parametrize(
+    ("mutation", "expected"),
+    [
+        (
+            lambda sample, child: next(
+                node
+                for node in sample["outline_nodes"]
+                if node["node_id"] == child["outline_node_id"]
+            ).__setitem__("label", "股票数据平台"),
+            "generic container or implementation component",
+        ),
+        (
+            lambda sample, child: next(
+                node
+                for node in sample["outline_nodes"]
+                if node["node_id"] == child["outline_node_id"]
+            ).__setitem__("label", "股票事实责任单元"),
+            "generic container or implementation component",
+        ),
+        (
+            lambda sample, child: child["grouping_basis"]["separation_test"].__setitem__(
+                "decision_reason",
+                "因为所有责任共享同一个数据库和部署单元，所以保留一个项目的运行时成本最低。",
+            ),
+            "must not use implementation layers or runtime topology",
+        ),
+    ],
+)
+def test_outline_discovery_v6_rejects_hard_boundary_failures(tmp_path, mutation, expected):
+    sample = _outline_discovery_v6_current_model_grouping_sample()
+    child = next(
+        unit
+        for unit in sample["decomposition_window"]["units"]
+        if unit["project_depth"] > 0 and len(unit["capability_atom_refs"]) > 1
+    )
+    mutation(sample, child)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-hard-boundary-failure.json")
+
+    assert result.returncode != 0
+    assert expected in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_requires_reason_for_ai_proposed_project_cohesion(tmp_path):
+    sample = _outline_discovery_v6_current_model_grouping_sample()
+    child = next(unit for unit in sample["decomposition_window"]["units"] if unit["project_depth"] > 0 and len(unit["capability_atom_refs"]) > 1)
+    child["grouping_basis"]["coupling_invariants"][0].pop("proposal_basis")
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-ai-grouping-without-reason.json")
+    assert result.returncode != 0
+    assert "proposal_basis" in _review_validator_output(result)
+
+
 def test_outline_discovery_v6_requires_current_discovery_marker_for_ai_grouping(tmp_path):
     sample = _outline_discovery_v6_current_model_grouping_sample()
     child = next(unit for unit in sample["decomposition_window"]["units"] if unit["project_depth"] > 0 and len(unit["capability_atom_refs"]) > 1)
@@ -8190,6 +9081,25 @@ def test_outline_discovery_v6_rejects_reused_sibling_complexity_comparison(tmp_p
 
     assert result.returncode != 0
     assert "reuse the same complexity comparison" in _review_validator_output(result)
+
+
+def test_outline_discovery_v6_rejects_reused_sibling_next_decomposition_focus(tmp_path):
+    sample, child = _make_v6_frontier_project_sample()
+    duplicate = json.loads(json.dumps(child))
+    duplicate["unit_id"] = "unit-trading-loop-copy"
+    duplicate["outline_node_id"] = "node-trading-loop-copy"
+    sample["decomposition_window"]["units"].append(duplicate)
+    sample["decomposition_window"]["frontier_unit_ids"].append(duplicate["unit_id"])
+    source_node = next(node for node in sample["outline_nodes"] if node["node_id"] == child["outline_node_id"])
+    duplicate_node = json.loads(json.dumps(source_node))
+    duplicate_node["node_id"] = duplicate["outline_node_id"]
+    duplicate_node["label"] = "受控订单复核"
+    sample["outline_nodes"].append(duplicate_node)
+
+    result = _run_review_validator(sample, tmp_path / "discovery-v6-repeated-next-focus.json")
+
+    assert result.returncode != 0
+    assert "reuse the same next_decomposition_focus" in _review_validator_output(result)
 
 
 def test_outline_discovery_v6_verifies_document_named_grouping_authority_quote(tmp_path):
@@ -8244,6 +9154,39 @@ def test_outline_discovery_v6_verifies_document_named_grouping_authority_quote(t
     )
     assert invalid.returncode != 0
     assert "evidence_quote must occur verbatim" in _review_validator_output(invalid)
+
+
+def test_outline_discovery_v6_rejects_formal_confirmation_status_while_still_exploring(tmp_path):
+    sample = _outline_discovery_v6_multi_atom_child_sample()
+    project_root = tmp_path / "project"
+    feature_root = project_root / "specs" / "000-outline"
+    feature_root.mkdir(parents=True)
+    (feature_root / "prd.md").write_text(
+        "# PRD\n\n## Core Trading Loop\n\n"
+        "风险放行决定必须在订单形成前保持同一笔意图的可追溯关联。\n",
+        encoding="utf-8",
+    )
+    (feature_root / "spec-outline.md").write_text(
+        "# Outline\n\n## Outline Maturity\n\n`explore`\n\n"
+        "## Outline Decision\n\n- `Status`: `AWAITING_OUTLINE_CONFIRMATION`\n",
+        encoding="utf-8",
+    )
+    review_path = project_root / sample["artifact_path"]
+    review_path.parent.mkdir(parents=True, exist_ok=True)
+    review_path.write_text(json.dumps(sample, ensure_ascii=False), encoding="utf-8")
+
+    result = subprocess.run(
+        ["node", str(REVIEW_DATA_VALIDATOR), str(review_path)],
+        cwd=project_root,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "requires a blocking spec-outline status" in _review_validator_output(result)
 
 
 def test_outline_discovery_v6_rejects_used_source_without_structured_evidence(tmp_path):
@@ -8847,6 +9790,52 @@ if (!unanchoredFeatureAuthorityError.includes("feature PRD")) throw new Error("u
 const v6Grouping = {json.dumps(_outline_discovery_v6_multi_atom_child_sample(), ensure_ascii=False)};
 const v6Error = context.validateReviewData(v6Grouping);
 if (v6Error !== "") throw new Error("valid v6 discovery rejected: " + v6Error);
+const v6ResponsibilityTitle = structuredClone(v6Grouping);
+v6ResponsibilityTitle.decomposition_window.units.find((unit) => unit.parent_unit_id !== null).project_title = "可信股票信息发布责任";
+const v6ResponsibilityTitleError = context.validateReviewData(v6ResponsibilityTitle);
+if (!v6ResponsibilityTitleError.includes("责任或生命周期标签")) throw new Error("responsibility title was not rejected: " + v6ResponsibilityTitleError);
+const v6PartlyDuplicatedBoundary = {json.dumps(_outline_discovery_v6_unconfirmed_same_cell_split_sample(), ensure_ascii=False)};
+const v6PartlyDuplicatedRoot = v6PartlyDuplicatedBoundary.decomposition_window.units.find((unit) => unit.parent_unit_id === null);
+const v6PartlyDuplicatedChildren = v6PartlyDuplicatedBoundary.decomposition_window.units.filter((unit) => unit.parent_unit_id === v6PartlyDuplicatedRoot.unit_id);
+v6PartlyDuplicatedChildren[1].project_boundary.unresolved_boundary = v6PartlyDuplicatedChildren[0].project_boundary.unresolved_boundary;
+const v6PartlyDuplicatedBoundaryError = context.validateReviewData(v6PartlyDuplicatedBoundary);
+if (!v6PartlyDuplicatedBoundaryError.includes("必须两两不同")) throw new Error("repeated sibling boundaries were not rejected: " + v6PartlyDuplicatedBoundaryError);
+const v6TiedGrouping = structuredClone(v6Grouping);
+v6TiedGrouping.decomposition_window.units.find((unit) => unit.parent_unit_id === null)
+  .decomposition_basis.partition_analysis.partitions[1].total_complexity_rank = 1;
+const v6TiedGroupingError = context.validateReviewData(v6TiedGrouping);
+if (v6TiedGroupingError !== "") throw new Error("genuine total-complexity tie rejected: " + v6TiedGroupingError);
+const v6SubtractedGrouping = structuredClone(v6Grouping);
+for (const unit of v6SubtractedGrouping.decomposition_window.units) {{
+  const basis = unit.grouping_basis;
+  if (!basis) continue;
+  delete basis.shared_business_goal;
+  if (unit.parent_unit_id === null) {{
+    delete basis.shared_responsibility_owner_ref;
+    delete basis.shared_lifecycle_ref;
+  }}
+  delete basis.parent_cohesion;
+  for (const invariant of basis.coupling_invariants || []) delete invariant.invariant_kind;
+  delete basis.separation_test.keep_together_complexity;
+  delete basis.separation_test.split_coordination_cost;
+}}
+const v6SubtractedGroupingError = context.validateReviewData(v6SubtractedGrouping);
+if (v6SubtractedGroupingError !== "") throw new Error("subtracted v6 grouping rejected: " + v6SubtractedGroupingError);
+const v6FrontierProject = {json.dumps(_make_v6_frontier_project_sample()[0], ensure_ascii=False)};
+const v6FrontierProjectError = context.validateReviewData(v6FrontierProject);
+if (v6FrontierProjectError !== "") throw new Error("valid frontier project basis rejected: " + v6FrontierProjectError);
+const v6MissingFrontierProjectBasis = structuredClone(v6FrontierProject);
+delete v6MissingFrontierProjectBasis.decomposition_window.units.find((unit) => unit.parent_unit_id !== null).project_candidate_basis;
+const v6MissingFrontierProjectBasisError = context.validateReviewData(v6MissingFrontierProjectBasis);
+if (!v6MissingFrontierProjectBasisError.includes("非根子节点")) throw new Error("missing frontier project basis was not rejected: " + v6MissingFrontierProjectBasisError);
+const v6MissingPartitionAnalysis = structuredClone(v6Grouping);
+delete v6MissingPartitionAnalysis.decomposition_window.units.find((unit) => unit.parent_unit_id === null).decomposition_basis.partition_analysis;
+const v6MissingPartitionAnalysisError = context.validateReviewData(v6MissingPartitionAnalysis);
+if (!v6MissingPartitionAnalysisError.includes("分区比较")) throw new Error("missing partition analysis was not rejected: " + v6MissingPartitionAnalysisError);
+const v6UnboundPartitionCandidate = structuredClone(v6Grouping);
+delete v6UnboundPartitionCandidate.question_groups.at(-1).questions[0].candidates[1].partition_ref;
+const v6UnboundPartitionCandidateError = context.validateReviewData(v6UnboundPartitionCandidate);
+if (!v6UnboundPartitionCandidateError.includes("逐一展示")) throw new Error("unbound partition candidate was not rejected: " + v6UnboundPartitionCandidateError);
 const v6NonRootWindow = structuredClone(v6Grouping);
 v6NonRootWindow.decomposition_window.root_project_depth = 1;
 v6NonRootWindow.decomposition_window.parent_path = [{{unit_id: "unit-portfolio", label: "量化交易工作台", project_depth: 0}}];
@@ -8893,13 +9882,97 @@ const v6GroupedChild = v6NoInvariant.decomposition_window.units.find((unit) =>
 if (!v6GroupedChild) throw new Error("v6 fixture is missing a generated grouped child");
 v6GroupedChild.grouping_basis.coupling_invariants = [];
 const v6NoInvariantError = context.validateReviewData(v6NoInvariant);
-if (!v6NoInvariantError.includes("耦合不变量")) throw new Error("v6 missing coupling invariant was not rejected: " + v6NoInvariantError);
+if (!v6NoInvariantError.includes("业务不变量")) throw new Error("v6 missing coupling invariant was not rejected: " + v6NoInvariantError);
 const v6ModelGrouping = {json.dumps(_outline_discovery_v6_current_model_grouping_sample(), ensure_ascii=False)};
 const v6ModelChild = v6ModelGrouping.decomposition_window.units.find((unit) =>
   unit.project_depth > 0 && unit.capability_atom_refs.length > 1
 );
 const v6ModelGroupingError = context.validateReviewData(v6ModelGrouping);
 if (v6ModelGroupingError !== "") throw new Error("fresh v6 ai-proposed grouping rejected: " + v6ModelGroupingError);
+const v6UnconfirmedCellSplit = {json.dumps(_outline_discovery_v6_unconfirmed_same_cell_split_sample(), ensure_ascii=False)};
+const v6UnconfirmedCellSplitError = context.validateReviewData(v6UnconfirmedCellSplit);
+if (!v6UnconfirmedCellSplitError.includes("不得拆分参考分区")) throw new Error("model-selected non-reference split was not rejected: " + v6UnconfirmedCellSplitError);
+const v6AuthoritativeCellSplit = structuredClone(v6UnconfirmedCellSplit);
+for (const entity of [...v6AuthoritativeCellSplit.business_context.responsibility_owners, ...v6AuthoritativeCellSplit.business_context.business_lifecycles]) {{
+  entity.source_status = "user-confirmed";
+}}
+v6AuthoritativeCellSplit.decomposition_window.units.find((unit) => unit.parent_unit_id === null)
+  .decomposition_basis.partition_analysis.reference_authority = "doc-user-anchored";
+const v6AuthoritativeCellSplitError = context.validateReviewData(v6AuthoritativeCellSplit);
+if (!v6AuthoritativeCellSplitError.includes("不得拆分参考分区")) throw new Error("unconfirmed split inside shared authoritative ownership was not rejected: " + v6AuthoritativeCellSplitError);
+const v6ConfirmedCellSplit = structuredClone(v6AuthoritativeCellSplit);
+const v6ConfirmedCellSplitRoot = v6ConfirmedCellSplit.decomposition_window.units.find((unit) => unit.parent_unit_id === null);
+v6ConfirmedCellSplitRoot.decomposition_basis.partition_analysis.partitions
+  .find((partition) => partition.partition_id === "partition-separate").source_status = "user-confirmed";
+const v6ConfirmedCellSplitError = context.validateReviewData(v6ConfirmedCellSplit);
+if (v6ConfirmedCellSplitError !== "") throw new Error("confirmed same-cell split was rejected: " + v6ConfirmedCellSplitError);
+const v6UnsupportedDocCellSplit = structuredClone(v6UnconfirmedCellSplit);
+const v6UnsupportedDocCellSplitRoot = v6UnsupportedDocCellSplit.decomposition_window.units.find((unit) => unit.parent_unit_id === null);
+v6UnsupportedDocCellSplitRoot.decomposition_basis.partition_analysis.partitions
+  .find((partition) => partition.partition_id === "partition-separate").source_status = "doc";
+const v6UnsupportedDocCellSplitError = context.validateReviewData(v6UnsupportedDocCellSplit);
+if (!v6UnsupportedDocCellSplitError.includes("evidence_ref")) throw new Error("unsupported documented cell split was not rejected: " + v6UnsupportedDocCellSplitError);
+const v6CrossCellGrouping = structuredClone(v6ModelGrouping);
+v6CrossCellGrouping.business_context.responsibility_owners.push({{
+  owner_id: "owner-risk-review",
+  label: "独立风险复核责任",
+  accountability: "独立裁定交易意图风险，不拥有受控订单形成结果。",
+  source_status: "ai-proposed",
+  source_refs: ["prd/core-trading-loop.md#Core Trading Loop"]
+}});
+v6CrossCellGrouping.business_context.business_lifecycles.push({{
+  lifecycle_id: "lifecycle-risk-review",
+  label: "独立风险复核生命周期",
+  trigger_or_input: "待裁定交易意图进入风险复核",
+  completion_condition: "形成可追溯的放行或阻断决定。",
+  source_status: "ai-proposed",
+  source_refs: ["prd/core-trading-loop.md#Core Trading Loop"]
+}});
+const v6CrossCellState = v6CrossCellGrouping.business_context.business_states.find((state) => state.state_id === "state-risk-decision");
+v6CrossCellState.responsibility_owner_ref = "owner-risk-review";
+v6CrossCellState.lifecycle_ref = "lifecycle-risk-review";
+const v6CrossCellCoverage = v6CrossCellGrouping.business_context.source_capability_coverage.find((entry) => entry.capability_atom_ref === "atom-risk-decision");
+v6CrossCellCoverage.responsibility_owner_ref = "owner-risk-review";
+v6CrossCellCoverage.lifecycle_ref = "lifecycle-risk-review";
+const v6CrossCellChild = v6CrossCellGrouping.decomposition_window.units.find((unit) => unit.project_depth > 0 && unit.capability_atom_refs.length > 1);
+v6CrossCellChild.grouping_basis.shared_responsibility_owner_ref = null;
+v6CrossCellChild.grouping_basis.shared_lifecycle_ref = null;
+const v6CrossCellRoot = v6CrossCellGrouping.decomposition_window.units.find((unit) => unit.parent_unit_id === null);
+v6CrossCellRoot.grouping_basis.shared_responsibility_owner_ref = null;
+v6CrossCellRoot.grouping_basis.shared_lifecycle_ref = null;
+const v6CrossCellError = context.validateReviewData(v6CrossCellGrouping);
+if (!v6CrossCellError.includes("参考分区")) throw new Error("model-selected grouping across reference cells was not rejected: " + v6CrossCellError);
+const v6AuthoritativeCrossCellGrouping = structuredClone(v6CrossCellGrouping);
+for (const entity of [...v6AuthoritativeCrossCellGrouping.business_context.responsibility_owners, ...v6AuthoritativeCrossCellGrouping.business_context.business_lifecycles]) {{
+  entity.source_status = "user-confirmed";
+}}
+v6AuthoritativeCrossCellGrouping.decomposition_window.units.find((unit) => unit.parent_unit_id === null)
+  .decomposition_basis.partition_analysis.reference_authority = "doc-user-anchored";
+const v6AuthoritativeCrossCellError = context.validateReviewData(v6AuthoritativeCrossCellGrouping);
+if (!v6AuthoritativeCrossCellError.includes("确认责任身份")) throw new Error("cross-authority-cell generated child was not rejected: " + v6AuthoritativeCrossCellError);
+const v6GenericContainerProject = structuredClone(v6ModelGrouping);
+const v6GenericContainerChild = v6GenericContainerProject.decomposition_window.units.find((unit) => unit.project_depth > 0 && unit.capability_atom_refs.length > 1);
+v6GenericContainerProject.outline_nodes.find((node) => node.node_id === v6GenericContainerChild.outline_node_id).label = "股票数据平台";
+const v6GenericContainerProjectError = context.validateReviewData(v6GenericContainerProject);
+if (!v6GenericContainerProjectError.includes("通用容器")) throw new Error("generic container project was not rejected: " + v6GenericContainerProjectError);
+const v6InternalBoundaryProject = structuredClone(v6ModelGrouping);
+const v6InternalBoundaryChild = v6InternalBoundaryProject.decomposition_window.units.find((unit) => unit.project_depth > 0 && unit.capability_atom_refs.length > 1);
+v6InternalBoundaryProject.outline_nodes.find((node) => node.node_id === v6InternalBoundaryChild.outline_node_id).label = "股票事实责任单元";
+const v6InternalBoundaryProjectError = context.validateReviewData(v6InternalBoundaryProject);
+if (!v6InternalBoundaryProjectError.includes("通用容器")) throw new Error("internal responsibility-unit title was not rejected: " + v6InternalBoundaryProjectError);
+const v6RuntimeBoundaryProject = structuredClone(v6ModelGrouping);
+v6RuntimeBoundaryProject.decomposition_window.units.find((unit) => unit.project_depth > 0 && unit.capability_atom_refs.length > 1)
+  .grouping_basis.separation_test.decision_reason = "因为所有责任共享同一个数据库和部署单元，所以保留一个项目的运行时成本最低。";
+const v6RuntimeBoundaryProjectError = context.validateReviewData(v6RuntimeBoundaryProject);
+if (!v6RuntimeBoundaryProjectError.includes("运行时拓扑")) throw new Error("runtime boundary project was not rejected: " + v6RuntimeBoundaryProjectError);
+const v6ModelParallelGrouping = structuredClone(v6ModelGrouping);
+v6ModelParallelGrouping.decomposition_window.units.find((unit) => unit.project_depth > 0 && unit.capability_atom_refs.length > 1).grouping_basis.separation_test.stable_handoffs = [];
+const v6ModelParallelGroupingError = context.validateReviewData(v6ModelParallelGrouping);
+if (v6ModelParallelGroupingError !== "") throw new Error("parallel v6 project grouping required a fake internal handoff: " + v6ModelParallelGroupingError);
+const v6ModelMissingProposalBasis = structuredClone(v6ModelGrouping);
+delete v6ModelMissingProposalBasis.decomposition_window.units.find((unit) => unit.project_depth > 0 && unit.capability_atom_refs.length > 1).grouping_basis.coupling_invariants[0].proposal_basis;
+const v6ModelMissingProposalBasisError = context.validateReviewData(v6ModelMissingProposalBasis);
+if (!v6ModelMissingProposalBasisError.includes("耦合不变量")) throw new Error("v6 missing model proposal basis was not rejected: " + v6ModelMissingProposalBasisError);
 const v6ModelMissingOrigin = structuredClone(v6ModelGrouping);
 v6ModelMissingOrigin.decomposition_window.units.find((unit) => unit.project_depth > 0 && unit.capability_atom_refs.length > 1).grouping_basis.proposal_origin = undefined;
 const v6ModelMissingOriginError = context.validateReviewData(v6ModelMissingOrigin);
@@ -10062,14 +11135,19 @@ def test_outline_discovery_renderer_exposes_project_boundary_and_grouping_eviden
         "项目目标与归组依据",
         "项目边界合同",
         "拥有能力",
-        "耦合证据",
+        "为什么它是当前层子项目",
+        "下一层准备拆分",
+        "共同业务不变量",
         "备选拆分",
         "稳定交接",
         "上游输入合同",
         "下游输出合同",
         "independent_acceptance",
         "coupling_invariants",
+        "project_candidate_basis",
+        "proposal_basis",
         "stable_handoffs",
+        "总复杂度判断",
     ):
         assert token in renderer, token
 

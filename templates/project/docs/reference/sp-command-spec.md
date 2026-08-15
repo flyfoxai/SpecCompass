@@ -147,38 +147,73 @@ The structured context contains `product_subject`, `business_objects`,
 `operations`, `outcomes`, `source_capability_coverage`, `capability_atoms`, and
 complete `business_chains`. Each atom has one trigger/input, owned state,
 primary outcome, downstream handoff, and matching chain.
+After a validated first extraction, `/sp.prd` stores only this Stage A contract
+and its business-source fingerprint in
+`specs/<feature>/prd/source-capability-baseline.json`. An unchanged source set,
+current user correction set, and accepted-decision set must reuse that contract
+verbatim on later runs. The baseline never stores child-project labels, counts,
+partitions, questions, or recommendations, so it cannot authorize or preserve a
+prior Stage B result.
 
-Stage B recursively partitions the current root. Every Outline unit retains its
-own `business_goal`, `overall_outcome`, capability/chain references, and sources;
-a parent never becomes an empty directory merely because it has children.
-Direct children must be non-overlapping and exactly cover the parent's atoms and
-chains. Atom count does not determine child count. Independently owned state,
-outcome, role, rule set, or named handoff is a split signal; the model compares
-the complexity removed by a split with the coordination, duplicated state, and
-acceptance fragmentation it introduces. It chooses the lower-complexity
-partition whose children have coherent responsibilities and stable handoffs. A
-multi-atom unit carries `grouping_basis` explaining its shared business goal,
-lifecycle/owner, and the concrete cost of separating it inside the parent
-branch. Source-backed coupling invariants must cover every grouped atom and
-connect every alternative responsibility group; stable business handoffs must
-also connect the complete split alternative. A local relationship between two
-atoms cannot justify a larger bucket, and sibling groupings cannot reuse one
-generic complexity comparison. A documented shared owner/lifecycle preserves
-the source-named label, exact heading, and verbatim quote. When product sources
-provide the business facts but not the project architecture, the model may
-create a reusable `ai-proposed` owner/lifecycle and emit the proposed grouping
-as a current Discovery candidate. It sets `proposal_origin:
+Stage B recursively partitions the current root through one ordered process. It
+consumes Stage A atoms without creating, deleting, merging identities, renaming,
+or reinterpreting them. Before proposing alternatives it runs
+`derive-outline-reference-partition.mjs`, which groups the unchanged parent atoms
+by their exact `responsibility_owner_ref + lifecycle_ref` pair. This deterministic
+responsibility-cell partition also reports each cell's hard/soft identity
+authority, an overall `provisional_authority`, and mirrored owner/lifecycle
+tokens. A cell is hard only when both identities are document- or user-anchored;
+an all-`ai-proposed` partition is deterministic but low-authority. It remains the
+provisional rendered tree for reproducibility, but `/sp.prd` must expose its
+project-count choice as a first-class root Discovery question and record
+`Reference Authority: model-proposed, unconfirmed` until a human confirmation
+creates a `user-confirmed` anchor. It is not source confirmation and does not impose a target count. Stage B
+then compares it with one to three materially different complete partitions.
+Conflicting documented or human-confirmed identities remain hard no-merge
+constraints. Among admissible partitions, the only quality criterion is internal
+project complexity plus cross-project coordination cost, including the fixed
+PRD/Outline/Flow/Tasks/Code, acceptance, delivery, and owner-handoff cost of every
+extra project. Original document evidence or a current human decision may select
+a different complete partition. A model-only judgment cannot displace the
+deterministic reference: other model proposals remain Web choices and close
+comparisons share rank 1 instead of manufacturing certainty. The parent records
+both `reference_partition_id` and `selected_partition_id`; without source or
+human authority they are equal. A single atom or a unit with no second valid
+partition must not generate a fake comparison. Conflicting authoritative ownership,
+implementation layers, runtime topology, generic containers, SP-internal labels
+such as responsibility unit/domain, filler, and target counts are hard rejects.
+Every Outline unit retains its own concrete `project_title` derived from its
+owned business objects and overall outcome, plus its own `business_goal`,
+`overall_outcome`, capability/chain references, and sources; a parent never
+becomes an empty directory merely because it has children. The title names the
+bounded entity the unit owns and governs — not an owner/lifecycle slug,
+responsibility/lifecycle label, or generic container — and never an activity or
+governance act (publishing, authorizing, deciding, adjudicating, disclosing,
+evaluating, auditing, recovering, executing, collecting, processing, managing,
+computing, routing, monitoring) unless that word is itself the source-named owned
+object; it must reuse a concrete `owned_object_refs` noun and must not replace it
+with a vaguer umbrella (fact, evidence, information, data, version, feature, result).
+Its direct children exactly cover the parent's atoms and chains without overlap.
+
+A generated multi-atom unit records a shared responsibility owner and lifecycle
+only when all of its Stage A atoms really share them; a current-discovery grouping
+across model-inferred identities may leave those fields null rather than rewrite
+Stage A. It always carries one plain-language business invariant covering all
+atoms and one separation test. The test
+exact-covers those atoms with the best split alternative, records only real
+cross-group business facts and actual duplicated state, and uses
+`decision_reason` to explain why the selected grouping has lower total
+complexity. It no longer requires a coupling taxonomy, `parent_cohesion`,
+`keep_together_complexity`, or `split_coordination_cost`. A model-grown relationship sets `proposal_origin:
 current-discovery`, cites only original business-source roots, human-specified
-roots, or confirmed parent references for grouping/coupling/handoff evidence,
-and provides a complete Web keep/split decision. The current feature PRD,
-project memory, feature memory, feature map, and prior generated Outline cannot
-support that proposal, so a previous partition cannot certify itself on rerun.
-`unresolved` cannot authorize an already grouped non-root unit and must instead
-produce named partition options. A shared database technology does not justify
-merging projects; one governed domain-data lifecycle can justify a data
-responsibility boundary when it owns intake, normalization, quality, version,
-lineage, retention, and trusted delivery. Grouping is not a terminal claim, no
-fixed child count applies, and finer is not automatically better.
+roots, or confirmed parent references, and provides a complete Web keep/split
+decision; it never overrides conflicting authoritative identities. Prior generated
+output cannot certify itself. Sibling frontier units must name different,
+domain-specific next decompositions instead of reusing template copy. Shared database
+technology does not justify a project; one governed domain-data lifecycle can
+justify a data responsibility when it owns intake, normalization, quality,
+version, lineage, retention, and trusted delivery. Grouping is not a terminal
+claim, no fixed child count applies, and finer is not automatically better.
 
 Every schema-v6 Outline unit also carries a complete `project_boundary`
 contract: owned responsibility, scope, owned business objects, non-goals,
@@ -190,6 +225,12 @@ they name. `grouping_basis` is evidence for keeping atoms together, not a
 project definition. An abstract grouping that cannot state this concrete
 contract must not enter the candidate project tree. A complete model-proposed
 boundary remains `ai-proposed` until the Web Discovery decision confirms it.
+Each `unresolved_boundary` names that unit's concrete split/merge tension;
+sibling units must not repeat one generic placeholder.
+Every non-root unit, including a terminal unit, also carries
+`project_candidate_basis` proving that it is a durable peer project rather than
+an event, indicator, state change, or workflow step. Only a frontier includes
+`next_decomposition_focus`; terminal state never bypasses this granularity gate.
 
 The unique `000-*` top unit generates exactly one descendant level in its first
 window. Any ordinary non-root `decompose` window normally generates two or three

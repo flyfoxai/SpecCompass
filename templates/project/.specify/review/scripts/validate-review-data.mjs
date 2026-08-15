@@ -438,6 +438,103 @@ const aggregateAtomLabelWarnings = [
   "core loop", "governance", "observability platform"
 ];
 
+const genericProjectContainerTitlePattern = /(?:中心|平台|引擎|枢纽|模块|系统|服务|工作台|责任单元|责任域|能力域|接口|适配器|数据库|队列|界面|报表|\b(?:center|platform|engine|hub|module|system|service|workbench|responsibility unit|responsibility domain|capability domain|api|adapter|database|queue|ui|bi)\b)\s*$/i;
+const responsibilityIdentityTitlePattern = /(?:责任|生命周期|责任单元|责任域|能力域|\b(?:responsibility|lifecycle|responsibility unit|responsibility domain|capability domain)\b)\s*$/i;
+const runtimeBoundaryReasonPatterns = [
+  /(?:前端|后端|数据库|接口|适配器|引擎|消息队列|代码仓库|部署单元|共享存储|低延迟|执行顺序|运行时拓扑)/i,
+  /\b(?:frontend|backend|database|api|adapter|engine|message queue|repository|deployment|shared storage|low latency|runtime topology)\b/i,
+];
+
+function usesRejectedRuntimeBoundaryReason(value) {
+  return runtimeBoundaryReasonPatterns.some((pattern) => pattern.test(String(value || "")));
+}
+
+// A project_title must name the bounded business entity the unit OWNS and governs
+// (a record/aggregate plus its lifecycle), never the activity it performs. These
+// anchors flag activity/governance gerunds that, as the title's terminal noun,
+// signal "what this unit does" instead of "what this unit owns".
+const projectTitleActivityAnchorsZh = [
+  "发布", "授权", "决定", "裁决", "披露", "评测", "审计", "恢复", "执行",
+  "采集", "清洗", "处理", "管理", "计算", "撮合", "路由", "推送", "校验", "监控", "分析",
+];
+const projectTitleActivityAnchorsEn = [
+  "publication", "publishing", "authorization", "authorizing", "decision", "deciding",
+  "adjudication", "disclosure", "disclosing", "evaluation", "evaluating", "audit", "auditing",
+  "recovery", "recovering", "execution", "executing", "collection", "collecting", "processing",
+  "management", "managing", "computation", "computing", "routing", "monitoring", "analysis",
+];
+// Generic collective/umbrella nouns that may trail an activity word; stripped before the
+// terminal-activity test so "...恢复记录" exposes the "恢复" activity noun. Ownable artifact
+// nouns (record/archive/ledger/registry) are kept here because they ARE valid entity heads;
+// abstract facets below are treated as weak terminal nouns instead.
+const projectTitleTrailingCollectives = [
+  "记录", "档案", "清单", "台账", "目录", "索引", "集", "表", "库", "册",
+];
+// Abstract facet nouns (version/feature/fact/evidence/information/data/result) are not ownable
+// entities on their own; as the title's terminal noun they signal an over-genericized title
+// unless the word is itself the source-named owned object.
+const projectTitleFacetUmbrellas = [
+  "版本", "特征", "事实", "证据", "信息", "数据", "结果", "内容", "业务",
+];
+const projectTitleFacetUmbrellasEn = [
+  "version", "feature", "fact", "evidence", "information", "data", "result", "content", "business",
+];
+// Umbrella nouns that carry no entity identity; a 2-gram drawn only from these does not
+// count as evidence that a title is grounded in an owned business object.
+const projectTitleUmbrellaTokens = [
+  "事实", "证据", "信息", "数据", "内容", "记录", "档案", "版本", "特征", "结果",
+  "业务", "系统", "模块", "管理", "处理", "中心", "平台", "引擎", "服务", "接口", "功能", "能力",
+  "version", "feature", "fact", "evidence", "information", "data", "result", "content", "business",
+];
+
+const projectTitleStopwordGrams = (() => {
+  const grams = new Set();
+  for (const word of [...projectTitleUmbrellaTokens, ...projectTitleActivityAnchorsZh]) {
+    const chars = compactText(word).toLowerCase();
+    for (let i = 0; i <= chars.length - 2; i += 1) grams.add(chars.slice(i, i + 2));
+  }
+  return grams;
+})();
+
+// Returns the activity/governance noun a title (or object core label) ends with (after the
+// last conjunction and after stripping trailing collective nouns), or null when the terminal
+// noun names an entity. No exemption table is consulted — callers that previously passed
+// ownedObjectCoreNorms to bypass the check for known object names no longer do so; every
+// activity/umbrella terminal word is unconditionally flagged.
+function projectTitleTerminalActivity(title) {
+  const text = compactText(title);
+  if (!text) return null;
+  const segments = text.split(/[、与和及]/).filter(Boolean);
+  for (const rawSeg of segments) {
+    let segment = rawSeg;
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const collective of projectTitleTrailingCollectives) {
+        if (segment.length > collective.length && segment.endsWith(collective)) {
+          segment = segment.slice(0, -collective.length);
+          changed = true;
+          break;
+        }
+      }
+    }
+    for (const anchor of projectTitleActivityAnchorsZh) {
+      if (segment.length >= anchor.length && segment.endsWith(anchor)) return anchor;
+    }
+    for (const anchor of projectTitleFacetUmbrellas) {
+      if (segment.length >= anchor.length && segment.endsWith(anchor)) return anchor;
+    }
+    const lowerTail = segment.toLowerCase();
+    for (const anchor of projectTitleActivityAnchorsEn) {
+      if (lowerTail.length >= anchor.length && lowerTail.endsWith(anchor)) return anchor;
+    }
+    for (const anchor of projectTitleFacetUmbrellasEn) {
+      if (lowerTail.length >= anchor.length && lowerTail.endsWith(anchor)) return anchor;
+    }
+  }
+  return null;
+}
+
 function warnIfAtomTooCoarse(atomLabel, atom, data) {
   if (data.outline_maturity !== "explore") return;
   const hasMultipleOps = (atom.operation_refs?.length ?? 0) > 1;
@@ -554,9 +651,12 @@ function markdownOutlineMetadata(source) {
   const maturity = text.match(/\|\s*Outline Maturity\s*\|\s*`?(explore|frame|specify_ready)`?\s*\|/i)
     || text.match(/^Outline Maturity:\s*`?(explore|frame|specify_ready)`?\s*$/im);
   const reviewLevel = text.match(/\|\s*Review Level\s*\|\s*Level\s*([123])\b/i);
+  const outlineStatus = text.match(/^\s*-\s*`?Status`?\s*:\s*`?([A-Z][A-Z0-9_]*)`?\s*$/im)
+    || text.match(/^\s*Status\s*:\s*`?([A-Z][A-Z0-9_]*)`?\s*$/im);
   return {
     outlineMaturity: maturity?.[1]?.toLowerCase() || null,
     reviewLevel: reviewLevel ? Number(reviewLevel[1]) : null,
+    outlineStatus: outlineStatus?.[1]?.toUpperCase() || null,
   };
 }
 
@@ -663,6 +763,7 @@ function validateOutlineDiscoveryProjectAuthority(data) {
   });
   asArray(data.decomposition_window?.units).forEach((unit, index) => {
     validateEntryAuthority(unit, `decomposition unit[${index}]`);
+    validateEntryAuthority(unit?.project_candidate_basis, `decomposition unit[${index}] project_candidate_basis`);
     validateEntryAuthority(unit?.decomposition_basis, `decomposition unit[${index}] decomposition_basis`);
     validateEntryAuthority(unit?.terminal_basis, `decomposition unit[${index}] terminal_basis`);
     if (unit?.grouping_basis) {
@@ -680,6 +781,11 @@ function validateOutlineDiscoveryProjectAuthority(data) {
         validateEntryAuthority(handoff, `decomposition unit[${index}] stable_handoffs[${handoffIndex}]`);
       });
     }
+    asArray(unit?.decomposition_basis?.partition_analysis?.partitions).forEach((partition, partitionIndex) => {
+      const partitionLabel = `decomposition unit[${index}] partition_analysis.partitions[${partitionIndex}]`;
+      validateEntryAuthority(partition, partitionLabel);
+      validateQuotedDocumentEvidence(partition, partitionLabel);
+    });
   });
 
   const featureRoot = path.join(projectRoot, "specs", feature);
@@ -689,6 +795,11 @@ function validateOutlineDiscoveryProjectAuthority(data) {
     const metadata = markdownOutlineMetadata(fs.readFileSync(metadataPath, "utf8"));
     if (metadata.outlineMaturity && metadata.outlineMaturity !== data.outline_maturity) {
       fail(`outline discovery maturity ${data.outline_maturity} does not match ${relativePath}: ${metadata.outlineMaturity}`);
+    }
+    if (relativePath === "spec-outline.md"
+        && ["explore", "frame"].includes(data.outline_maturity)
+        && ["AWAITING_OUTLINE_CONFIRMATION", "READY_FOR_SPECIFY"].includes(metadata.outlineStatus)) {
+      fail(`outline discovery maturity ${data.outline_maturity} requires a blocking spec-outline status; ${metadata.outlineStatus} is reserved for formal specify_ready confirmation`);
     }
     if (data.schema_version === 3 && metadata.reviewLevel === 1 && data.outline_maturity !== "explore") {
       fail(`Level 1 portfolio-boundary discovery must use outline_maturity explore in ${relativePath}`);
@@ -1051,6 +1162,17 @@ function validateBusinessObjectSemantics(objectLabel, businessObject) {
   if (label.length < 4) {
     fail(`${objectLabel}: label is too short; provide a descriptive business object name with context (at least 4 chars)`);
   }
+
+  // Warn when the core object name (before attribute parenthesis) ends with a governance
+  // or umbrella word. This is a warning, not an error, because source documents sometimes
+  // formally name entities with governance terms (e.g. "执行授权", "评审决定"). A human
+  // reviewer should verify the source wording; a colloquial or model-generated label
+  // ending in an activity word should be renamed to the concrete record or state it holds.
+  const objectCoreLabel = String(businessObject.label || "").split(/[(（]/)[0];
+  const objectActivityAnchor = projectTitleTerminalActivity(objectCoreLabel);
+  if (objectActivityAnchor) {
+    warn(`${objectLabel}: label core "${objectCoreLabel}" ends with a governance or umbrella word "${objectActivityAnchor}"; prefer naming the concrete record or state this object holds (e.g. "策略执行授权" → "策略执行批准状态", "持仓披露特征" → "持仓披露快照"); if this is a source-named formal entity, the warning can be dismissed after source verification`);
+  }
 }
 
 /**
@@ -1407,6 +1529,16 @@ function hasQualifiedException(item) {
 
 function compactText(value) {
   return String(value || "").replace(/\s+/g, "").trim();
+}
+
+function normalizedBoundaryText(value) {
+  return compactText(value)
+    .toLowerCase()
+    .replace(/[、，,。；;:：!?！？()（）\[\]{}<>《》“”"'`]/g, "");
+}
+
+function looksLikeMirroredIdentitySlug(value) {
+  return /owner-([a-z0-9._-]+).*lifecycle-\1(?:$|[^a-z0-9._-])/i.test(String(value || "").trim());
 }
 
 function hasConcreteImpactSignal(value) {
@@ -2789,6 +2921,262 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     };
     validateContracts("upstream_contracts");
     validateContracts("downstream_contracts");
+    // capability_summary: required, minItems 3, each item ≥15 chars, no empty prose
+    const capSummary = asArray(boundary?.capability_summary);
+    if (!capSummary.length || capSummary.length < 3) {
+      fail(`${label}.project_boundary.capability_summary must have at least 3 items; each item must name one concrete capability as an active-voice verb phrase with business object and observable result`);
+    } else if (capSummary.some((item) => String(item || "").trim().length < 15)) {
+      fail(`${label}.project_boundary.capability_summary items must each be at least 15 characters of concrete business meaning`);
+    }
+    // non_goals: check for copy-paste generic content — all items identical across units is a signal
+    const nonGoalTexts = nonGoals.map((s) => compactText(String(s)));
+    const genericNonGoalPatterns = [
+      "不拥有相邻候选交付后的下游决定与状态",
+      "不授权实盘资金",
+      "do not own adjacent downstream decisions",
+    ];
+    if (nonGoalTexts.every((t) => genericNonGoalPatterns.some((p) => t.includes(compactText(p))))) {
+      fail(`${label}.project_boundary.non_goals contains only generic boilerplate; each entry must name a concrete excluded responsibility specific to this unit (e.g. '不负责发送实盘交易指令', '不存储原始行情原文')`);
+    }
+    // acceptance_criteria: optional in schema but warn if missing for decompose windows
+    const acceptCriteria = asArray(boundary?.acceptance_criteria);
+    if (acceptCriteria.some((item) => String(item || "").trim().length < 20)) {
+      fail(`${label}.project_boundary.acceptance_criteria items must each be at least 20 characters; vague criteria like '功能正常' or 'system stable' are not acceptable`);
+    }
+  };
+  const validateProjectCandidateBasis = (basis, label, decompositionState) => {
+    if (data.schema_version < 6) return;
+    if (!basis || typeof basis !== "object" || Array.isArray(basis)) {
+      fail(`${label}.project_candidate_basis is required for every non-root child, including terminal children; explain why it is a peer project rather than an atomic capability or broad theme`);
+      return;
+    }
+    validateBasis(
+      basis,
+      `${label}.project_candidate_basis`,
+      ["durable_business_responsibility", "why_not_capability_step", "why_not_parent_bucket"],
+      "source_status",
+    );
+    if (decompositionState === "frontier") {
+      const focuses = asArray(basis.next_decomposition_focus);
+      const normalized = focuses.map((value) => compactText(value));
+      if (focuses.length < 2 || new Set(normalized).size !== focuses.length
+          || normalized.some((value) => value.length < 12)) {
+        fail(`${label}.project_candidate_basis.next_decomposition_focus must name at least two unique concrete business sub-responsibilities for the next Outline window`);
+      }
+    } else if (basis.next_decomposition_focus !== undefined) {
+      fail(`${label}.project_candidate_basis.next_decomposition_focus is allowed only for a frontier child`);
+    }
+  };
+  const partitionSignature = (groups) => asArray(groups)
+    .map((group) => [...asArray(group?.capability_atom_refs)].sort().join("|"))
+    .sort()
+    .join("||");
+  const responsibilityCellSignature = (atomRefs, label) => {
+    const cells = new Map();
+    for (const atomId of atomRefs) {
+      const atom = capabilityAtomsById.get(atomId);
+      const stateRefs = asArray(atom?.owned_state_refs);
+      const state = stateRefs.length === 1 ? businessStatesById.get(stateRefs[0]) : null;
+      const ownerRef = String(state?.responsibility_owner_ref || "").trim();
+      const lifecycleRef = String(state?.lifecycle_ref || "").trim();
+      if (!atom || !state || !ownerRef || !lifecycleRef) {
+        fail(`${label} cannot derive the Stage A responsibility-cell reference partition for atom ${atomId}`);
+        continue;
+      }
+      const key = `${ownerRef}\u0000${lifecycleRef}`;
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push(atomId);
+    }
+    return partitionSignature([...cells.values()].map((capability_atom_refs) => ({capability_atom_refs})));
+  };
+  const referenceAuthorityForAtoms = (atomRefs) => {
+    const cells = new Map();
+    for (const atomId of atomRefs) {
+      const atom = capabilityAtomsById.get(atomId);
+      const stateRefs = asArray(atom?.owned_state_refs);
+      const state = stateRefs.length === 1 ? businessStatesById.get(stateRefs[0]) : null;
+      const ownerRef = String(state?.responsibility_owner_ref || "").trim();
+      const lifecycleRef = String(state?.lifecycle_ref || "").trim();
+      if (!atom || !state || !ownerRef || !lifecycleRef) return null;
+      cells.set(`${ownerRef}\u0000${lifecycleRef}`, { ownerRef, lifecycleRef });
+    }
+    let hardCellCount = 0;
+    let softCellCount = 0;
+    for (const { ownerRef, lifecycleRef } of cells.values()) {
+      const hard = allowedAggregationAuthorities.has(responsibilityOwnersById.get(ownerRef)?.source_status)
+        && allowedAggregationAuthorities.has(businessLifecyclesById.get(lifecycleRef)?.source_status);
+      if (hard) hardCellCount += 1;
+      else softCellCount += 1;
+    }
+    if (!hardCellCount) return "ai-proposed-only";
+    if (!softCellCount) return "doc-user-anchored";
+    return "mixed";
+  };
+  const validatePartitionAnalysis = (unit, label, children, questions) => {
+    const atomRefs = asArray(unit?.capability_atom_refs);
+    if (unit?.decomposition_state !== "expanded" || atomRefs.length < 2) return;
+    const analysis = unit?.decomposition_basis?.partition_analysis;
+    if (!analysis || typeof analysis !== "object" || Array.isArray(analysis)) {
+      fail(`${label}.decomposition_basis.partition_analysis is required when an expanded unit owns multiple capability atoms`);
+      return;
+    }
+    const expectedReferenceAuthority = referenceAuthorityForAtoms(atomRefs);
+    if (!["doc-user-anchored", "ai-proposed-only", "mixed"].includes(analysis.reference_authority)) {
+      fail(`${label}.decomposition_basis.partition_analysis.reference_authority is required and must match the deterministic reference derivation`);
+    } else if (expectedReferenceAuthority && analysis.reference_authority !== expectedReferenceAuthority) {
+      fail(`${label}.decomposition_basis.partition_analysis.reference_authority must equal ${expectedReferenceAuthority} from the deterministic Stage A identity authority derivation`);
+    }
+    if (analysis.reference_authority === "ai-proposed-only") {
+      const rootQuestion = questions.find((entry) =>
+        entry?.outline_node_id === unit.outline_node_id
+          && entry?.target_kind === "project_boundary"
+          && /(?:partition|分区|项目数量|项目数|project count|split choice|拆分选择)/i.test(
+            compactText([entry?.title, entry?.prompt, entry?.question, entry?.rationale].join(" ")),
+          ),
+      );
+      if (!rootQuestion) {
+        fail(`${label}: ai-proposed-only reference authority must expose a first-class partition-count Discovery question at the expansion root`);
+      }
+    }
+    const partitions = asArray(analysis.partitions);
+    if (partitions.length < 2 || partitions.length > 4) {
+      fail(`${label}.decomposition_basis.partition_analysis must compare two to four complete partitions`);
+      return;
+    }
+    const partitionIds = new Set();
+    const signatures = new Map();
+    for (const [partitionIndex, partition] of partitions.entries()) {
+      const partitionLabel = `${label}.decomposition_basis.partition_analysis.partitions[${partitionIndex}]`;
+      if (!String(partition?.partition_id || "").trim() || partitionIds.has(partition?.partition_id)) {
+        fail(`${partitionLabel}.partition_id must be non-empty and unique`);
+      }
+      partitionIds.add(partition?.partition_id);
+      for (const field of ["label", "business_reason", "internal_complexity", "coordination_cost"]) {
+        const minimum = field === "label" ? 4 : 20;
+        if (String(partition?.[field] || "").trim().length < minimum) {
+          fail(`${partitionLabel}.${field} must contain a concrete partition comparison`);
+        }
+      }
+      if (!Number.isInteger(partition?.total_complexity_rank)
+          || partition.total_complexity_rank < 1
+          || partition.total_complexity_rank > partitions.length) {
+        fail(`${partitionLabel}.total_complexity_rank must be an integer from 1 through the number of compared partitions`);
+      }
+      if (!allowedOutlineSourceStatuses.has(partition?.source_status)) {
+        fail(`${partitionLabel}.source_status is invalid`);
+      }
+      validateOutlineDiscoverySourceRefs(data, partition?.source_refs, partitionLabel);
+      if (partition?.source_status === "doc"
+          && (!String(partition?.evidence_ref || "").trim()
+            || compactText(partition?.evidence_quote).length < 8
+            || !asArray(partition?.source_refs).includes(partition?.evidence_ref))) {
+        fail(`${partitionLabel} with source_status doc requires evidence_ref and a verbatim evidence_quote; evidence_ref must appear in source_refs`);
+      }
+      const groups = asArray(partition?.groups);
+      if (!groups.length) fail(`${partitionLabel}.groups must contain at least one project group`);
+      const groupIds = new Set();
+      const atomCounts = new Map();
+      for (const [groupIndex, group] of groups.entries()) {
+        const groupLabel = `${partitionLabel}.groups[${groupIndex}]`;
+        if (!String(group?.group_id || "").trim() || groupIds.has(group?.group_id)) {
+          fail(`${groupLabel}.group_id must be non-empty and unique within its partition`);
+        }
+        groupIds.add(group?.group_id);
+        if (String(group?.business_responsibility || "").trim().length < 20) {
+          fail(`${groupLabel}.business_responsibility must state a concrete child-project responsibility`);
+        }
+        const groupAtomRefs = asArray(group?.capability_atom_refs);
+        if (!groupAtomRefs.length || new Set(groupAtomRefs).size !== groupAtomRefs.length
+            || groupAtomRefs.some((atomId) => !atomRefs.includes(atomId))) {
+          fail(`${groupLabel}.capability_atom_refs must contain unique atoms owned by the expanded unit`);
+        }
+        for (const atomId of groupAtomRefs) atomCounts.set(atomId, (atomCounts.get(atomId) || 0) + 1);
+      }
+      if (atomRefs.some((atomId) => atomCounts.get(atomId) !== 1)) {
+        fail(`${partitionLabel} must cover every parent capability atom exactly once`);
+      }
+      const signature = partitionSignature(groups);
+      if (signatures.has(signature)) {
+        fail(`${partitionLabel} duplicates partition ${signatures.get(signature)} instead of presenting a materially different boundary option`);
+      }
+      signatures.set(signature, partition?.partition_id);
+    }
+    if (!partitionIds.has(analysis.reference_partition_id)) {
+      fail(`${label}.decomposition_basis.partition_analysis.reference_partition_id must reference one compared partition`);
+      return;
+    }
+    const reference = partitions.find((partition) => partition?.partition_id === analysis.reference_partition_id);
+    const expectedReferenceSignature = responsibilityCellSignature(atomRefs, label);
+    if (partitionSignature(reference?.groups) !== expectedReferenceSignature) {
+      fail(`${label}.decomposition_basis.partition_analysis reference partition must exactly match the deterministic Stage A responsibility-owner and lifecycle cells`);
+    }
+    if (!partitionIds.has(analysis.selected_partition_id)) {
+      fail(`${label}.decomposition_basis.partition_analysis.selected_partition_id must reference one compared partition`);
+      return;
+    }
+    const selected = partitions.find((partition) => partition?.partition_id === analysis.selected_partition_id);
+    if (analysis.selected_partition_id !== analysis.reference_partition_id
+        && !["doc", "user", "user-confirmed"].includes(selected?.source_status)) {
+      // Check: does selected partition split any reference cell?
+      const referenceGroupCount = reference?.groups?.length || 0;
+      const selectedGroupCount = selected?.groups?.length || 0;
+      if (selectedGroupCount > referenceGroupCount) {
+        // Selected has MORE groups than reference => splits at least one cell
+        // This is ALWAYS forbidden without doc/user authority, regardless of reference_authority
+        fail(`${label}.decomposition_basis.partition_analysis may not split a reference partition cell without document or human authority; splitting ${referenceGroupCount} reference cells into ${selectedGroupCount} groups requires explicit source evidence`);
+      } else {
+        // Selected merges cells (fewer groups): allow only in ai-proposed-only context
+        const isAiProposedOnlyContext = analysis.reference_authority === "ai-proposed-only";
+        if (!isAiProposedOnlyContext) {
+          fail(`${label}.decomposition_basis.partition_analysis may select a non-reference partition only with original document or human authority, or when reference_authority is ai-proposed-only (merge only); model-only alternatives remain Web options otherwise`);
+        }
+      }
+    }
+    if (selected?.total_complexity_rank !== 1) {
+      fail(`${label}.decomposition_basis.partition_analysis selected partition must have total_complexity_rank 1`);
+    }
+    const selectedSignature = partitionSignature(selected?.groups);
+    const generatedSignature = partitionSignature(children.map((child) => ({
+      capability_atom_refs: asArray(child?.capability_atom_refs),
+    })));
+    if (!children.length || selectedSignature !== generatedSignature) {
+      fail(`${label} generated children must exactly match the selected partition`);
+    }
+    if (![...signatures.keys()].some((signature) => signature !== selectedSignature)) {
+      fail(`${label}.decomposition_basis.partition_analysis must include a genuinely different alternative partition`);
+    }
+
+    const question = questions.find((entry) =>
+      entry?.outline_node_id === unit.outline_node_id && entry?.target_kind === "project_boundary",
+    );
+    const candidates = asArray(question?.candidates);
+    const candidateByPartition = new Map();
+    for (const candidate of candidates) {
+      if (!candidate?.partition_ref) continue;
+      if (candidateByPartition.has(candidate.partition_ref)) {
+        fail(`${label} partition decision must bind each partition to exactly one Web candidate`);
+      }
+      candidateByPartition.set(candidate.partition_ref, candidate);
+    }
+    if (!question || candidateByPartition.size !== partitions.length
+        || partitions.some((partition) => !candidateByPartition.has(partition.partition_id))) {
+      fail(`${label} requires a Web project_boundary question with one candidate for every compared partition`);
+      return;
+    }
+    const parentChainRefs = asArray(unit.business_chain_refs);
+    for (const [partitionId, candidate] of candidateByPartition.entries()) {
+      const candidateAtoms = asArray(candidate?.capability_atom_refs);
+      const candidateChains = asArray(candidate?.business_chain_refs);
+      if (candidateAtoms.length !== atomRefs.length || atomRefs.some((atomId) => !candidateAtoms.includes(atomId))
+          || candidateChains.length !== parentChainRefs.length || parentChainRefs.some((chainId) => !candidateChains.includes(chainId))) {
+        fail(`${label} Web candidate for partition ${partitionId} must cover the expanded unit's complete atom and chain sets`);
+      }
+    }
+    const selectedCandidate = candidateByPartition.get(analysis.selected_partition_id);
+    if (asArray(question.recommended_candidate_ids).length !== 1
+        || question.recommended_candidate_ids[0] !== selectedCandidate?.id) {
+      fail(`${label} Web recommendation must reference the generated selected partition`);
+    }
   };
   const connectGraphNodes = (graph, ids) => {
     const values = [...new Set(ids)].filter(Boolean);
@@ -2820,13 +3208,32 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
   const validateV5GroupingBasis = (basis, label, unit, atomRefs) => {
     const atomStateRefs = atomRefs.map((atomId) => asArray(capabilityAtomsById.get(atomId)?.owned_state_refs)[0]);
     const atomStates = atomStateRefs.map((stateId) => businessStatesById.get(stateId)).filter(Boolean);
-    const sharedOwnerRef = basis?.shared_responsibility_owner_ref;
-    const sharedLifecycleRef = basis?.shared_lifecycle_ref;
+    const sharedOwnerRef = basis?.shared_responsibility_owner_ref ?? null;
+    const sharedLifecycleRef = basis?.shared_lifecycle_ref ?? null;
     // The expansion root may be detached from its parent in a local window;
     // absolute project depth is the stable non-root signal.
     const isGeneratedChild = unit.project_depth > window.root_project_depth;
-    if (isGeneratedChild && sharedOwnerRef === null && sharedLifecycleRef === null) {
-      fail(`${label} must name a responsibility owner or lifecycle shared by every grouped atom`);
+    if (data.schema_version >= 6 && isGeneratedChild) {
+      const ownerRefs = new Set(atomStates.map((state) => state?.responsibility_owner_ref).filter(Boolean));
+      const lifecycleRefs = new Set(atomStates.map((state) => state?.lifecycle_ref).filter(Boolean));
+      const authoritativeOwnerRefs = new Set([...ownerRefs].filter((ref) =>
+        allowedAggregationAuthorities.has(responsibilityOwnersById.get(ref)?.source_status),
+      ));
+      const authoritativeLifecycleRefs = new Set([...lifecycleRefs].filter((ref) =>
+        allowedAggregationAuthorities.has(businessLifecyclesById.get(ref)?.source_status),
+      ));
+      if (atomStates.length !== atomRefs.length
+          || authoritativeOwnerRefs.size > 1 || authoritativeLifecycleRefs.size > 1) {
+        fail(`${label} generated multi-atom child crosses conflicting documented or human-confirmed responsibility identities`);
+      }
+      const hasCompleteAuthoritativeCell = atomStates.length === atomRefs.length
+        && ownerRefs.size === 1 && lifecycleRefs.size === 1
+        && authoritativeOwnerRefs.size === 1 && authoritativeLifecycleRefs.size === 1;
+      if (hasCompleteAuthoritativeCell
+          && (sharedOwnerRef === null || sharedLifecycleRef === null
+            || !ownerRefs.has(sharedOwnerRef) || !lifecycleRefs.has(sharedLifecycleRef))) {
+        fail(`${label} must declare the shared authoritative owner/lifecycle actually used by every grouped atom`);
+      }
     }
     if (sharedOwnerRef !== null) {
       if (!responsibilityOwnerIds.has(sharedOwnerRef)) fail(`${label}.shared_responsibility_owner_ref must reference responsibility_owners`);
@@ -2845,16 +3252,13 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         sharedOwnerRef === null ? null : responsibilityOwnersById.get(sharedOwnerRef)?.source_status,
         sharedLifecycleRef === null ? null : businessLifecyclesById.get(sharedLifecycleRef)?.source_status,
       ].filter(Boolean);
-      const hasStrongSharedAuthority = sharedAuthorities.some((status) => ["doc", "user", "user-confirmed"].includes(status));
-      const hasProposedSharedAuthority = sharedAuthorities.some((status) => status === "ai-proposed");
-      const hasUnresolvedSharedAuthority = sharedAuthorities.some((status) => status === "unresolved");
-      const isCurrentModelProposal = basis?.authority === "ai-proposed" || hasProposedSharedAuthority;
-      if (hasUnresolvedSharedAuthority) {
+      if (sharedAuthorities.some((status) => status === "unresolved")) {
         fail(`${label} cannot use an unresolved shared owner or lifecycle for a generated grouped child`);
-      } else if (isCurrentModelProposal) {
-        if (basis?.authority !== "ai-proposed") {
-          fail(`${label}.authority must remain ai-proposed when its shared owner or lifecycle is model-proposed`);
-        }
+      }
+      if (sharedAuthorities.some((status) => status === "ai-proposed") && basis?.authority !== "ai-proposed") {
+        fail(`${label}.authority must remain ai-proposed when an optional shared owner or lifecycle is model-proposed`);
+      }
+      if (basis?.authority === "ai-proposed") {
         if (basis?.proposal_origin !== "current-discovery") {
           fail(`${label}.proposal_origin must be current-discovery for a generated ai-proposed grouping`);
         }
@@ -2868,8 +3272,8 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         if (!proposalRefs.length || proposalRefs.some((ref) => !isCurrentProposalSourceRef(ref))) {
           fail(`${label} current-discovery proposal evidence must come from original business sources, human-specified roots, or confirmed parent references; feature PRD and memory output cannot certify a new grouping`);
         }
-      } else if (!hasStrongSharedAuthority || !["doc", "user", "user-confirmed"].includes(basis?.authority)) {
-        fail(`${label} must use a documented, human-supplied, or fresh current-discovery shared boundary`);
+      } else if (!["doc", "user", "user-confirmed"].includes(basis?.authority)) {
+        fail(`${label}.authority must be documented, human-supplied, or a fresh current-discovery proposal`);
       } else if (basis?.proposal_origin !== undefined) {
         fail(`${label}.proposal_origin is only allowed for ai-proposed current-discovery grouping`);
       }
@@ -2879,7 +3283,7 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
       fail(`${label}.separation_test is required`);
       return;
     }
-    for (const field of ["keep_together_complexity", "split_coordination_cost", "decision_reason"]) {
+    for (const field of ["decision_reason"]) {
       if (String(test?.[field] || "").trim().length < 20) fail(`${label}.separation_test.${field} must contain at least 20 characters`);
     }
     const alternativeGroups = asArray(test.alternative_groups);
@@ -2907,20 +3311,27 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     }
     if (data.schema_version >= 6 && isGeneratedChild) {
       const invariants = asArray(basis?.coupling_invariants);
-      if (!invariants.length) fail(`${label}.coupling_invariants must contain source-backed cross-partition evidence for a generated grouped child`);
+      if (invariants.length !== 1) fail(`${label}.coupling_invariants must contain exactly one plain-language business invariant covering the whole grouped child`);
       const invariantIds = new Set();
       const invariantAtomCoverage = new Set();
       const invariantGroupGraph = new Map([...groupIds].map((groupId) => [groupId, new Set()]));
-      const invariantKinds = new Set(["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle", "cohesive_data_lifecycle"]);
       for (const [invariantIndex, invariant] of invariants.entries()) {
         const invariantLabel = `${label}.coupling_invariants[${invariantIndex}]`;
         if (!String(invariant?.invariant_id || "").trim() || invariantIds.has(invariant?.invariant_id)) fail(`${invariantLabel}.invariant_id must be non-empty and unique`);
         invariantIds.add(invariant?.invariant_id);
-        if (!invariantKinds.has(invariant?.invariant_kind)) fail(`${invariantLabel}.invariant_kind is invalid`);
+        if (invariant?.invariant_kind !== undefined) fail(`${invariantLabel}.invariant_kind taxonomy is not allowed in schema v6; state the binding business rule in plain language`);
         if (String(invariant?.business_rule || "").trim().length < 20) fail(`${invariantLabel}.business_rule must contain at least 20 characters`);
-        if (!["doc", "user", "user-confirmed"].includes(invariant?.source_status)) fail(`${invariantLabel}.source_status must be documented or human-confirmed`);
+        if (!["doc", "user", "user-confirmed", "ai-proposed"].includes(invariant?.source_status)) fail(`${invariantLabel}.source_status must be documented, human-confirmed, or a current architecture proposal`);
         validateOutlineDiscoverySourceRefs(data, invariant?.source_refs, invariantLabel);
-        if (!String(invariant?.evidence_ref || "").trim() || String(invariant?.evidence_quote || "").trim().length < 8
+        const isProposedInvariant = invariant?.source_status === "ai-proposed";
+        if (isProposedInvariant) {
+          if (basis?.authority !== "ai-proposed" || basis?.proposal_origin !== "current-discovery") {
+            fail(`${invariantLabel} may be ai-proposed only inside a current-discovery ai-proposed grouping`);
+          }
+          if (String(invariant?.proposal_basis || "").trim().length < 20) {
+            fail(`${invariantLabel}.proposal_basis must explain how source-backed atom facts imply this project-level cohesion`);
+          }
+        } else if (!String(invariant?.evidence_ref || "").trim() || String(invariant?.evidence_quote || "").trim().length < 8
             || !asArray(invariant?.source_refs).includes(invariant?.evidence_ref)) {
           fail(`${invariantLabel} must include evidence_ref in source_refs and a verbatim evidence_quote`);
         }
@@ -2933,8 +3344,11 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         }
         for (const atomId of invariantAtoms) {
           invariantAtomCoverage.add(atomId);
-          if (!asArray(capabilityAtomsById.get(atomId)?.source_refs).includes(invariant?.evidence_ref)) {
+          const atomSourceRefs = asArray(capabilityAtomsById.get(atomId)?.source_refs);
+          if (!isProposedInvariant && !atomSourceRefs.includes(invariant?.evidence_ref)) {
             fail(`${invariantLabel}.evidence_ref must directly support every capability atom named by the invariant`);
+          } else if (isProposedInvariant && !asArray(invariant?.source_refs).some((sourceRef) => atomSourceRefs.includes(sourceRef))) {
+            fail(`${invariantLabel}.source_refs must include source-backed business facts for every atom used by an ai-proposed architecture inference`);
           }
         }
         connectGraphNodes(invariantGroupGraph, invariantAtoms.map((atomId) => groupIdByAtom.get(atomId)));
@@ -2949,17 +3363,15 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
       fail(`${label}.coupling_invariants must be an array`);
     }
     if (!Array.isArray(test.stable_handoffs)) fail(`${label}.separation_test.stable_handoffs must be an array`);
-    if (isGeneratedChild && asArray(test.stable_handoffs).length === 0) {
+    if (data.schema_version < 6 && isGeneratedChild && asArray(test.stable_handoffs).length === 0) {
       fail(`${label}.separation_test.stable_handoffs must contain at least one stable business handoff for a non-root grouped unit`);
     }
-    const handoffGroupGraph = new Map([...groupIds].map((groupId) => [groupId, new Set()]));
     for (const [handoffIndex, handoff] of asArray(test.stable_handoffs).entries()) {
       const handoffLabel = `${label}.separation_test.stable_handoffs[${handoffIndex}]`;
       if (!groupIds.has(handoff?.from_group_id) || !groupIds.has(handoff?.to_group_id) || handoff?.from_group_id === handoff?.to_group_id) {
         fail(`${handoffLabel} must connect two different alternative groups`);
       }
       if (String(handoff?.business_fact || "").trim().length < 12) fail(`${handoffLabel}.business_fact must name the exchanged business fact`);
-      connectGraphNodes(handoffGroupGraph, [handoff?.from_group_id, handoff?.to_group_id]);
       if (data.schema_version >= 6) {
         const fromAtomId = handoff?.from_atom_ref;
         const toAtomId = handoff?.to_atom_ref;
@@ -2978,32 +3390,56 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
         }
       }
     }
-    if (isGeneratedChild && !graphCovers(groupIds, handoffGroupGraph)) {
-      fail(`${label}.separation_test.stable_handoffs must connect every alternative group; disconnected responsibilities should be separate children`);
-    }
     const duplicatedStateRefs = asArray(test.duplicated_state_refs);
     if (!Array.isArray(test.duplicated_state_refs) || new Set(duplicatedStateRefs).size !== duplicatedStateRefs.length
         || duplicatedStateRefs.some((stateId) => !atomStateRefs.includes(stateId))) {
       fail(`${label}.separation_test.duplicated_state_refs must be unique states owned by the grouped atoms`);
     }
     if (data.schema_version >= 6 && duplicatedStateRefs.length === 0
-        && /(?:重复.{0,8}状态|状态.{0,8}重复|duplicat(?:e|ed|ion).{0,16}state)/i.test(String(test.split_coordination_cost || ""))) {
+        && /(?:重复.{0,8}状态|状态.{0,8}重复|duplicat(?:e|ed|ion).{0,16}state)/i.test(String(test.decision_reason || ""))) {
       fail(`${label}.separation_test cannot claim duplicated state cost when duplicated_state_refs is empty`);
     }
   };
 
   for (const [index, unit] of units.entries()) {
     const label = `decomposition_window.units[${index}]`;
-    for (const key of ["unit_id", "outline_node_id", "business_goal", "overall_outcome", "source_status"]) {
+    const requiredUnitKeys = ["unit_id", "outline_node_id", "business_goal", "overall_outcome", "source_status"];
+    if (data.schema_version >= 6) requiredUnitKeys.splice(1, 0, "project_title");
+    for (const key of requiredUnitKeys) {
       if (!String(unit?.[key] || "").trim()) fail(`${label}.${key} is required`);
+    }
+    if (data.schema_version >= 6 && String(unit?.project_title || "").trim().length < 4) {
+      fail(`${label}.project_title must contain a concrete entity name of at least four characters`);
     }
     if (unitsById.has(unit?.unit_id)) fail(`duplicate Outline unit_id ${unit?.unit_id}`);
     unitsById.set(unit?.unit_id, unit);
+    if (data.schema_version >= 6 && looksLikeMirroredIdentitySlug(unit?.unit_id)) {
+      fail(`${label}.unit_id must not be a mirrored owner/lifecycle slug; use a stable entity-derived project code, not Stage A identity tokens`);
+    }
     if (unitByNodeId.has(unit?.outline_node_id)) fail(`Outline node ${unit?.outline_node_id} represents multiple decomposition units`);
     unitByNodeId.set(unit?.outline_node_id, unit);
     const node = nodesById.get(unit?.outline_node_id);
     if (!node || mapsById.get(node.map_id)?.map_kind === "global_constraints") {
       fail(`${label}.outline_node_id must reference a business Outline node`);
+    }
+    if (data.schema_version >= 6 && unit.project_depth > window.root_project_depth
+        && genericProjectContainerTitlePattern.test(String(node?.label || "").trim())) {
+      fail(`${label} candidate-project title must name an owned business object, state, outcome, or handoff instead of a generic container or implementation component`);
+    }
+    if (data.schema_version >= 6) {
+      const boundaryReasoning = [
+        unit?.grouping_basis?.separation_test?.decision_reason,
+        unit?.decomposition_basis?.complexity_reduction,
+        unit?.decomposition_basis?.coordination_cost,
+        ...asArray(unit?.decomposition_basis?.partition_analysis?.partitions).flatMap((partition) => [
+          partition?.business_reason,
+          partition?.internal_complexity,
+          partition?.coordination_cost,
+        ]),
+      ];
+      if (boundaryReasoning.some(usesRejectedRuntimeBoundaryReason)) {
+        fail(`${label} project partition must not use implementation layers or runtime topology as a boundary reason`);
+      }
     }
     if (!(typeof unit?.parent_unit_id === "string" || unit?.parent_unit_id === null)) {
       fail(`${label}.parent_unit_id must be a string or null`);
@@ -3013,6 +3449,26 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     }
     if (!new Set(["expanded", "frontier", "terminal"]).has(unit?.decomposition_state)) {
       fail(`${label}.decomposition_state is invalid`);
+    }
+    // decomposition_mode: optional field, validate if present
+    const validModes = new Set(["A", "B", "C", "D", "E", "F", "G"]);
+    if (unit?.decomposition_mode !== undefined) {
+      if (!validModes.has(unit.decomposition_mode)) {
+        fail(`${label}.decomposition_mode must be one of A|B|C|D|E|F|G (A=Business Scenario, B=Feature, C=API/Resource, D=Lifecycle, E=Role/Permission, F=Event/Trigger, G=Integration)`);
+      }
+      if (unit?.mode_rationale !== undefined && String(unit.mode_rationale).trim().length < 10) {
+        fail(`${label}.mode_rationale must contain at least 10 characters`);
+      }
+    }
+    if (Array.isArray(unit?.secondary_dimensions)) {
+      for (const dim of unit.secondary_dimensions) {
+        if (!validModes.has(dim)) {
+          fail(`${label}.secondary_dimensions contains invalid mode "${dim}"; must be one of A|B|C|D|E|F|G`);
+        }
+      }
+      if (unit?.decomposition_mode !== undefined && unit.secondary_dimensions.includes(unit.decomposition_mode)) {
+        fail(`${label}.secondary_dimensions must not repeat the primary decomposition_mode "${unit.decomposition_mode}"`);
+      }
     }
     for (const key of ["business_goal", "overall_outcome"]) {
       if (String(unit?.[key] || "").trim().length < 20) {
@@ -3029,11 +3485,66 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     if (!chainRefs.length || new Set(chainRefs).size !== chainRefs.length || chainRefs.some((id) => !businessChainIds.has(id))) {
       fail(`${label}.business_chain_refs must contain unique business_context business chains`);
     }
+    if (data.schema_version >= 6) {
+      const title = normalizedBoundaryText(unit?.project_title);
+      const identityValues = new Set([normalizedBoundaryText(unit?.unit_id)]);
+      for (const atomId of atomRefs) {
+        const state = businessStatesById.get(asArray(capabilityAtomsById.get(atomId)?.owned_state_refs)[0]);
+        if (state?.responsibility_owner_ref) identityValues.add(normalizedBoundaryText(state.responsibility_owner_ref));
+        if (state?.lifecycle_ref) identityValues.add(normalizedBoundaryText(state.lifecycle_ref));
+      }
+      if (title && identityValues.has(title)) {
+        fail(`${label}.project_title must name a business entity, not a unit, owner, or lifecycle identifier`);
+      }
+      if (looksLikeMirroredIdentitySlug(unit?.project_title)) {
+        fail(`${label}.project_title must not use a mirrored owner/lifecycle slug`);
+      }
+      if (responsibilityIdentityTitlePattern.test(String(unit?.project_title || "").trim())) {
+        fail(`${label}.project_title must name the owned business entity, not a responsibility or lifecycle label`);
+      }
+      if (normalizedBoundaryText(unit?.business_goal) === normalizedBoundaryText(unit?.project_boundary?.owned_responsibility)) {
+        warn(`${label}: business_goal and project_boundary.owned_responsibility are identical; explain why the entity exists separately from its responsibility`);
+      }
+      if (unit.project_depth > window.root_project_depth) {
+        const ownedObjectCoreNorms = asArray(unit?.project_boundary?.owned_object_refs)
+          .map((objectId) => businessObjectsById.get(objectId))
+          .filter(Boolean)
+          .map((object) => normalizedBoundaryText(String(object.label || "").split(/[(（]/)[0]))
+          .filter(Boolean);
+        const activityAnchor = projectTitleTerminalActivity(unit?.project_title);
+        if (activityAnchor) {
+          fail(`${label}.project_title names an activity or abstract facet ("${activityAnchor}") rather than the bounded owned entity; reuse the concrete noun from owned_object_refs — name the record or aggregate this unit owns and governs, not what it does or a vague facet`);
+        }
+        const groundingText = ownedObjectCoreNorms.join(" ");
+        const buildBigrams = (value) => {
+          const t = normalizedBoundaryText(value);
+          const r = new Set();
+          for (let i = 0; i <= t.length - 2; i += 1) r.add(t.slice(i, i + 2));
+          return r;
+        };
+        const objectGrams = buildBigrams(groundingText);
+        const titleGrams = buildBigrams(unit?.project_title);
+        if (objectGrams.size && titleGrams.size) {
+          let shared = 0;
+          for (const gram of titleGrams) {
+            if (objectGrams.has(gram) && !projectTitleStopwordGrams.has(gram)) shared += 1;
+          }
+          if (shared === 0) {
+            fail(`${label}.project_title is detached from the unit's owned business objects; derive it from owned_object_refs in source-backed domain terminology`);
+          }
+        }
+      }
+    }
     const atomChainRefs = new Set(atomRefs.flatMap((atomId) => capabilityAtomsById.get(atomId)?.business_chain_refs || []));
     if (chainRefs.length !== atomChainRefs.size || chainRefs.some((chainId) => !atomChainRefs.has(chainId))) {
       fail(`${label}.business_chain_refs must equal the chains referenced by its capability atoms`);
     }
     validateProjectBoundary(unit?.project_boundary, label, unit, atomRefs, chainRefs);
+    if (data.schema_version >= 6 && unit.project_depth > window.root_project_depth) {
+      validateProjectCandidateBasis(unit.project_candidate_basis, label, unit.decomposition_state);
+    } else if (data.schema_version >= 6 && unit.project_candidate_basis !== undefined) {
+      fail(`${label}.project_candidate_basis is required only for non-root child projects`);
+    }
     if (sourceStatusExceedsEvidence(unit.source_status, [
       ...atomRefs.map((id) => capabilityAtomsById.get(id)?.source_status),
       ...chainRefs.map((id) => businessChainsById.get(id)?.source_status),
@@ -3042,7 +3553,7 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     }
     if (atomRefs.length > 1) {
       if (data.schema_version >= 5) {
-        validateBasis(unit.grouping_basis, `${label}.grouping_basis`, ["shared_business_goal", "parent_cohesion"], "authority");
+        validateBasis(unit.grouping_basis, `${label}.grouping_basis`, data.schema_version >= 6 ? [] : ["shared_business_goal", "parent_cohesion"], "authority");
         validateV5GroupingBasis(unit.grouping_basis, `${label}.grouping_basis`, unit, atomRefs);
       } else {
         validateBasis(
@@ -3086,11 +3597,8 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     const questions = asArray(data.question_groups).flatMap((group) => asArray(group?.questions));
     for (const unit of units) {
       if (unit.project_depth <= window.root_project_depth || asArray(unit.capability_atom_refs).length < 2) continue;
-      const ownerStatus = responsibilityOwnersById.get(unit.grouping_basis?.shared_responsibility_owner_ref)?.source_status;
-      const lifecycleStatus = businessLifecyclesById.get(unit.grouping_basis?.shared_lifecycle_ref)?.source_status;
       const requiresGroupingDecision = unit.grouping_basis?.authority === "ai-proposed"
-        || [ownerStatus, lifecycleStatus].some((status) => ["ai-proposed", "unresolved"].includes(status))
-        || ![ownerStatus, lifecycleStatus].some((status) => ["doc", "user", "user-confirmed"].includes(status));
+        || asArray(unit.grouping_basis?.coupling_invariants).some((invariant) => invariant?.source_status === "ai-proposed");
       if (!requiresGroupingDecision) continue;
       const question = questions.find((entry) => entry?.outline_node_id === unit.outline_node_id);
       const completeCandidates = asArray(question?.candidates).filter((candidate) =>
@@ -3103,7 +3611,7 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
       const hasKeep = candidateCopy.some((copy) => /(?:保留|维持|保持分离|keep|retain)/i.test(copy));
       const hasSplit = candidateCopy.some((copy) => /(?:拆分|分开|重新划分|split|separate|repartition)/i.test(copy));
       if (!question || question.target_kind !== "project_boundary" || !hasKeep || !hasSplit || completeCandidates.length < 2) {
-        fail(`ai-proposed shared owner/lifecycle for ${unit.unit_id} requires a Web keep/split decision with complete atom coverage`);
+        fail(`ai-proposed grouped child ${unit.unit_id} requires a Web keep/split decision with complete atom coverage`);
       }
     }
   }
@@ -3124,16 +3632,49 @@ function validateOutlineDiscoveryDecompositionWindow(data, { mapsById, nodesById
     }
   }
   for (const [parentUnitId, children] of childrenByUnitId.entries()) {
+    if (children.length > 1) {
+      const boundarySignatures = new Set(children.map((child) =>
+        normalizedBoundaryText(child?.project_boundary?.unresolved_boundary),
+      ));
+      if (boundarySignatures.size !== children.length) {
+        fail(`sibling Outline units under ${parentUnitId} must use pairwise-distinct unresolved boundaries, not reuse a sibling's boundary text`);
+      }
+    }
     const signatures = new Map();
     for (const child of children.filter((unit) => asArray(unit.capability_atom_refs).length > 1)) {
       const test = child.grouping_basis?.separation_test;
-      const signature = [test?.keep_together_complexity, test?.split_coordination_cost, test?.decision_reason]
-        .map((value) => compactText(value).toLowerCase()).join("\n");
+      const signature = compactText(test?.decision_reason).toLowerCase();
       if (signatures.has(signature)) {
         fail(`sibling grouped Outline units under ${parentUnitId} reuse the same complexity comparison; each allocation requires domain-specific evidence`);
       } else {
         signatures.set(signature, child.unit_id);
       }
+    }
+    const focusSignatures = new Map();
+    for (const child of children.filter((unit) => unit.decomposition_state === "frontier")) {
+      const signature = asArray(child.project_candidate_basis?.next_decomposition_focus)
+        .map((value) => compactText(value).toLowerCase())
+        .sort()
+        .join("||");
+      if (!signature) continue;
+      if (focusSignatures.has(signature)) {
+        fail(`sibling frontier Outline units under ${parentUnitId} reuse the same next_decomposition_focus; each child must name its own domain-specific next split`);
+      } else {
+        focusSignatures.set(signature, child.unit_id);
+      }
+    }
+  }
+  if (data.schema_version >= 6) {
+    const questions = asArray(data.question_groups).flatMap((group) => asArray(group?.questions));
+    for (const unit of units) {
+      const label = `decomposition unit ${unit.unit_id}`;
+      const children = childrenByUnitId.get(unit.unit_id) || [];
+      validatePartitionAnalysis(
+        unit,
+        label,
+        children,
+        questions,
+      );
     }
   }
   const roots = units.filter((unit) => unit.parent_unit_id === null);
@@ -3349,6 +3890,10 @@ function validateOutlineDiscoveryNoDensityMerge(data) {
       ...(unit?.project_boundary?.non_goals || []),
       unit?.project_boundary?.independent_acceptance,
       unit?.project_boundary?.unresolved_boundary,
+      unit?.project_candidate_basis?.durable_business_responsibility,
+      unit?.project_candidate_basis?.why_not_capability_step,
+      unit?.project_candidate_basis?.why_not_parent_bucket,
+      ...(unit?.project_candidate_basis?.next_decomposition_focus || []),
       ...(unit?.project_boundary?.upstream_contracts || []).flatMap(contract => [contract?.business_fact, contract?.counterparty_responsibility]),
       ...(unit?.project_boundary?.downstream_contracts || []).flatMap(contract => [contract?.business_fact, contract?.counterparty_responsibility]),
       unit?.grouping_basis?.shared_business_goal,

@@ -81,18 +81,19 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert skill_file.exists()
         content = skill_file.read_text(encoding="utf-8")
         assert "Stage C - run the semantic quality gate" in content
-        assert "child Outline units" in content
+        assert "Stage B - partition atoms into child units, then compile the window" in content
         assert "Subproject Handoff" in content
-        assert "Product decomposition is independent from runtime topology" in content
-        assert "Transactional consistency or bidirectional business exchange requires classification" in content
-        assert "regulation, contract, or multi-party legal duty" in content
+        assert "Step 2 - authority gate, then total complexity" in content
+        assert "input contract and deterministic reference" in content
+        assert "derive-outline-reference-partition.mjs" in content
+        assert "Step 3 - hard rejects" in content
         assert "published service commitment" not in content
-        assert "Never use runtime topology as an advantage, disadvantage, option-comparison dimension" in content
-        assert "make confirmation of that split the default recommendation" in content
+        assert "is justified by runtime topology" in content
+        assert "current human decision may select a non-reference partition" in content
         assert "source_capability_coverage" in content
         assert "complete `decomposition_window`" in content
         assert "schema version 6" in content
-        assert "Generic implementation components" in content
+        assert "uses a generic container or SP-internal classification as its distinguishing boundary noun" in content
         assert "final visible-copy sanitization pass" in content
         assert "do not announce that sanitization occurred" in content
         assert "Do not route them to `/sp.clarify` merely because the split is unconfirmed" in content
@@ -103,8 +104,8 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "may belong to only one direct child" in content
         assert "Atom count is not child count" in content
         assert "separation_test" in content
-        assert "must partition every grouped atom exactly once" in content
-        assert "a requirement to split as finely as possible" in content
+        assert "allocate all its atoms exactly once" in content
+        assert "There is no target child count" in content
         assert "grouping_basis" in content
         assert "decomposition_basis" in content
         assert "terminal_basis" in content
@@ -113,8 +114,8 @@ class TestCodexIntegration(SkillsIntegrationTests):
         assert "source-preserving formal Outline preparation" in content
         assert "without discovering, merging, splitting, or reinterpreting business facts" in content
         assert "cross-domain substitution test" in content
-        assert "warning signal, not a boundary decision" in content
-        assert "external business obligation" in content
+        assert "presentation never changes an atom allocation" in content
+        assert "never the database technology" in content
         assert "QMT" not in content
         assert "up to three cohesive business capability branches" not in content
 

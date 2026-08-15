@@ -1092,23 +1092,40 @@ function renderOutlineDiscoveryRail() {
     appendText(groupingPanel, "h5", "拥有能力");
     for (const atomId of outlineUnit.capability_atom_refs || []) appendText(ownedAtoms, "li", atomLabels.get(atomId) || atomId);
     groupingPanel.appendChild(ownedAtoms);
+    const candidateBasis = outlineUnit.project_candidate_basis;
+    if (candidateBasis) {
+      appendText(groupingPanel, "h5", "为什么它是当前层子项目");
+      const candidateMeta = create("div", "discovery-boundary-meta");
+      appendText(candidateMeta, "span", `长期责任：${candidateBasis.durable_business_responsibility || "未提供"}`);
+      appendText(candidateMeta, "span", `不是功能步骤：${candidateBasis.why_not_capability_step || "未提供"}`);
+      appendText(candidateMeta, "span", `不是宽泛父级：${candidateBasis.why_not_parent_bucket || "未提供"}`);
+      groupingPanel.appendChild(candidateMeta);
+      appendText(groupingPanel, "h5", "下一层准备拆分");
+      const focusList = create("ul", "discovery-boundary-list");
+      for (const focus of candidateBasis.next_decomposition_focus || []) appendText(focusList, "li", focus);
+      groupingPanel.appendChild(focusList);
+    }
     const basis = outlineUnit.grouping_basis;
     if (basis) {
       const groupingMeta = create("div", "discovery-boundary-meta");
-      appendText(groupingMeta, "span", `共同目标：${basis.shared_business_goal || "未提供"}`);
-      appendText(groupingMeta, "span", `共同责任：${ownerLabels.get(basis.shared_responsibility_owner_ref) || "未确认"}`);
-      appendText(groupingMeta, "span", `共同生命周期：${lifecycleLabels.get(basis.shared_lifecycle_ref) || "未确认"}`);
-      appendText(groupingMeta, "span", `父级内聚：${basis.parent_cohesion || "未提供"}`);
-      groupingPanel.appendChild(groupingMeta);
+      if (basis.shared_business_goal) appendText(groupingMeta, "span", `共同目标：${basis.shared_business_goal}`);
+      if (basis.shared_responsibility_owner_ref) appendText(groupingMeta, "span", `共同责任：${ownerLabels.get(basis.shared_responsibility_owner_ref) || basis.shared_responsibility_owner_ref}`);
+      if (basis.shared_lifecycle_ref) appendText(groupingMeta, "span", `共同生命周期：${lifecycleLabels.get(basis.shared_lifecycle_ref) || basis.shared_lifecycle_ref}`);
+      if (basis.parent_cohesion) appendText(groupingMeta, "span", `旧版内聚说明：${basis.parent_cohesion}`);
+      if (groupingMeta.childNodes.length) groupingPanel.appendChild(groupingMeta);
       const invariants = basis.coupling_invariants || [];
       if (invariants.length) {
-        appendText(groupingPanel, "h5", "耦合证据");
+        appendText(groupingPanel, "h5", "共同业务不变量");
         const invariantList = create("div", "discovery-boundary-contracts");
         for (const invariant of invariants) {
           const item = create("article", "discovery-boundary-contract-item");
           appendText(item, "strong", invariant.business_rule || invariant.invariant_id);
-          appendText(item, "p", invariant.evidence_quote || "");
-          appendText(item, "small", `证据：${invariant.evidence_ref || "未提供"}`);
+          appendText(item, "p", invariant.source_status === "ai-proposed"
+            ? invariant.proposal_basis || ""
+            : invariant.evidence_quote || "");
+          appendText(item, "small", invariant.source_status === "ai-proposed"
+            ? `模型架构提案，组成事实来源：${(invariant.source_refs || []).join("；") || "未提供"}`
+            : `证据：${invariant.evidence_ref || "未提供"}`);
           invariantList.appendChild(item);
         }
         groupingPanel.appendChild(invariantList);
@@ -1129,11 +1146,33 @@ function renderOutlineDiscoveryRail() {
         }
         groupingPanel.appendChild(handoffs);
         const comparison = create("div", "discovery-boundary-meta");
-        appendText(comparison, "span", `保持合并：${separation.keep_together_complexity || "未提供"}`);
-        appendText(comparison, "span", `拆分成本：${separation.split_coordination_cost || "未提供"}`);
-        appendText(comparison, "span", `当前判断：${separation.decision_reason || "未提供"}`);
+        if (separation.keep_together_complexity) appendText(comparison, "span", `旧版内部复杂度：${separation.keep_together_complexity}`);
+        if (separation.split_coordination_cost) appendText(comparison, "span", `旧版协调成本：${separation.split_coordination_cost}`);
+        appendText(comparison, "span", `总复杂度判断：${separation.decision_reason || "未提供"}`);
         groupingPanel.appendChild(comparison);
       }
+    }
+    const partitionAnalysis = outlineUnit.decomposition_basis?.partition_analysis;
+    if (partitionAnalysis) {
+      appendText(groupingPanel, "h5", "完整分区比较");
+      const partitionList = create("div", "discovery-boundary-contracts discovery-partition-options");
+      for (const partition of partitionAnalysis.partitions || []) {
+        const selected = partition.partition_id === partitionAnalysis.selected_partition_id;
+        const item = create("article", `discovery-boundary-contract-item${selected ? " is-selected" : ""}`);
+        appendText(item, "strong", `${partition.label || partition.partition_id}${selected ? "（当前生成）" : ""}`);
+        appendText(item, "small", `总复杂度名次：${partition.total_complexity_rank || "未提供"}`);
+        appendText(item, "p", partition.business_reason || "");
+        const groups = create("ul", "discovery-boundary-list");
+        for (const group of partition.groups || []) {
+          const names = (group.capability_atom_refs || []).map((atomId) => atomLabels.get(atomId) || atomId).join("、");
+          appendText(groups, "li", `${group.business_responsibility || group.group_id}（${names}）`);
+        }
+        item.appendChild(groups);
+        appendText(item, "small", `项目内部复杂度：${partition.internal_complexity || partition.model_complexity || "未提供"}`);
+        appendText(item, "small", `协调成本：${partition.coordination_cost || "未提供"}`);
+        partitionList.appendChild(item);
+      }
+      groupingPanel.appendChild(partitionList);
     }
     panel.appendChild(groupingPanel);
   }

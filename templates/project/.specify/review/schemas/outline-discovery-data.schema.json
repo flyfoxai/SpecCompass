@@ -114,7 +114,7 @@
       "allOf": [
         {
           "if": {"properties": {"availability": {"const": "missing"}}},
-          "then": {"properties": {"clauses": {"maxItems": 0}}}
+          "then": {"properties": {"clauses": {"type": "array", "maxItems": 0}}}
         }
       ]
     },
@@ -200,13 +200,18 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "unit_id", "outline_node_id", "parent_unit_id", "project_depth",
+        "unit_id", "project_title", "outline_node_id", "parent_unit_id", "project_depth",
         "decomposition_state", "business_goal", "overall_outcome",
         "capability_atom_refs", "business_chain_refs", "source_status", "source_refs",
         "project_boundary"
       ],
       "properties": {
         "unit_id": {"type": "string", "minLength": 1},
+        "project_title": {
+          "description": "Concise name for the bounded business entity the unit owns and governs (its record/aggregate plus the lifecycle it controls), derived from owned_object_refs and overall_outcome in source-backed domain terminology. It reuses the concrete noun of at least one owned business object, answering 'what does this unit own?' never 'what does it do?'. For multi-atom system-level projects (3+ atoms grouped as a durable software system with independent state, deployment lifecycle, and named interfaces), distill the unified business responsibility the system owns across all its objects, using a system-scope noun phrase that names the domain and lifecycle role (e.g., 'Market Data Management System', 'Trading Operations Assurance System'); do not enumerate individual object names. For single-atom or small-cluster projects, reuse the concrete noun of at least one owned business object (e.g., 'Order Lifecycle', 'Account Tradable Resources'). It is never a responsibility ('X责任'), a lifecycle ('X业务生命周期'), a responsibility-unit/domain/capability-domain label, an owner/lifecycle token slug, a generic container, or an activity/governance act (publishing/authorizing/deciding/adjudicating/disclosing/evaluating/auditing/recovering/executing/collecting/processing/managing/computing/routing/monitoring) unless that word is itself the source-named owned object; nor does it replace a concrete object noun with a vaguer umbrella (fact/evidence/information/data/version/feature/result).",
+          "type": "string",
+          "minLength": 4
+        },
         "outline_node_id": {"type": "string", "minLength": 1},
         "parent_unit_id": {"type": ["string", "null"]},
         "project_depth": {"type": "integer", "minimum": 0},
@@ -227,9 +232,25 @@
           "items": {"type": "string", "minLength": 1}
         },
         "project_boundary": {"$ref": "#/$defs/project_boundary"},
+        "project_candidate_basis": {"$ref": "#/$defs/project_candidate_basis"},
         "grouping_basis": {"$ref": "#/$defs/grouping_basis"},
         "decomposition_basis": {"$ref": "#/$defs/decomposition_basis"},
-        "terminal_basis": {"$ref": "#/$defs/terminal_basis"}
+        "terminal_basis": {"$ref": "#/$defs/terminal_basis"},
+        "decomposition_mode": {
+          "description": "Primary decomposition mode used to define this unit's boundary. A=Business Scenario/User Journey, B=Product Feature Unit (default), C=API Path/Resource, D=Data Entity Lifecycle, E=User Role/Permission, F=Event/Trigger, G=Integration Point/External System Boundary.",
+          "enum": ["A", "B", "C", "D", "E", "F", "G"]
+        },
+        "mode_rationale": {
+          "description": "One sentence explaining why this mode was chosen over alternatives.",
+          "type": "string",
+          "minLength": 10
+        },
+        "secondary_dimensions": {
+          "description": "Other decomposition modes that apply as sub-layers or tags (do not create extra units).",
+          "type": "array",
+          "items": {"enum": ["A", "B", "C", "D", "E", "F", "G"]},
+          "uniqueItems": true
+        }
       },
       "allOf": [
         {
@@ -241,20 +262,56 @@
           "then": {"required": ["terminal_basis"]}
         },
         {
-          "if": {"properties": {"capability_atom_refs": {"minItems": 2}}},
+          "if": {"properties": {"capability_atom_refs": {"type": "array", "minItems": 2}}},
           "then": {"required": ["grouping_basis"]}
+        },
+        {
+          "if": {
+            "required": ["parent_unit_id"],
+            "properties": {"parent_unit_id": {"type": "string"}}
+          },
+          "then": {"required": ["project_candidate_basis"]}
+        },
+        {
+          "if": {
+            "required": ["parent_unit_id", "decomposition_state"],
+            "properties": {
+              "parent_unit_id": {"type": "string"},
+              "decomposition_state": {"const": "frontier"}
+            }
+          },
+          "then": {
+            "properties": {
+              "project_candidate_basis": {"required": ["next_decomposition_focus"]}
+            }
+          }
+        },
+        {
+          "if": {
+            "required": ["parent_unit_id", "decomposition_state"],
+            "properties": {
+              "parent_unit_id": {"type": "string"},
+              "decomposition_state": {"enum": ["expanded", "terminal"]}
+            }
+          },
+          "then": {
+            "properties": {
+              "project_candidate_basis": {"not": {"required": ["next_decomposition_focus"]}}
+            }
+          }
         },
         {
           "if": {
             "required": ["parent_unit_id", "capability_atom_refs"],
             "properties": {
               "parent_unit_id": {"type": "string"},
-              "capability_atom_refs": {"minItems": 2}
+              "capability_atom_refs": {"type": "array", "minItems": 2}
             }
           },
           "then": {
             "properties": {
               "grouping_basis": {
+                "type": "object",
                 "properties": {
                   "authority": {"enum": ["user", "user-confirmed", "doc", "ai-proposed"]}
                 }
@@ -267,15 +324,18 @@
             "required": ["parent_unit_id", "capability_atom_refs"],
             "properties": {
               "parent_unit_id": {"type": "string"},
-              "capability_atom_refs": {"minItems": 2}
+              "capability_atom_refs": {"type": "array", "minItems": 2}
             }
           },
           "then": {
             "properties": {
               "grouping_basis": {
+                "type": "object",
                 "required": ["coupling_invariants"],
                 "properties": {
-                  "coupling_invariants": {"minItems": 1}
+                  "shared_responsibility_owner_ref": {"type": ["string", "null"]},
+                  "shared_lifecycle_ref": {"type": ["string", "null"]},
+                  "coupling_invariants": {"type": "array", "minItems": 1}
                 }
               }
             }
@@ -290,7 +350,7 @@
       "required": [
         "owned_responsibility", "scope", "owned_object_refs", "non_goals",
         "upstream_contracts", "downstream_contracts", "independent_acceptance",
-        "unresolved_boundary"
+        "unresolved_boundary", "capability_summary"
       ],
       "properties": {
         "owned_responsibility": {"type": "string", "minLength": 20},
@@ -313,7 +373,26 @@
           "items": {"$ref": "#/$defs/project_boundary_contract"}
         },
         "independent_acceptance": {"type": "string", "minLength": 20},
-        "unresolved_boundary": {"type": "string", "minLength": 12}
+        "unresolved_boundary": {"type": "string", "minLength": 12},
+        "capability_summary": {
+          "description": "Bullet-point functional inventory for this project: each item names one concrete capability the system provides, written as an active-voice verb phrase with the business object and observable result (e.g. 'Normalize multi-source market batches into a unified canonical version with source and quality metadata'). Required for all units. Minimum 3 items; each item at least 15 characters. Do not use paragraph prose.",
+          "type": "array",
+          "minItems": 3,
+          "items": {"type": "string", "minLength": 15}
+        },
+        "acceptance_criteria": {
+          "description": "2-5 independent, observable, source-backed acceptance conditions. Each criterion must state what is checked and what the expected observable result is. Vague criteria like '功能正常' or 'system is stable' are forbidden. Required for S1 and S2 decompose windows.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 8,
+          "items": {"type": "string", "minLength": 20}
+        },
+        "constraints_and_risks": {
+          "description": "Up to 3 items, each stating a specific constraint (regulatory, technical, timing) or risk (data quality, authority, integration) the next design stage must address. Must have domain grounding — do not list generic 'performance' or 'security' without specifics.",
+          "type": "array",
+          "maxItems": 3,
+          "items": {"type": "string", "minLength": 15}
+        }
       }
     },
     "project_boundary_contract": {
@@ -338,12 +417,35 @@
         }
       }
     },
+    "project_candidate_basis": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Why any non-root unit is a durable peer child project at this level rather than an atomic feature, workflow step, or broad theme bucket. Only a frontier adds next_decomposition_focus.",
+      "required": [
+        "durable_business_responsibility", "why_not_capability_step",
+        "why_not_parent_bucket", "source_status", "source_refs"
+      ],
+      "properties": {
+        "durable_business_responsibility": {"type": "string", "minLength": 20},
+        "why_not_capability_step": {"type": "string", "minLength": 20},
+        "why_not_parent_bucket": {"type": "string", "minLength": 20},
+        "next_decomposition_focus": {
+          "description": "At least two concrete business sub-responsibilities expected in the next Outline window; implementation layers and sequential steps are invalid.",
+          "type": "array", "minItems": 2, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 12}
+        },
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "source_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      }
+    },
     "grouping_basis": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "authority", "shared_business_goal", "shared_responsibility_owner_ref",
-        "shared_lifecycle_ref", "parent_cohesion", "separation_test", "source_refs"
+        "authority", "separation_test", "source_refs"
       ],
       "properties": {
         "authority": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
@@ -352,12 +454,17 @@
           "enum": ["current-discovery"]
         },
         "shared_business_goal": {"type": "string", "minLength": 20},
-        "shared_responsibility_owner_ref": {"type": ["string", "null"]},
-        "shared_lifecycle_ref": {"type": ["string", "null"]},
-        "parent_cohesion": {"type": "string", "minLength": 20},
+        "shared_responsibility_owner_ref": {
+          "description": "Required for a generated multi-atom child and must be the one Stage A owner shared by every grouped atom.",
+          "type": ["string", "null"]
+        },
+        "shared_lifecycle_ref": {
+          "description": "Required for a generated multi-atom child and must be the one Stage A lifecycle shared by every grouped atom.",
+          "type": ["string", "null"]
+        },
         "coupling_invariants": {
-          "description": "Required by runtime validation for every newly generated grouped child. The expansion root may omit it because a root is the complete source context rather than a newly proposed merge.",
-          "type": "array", "uniqueItems": true,
+          "description": "One plain-language business invariant binding every atom in a newly generated grouped child. A documented invariant carries a quote; a current-discovery architecture proposal carries an explicit derivation from source-backed atom facts and remains subject to Web confirmation.",
+          "type": "array", "minItems": 1, "maxItems": 1, "uniqueItems": true,
           "items": {"$ref": "#/$defs/coupling_invariant"}
         },
         "separation_test": {"$ref": "#/$defs/separation_test"},
@@ -371,32 +478,41 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "invariant_id", "invariant_kind", "business_rule", "capability_atom_refs",
-        "source_status", "evidence_ref", "evidence_quote", "source_refs"
+        "invariant_id", "business_rule", "capability_atom_refs",
+        "source_status", "source_refs"
       ],
       "properties": {
         "invariant_id": {"type": "string", "minLength": 1},
-        "invariant_kind": {"enum": ["atomic_acceptance", "single_writer_transaction", "regulated_joint_control", "inseparable_lifecycle", "cohesive_data_lifecycle"]},
         "business_rule": {"type": "string", "minLength": 20},
         "capability_atom_refs": {
           "type": "array", "minItems": 2, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         },
-        "source_status": {"enum": ["user", "user-confirmed", "doc"]},
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed"]},
         "evidence_ref": {"type": "string", "minLength": 1},
         "evidence_quote": {"type": "string", "minLength": 8},
+        "proposal_basis": {
+          "description": "Required for ai-proposed project cohesion. It explains the architecture inference without pretending that the source already named the project boundary.",
+          "type": "string", "minLength": 20
+        },
         "source_refs": {
           "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"source_status": {"const": "ai-proposed"}}},
+          "then": {"required": ["proposal_basis"]},
+          "else": {"required": ["evidence_ref", "evidence_quote"]}
+        }
+      ]
     },
     "separation_test": {
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "alternative_groups", "stable_handoffs", "duplicated_state_refs",
-        "keep_together_complexity", "split_coordination_cost", "decision_reason"
+        "alternative_groups", "stable_handoffs", "duplicated_state_refs", "decision_reason"
       ],
       "properties": {
         "alternative_groups": {
@@ -411,8 +527,6 @@
           "type": "array", "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         },
-        "keep_together_complexity": {"type": "string", "minLength": 20},
-        "split_coordination_cost": {"type": "string", "minLength": 20},
         "decision_reason": {"type": "string", "minLength": 20}
       }
     },
@@ -456,6 +570,87 @@
         "coordination_cost": {"type": "string", "minLength": 20},
         "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
         "source_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "partition_analysis": {"$ref": "#/$defs/partition_analysis"}
+      }
+    },
+    "partition_analysis": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Complete partition comparison using hybrid approach: constrained (SpecKit rules) + unconstrained (pure architecture), plus comparison analysis and the deterministic Stage A responsibility-cell projection used as the provisional tree until source or human authority selects a different partition.",
+      "required": ["reference_partition_id", "selected_partition_id", "reference_authority", "partitions"],
+      "properties": {
+        "reference_partition_id": {
+          "description": "Partition whose groups exactly match the deterministic responsibility_owner_ref + lifecycle_ref cells for the parent atoms.",
+          "type": "string",
+          "minLength": 1
+        },
+        "selected_partition_id": {"type": "string", "minLength": 1},
+        "partitions": {
+          "type": "array", "minItems": 2, "maxItems": 5,
+          "items": {"$ref": "#/$defs/partition_option"}
+        },
+        "reference_authority": {
+          "description": "Authority grade of the deterministic reference partition. 'doc-user-anchored' = every cell has both owner and lifecycle anchored by doc/user/user-confirmed evidence; 'ai-proposed-only' = every cell rests on ai-proposed/unresolved identities; 'mixed' = hard and soft cells are both present. The value must equal the deterministic Stage A identity-authority derivation.",
+          "enum": ["doc-user-anchored", "ai-proposed-only", "mixed"]
+        },
+        "partition_comparison": {
+          "description": "Comparison analysis between constrained and unconstrained partitions (optional, generated when hybrid approach is used).",
+          "$ref": "#/$defs/partition_comparison"
+        }
+      }
+    },
+    "partition_option": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "partition_id", "label", "business_reason", "internal_complexity",
+        "coordination_cost", "total_complexity_rank", "groups", "source_status", "source_refs"
+      ],
+      "properties": {
+        "partition_id": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 4},
+        "approach": {
+          "description": "Approach used to generate this partition (optional, used in hybrid decomposition).",
+          "enum": ["constrained (SpecKit rules)", "unconstrained (pure architecture)", "reference (identity-derived)", "hybrid (fused)"]
+        },
+        "business_reason": {"type": "string", "minLength": 20},
+        "internal_complexity": {"type": "string", "minLength": 20},
+        "total_complexity_rank": {"type": "integer", "minimum": 1, "maximum": 5},
+        "model_complexity": {
+          "description": "Legacy compatibility field. New schema-v6 output uses internal_complexity.",
+          "type": "string", "minLength": 20
+        },
+        "coordination_cost": {"type": "string", "minLength": 20},
+        "groups": {
+          "type": "array", "minItems": 1,
+          "items": {"$ref": "#/$defs/partition_group"}
+        },
+        "source_status": {"enum": ["user", "user-confirmed", "doc", "ai-proposed", "unresolved"]},
+        "evidence_ref": {"type": "string", "minLength": 1},
+        "evidence_quote": {"type": "string", "minLength": 8},
+        "source_refs": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"source_status": {"const": "doc"}}, "required": ["source_status"]},
+          "then": {"required": ["evidence_ref", "evidence_quote"]}
+        }
+      ]
+    },
+    "partition_group": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group_id", "business_responsibility", "capability_atom_refs"],
+      "properties": {
+        "group_id": {"type": "string", "minLength": 1},
+        "business_responsibility": {"type": "string", "minLength": 20},
+        "capability_atom_refs": {
           "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
         }
@@ -857,6 +1052,7 @@
         "value": {"type": "string", "minLength": 1},
         "rationale": {"type": "string", "minLength": 1},
         "detail": {"type": "string", "minLength": 20},
+        "partition_ref": {"type": "string", "minLength": 1},
         "business_chain_refs": {
           "type": "array", "minItems": 1, "uniqueItems": true,
           "items": {"type": "string", "minLength": 1}
@@ -924,6 +1120,72 @@
           }
         }
       ]
+    },
+    "partition_comparison": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Comparison analysis between constrained and unconstrained partitions in hybrid decomposition.",
+      "required": ["constrained_count", "unconstrained_count", "disagreement_atom_count", "disagreement_rate", "recommended_approach"],
+      "properties": {
+        "constrained_count": {
+          "description": "Number of children in constrained partition (SpecKit rules).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "unconstrained_count": {
+          "description": "Number of children in unconstrained partition (pure architecture).",
+          "type": "integer",
+          "minimum": 1
+        },
+        "disagreement_atom_count": {
+          "description": "Number of atoms whose co-member set differs between constrained and unconstrained partitions (strict membership-change count).",
+          "type": "integer",
+          "minimum": 0
+        },
+        "disagreement_rate": {
+          "description": "disagreement_atom_count / total_atom_count, expressed as a percentage (0-100).",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "agreement_boundaries": {
+          "description": "List of atoms that both approaches group the same way.",
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "disagreement_boundaries": {
+          "description": "List of boundary disagreements between the two approaches.",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["atoms", "constrained_grouping", "unconstrained_grouping", "key_tension"],
+            "properties": {
+              "atoms": {
+                "type": "array",
+                "items": {"type": "string"},
+                "minItems": 1
+              },
+              "constrained_grouping": {"type": "string", "minLength": 10},
+              "unconstrained_grouping": {"type": "string", "minLength": 10},
+              "key_tension": {"type": "string", "minLength": 10}
+            }
+          }
+        },
+        "recommended_approach": {
+          "description": "Which approach to use or whether to present options.",
+          "enum": ["constrained", "unconstrained", "hybrid", "discovery_question"]
+        },
+        "fusion_rationale": {
+          "description": "Explanation of how the two approaches were fused (if recommended_approach is 'hybrid').",
+          "type": "string",
+          "minLength": 20
+        },
+        "technical_implementation_notes": {
+          "description": "Notes from unconstrained partition to inform later technical implementation (if recommended_approach is 'constrained').",
+          "type": "string",
+          "minLength": 20
+        }
+      }
     }
   }
 }
