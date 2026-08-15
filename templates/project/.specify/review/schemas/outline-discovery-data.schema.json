@@ -580,14 +580,22 @@
       "type": "object",
       "additionalProperties": false,
       "description": "Complete partition comparison using hybrid approach: constrained (SpecKit rules) + unconstrained (pure architecture), plus comparison analysis and the deterministic Stage A responsibility-cell projection used as the provisional tree until source or human authority selects a different partition.",
-      "required": ["reference_partition_id", "selected_partition_id", "reference_authority", "partitions"],
+      "required": ["reference_partition_id", "reference_authority", "partitions"],
       "properties": {
         "reference_partition_id": {
           "description": "Partition whose groups exactly match the deterministic responsibility_owner_ref + lifecycle_ref cells for the parent atoms.",
           "type": "string",
           "minLength": 1
         },
-        "selected_partition_id": {"type": "string", "minLength": 1},
+        "selected_partition_id": {
+          "description": "The partition chosen as the provisional tree. Omitted when partition_comparison.recommended_approach is 'discovery_question'; in that case partition_analysis.arbitration is required instead.",
+          "type": "string",
+          "minLength": 1
+        },
+        "arbitration": {
+          "description": "Required when partition_comparison.recommended_approach is 'discovery_question'. Records the two competing partitions and the metrics that triggered human arbitration. selected_partition_id must be absent in this state.",
+          "$ref": "#/$defs/partition_arbitration"
+        },
         "partitions": {
           "type": "array", "minItems": 2, "maxItems": 5,
           "items": {"$ref": "#/$defs/partition_option"}
@@ -600,7 +608,22 @@
           "description": "Comparison analysis between constrained and unconstrained partitions (optional, generated when hybrid approach is used).",
           "$ref": "#/$defs/partition_comparison"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": ["partition_comparison"],
+            "properties": {
+              "partition_comparison": {
+                "required": ["recommended_approach"],
+                "properties": {"recommended_approach": {"const": "discovery_question"}}
+              }
+            }
+          },
+          "then": {"required": ["arbitration"]},
+          "else": {"required": ["selected_partition_id"]}
+        }
+      ]
     },
     "partition_option": {
       "type": "object",
@@ -1184,6 +1207,31 @@
           "description": "Notes from unconstrained partition to inform later technical implementation (if recommended_approach is 'constrained').",
           "type": "string",
           "minLength": 20
+        }
+      }
+    },
+    "partition_arbitration": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Populated when partition_comparison.recommended_approach is 'discovery_question'. Records the two competing partitions and the metrics that triggered human arbitration. selected_partition_id must be absent in this state.",
+      "required": ["candidate_partition_ids", "trigger", "disagreement_rate", "count_difference"],
+      "properties": {
+        "candidate_partition_ids": {
+          "description": "The two competing partition IDs being presented to the human for selection, in the same order they appear in partitions[].",
+          "type": "array", "minItems": 2, "maxItems": 2, "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "trigger": {
+          "description": "Which threshold condition triggered arbitration.",
+          "enum": ["count_difference_ge2", "disagreement_rate_gt10pct", "both"]
+        },
+        "disagreement_rate": {
+          "description": "Actual disagreement_rate value (0–100) as computed in partition_comparison.",
+          "type": "number", "minimum": 0, "maximum": 100
+        },
+        "count_difference": {
+          "description": "Absolute difference between constrained_count and unconstrained_count.",
+          "type": "integer", "minimum": 0
         }
       }
     }

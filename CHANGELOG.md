@@ -2,6 +2,16 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.47] - 2026-08-15
+
+### Fixed
+
+- **Partition arbitration contract conflict**: `selected_partition_id` was unconditionally required in `partition_analysis`, making it impossible to emit a valid discovery payload when the model must present two competing partitions for human arbitration (child count differs by ≥2 or `disagreement_rate` > 10%). The field is now conditionally required via `allOf/if/then/else`: when `partition_comparison.recommended_approach` is `discovery_question`, the new `arbitration` field is required instead and `selected_partition_id` must be omitted; in all other cases `selected_partition_id` remains required (no change to existing behaviour).
+
+- **New schema: `partition_arbitration`** — added to `$defs`. Fields: `candidate_partition_ids` (two competing partition IDs), `trigger` (`count_difference_ge2` / `disagreement_rate_gt10pct` / `both`), `disagreement_rate` (0–100), `count_difference` (integer). This gives downstream consumers and audit logs a structured record of what triggered human arbitration.
+
+- **`prd.md` arbitration output rule**: added explicit instruction to the `discovery_question` decision branch — in arbitration state `selected_partition_id` must be absent, `partition_analysis.arbitration` must be populated with the two candidate IDs and trigger metrics, and `recommended_candidate_ids` in the Discovery question must still name one preferred candidate (model advises, human decides).
+
 ## [0.11.46] - 2026-08-15
 
 ### Added
