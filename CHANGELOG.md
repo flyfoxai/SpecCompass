@@ -2,6 +2,41 @@
 
 <!-- insert new changelog below this comment -->
 
+## [0.11.46] - 2026-08-15
+
+### Added
+
+- **Step 4a: Seven decomposition modes (A–G)** for selecting child unit boundaries in Stage B. Each mode answers a distinct question about why requirements belong in one deliverable unit: A (Business Scenario), B (Product Feature, default), C (API/Resource), D (Data Entity Lifecycle), E (User Role/Permission), F (Event/Trigger), G (Integration Point/External System). A priority matrix guides mode selection by system characteristics. New schema fields: `decomposition_mode`, `mode_rationale`, `secondary_dimensions`.
+
+- **Step 4b: Full functional profile required for every S1 and S2 child unit.** A project title alone is no longer sufficient. Each generated child must emit: (1) functional scope (3–8 active-voice capability bullets with business object and observable result), (2) out-of-scope items (≥2 concrete excluded responsibilities), (3) key acceptance criteria (2–5 independent observable conditions, vague criteria forbidden), (4) upstream and downstream contracts (counterparty, exchanged fact, frequency), (5) key constraints and risks (≤3 domain-grounded items). New schema fields: `acceptance_criteria`, `constraints_and_risks`.
+
+- **S1/S2/S3/P0/P1 run-route selection** added before Stage A. P0 blocks on missing or stale inputs; P1 routes confirmed-tree restructuring to the boundary-adjustment flow; S1 handles portfolio-root decomposition (depth 0, one direct layer only); S2 handles recursive sub-system decomposition (requires confirmed parent handoff, one direct layer); S3 handles terminal-unit detail expansion (frame maturity, no new project IDs). A disambiguation section specifies when to choose S2 versus S3.
+
+- **P0 plain-language human decision package** required whenever the run produces `NEEDS_PRD`, `NEEDS_CLARIFY`, `NEEDS_SOURCE`, `NEEDS_DECISION`, or `BLOCKED`. Output must include: Background (business language, no stage names or schema fields), Impact (what cannot proceed and consequences of a wrong choice), Options (2–4 entries each with label, action, benefit, cost, and exact next command), Recommendation (specific reasons grounded in project facts, forbidden: "请您决定" / "视情况而定"), and How to confirm (one sentence). Generic status-only output is forbidden.
+
+### Changed
+
+- **Naming Rule 1 rewritten** to explicitly forbid object-enumeration titles. For multi-atom system-level projects the title must distill a unified domain-and-lifecycle-role noun phrase; individual owned-object names must not be listed or joined with connectors. Added direct counter-examples drawn from observed regressions (e.g. `证券身份、原始行情批次、标准行情与可信行情数据集` → `行情数据管理系统`). Clarified that "reuse a concrete owned-object noun" means take the core noun from one object, not enumerate all objects.
+
+- **Naming Rule 3 strengthened**: added self-check that a Chinese title exceeding 8 characters is almost certainly an object enumeration and must be rewritten.
+
+- **Naming Rule 4 upgraded to zero tolerance**: any title containing "与" or "、" connectors is an automatic failure and must be rewritten before proceeding. The previous advisory treatment allowed 7 out of 11 regressions to pass undetected.
+
+- **Validator: `capability_summary` enforcement** — CLI and browser validators now fail when `capability_summary` is missing or has fewer than 3 items, or when any item is shorter than 15 characters.
+
+- **Validator: `non_goals` boilerplate rejection** — CLI and browser validators now fail when every `non_goals` entry matches a known cross-unit generic template (e.g. "不拥有相邻候选交付后的下游决定与状态"), requiring unit-specific excluded responsibilities instead.
+
+- **Validator: `acceptance_criteria` content check** — items shorter than 20 characters are rejected; vague criteria like "功能正常" are caught by the minimum-length gate.
+
+- **Validator: `decomposition_mode` enum check** — both validators enforce that `decomposition_mode`, when present, is one of `A|B|C|D|E|F|G` and that `secondary_dimensions` does not repeat the primary mode.
+
+### Fixed
+
+- `capability_summary` was required in schema but validators did not reject empty arrays, allowing models to pass validation with zero-item summaries. Validators now explicitly check `minItems: 3`.
+
+- `non_goals` produced identical cross-unit boilerplate in all child units. Validators now detect and reject all-generic `non_goals` arrays.
+
+
 ## [0.11.45] - 2026-08-06
 
 ### Changed
